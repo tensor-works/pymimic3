@@ -1,0 +1,232 @@
+{
+    "sampler_combinations": [
+        [
+            "first_percentage",
+            100
+        ],
+        [
+            "first_percentage",
+            10
+        ],
+        [
+            "first_percentage",
+            25
+        ],
+        [
+            "first_percentage",
+            50
+        ],
+        [
+            "last_percentage",
+            10
+        ],
+        [
+            "last_percentage",
+            25
+        ],
+        [
+            "last_percentage",
+            50
+        ]
+    ],
+    "is_categorical_channel": {
+        "Capillary refill rate": true,
+        "Diastolic blood pressure": false,
+        "Fraction inspired oxygen": false,
+        "Glascow coma scale eye opening": true,
+        "Glascow coma scale motor response": true,
+        "Glascow coma scale total": true,
+        "Glascow coma scale verbal response": true,
+        "Glucose": false,
+        "Heart Rate": false,
+        "Height": false,
+        "Mean blood pressure": false,
+        "Oxygen saturation": false,
+        "Respiratory rate": false,
+        "Systolic blood pressure": false,
+        "Temperature": false,
+        "Weight": false,
+        "pH": false
+    },
+    "channel_names": [
+        "Capillary refill rate",
+        "Diastolic blood pressure",
+        "Fraction inspired oxygen",
+        "Glascow coma scale eye opening",
+        "Glascow coma scale motor response",
+        "Glascow coma scale total",
+        "Glascow coma scale verbal response",
+        "Glucose",
+        "Heart Rate",
+        "Height",
+        "Mean blood pressure",
+        "Oxygen saturation",
+        "Respiratory rate",
+        "Systolic blood pressure",
+        "Temperature",
+        "Weight",
+        "pH"
+    ],
+    "channels": {
+        "Glucose": {
+            "possible_values": []
+        },
+        "Systolic blood pressure": {
+            "possible_values": []
+        },
+        "Glascow coma scale verbal response": {
+            "possible_values": [
+                "1 No Response",
+                "1.0 ET/Trach",
+                "2 Incomp sounds",
+                "3 Inapprop words",
+                "4 Confused",
+                "5 Oriented",
+                "Confused",
+                "Inappropriate Words",
+                "Incomprehensible sounds",
+                "No Response",
+                "No Response-ETT",
+                "Oriented"
+            ],
+            "values": {
+                "No Response-ETT": 1,
+                "No Response": 1,
+                "1 No Response": 1,
+                "1.0 ET/Trach": 1,
+                "2 Incomp sounds": 2,
+                "Incomprehensible sounds": 2,
+                "3 Inapprop words": 3,
+                "Inappropriate Words": 3,
+                "4 Confused": 4,
+                "Confused": 4,
+                "5 Oriented": 5,
+                "Oriented": 5
+            }
+        },
+        "Temperature": {
+            "possible_values": []
+        },
+        "Weight": {
+            "possible_values": []
+        },
+        "Diastolic blood pressure": {
+            "possible_values": []
+        },
+        "Fraction inspired oxygen": {
+            "possible_values": []
+        },
+        "Glascow coma scale total": {
+            "possible_values": [
+                "10",
+                "11",
+                "12",
+                "13",
+                "14",
+                "15",
+                "3",
+                "4",
+                "5",
+                "6",
+                "7",
+                "8",
+                "9"
+            ],
+            "values": {
+                "3.0": 3,
+                "4.0": 4,
+                "5.0": 5,
+                "6.0": 6,
+                "7.0": 7,
+                "8.0": 8,
+                "9.0": 9,
+                "10.0": 10,
+                "11.0": 11,
+                "12.0": 12,
+                "13.0": 13,
+                "14.0": 14,
+                "15.0": 15
+            }
+        },
+        "Capillary refill rate": {
+            "possible_values": [
+                "0.0",
+                "1.0"
+            ],
+            "values": {
+                "0.0": 0,
+                "1.0": 1
+            }
+        },
+        "Mean blood pressure": {
+            "possible_values": []
+        },
+        "Heart Rate": {
+            "possible_values": []
+        },
+        "Oxygen saturation": {
+            "possible_values": []
+        },
+        "pH": {
+            "possible_values": []
+        },
+        "Height": {
+            "possible_values": []
+        },
+        "Glascow coma scale eye opening": {
+            "possible_values": [
+                "1 No Response",
+                "2 To pain",
+                "3 To speech",
+                "4 Spontaneously",
+                "None",
+                "Spontaneously",
+                "To Pain",
+                "To Speech"
+            ],
+            "values": {
+                "None": 0,
+                "1 No Response": 1,
+                "2 To pain": 2,
+                "To Pain": 2,
+                "3 To speech": 3,
+                "To Speech": 3,
+                "4 Spontaneously": 4,
+                "Spontaneously": 4
+            }
+        },
+        "Respiratory rate": {
+            "possible_values": []
+        },
+        "Glascow coma scale motor response": {
+            "possible_values": [
+                "1 No Response",
+                "2 Abnorm extensn",
+                "3 Abnorm flexion",
+                "4 Flex-withdraws",
+                "5 Localizes Pain",
+                "6 Obeys Commands",
+                "Abnormal Flexion",
+                "Abnormal extension",
+                "Flex-withdraws",
+                "Localizes Pain",
+                "No response",
+                "Obeys Commands"
+            ],
+            "values": {
+                "1 No Response": 1,
+                "No response": 1,
+                "2 Abnorm extensn": 2,
+                "Abnormal extension": 2,
+                "3 Abnorm flexion": 3,
+                "Abnormal Flexion": 3,
+                "4 Flex-withdraws": 4,
+                "Flex-withdraws": 4,
+                "5 Localizes Pain": 5,
+                "Localizes Pain": 5,
+                "6 Obeys Commands": 6,
+                "Obeys Commands": 6
+            }
+        }
+    }
+}

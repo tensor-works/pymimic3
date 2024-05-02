@@ -1,0 +1,144 @@
+{
+    "subcases": [
+        {
+            "name": "test",
+            "model_type": "lstm",
+            "task": "IHM",
+            "data_config": {
+                "chunksize": 5000000,
+                "source_path": "/home/amadou/Data/ml_data/research-internship/mimic-iii",
+                "storage_path": "/home/amadou/Data/ml_data/research-internship/processed/"
+            },
+            "model_config": {
+                "layer_size": 16,
+                "input_dim": 59,
+                "depth": 2,
+                "dropout_rate": 0.3
+            },
+            "pipeline_config": {
+                "model_name": "lstm_default",
+                "batch_size": 8,
+                "epochs": 40,
+                "split_config": {
+                    "validation_fraction_split": 0.15,
+                    "test_fraction_split": 0.15
+                },
+                "output_type": "one-hot",
+                "compiler_config": {
+                    "optimizer": "adam",
+                    "metrics": [
+                        "auc_2",
+                        "auc_3"
+                    ],
+                    "loss": "binary_crossentropy",
+                    "run_eagerly": true,
+                    "batch_size": 8
+                }
+            }
+        },
+        {
+            "name": "test",
+            "model_type": "lstm",
+            "task": "PHENO",
+            "data_config": {
+                "chunksize": 5000000,
+                "source_path": "/home/amadou/Data/ml_data/research-internship/mimic-iii",
+                "storage_path": "/home/amadou/Data/ml_data/research-internship/processed/"
+            },
+            "model_config": {
+                "layer_size": 256,
+                "input_dim": 59,
+                "depth": 1,
+                "dropout_rate": 0.3
+            },
+            "pipeline_config": {
+                "model_name": "lstm_default",
+                "batch_size": 8,
+                "epochs": 20,
+                "split_config": {
+                    "validation_fraction_split": 0.15,
+                    "test_fraction_split": 0.15
+                },
+                "output_type": "one-hot",
+                "compiler_config": {
+                    "optimizer": "adam",
+                    "metrics": [
+                        "accuracy"
+                    ],
+                    "loss": "categorical_crossentropy",
+                    "run_eagerly": true
+                }
+            }
+        },
+        {
+            "name": "test",
+            "model_type": "lstm",
+            "task": "DECOMP",
+            "data_config": {
+                "chunksize": 5000000,
+                "source_path": "/home/amadou/Data/ml_data/research-internship/mimic-iii",
+                "storage_path": "/home/amadou/Data/ml_data/research-internship/processed/"
+            },
+            "model_config": {
+                "layer_size": 128,
+                "input_dim": 59,
+                "depth": 1,
+                "dropout_rate": 0
+            },
+            "pipeline_config": {
+                "model_name": "lstm_default",
+                "batch_size": 8,
+                "epochs": 5,
+                "split_config": {
+                    "validation_fraction_split": 0.15,
+                    "test_fraction_split": 0.15
+                },
+                "output_type": "one-hot",
+                "compiler_config": {
+                    "optimizer": "adam",
+                    "metrics": [
+                        "auc_2",
+                        "auc_3"
+                    ],
+                    "loss": "binary_crossentropy",
+                    "run_eagerly": true,
+                    "batch_size": 8
+                }
+            }
+        },
+        {
+            "name": "test",
+            "model_type": "lstm",
+            "task": "LOS",
+            "data_config": {
+                "chunksize": 5000000,
+                "source_path": "/home/amadou/Data/ml_data/research-internship/mimic-iii",
+                "storage_path": "/home/amadou/Data/ml_data/research-internship/processed/"
+            },
+            "model_config": {
+                "layer_size": 64,
+                "input_dim": 59,
+                "depth": 1,
+                "dropout_rate": 0.3
+            },
+            "pipeline_config": {
+                "model_name": "lstm_default",
+                "batch_size": 8,
+                "epochs": 5,
+                "split_config": {
+                    "validation_fraction_split": 0.15,
+                    "test_fraction_split": 0.15
+                },
+                "output_type": "one-hot",
+                "compiler_config": {
+                    "optimizer": "adam",
+                    "metrics": [
+                        "accuracy"
+                    ],
+                    "loss": "categorical_crossentropy",
+                    "run_eagerly": true
+                }
+            }
+        }
+    ]
+}

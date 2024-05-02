@@ -1,0 +1,87 @@
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the
+// README at: https://github.com/devcontainers/templates/tree/main/src/anaconda
+{
+	"name": "Anaconda (Python 3)",
+	"build": { 
+		"context": "..",
+		"dockerfile": "Dockerfile"
+	},
+	"features": {
+		"ghcr.io/devcontainers/features/anaconda:1": {
+			"version": "latest"
+		},
+		"ghcr.io/devcontainers/features/common-utils:2": {
+			"installZsh": true,
+			"installOhMyZsh": true,
+			"installOhMyZshConfig": true,
+			"upgradePackages": true,
+			"username": "devcontainer",
+			"userUid": "automatic",
+			"userGid": "1001"
+		},
+		"ghcr.io/devcontainers/features/conda:1": {
+			"addCondaForge": true,
+			"version": "latest"
+		},
+		"ghcr.io/devcontainers/features/git:1": {
+			"ppa": true,
+			"version": "os-provided"
+		},
+		"ghcr.io/devcontainers/features/git-lfs:1": {
+			"autoPull": true,
+			"version": "latest"
+		},
+		"ghcr.io/devcontainers/features/github-cli:1": {
+			"installDirectlyFromGitHubRelease": true,
+			"version": "latest"
+		},
+		"ghcr.io/rocker-org/devcontainer-features/apt-packages:1": {
+			"packages": "curl,nano"
+		},
+		"ghcr.io/devcontainers-contrib/features/apt-get-packages:1": {
+			"clean_ppas": true,
+			"preserve_apt_list": true,
+			"packages": "curl,ca-certificates",
+			"ppas": "ppa:deadsnakes/ppa"
+		},
+		"ghcr.io/devcontainers-contrib/features/apt-packages:1": {
+			"clean_ppas": true,
+			"preserve_apt_list": true,
+			"packages": "build-essential",
+			"ppas": "ppa:deadsnakes/ppa"
+		},
+		"ghcr.io/devcontainers-contrib/features/gh-release:1": {
+			"repo": "digitalocean/doctl",
+			"binaryNames": "gh",
+			"version": "latest",
+			"binLocation": "/usr/local/bin",
+			"libLocation": "/usr/local/lib",
+			"additionalFlags": "--no-filter-assets-by-platform"
+		},
+		"ghcr.io/devcontainers-contrib/features/git-lfs:1": {
+			"version": "latest"
+		},
+		"ghcr.io/devcontainers-contrib/features/yapf:2": {
+			"version": "latest"
+		},
+		"ghcr.io/akhildevelops/devcontainer-features/apt:0": {},
+		"ghcr.io/wxw-matt/devcontainer-features/command_runner:0": {},
+		"ghcr.io/audacioustux/devcontainers/common-utils-extras:1": {},
+		"ghcr.io/prulloac/devcontainer-features/gitlint:1": {}
+	}
+
+	// Features to add to the dev container. More info: https://containers.dev/features.
+	// "features": {},
+
+	// Use 'forwardPorts' to make a list of ports inside the container available locally.
+	// "forwardPorts": [],
+
+	// Use 'postCreateCommand' to run commands after the container is created.
+	// "postCreateCommand": "python --version",
+
+	// Configure tool-specific properties.
+	// "customizations": {},
+
+	// Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
+	// "remoteUser": "root"
+}

@@ -1,0 +1,41 @@
+# FROM ubuntu:20.04
+FROM tensorflow/tensorflow:latest-gpu
+
+# Install General Requirements
+RUN apt-get update && \
+        apt-get install -y --no-install-recommends \
+        unzip \
+        python3.9 \
+        python3-pip \
+        software-properties-common
+
+# Create a /work directory within the container, copy everything from the
+# build directory and switch there.
+RUN mkdir /work
+COPY requirements.txt /work
+WORKDIR /work
+
+# Make sure your build script is executable. Generally, always check that 
+# all your scripts are made executable, forgetting this is a common error. 
+# Another frequent error is having Windows style line endings in .sh files. 
+# RUN chmod +x build.sh
+# RUN ./build.sh
+
+# Create environment variables for the directory
+ENV WORKINGDIR=/work
+ENV DATA=$WORKINGDIR/data
+ENV CONFIG=$WORKINGDIR/etc
+ENV MODEL=$WORKINGDIR/model
+ENV PYTHONPATH=$PYTHONPATH:$WORKINGDIR/src
+ENV PYTHONPATH=$PYTHONPATH:$WORKINGDIR/scripts
+
+ENV NVIDIA_VISIBLE_DEVICES all
+ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
+
+# Again, test and train scripts should be executable within the container.
+RUN apt-get install nano
+RUN pip install update
+RUN python3 -m pip install --upgrade pip
+RUN pip install -r requirements.txt
+
+# Don't add any CMD or ENTRYPOINT!

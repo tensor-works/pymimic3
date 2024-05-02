@@ -1,0 +1,28 @@
+{
+    "subcases": [
+        {
+            "name": "tf2_logistic_test",
+            "model_type": "logistic_regression",
+            "task": "IHM",
+            "data_config": {
+                "storage_path": "/media/amadou/Extreme SSD/data/research-internship/processed",
+                "source_path": "/media/amadou/Extreme SSD/data/research-internship/mimic-iii",
+                "chunksize": 100000
+            },
+            "model_config": {
+                "input_dim": 714,
+                "task": "IHM"
+            },
+            "pipeline_config": {
+                "metrics": [
+                    "auc_micro",
+                    "auc_macro"
+                ],
+                "framework": "tf2",
+                "test_fraction_split": 0.2,
+                "validation_fraction_split": 0.2,
+                "output_type": "cat"
+            }
+        }
+    ]
+}

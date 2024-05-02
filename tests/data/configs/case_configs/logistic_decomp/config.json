@@ -1,0 +1,25 @@
+{
+    "name": "test",
+    "model_type": "logistic_regression",
+    "task": "DECOMP",
+    "data_config": {
+        "chunksize": 5000000,
+        "source_path": "/home/amadou/Data/ml_data/research-internship/mimic-iii-demo",
+        "storage_path": "/home/amadou/Data/ml_data/research-internship/processed-demo/"
+    },
+    "model_config": {
+        "alpha": 0.001,
+        "max_iter": 1
+    },
+    "pipeline_config": {
+        "framework": "tf2",
+        "output_type": "one-hot",
+        "metrics": [
+            "auc_roc",
+            "auc_pr"
+        ],
+        "split_config": {
+            "test_fraction_split": 0.2
+        }
+    }
+}

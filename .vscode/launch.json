@@ -1,0 +1,134 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Current File: Python(DEBUG)",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "env": {
+                "CONFIG": "${workspaceRoot}/etc",
+                "MODEL": "${workspaceRoot}/models",
+                "TESTS": "${workspaceRoot}/tests",
+                "WORKINGDIR": "${workspaceRoot}",
+                "PYTHONPATH": "${workspaceRoot}/src",
+                "PYDEVD_WARN_SLOW_RESOLVE_TIMEOUT": "3",
+                "DEBUG": "1"
+            }
+        },
+        {
+            "name": "Current File: Python",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "env": {
+                "CONFIG": "${workspaceRoot}/etc",
+                "MODEL": "${workspaceRoot}/models",
+                "WORKINGDIR": "${workspaceRoot}",
+                "TESTS": "${workspaceRoot}/tests",
+                "PYTHONPATH": "${workspaceRoot}/src",
+                "PYDEVD_WARN_SLOW_RESOLVE_TIMEOUT": "3",
+                "DEBUG": "0"
+            }
+        },
+        {
+            "name": "MIMIC: logistic",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceRoot}/entry_point/main.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "env": {
+                "CONFIG": "${workspaceRoot}/etc",
+                "MODEL": "${workspaceRoot}/models",
+                "WORKINGDIR": "${workspaceRoot}",
+                "TESTS": "${workspaceRoot}/tests",
+                "PYTHONPATH": "${workspaceRoot}/src",
+                "PYDEVD_WARN_SLOW_RESOLVE_TIMEOUT": "3",
+            },
+            "args": [
+                "/home/amadou/Data/ml_data/research-internship/tests_cases/logistic"
+            ]
+        },
+        {
+            "name": "MIMIC: logistic: decompensation",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceRoot}/entry_point/main.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "env": {
+                "CONFIG": "${workspaceRoot}/etc",
+                "MODEL": "${workspaceRoot}/models",
+                "WORKINGDIR": "${workspaceRoot}",
+                "TESTS": "${workspaceRoot}/tests",
+                "PYTHONPATH": "${workspaceRoot}/src",
+                "PYDEVD_WARN_SLOW_RESOLVE_TIMEOUT": "3",
+            },
+            "args": [
+                "/home/amadou/Data/ml_data/research-internship/tests_cases/logistic/tests/decompensation"
+            ]
+        },
+        {
+            "name": "MIMIC: logistic: in_hospital_mortality",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceRoot}/entry_point/main.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "env": {
+                "CONFIG": "${workspaceRoot}/etc",
+                "MODEL": "${workspaceRoot}/models",
+                "WORKINGDIR": "${workspaceRoot}",
+                "PYTHONPATH": "${workspaceRoot}/src",
+                "TESTS": "${workspaceRoot}/tests",
+                "PYDEVD_WARN_SLOW_RESOLVE_TIMEOUT": "3",
+            },
+            "args": [
+                "/home/amadou/Data/ml_data/research-internship/tests_cases/logistic/in_hospital_mortality"
+            ]
+        },
+        {
+            "name": "MIMIC: logistic: length_of_stay",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceRoot}/entry_point/main.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "env": {
+                "CONFIG": "${workspaceRoot}/etc",
+                "MODEL": "${workspaceRoot}/models",
+                "WORKINGDIR": "${workspaceRoot}",
+                "TESTS": "${workspaceRoot}/tests",
+                "PYTHONPATH": "${workspaceRoot}/src",
+                "PYDEVD_WARN_SLOW_RESOLVE_TIMEOUT": "3",
+            },
+            "args": [
+                "/home/amadou/Data/ml_data/research-internship/tests_cases/logistic/length_of_stay"
+            ]
+        },
+        {
+            "name": "MIMIC: logistic: phenotyping",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceRoot}/entry_point/main.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "env": {
+                "CONFIG": "${workspaceRoot}/etc",
+                "MODEL": "${workspaceRoot}/models",
+                "TESTS": "${workspaceRoot}/tests",
+                "WORKINGDIR": "${workspaceRoot}",
+                "PYTHONPATH": "${workspaceRoot}/src",
+                "PYDEVD_WARN_SLOW_RESOLVE_TIMEOUT": "3",
+            },
+            "args": [
+                "/home/amadou/Data/ml_data/research-internship/tests_cases/logistic/phenotyping"
+            ]
+        }
+    ]
+}

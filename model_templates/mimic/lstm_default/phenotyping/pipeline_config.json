@@ -1,0 +1,18 @@
+{
+    "model_name": "lstm_default",
+    "batch_size": 8,
+    "epochs": 5,
+    "validation_fraction_split": 0.2,
+    "test_fraction_split": 0.2,
+    "task": "PHENO",
+    "output_type": "one-hot",
+    "compiler_config": {
+        "optimizer": "adam",
+        "metrics": [
+            "auccuracy"
+        ],
+        "loss": "categorical_crossentropy",
+        "run_eagerly": true
+    },
+    "data_storage_path": "processed"
+}

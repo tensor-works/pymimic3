@@ -1,0 +1,574 @@
+{
+    "PATIENTS": {
+        "columns": [
+            "SUBJECT_ID",
+            "GENDER",
+            "DOB",
+            "DOD"
+        ],
+        "convert_datetime": [
+            "DOD",
+            "DOB"
+        ],
+        "dtype": {
+            "row_id": "Int32",
+            "subject_id": "Int32",
+            "expire_flag": "Int32",
+            "gender": "str"
+        }
+    },
+    "subject_info": {
+        "columns": [
+            "SUBJECT_ID",
+            "ICUSTAY_ID",
+            "DBSOURCE",
+            "FIRST_CAREUNIT",
+            "FIRST_WARDID",
+            "ADMISSION_TYPE",
+            "ADMISSION_LOCATION",
+            "DISCHARGE_LOCATION",
+            "INSURANCE",
+            "LANGUAGE",
+            "ETHNICITY",
+            "GENDER",
+            "AGE"
+        ],
+        "dtype": {
+            "SUBJECT_ID": "Int32",
+            "ICUSTAY_ID": "Int32",
+            "DBSOURCE": "str",
+            "CAREUNIT": "str",
+            "WARDID": "Int32",
+            "ADMISSION_TYPE": "str",
+            "ADMISSION_LOCATION": "str",
+            "DISCHARGE_LOCATION": "str",
+            "INSURANCE": "str",
+            "LANGUAGE": "str",
+            "ETHNICITY": "str",
+            "GENDER": "str",
+            "AGE": "float"
+        }
+    },
+    "ADMISSIONS": {
+        "columns": [
+            "SUBJECT_ID",
+            "HADM_ID",
+            "ADMITTIME",
+            "DISCHTIME",
+            "DEATHTIME",
+            "ETHNICITY",
+            "DIAGNOSIS"
+        ],
+        "info_columns": [
+            "SUBJECT_ID",
+            "HADM_ID",
+            "ADMISSION_TYPE",
+            "ADMISSION_LOCATION",
+            "DISCHARGE_LOCATION",
+            "INSURANCE",
+            "LANGUAGE",
+            "ETHNICITY"
+        ],
+        "convert_datetime": [
+            "ADMITTIME",
+            "DISCHTIME",
+            "DEATHTIME"
+        ],
+        "dtype": {
+            "row_id": "Int32",
+            "itemid": "Int32",
+            "hadm_id": "Int32",
+            "hospital_expire_flag": "Int32",
+            "has_chartevents_data": "Int32",
+            "diagnosis": "str",
+            "admission_type": "str",
+            "admission_location": "str",
+            "discharge_location": "str",
+            "insurance": "str",
+            "language": "str",
+            "religion": "str",
+            "marital_status": "str",
+            "ethnicity": "str"
+        }
+    },
+    "OUTPUTEVENTS": {
+        "dtype": {
+            "ROW_ID": "Int32",
+            "SUBJECT_ID": "Int32",
+            "ITEMID": "Int32",
+            "HADM_ID": "Int32",
+            "ICUSTAY_ID": "Int32",
+            "CGID": "Int32",
+            "VALUE": "object",
+            "VALUEUOM": "object",
+            "VALUENUM": "object"
+        }
+    },
+    "ICUSTAYS": {
+        "convert_datetime": [
+            "INTIME",
+            "OUTTIME"
+        ],
+        "dtype": {
+            "row_id": "Int32",
+            "subject_id": "Int32",
+            "icustay_id": "Int32",
+            "itemid": "Int32",
+            "hadm_id": "Int32",
+            "los": "float",
+            "dbsource": "str",
+            "first_careunit": "str",
+            "last_careunit": "str"
+        }
+    },
+    "ICD9CODES": {
+        "columns": [
+            "ICD9_CODE",
+            "SHORT_TITLE",
+            "LONG_TITLE"
+        ],
+        "dtype": {
+            "row_id": "Int32",
+            "icd9_code": "str",
+            "short_title": "str",
+            "long_title": "str"
+        }
+    },
+    "CHARTEVENTS": {
+        "columns": [
+            "SUBJECT_ID",
+            "HADM_ID",
+            "ICUSTAY_ID",
+            "CHARTTIME",
+            "ITEMID",
+            "VALUE",
+            "VALUEUOM",
+            "VARIABLE",
+            "MIMIC_LABEL"
+        ],
+        "convert_datetime": [
+            "CHARTTIME"
+        ],
+        "dtype": {
+            "ROW_ID": "Int32",
+            "ITEMID": "Int32",
+            "HADM_ID": "Int32",
+            "SUBJECT_ID": "Int32",
+            "ICUSTAY_ID": "Int32",
+            "CGID": "Int32",
+            "WARNING": "Int32",
+            "ERROR": "Int32",
+            "VALUE": "object",
+            "VALUEUOM": "object"
+        },
+        "clean": {
+            "Capillary refill rate": "_clean_capilary_rr",
+            "Diastolic blood pressure": "_clean_diastolic_bp",
+            "Systolic blood pressure": "_clean_systolic_bp",
+            "Fraction inspired oxygen": "_clean_fraction_inspired_o2",
+            "Oxygen saturation": "_clean_o2sat",
+            "Glucose": "_clean_laboratory_values",
+            "pH": "_clean_laboratory_values",
+            "Temperature": "_clean_temperature",
+            "Weight": "_clean_weight",
+            "Height": "_clean_height",
+            "Respiratory rate": "_clean_respiratory_rate"
+        }
+    },
+    "DIAGNOSES": {
+        "sort_value": [
+            "ICUSTAY_ID",
+            "SEQ_NUM"
+        ],
+        "columns": [
+            "SUBJECT_ID",
+            "HADM_ID",
+            "SEQ_NUM",
+            "ICD9_CODE",
+            "SHORT_TITLE",
+            "LONG_TITLE",
+            "ICUSTAY_ID",
+            "HCUP_CCS_2015",
+            "USE_IN_BENCHMARK"
+        ]
+    },
+    "DIAGNOSES_ICD": {
+        "dtype": {
+            "row_id": "Int32",
+            "subject_id": "Int32",
+            "hadm_id": "Int32",
+            "seq_num": "Int32"
+        }
+    },
+    "D_ITEMS": {
+        "dtype": {
+            "row_id": "Int32",
+            "itemid": "Int32",
+            "conceptid": "Int32",
+            "label": "str",
+            "abbreviation": "str",
+            "dbsource": "str",
+            "linksto": "str",
+            "category": "str",
+            "unitname": "str",
+            "param_type": "str"
+        }
+    },
+    "varmap": {
+        "dtype": {
+            "COUNT": "Int32",
+            "ITEMID": "Int32",
+            "LEVEL2": "str",
+            "LEVEL1": "str",
+            "ALTERNATIVE": "str",
+            "STATUS": "str",
+            "STATUS NOTE": "str",
+            "FLUID": "str",
+            "LOINC_CODE": "str",
+            "DBSOURCE": "str",
+            "PARAM_TYPE": "str",
+            "MIMIC LABEL": "str",
+            "UNITNAME": "str",
+            "LINKSTO": "str",
+            "CATEGORY": "str"
+        }
+    },
+    "ICUHISTORY": {
+        "sort_value": "INTIME"
+    },
+    "LABEVENTS": {
+        "dtype": {
+            "SUBJECT_ID": "Int32",
+            "ROW_ID": "Int32",
+            "ITEMID": "Int32",
+            "HADM_ID": "Int32",
+            "ICUSTAY_ID": "Int32",
+            "VALUE": "object",
+            "VALUEUOM": "object",
+            "VALUENUM": "object"
+        }
+    },
+    "diagnosis": {
+        "dtype": {
+            "ROW_ID": "Int32",
+            "SUBJECT_ID": "Int32",
+            "HADM_ID": "Int32",
+            "SEQ_NUM": "Int32",
+            "ICD9_CODE": "str",
+            "SHORT_TITLE": "str",
+            "LONG_TITLE": "str",
+            "ICUSTAY_ID": "Int32",
+            "hcup_css_2015": "str",
+            "use_in_benchmark": "Int32"
+        }
+    },
+    "icu_history": {
+        "columns": [
+            "SUBJECT_ID",
+            "HADM_ID",
+            "ICUSTAY_ID",
+            "LAST_CAREUNIT",
+            "DBSOURCE",
+            "INTIME",
+            "OUTTIME",
+            "LOS",
+            "ADMITTIME",
+            "DISCHTIME",
+            "DEATHTIME",
+            "ETHNICITY",
+            "DIAGNOSIS",
+            "GENDER",
+            "DOB",
+            "DOD",
+            "AGE",
+            "MORTALITY_INUNIT",
+            "MORTALITY",
+            "MORTALITY_INHOSPITAL"
+        ],
+        "dtype": {
+            "ROW_ID": "Int32",
+            "SUBJECT_ID": "Int32",
+            "HADM_ID": "Int32",
+            "ICUSTAY_ID": "Int32",
+            "FIRST_WARDID": "Int32",
+            "LAST_WARDID": "Int32",
+            "LOS": "float",
+            "AGE": "float",
+            "MORTALITY_INUNIT": "Int32",
+            "MORTALITY": "Int32",
+            "MORTALITY_INHOSPITAL": "Int32"
+        },
+        "convert_datetime": [
+            "INTIME",
+            "OUTTIME",
+            "ADMITTIME",
+            "DISCHTIME",
+            "DEATHTIME",
+            "DOB",
+            "DOD"
+        ]
+    },
+    "episodic_info": {
+        "dtype": {
+            "HEIGHT": "float",
+            "WEIGHT": "float",
+            "SUBJECT_ID": "Int32",
+            "ICUSTAY_ID": "Int32"
+        }
+    },
+    "episodic_data": {
+        "dtype": {
+            "AGE": "float",
+            "E8788": "Int32",
+            "E8798": "Int32",
+            "ETHNICITY": "Int32",
+            "GENDER": "Int32",
+            "HEIGHT": "float",
+            "LOS": "float",
+            "MORTALITY": "Int32",
+            "V103": "Int32",
+            "V1046": "Int32",
+            "V1251": "Int32",
+            "V1582": "Int32",
+            "V4501": "Int32",
+            "V4581": "Int32",
+            "V4582": "Int32",
+            "V4986": "Int32",
+            "V5861": "Int32",
+            "V5867": "Int32",
+            "WEIGHT": "float"
+        }
+    },
+    "subject_events": {
+        "dtype": {
+            "SUBJECT_ID": "Int32",
+            "HADM_ID": "Int32",
+            "ICUSTAY_ID": "Int32",
+            "ITEMID": "Int32",
+            "VALUE": "object",
+            "VALUEUOM": "object"
+        },
+        "convert_datetime": [
+            "CHARTTIME"
+        ]
+    },
+    "timeseries": {
+        "dtype": {
+            "Capillary refill rate": "float64",
+            "Diastolic blood pressure": "float64",
+            "Fraction inspired oxygen": "float64",
+            "Glascow coma scale eye opening": "object",
+            "Glascow coma scale motor response": "object",
+            "Glascow coma scale total": "object",
+            "Glascow coma scale verbal response": "object",
+            "Glucose": "float64",
+            "Heart Rate": "float64",
+            "Height": "float64",
+            "Mean blood pressure": "float64",
+            "Oxygen saturation": "float64",
+            "Respiratory rate": "float64",
+            "Systolic blood pressure": "float64",
+            "Temperature": "float64",
+            "Weight": "float64",
+            "pH": "float64"
+        }
+    },
+    "ethnicity_map": {
+        "ASIAN": 1,
+        "BLACK": 2,
+        "HISPANIC": 3,
+        "WHITE": 4,
+        "OTHER": 5,
+        "UNABLE TO OBTAIN": 0,
+        "PATIENT DECLINED TO ANSWER": 0,
+        "UNKNOWN": 0,
+        "": 0
+    },
+    "gender_map": {
+        "F": 1,
+        "M": 2,
+        "OTHER": 3,
+        "": 0
+    },
+    "diagnosis_labels": [
+        "4019",
+        "4280",
+        "41401",
+        "42731",
+        "25000",
+        "5849",
+        "2724",
+        "51881",
+        "53081",
+        "5990",
+        "2720",
+        "2859",
+        "2449",
+        "486",
+        "2762",
+        "2851",
+        "496",
+        "V5861",
+        "99592",
+        "311",
+        "0389",
+        "5859",
+        "5070",
+        "40390",
+        "3051",
+        "412",
+        "V4581",
+        "2761",
+        "41071",
+        "2875",
+        "4240",
+        "V1582",
+        "V4582",
+        "V5867",
+        "4241",
+        "40391",
+        "78552",
+        "5119",
+        "42789",
+        "32723",
+        "49390",
+        "9971",
+        "2767",
+        "2760",
+        "2749",
+        "4168",
+        "5180",
+        "45829",
+        "4589",
+        "73300",
+        "5845",
+        "78039",
+        "5856",
+        "4271",
+        "4254",
+        "4111",
+        "V1251",
+        "30000",
+        "3572",
+        "60000",
+        "27800",
+        "41400",
+        "2768",
+        "4439",
+        "27651",
+        "V4501",
+        "27652",
+        "99811",
+        "431",
+        "28521",
+        "2930",
+        "7907",
+        "E8798",
+        "5789",
+        "79902",
+        "V4986",
+        "V103",
+        "42832",
+        "E8788",
+        "00845",
+        "5715",
+        "99591",
+        "07054",
+        "42833",
+        "4275",
+        "49121",
+        "V1046",
+        "2948",
+        "70703",
+        "2809",
+        "5712",
+        "27801",
+        "42732",
+        "99812",
+        "4139",
+        "3004",
+        "2639",
+        "42822",
+        "25060",
+        "V1254",
+        "42823",
+        "28529",
+        "E8782",
+        "30500",
+        "78791",
+        "78551",
+        "E8889",
+        "78820",
+        "34590",
+        "2800",
+        "99859",
+        "V667",
+        "E8497",
+        "79092",
+        "5723",
+        "3485",
+        "5601",
+        "25040",
+        "570",
+        "71590",
+        "2869",
+        "2763",
+        "5770",
+        "V5865",
+        "99662",
+        "28860",
+        "36201",
+        "56210"
+    ],
+    "tasks": [
+        "IHM",
+        "DECOMP",
+        "LOS",
+        "PHENO"
+    ],
+    "IHM": {
+        "label_start_time": 48,
+        "sample_precision": 1e-6
+    },
+    "DECOMP": {
+        "sample_rate": 1.0,
+        "label_start_time": 4.0,
+        "sample_precision": 1e-6,
+        "label_binning_interval": 24.0
+    },
+    "LOS": {
+        "sample_precision": 1e-6,
+        "sample_rate": 1.0,
+        "label_start_time": 4.0,
+        "bins": [
+            0,
+            24,
+            48,
+            72,
+            96,
+            120,
+            144,
+            168,
+            180,
+            384,
+            1e18
+        ],
+        "bin_means": [
+            11.450379,
+            35.070846,
+            59.206531,
+            83.382723,
+            107.487817,
+            131.579534,
+            155.643957,
+            179.660558,
+            254.306624,
+            585.325890
+        ]
+    },
+    "PHENO": {
+        "sample_precision": 1e-6,
+        "label_start_time": 1.0,
+        "valid_ids": []
+    }
+}

@@ -1,0 +1,29 @@
+{
+    "name": "tf2_logistic_test",
+    "model_type": "logistic_regression",
+    "data_config": {
+        "storage_path": "/media/amadou/Extreme SSD/data/research-internship/processed/shared",
+        "source_path": "/media/amadou/Extreme SSD/data/research-internship/mimic-iii",
+        "chunksize": 100000
+    },
+    "model_config": {
+        "input_dim": 714,
+        "task": "IHM"
+    },
+    "pipeline_config": {
+        "metrics": [
+            "auc_micro",
+            "auc_macro"
+        ],
+        "framework": "tf2",
+        "test_fraction_split": 0.2,
+        "validation_fraction_split": 0.2,
+        "output_type": "cat",
+        "model_name": "tf2_logistic_test",
+        "root_path": "/home/amadou/CodeWorkspace/research-internship/models/mimic/template/logistic_regression",
+        "data_storage_path": "/media/amadou/Extreme SSD/data/research-internship/processed/shared",
+        "data_source_path": "/media/amadou/Extreme SSD/data/research-internship/mimic-iii",
+        "task": "IHM"
+    },
+    "task": "IHM"
+}

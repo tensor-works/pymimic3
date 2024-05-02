@@ -1,0 +1,25 @@
+{
+    "features": {
+        "submission": [
+            "participant_id",
+            "test_number",
+            "task",
+            "test_type",
+            "tlx_score"
+        ],
+        "target": [
+            "induced_state"
+        ],
+        "time": [
+            "time"
+        ]
+    },
+    "imp": {
+        "strategy": "mean",
+        "values": [
+            "NaN",
+            -9999.9
+        ]
+    },
+    "kde_quantile": 0.2
+}

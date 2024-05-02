@@ -1,0 +1,42 @@
+{
+    "logistic_regression": {
+        "DECOMP": {
+            "penalty": "l2",
+            "C": 0.001,
+            "solver": "liblinear",
+            "multi_class": "auto"
+        },
+        "IHM": {
+            "penalty": "l2",
+            "C": 0.001,
+            "solver": "liblinear",
+            "multi_class": "auto"
+        },
+        "PHENO": {
+            "penalty": "l1",
+            "C": 0.1,
+            "solver": "liblinear",
+            "multi_class": "auto"
+        },
+        "LOS": {
+            "penalty": "l2",
+            "C": 1e-5,
+            "solver": "sag",
+            "multi_class": "multinomial"
+        }
+    },
+    "lstm": {
+        "DECOMP": {
+            "loss": "binary_crossentropy"
+        },
+        "IHM": {
+            "loss": "binary_crossentropy"
+        },
+        "PHENO": {
+            "loss": "categorical_crossentropy"
+        },
+        "LOS": {
+            "loss": "categorical_crossentropy"
+        }
+    }
+}
