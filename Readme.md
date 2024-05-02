@@ -2,6 +2,7 @@
     <img src="./docs/assets/FastMimicLogo.png" width="300" height="300" style="float: right; margin: 15px;" />
     <div>
         <h1>FastMIMIC3</h1>
+    !This github is under construtction!
     This project is an enhanced recreation of the <a href="https://github.com/YerevaNN/mimic3-benchmarks">original MIMIC benchmarking code base</a>. TDeveloped during my tenure at the Technical University of Munich's <a href="https://cvg.cit.tum.de/">Computer Vision Group</a>, it serves as a versatile tool for investigating concept drift in medical data. 
     <h3>Key Features:</h3>
     <ul> <li><b>Enhanced Performance</b>:
@@ -23,35 +24,16 @@
 
 
 ## Table of Contents
-- [Installation](#installation)
 - [Usage](#usage)
+- [Installation](#installation)
 - [Contributing](#contributing)
-- [License](#license)
 
-
-## Installation
-
-The repository comes with a setup script that will:
-- Fetch necessary config file from the original github repo.
-- Create the conda environment.
-- Setup necessary environment variables and store them in the /.env file.
-
-Dependencies are a functioning conda install with the recent libmamba solver, as well as a working installation of python. and wget for Ubuntu. Installation scripts are availabe for Windows: 
-
-```
-etc\setup.ps1
-```
-and for Linux (Ubuntu):
-```
-sudo bash etc\setup.sh
-```
-When run in vscode, the environment variables will be set in the integrated terminal from the settings.json. When using a standalone terminal, the environment variable can be sourced from the /.env file. For Ubuntu this can be done by sourcing the envvars.sh:
-```
-source etc/envvars.sh
-```
-and for windows:
-
-# TODO! How to use source scripts
+## Road to Release
+This GitHub repository is currently being reworked from its original state at the Computer Vision Group to its final public version. The goal is to ensure the functionality of the repository through tests while simplifying the API and providing documentation. The following steps still need to be taken to make the repository available as a pip or conda package:
+- Rework: Generators, Pipeline, CaseHandler, Datasplit
+- Examples
+- Documentation
+- Integrate with anyscale
 
 ## Usage
 
@@ -106,10 +88,11 @@ X, y = reader.random_samples(10, read_ids=True).values()
 ```
 When not specifying the `read_ids` option, the data will be read as a single list of subject stay data frames (`List[pd.DataFrame]`).
 
+
 Next, the frames need to be discretized. This includes:
-- <b>Imputation</b>: with the strategies `next`, `previous`, `zero`, `normal`
-- <b>Data binning</b>: start at `zero` or `first` and choos the step size
-- <b>Categorization</b>: one-hot categorizes non-numeric columns
+- **Imputation**: with the strategies `next`, `previous`, `zero`, `normal`
+- **Data binning**: start at `zero` or `first` and choose the step size
+- **Categorization**: one-hot categorizes non-numeric columns
 
 ```python
 from preprocessing.discretizers import BatchDiscretizer
@@ -124,7 +107,7 @@ reader = discretizer.transform()
 ```
 The reader now points towards the discretized dataset.
 
-In order to run our neural network, we need to create a generator object. First the datset is split into train test and validation set:
+In order to run our neural network, we need to create a generator object. First, the dataset is split into train, test, and validation sets:
 
 ```python
 from generators.nn import BatchGenerator
@@ -142,36 +125,38 @@ generator = BatchGenerator(reader=reader,
 Finally, we can train the model, assuming that the input and output shape fit the task:
 ```python
 model.fit(generator,
-          seps_per_epoch=generator.steps
+          steps_per_epoch=generator.steps,
           epochs=10)
 ```
 
-Alternatively, we can use the dedicated pipeline, in order to automate callbacks and output creation:
+Alternatively, we can use the dedicated pipeline to automate callbacks and output creation:
 ```python
 from pipelines.nn import Pipeline
 
-pip = Pipeline(storage_path="/path/to/your/output/",
+pipe = Pipeline(storage_path="/path/to/your/output/",
                reader=reader,
                model=model,
                generator_options={
-                  batch_size: 16,
-                  shuffle: True
+                  "batch_size": 16,
+                  "shuffle": True
                },
                model_options={
-                  epochs:10
+                  "epochs":10
                }).fit()
 ```
 This will add checkpoints and history callbacks to the run and store the results at `storage_path`.
 
-Once fitted, the resulting model can be retrived or evaluated:
+Once fitted, the resulting model can be retrieved or evaluated:
 ```python
 pipe.evaluate()
 
 model = pipe.model
 ```
 
-To further ease the operation of the pipeline, a JSON configurable case handler is implemented. The handler only needs a path to the case directory containing the `config.json` file. The handler is then invoced by:
+To further ease the operation of the pipeline, a JSON configurable case handler is implemented. The handler only needs a path to the case directory containing the `config.json` file. The handler is then invoked by:
  ```python
+ from casehandler import CaseHandler
+
  case = CaseHandler()
  case.run(case_dir="path/to/your/case/dir", model)
  ```
@@ -193,12 +178,52 @@ The `config.json` now configures the pipeline:
         "epochs": 10
     },
     "split_options": {
-        "validation_fraction_split": 0.2,
-        "test_fraction_split": 0.2
+        "validation_fraction": 0.2,
+        "test_fraction": 0.2
     }
 }
 ```
 
+## Installation
+
+The repository comes with a setup script that will:
+- Fetch necessary config file from the original github repo.
+- Create the conda environment.
+- Setup necessary environment variables and store them in the /.env file.
+
+Dependencies are a functioning conda install with the recent libmamba solver, as well as a working installation of python. and wget for Ubuntu. Installation scripts are availabe for Windows: 
+
+```
+etc\setup.ps1
+```
+and for Linux (Ubuntu):
+```
+sudo bash etc\setup.sh
+```
+When run in vscode, the environment variables will be set in the integrated terminal from the settings.json. When using a standalone terminal, the environment variable can be sourced from the /.env file. For Ubuntu this can be done by sourcing the envvars.sh:
+```
+source etc/envvars.sh
+```
+and for windows:
+```
+TODO!
+```
+
 ## Contributing
 
-If you have any feature requests, open an issue. If you want to provide a hotfix or a feature yourself open a pull request. Quickly describe the feature and its expected functionality, as well as testing for the new feature. I will try and get back to you as fast as possible. Make sure that the modified version of the code passes all tests and that the code is linted using yapf and the local settings.
+If you have any feature requests, open an issue. If you want to provide a hotfix or a feature yourself, open a pull request. Quickly describe the feature and its expected functionality, as well as testing for the new feature. I will try to get back to you as fast as possible. Make sure that the modified version of the code passes all tests and that the code is linted using yapf and the local settings.
+
+To setup the tests, you need to have setup the repository with an active mimic3 conda environment. Next you can setup the tests in Linux by calling:
+```bash
+sudo bash tests/etc/setup.sh 
+```
+or in Windows by calling: 
+```bash
+tests/etc/setup.ps1 
+```
+
+This might take a while. Once you are done, you can run the tests by calling: 
+```bash
+pytest tests -v 
+```
+It is recommended to do so in a stand-alone terminal due to pytests tendency to get stuck in execution.
