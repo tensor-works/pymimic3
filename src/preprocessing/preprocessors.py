@@ -77,7 +77,8 @@ class MIMICPreprocessor(AbstractPreprocessor):
         if tracker is not None:
             self._tracker = tracker
         else:
-            self._tracker = (None if storage_path is None else PreprocessingTracker(storage_path))
+            self._tracker = (None if storage_path is None else PreprocessingTracker(
+                Path(storage_path, "progress")))
         self._processed_set_reader = (None if storage_path is None else ProcessedSetReader(
             root_path=storage_path))
         self._lock = Manager().Lock()

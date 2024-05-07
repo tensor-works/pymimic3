@@ -1,6 +1,7 @@
 import pytest
 import shutil
 from datasets.trackers import ExtractionTracker
+from pathlib import Path
 from utils.IO import *
 from tests.settings import *
 
@@ -30,7 +31,7 @@ EVENT_BOOLS = [
 def test_extraction_tracker_basics():
     tests_io("Test case basic capabilities of ExtractionTracker.", level=0)
     # Create an instance of ExtractionTracker
-    tracker = ExtractionTracker(storage_path=TEMP_DIR, num_samples=None)
+    tracker = ExtractionTracker(storage_path=Path(TEMP_DIR, "progress"), num_samples=None)
 
     # Test correct initialization
     for attribute, value in TRACKER_STATE.items():
@@ -71,7 +72,7 @@ def test_extraction_tracker_basics():
 
     # Test correct restoration after assignment
     del tracker
-    tracker = ExtractionTracker(storage_path=TEMP_DIR, num_samples=None)
+    tracker = ExtractionTracker(storage_path=Path(TEMP_DIR, "progress"), num_samples=None)
     for attribute, value in TRACKER_STATE.items():
         assert attribute in tracker._progress
         if attribute not in ["count_subject_events", "subject_ids", "num_samples", "num_subjects"]:
@@ -114,7 +115,7 @@ def test_extraction_tracker_basics():
     }
 
     del tracker
-    tracker = ExtractionTracker(storage_path=TEMP_DIR, num_samples=None)
+    tracker = ExtractionTracker(storage_path=Path(TEMP_DIR, "progress"), num_samples=None)
 
     for attribute, value in TRACKER_STATE.items():
         assert attribute in tracker._progress
@@ -132,7 +133,7 @@ def test_extraction_tracker_basics():
 def test_num_samples_option():
     # Test the logic of increasing and decreasing num sapmles upon reinstantiation
     tests_io("Test case sample target option of ExtractionTracker.", level=0)
-    tracker = ExtractionTracker(storage_path=TEMP_DIR, num_samples=10)
+    tracker = ExtractionTracker(storage_path=Path(TEMP_DIR, "progress"), num_samples=10)
 
     assert tracker.num_samples == 10
     for attribute, value in TRACKER_STATE.items():
@@ -147,7 +148,7 @@ def test_num_samples_option():
 
     # Test decreasing the number of samples upon reinstantiation
     del tracker
-    tracker = ExtractionTracker(storage_path=TEMP_DIR, num_samples=5)
+    tracker = ExtractionTracker(storage_path=Path(TEMP_DIR, "progress"), num_samples=5)
     # Check init
     for attribute, value in TRACKER_STATE.items():
         assert attribute in tracker._progress
@@ -163,7 +164,7 @@ def test_num_samples_option():
     tests_io("Succeeded testing sample target reduction")
     # Test increasing the number of samples upon reinstantiation
     del tracker
-    tracker = ExtractionTracker(storage_path=TEMP_DIR, num_samples=15)
+    tracker = ExtractionTracker(storage_path=Path(TEMP_DIR, "progress"), num_samples=15)
     # Asser total samples unchanged
     assert tracker.count_total_samples == 10
 
@@ -182,7 +183,7 @@ def test_num_samples_option():
     tracker.count_total_samples = 15
     # Test setting sample_target to None
     del tracker
-    tracker = ExtractionTracker(storage_path=TEMP_DIR, num_samples=None)
+    tracker = ExtractionTracker(storage_path=Path(TEMP_DIR, "progress"), num_samples=None)
     # Check init
     for attribute, value in TRACKER_STATE.items():
         assert attribute in tracker._progress
@@ -201,7 +202,7 @@ def test_num_samples_option():
 def test_num_subjects_option():
     # Test the logic of increasing and decreasing num sapmles upon reinstantiation
     tests_io("Test case sample target option of ExtractionTracker.", level=0)
-    tracker = ExtractionTracker(storage_path=TEMP_DIR, num_subjects=10)
+    tracker = ExtractionTracker(storage_path=Path(TEMP_DIR, "progress"), num_subjects=10)
     # Check init
     assert tracker.num_subjects == 10
     for attribute, value in TRACKER_STATE.items():
@@ -216,7 +217,7 @@ def test_num_subjects_option():
 
     # Test decreasing the number of samples upon reinstantiation
     del tracker
-    tracker = ExtractionTracker(storage_path=TEMP_DIR, num_subjects=5)
+    tracker = ExtractionTracker(storage_path=Path(TEMP_DIR, "progress"), num_subjects=5)
     # Check init
     for attribute, value in TRACKER_STATE.items():
         assert attribute in tracker._progress
@@ -232,7 +233,7 @@ def test_num_subjects_option():
 
     # Test increasing the number of samples upon reinstantiation
     del tracker
-    tracker = ExtractionTracker(storage_path=TEMP_DIR, num_subjects=15)
+    tracker = ExtractionTracker(storage_path=Path(TEMP_DIR, "progress"), num_subjects=15)
     # Check init
     for attribute, value in TRACKER_STATE.items():
         assert attribute in tracker._progress
@@ -253,7 +254,7 @@ def test_num_subjects_option():
 
     # Test setting sample_target to None
     del tracker
-    tracker = ExtractionTracker(storage_path=TEMP_DIR, num_subjects=None)
+    tracker = ExtractionTracker(storage_path=Path(TEMP_DIR, "progress"), num_subjects=None)
     # Check init
     for attribute, value in TRACKER_STATE.items():
         assert attribute in tracker._progress
@@ -276,7 +277,8 @@ def test_subject_ids_option():
     # the list of still to be processed subjects
     tests_io("Test case subject ids option of ExtractionTracker.", level=0)
 
-    tracker = ExtractionTracker(storage_path=TEMP_DIR, subject_ids=list(range(10)))
+    tracker = ExtractionTracker(storage_path=Path(TEMP_DIR, "progress"),
+                                subject_ids=list(range(10)))
     # Check init
     for attribute, value in TRACKER_STATE.items():
         assert attribute in tracker._progress
@@ -291,7 +293,7 @@ def test_subject_ids_option():
 
     # Test decreasing the number of subjects upon reinstantiation
     del tracker
-    tracker = ExtractionTracker(storage_path=TEMP_DIR, subject_ids=list(range(5)))
+    tracker = ExtractionTracker(storage_path=Path(TEMP_DIR, "progress"), subject_ids=list(range(5)))
     # Check init
     for attribute, value in TRACKER_STATE.items():
         assert attribute in tracker._progress
@@ -307,7 +309,8 @@ def test_subject_ids_option():
     tests_io("Succeeded testing subject ids reduction")
     # Test increasing the number of subjects upon reinstantiation
     del tracker
-    tracker = ExtractionTracker(storage_path=TEMP_DIR, subject_ids=list(range(15)))
+    tracker = ExtractionTracker(storage_path=Path(TEMP_DIR, "progress"),
+                                subject_ids=list(range(15)))
     # Check init
     for attribute, value in TRACKER_STATE.items():
         assert attribute in tracker._progress
@@ -326,7 +329,7 @@ def test_subject_ids_option():
 
     # Test setting subject_ids to None
     del tracker
-    tracker = ExtractionTracker(storage_path=TEMP_DIR, subject_ids=None)
+    tracker = ExtractionTracker(storage_path=Path(TEMP_DIR, "progress"), subject_ids=None)
     # Check init
     for attribute, value in TRACKER_STATE.items():
         assert attribute in tracker._progress

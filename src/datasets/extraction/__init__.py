@@ -7,6 +7,7 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 
 from copy import deepcopy
 from pathlib import Path
+from typing import List
 from utils.IO import *
 from settings import *
 from .extraction_functions import make_subject_events, make_timeseries
@@ -38,7 +39,7 @@ def compact_extraction(storage_path: Path,
     """
     original_subject_ids = deepcopy(subject_ids)
     resource_folder = Path(source_path, "resources")
-    tracker = ExtractionTracker(storage_path,
+    tracker = ExtractionTracker(storage_path=Path(storage_path, "progress"),
                                 num_subjects=num_subjects,
                                 num_samples=num_samples,
                                 subject_ids=subject_ids)
@@ -54,20 +55,19 @@ def compact_extraction(storage_path: Path,
                                                      dtypes=convert_dtype_dict(
                                                          DATASET_SETTINGS["icu_history"]["dtype"]))
 
-            subject_ids, _ = get_subject_ids(task=task,
-                                             num_subjects=num_subjects,
-                                             subject_ids=subject_ids,
-                                             tracker=None,
-                                             icu_history_df=icu_history_df)
-            # If we know some processing is comming after we return all possible subjects for that task
-            return dataset_reader.read_subjects(read_ids=True, subject_ids=subject_ids)
+            subject_ids = get_processable_subjects(task, icu_history_df)
+            subject_ids = list(set(subject_ids) & set(tracker.subject_ids))
         else:
-            # If it is extraction only, we return only as many subjets as required
-            if num_subjects is not None and num_subjects < len(tracker.subject_ids):
-                subject_ids = random.sample(tracker.subject_ids, k=num_subjects)
-            return dataset_reader.read_subjects(read_ids=True, subject_ids=subject_ids)
+            subject_ids = tracker.subject_ids
 
-    info_io("Compact Dataset Extraction", level=0)
+        if num_subjects is not None and num_subjects < len(subject_ids):
+            subject_ids = random.sample(subject_ids, k=num_subjects)
+        elif original_subject_ids is not None:
+            subject_ids = set(original_subject_ids) & set(subject_ids)
+        # If we know some processing is comming after we return all possible subjects for that task
+        return dataset_reader.read_subjects(read_ids=True, subject_ids=subject_ids)
+
+    info_io("Compact Dataset Extraction: ALL", level=0)
     info_io(f"Starting compact data extraction.")
     info_io(f"Extracting data from source:\n{str(source_path)}")
     info_io(f"Saving data at location:\n{str(storage_path)}")
@@ -113,19 +113,19 @@ def compact_extraction(storage_path: Path,
     subject_ids, icu_history_df = get_subject_ids(task=task,
                                                   num_subjects=num_subjects,
                                                   subject_ids=subject_ids,
-                                                  tracker=tracker,
+                                                  existing_subjects=tracker.subject_ids,
                                                   icu_history_df=icu_history_df)
 
-    subject_info_df = get_for_subjects(subject_info_df, subject_ids)
-    diagnoses_df = get_for_subjects(diagnoses_df, subject_ids)
+    subject_info_df = reduce_by_subjects(subject_info_df, subject_ids)
+    diagnoses_df = reduce_by_subjects(diagnoses_df, subject_ids)
 
     info_io("Extracting subject ICU history")
-    subject_icu_history = getby_subject(icu_history_df,
-                                        DATASET_SETTINGS["ICUHISTORY"]["sort_value"])
+    subject_icu_history = get_by_subject(icu_history_df,
+                                         DATASET_SETTINGS["ICUHISTORY"]["sort_value"])
 
     info_io("Extracting subject diagnoses")
-    subject_diagnoses = getby_subject(diagnoses_df[DATASET_SETTINGS["DIAGNOSES"]["columns"]],
-                                      DATASET_SETTINGS["DIAGNOSES"]["sort_value"])
+    subject_diagnoses = get_by_subject(diagnoses_df[DATASET_SETTINGS["DIAGNOSES"]["columns"]],
+                                       DATASET_SETTINGS["DIAGNOSES"]["sort_value"])
     if tracker.has_bysubject_info:
         info_io("Subject diagnoses and subject ICU history already stored")
     else:
@@ -169,7 +169,8 @@ def compact_extraction(storage_path: Path,
 
     tracker.is_finished = True
     info_io(f"Finalized data extraction in directory:\n{str(storage_path)}")
-
+    if original_subject_ids is not None:
+        original_subject_ids = list(set(original_subject_ids) & set(tracker.subject_ids))
     return dataset_reader.read_subjects(read_ids=True, subject_ids=original_subject_ids)
 
 
@@ -197,7 +198,7 @@ def iterative_extraction(source_path: Path,
     original_subject_ids = deepcopy(subject_ids)
     resource_folder = Path(source_path, "resources")
 
-    tracker = ExtractionTracker(storage_path=storage_path,
+    tracker = ExtractionTracker(storage_path=Path(storage_path, "progress"),
                                 num_samples=num_samples,
                                 num_subjects=num_subjects,
                                 subject_ids=subject_ids)
@@ -213,20 +214,19 @@ def iterative_extraction(source_path: Path,
                                                      dtypes=convert_dtype_dict(
                                                          DATASET_SETTINGS["icu_history"]["dtype"]))
 
-            subject_ids, _ = get_subject_ids(task=task,
-                                             num_subjects=num_subjects,
-                                             subject_ids=subject_ids,
-                                             tracker=None,
-                                             icu_history_df=icu_history_df)
-            # If we know some processing is comming after we return all possible subjects for that task
-            return ExtractedSetReader(storage_path, subject_folders=subject_ids)
+            subject_ids = get_processable_subjects(task, icu_history_df)
+            subject_ids = list(set(subject_ids) & set(tracker.subject_ids))
         else:
-            # If it is extraction only, we return only as many subjets as required
-            if num_subjects is not None and num_subjects < len(tracker.subject_ids):
-                subject_ids = random.sample(tracker.subject_ids, k=num_subjects)
-            return ExtractedSetReader(storage_path, subject_folders=subject_ids)
+            subject_ids = tracker.subject_ids
 
-    info_io("Iterative Dataset Extraction", level=0)
+        if num_subjects is not None and num_subjects < len(subject_ids):
+            subject_ids = random.sample(subject_ids, k=num_subjects)
+        elif original_subject_ids is not None:
+            subject_ids = set(original_subject_ids) & set(subject_ids)
+        # If we know some processing is comming after we return all possible subjects for that task
+        return ExtractedSetReader(storage_path, subject_ids=subject_ids)
+
+    info_io("Iterative Dataset Extraction: ALL", level=0)
     info_io(f"Starting iterative data extraction.")
     info_io(f"Extracting data from source:\n{str(source_path)}")
     info_io(f"Saving data at location:\n{str(storage_path)}")
@@ -277,14 +277,14 @@ def iterative_extraction(source_path: Path,
     subject_ids, icu_history_df = get_subject_ids(task=task,
                                                   num_subjects=num_subjects,
                                                   subject_ids=subject_ids,
-                                                  tracker=tracker,
+                                                  existing_subjects=tracker.subject_ids,
                                                   icu_history_df=icu_history_df)
 
-    diagnoses_df = get_for_subjects(diagnoses_df, subject_ids)
-    subject_diagnoses = getby_subject(diagnoses_df[DATASET_SETTINGS["DIAGNOSES"]["columns"]],
-                                      DATASET_SETTINGS["DIAGNOSES"]["sort_value"])
-    subject_icu_history = getby_subject(icu_history_df,
-                                        DATASET_SETTINGS["ICUHISTORY"]["sort_value"])
+    diagnoses_df = reduce_by_subjects(diagnoses_df, subject_ids)
+    subject_diagnoses = get_by_subject(diagnoses_df[DATASET_SETTINGS["DIAGNOSES"]["columns"]],
+                                       DATASET_SETTINGS["DIAGNOSES"]["sort_value"])
+    subject_icu_history = get_by_subject(icu_history_df,
+                                         DATASET_SETTINGS["ICUHISTORY"]["sort_value"])
     if not tracker.has_subject_events:
         name_data_pairs = {
             "subject_diagnoses": {
@@ -335,66 +335,86 @@ def iterative_extraction(source_path: Path,
         info_io(f"Timeseries data already created")
 
     tracker.is_finished = True
-    if subject_ids is not None:
-        subject_ids = list(set(subject_ids) | set(tracker.subject_ids))
-    return ExtractedSetReader(storage_path, subject_folders=subject_ids)
+    if original_subject_ids is not None:
+        original_subject_ids = list(set(original_subject_ids) & set(tracker.subject_ids))
+    return ExtractedSetReader(storage_path, subject_ids=original_subject_ids)
 
 
-def get_for_subjects(dataframe: pd.DataFrame, subject_ids: list):
+def reduce_by_subjects(dataframe: pd.DataFrame, subject_ids: list):
     if subject_ids is not None:
         return dataframe[dataframe["SUBJECT_ID"].isin(subject_ids)]
     return dataframe
 
 
 def get_subject_ids(task: str,
-                    num_subjects: int,
-                    subject_ids: list,
                     icu_history_df: pd.DataFrame,
-                    tracker: ExtractionTracker = None):
-    # If the tracker is None, the subjects are being retrieved for direct return
-    # instead of remaining processing
-    if tracker is None:
+                    subject_ids: list = None,
+                    num_subjects: int = None,
+                    existing_subjects: list = None):
+    """Get the subject IDs to be processed or returned.
+
+    Args:
+        task (str): _description_
+        icu_history_df (pd.DataFrame): _description_
+        subject_ids (list, optional): _description_. Defaults to None.
+        num_subjects (int, optional): _description_. Defaults to None.
+        existing_subjects (list, optional): _description_. Defaults to None.
+
+    Returns:
+        _type_: _description_
+    """
+    if existing_subjects is None:
         existing_subjects = []
-    else:
-        existing_subjects = tracker.subject_ids
+
     if subject_ids is not None:
-        # Make sure no unknowns
+        all_subjects = get_processable_subjects(task, icu_history_df)
+        # Notify unknowns
         unknown_subjects = set(subject_ids) - set(icu_history_df["SUBJECT_ID"].unique())
         if unknown_subjects:
             warn_io(f"Unknown subjects passed as parameter: {*unknown_subjects,}")
-        # remove already processed
-        subject_ids = list(set(subject_ids) - set(existing_subjects))
-        icu_history_df = icu_history_df[icu_history_df["SUBJECT_ID"].isin(subject_ids)]
+        # Notify unprocessable
+        unprocessable_subjects = set(subject_ids) - set(all_subjects)
+        if unprocessable_subjects:
+            warn_io(f"Unprocessable subjects passed as parameter: {*unprocessable_subjects,}")
+        # Remove already processed
+        subject_ids = list((set(subject_ids) - set(existing_subjects)) & set(all_subjects))
+        icu_history_df = reduce_by_subjects(icu_history_df, subject_ids)
     elif num_subjects is not None:
-        # Determined how many are missing
-        num_subjects = max(0, num_subjects - len(existing_subjects))
-        # Chose from uprocessed subjects
-        if task is not None and "label_start_time" in DATASET_SETTINGS[task]:
-            # Some ids will be removed during the preprocessing step
-            # We remove them here to avoid errors
-            min_los = DATASET_SETTINGS[task]["label_start_time"] + \
-                DATASET_SETTINGS[task]["sample_precision"]
-            min_los /= 24
-            icu_history_df = icu_history_df[icu_history_df["LOS"] >= min_los]
-            all_subjects = icu_history_df[(
-                (icu_history_df["DISCHTIME"] - icu_history_df["ADMITTIME"]) >=
-                pd.Timedelta(days=min_los))]["SUBJECT_ID"].unique()
-        else:
-            all_subjects = icu_history_df["SUBJECT_ID"].unique()
-        if num_subjects > len(all_subjects):
-            raise ValueError(
-                f"Number of subjects requested exceeds available subjects: {len(all_subjects)}")
-        remaining_subjects = list(set(all_subjects) - set(existing_subjects))
-        if tracker is not None:
-            # if tracker is None we grab all possible subjects for return to the next processing step
-            subject_ids = random.sample(remaining_subjects, k=num_subjects)
-            assert len(subject_ids) == num_subjects
-        else:
-            subject_ids = remaining_subjects
-        icu_history_df = icu_history_df[icu_history_df["SUBJECT_ID"].isin(subject_ids)]
+        all_subjects = get_processable_subjects(task, icu_history_df)
+        subject_ids = get_subjects_by_number(task, num_subjects, existing_subjects, all_subjects)
+        icu_history_df = reduce_by_subjects(icu_history_df, subject_ids)
     else:
         subject_ids = None
     return subject_ids, icu_history_df
+
+
+def get_subjects_by_number(task: str, num_subjects: int, existing_subjects: List[int],
+                           all_subjects: List[int]):
+    # Determined how many are missing
+    num_subjects = max(0, num_subjects - len(existing_subjects))
+    # Chose from uprocessed subjects
+    if num_subjects > len(all_subjects):
+        raise warn_io(
+            f"Number of subjects requested exceeds available subjects: {len(all_subjects)}")
+    remaining_subjects = list(set(all_subjects) - set(existing_subjects))
+    # if tracker is None we grab all possible subjects for return to the next processing step
+    subject_ids = random.sample(remaining_subjects, k=num_subjects)
+    assert len(subject_ids) == num_subjects
+    return subject_ids
+
+
+def get_processable_subjects(task: str, icu_history_df: pd.DataFrame):
+    if task is not None and "label_start_time" in DATASET_SETTINGS[task]:
+        # Some ids will be removed during the preprocessing step
+        # We remove them here to avoid errors
+        min_los = DATASET_SETTINGS[task]["label_start_time"] + \
+            DATASET_SETTINGS[task]["sample_precision"]
+        min_los /= 24
+        icu_history_df = icu_history_df[icu_history_df["LOS"] >= min_los]
+        return icu_history_df[((icu_history_df["DISCHTIME"] - icu_history_df["ADMITTIME"]) >=
+                               pd.Timedelta(days=min_los))]["SUBJECT_ID"].unique()
+    else:
+        return icu_history_df["SUBJECT_ID"].unique()
 
 
 def create_split_info_csv(episodic_info_df: pd.DataFrame, subject_info_df: pd.DataFrame):
@@ -694,7 +714,7 @@ def make_phenotypes(diagnoses_df, definition_map):
     return phenotypes_df
 
 
-def getby_subject(df, sort_by):
+def get_by_subject(df, sort_by):
     """
     Parameters:
         df:         Dataframe with subject_id columns

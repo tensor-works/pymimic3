@@ -2,6 +2,7 @@ from pathlib import Path
 from pathos.helpers import mp
 from utils import load_json, update_json, write_json, dict_subset
 from utils.IO import *
+from datasets.trackers import PreprocessingTracker
 
 
 class DataSplitTracker():
@@ -19,7 +20,7 @@ class DataSplitTracker():
         self._task_path.mkdir(parents=True, exist_ok=True)
         self._progress_file = Path(task_path, "progress.json")
         self._split_file = Path(model_path, "split.json")
-        self._subjects = load_json(self._progress_file)["subjects"]
+        self._subjects = PreprocessingTracker(storage_path=task_path).subjects
 
         if not self._split_file.is_file():
             self._split_info = {

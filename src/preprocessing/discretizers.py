@@ -13,29 +13,51 @@ import numpy as np
 import os
 import json
 import datetime
+from multiprocess import Manager
 from pathlib import Path
 from sklearn.impute import SimpleImputer
-
 from sklearn.preprocessing import OneHotEncoder
-from datasets.mimic_utils import convert_dtype_value
 from pandas.api.types import is_datetime64_any_dtype as is_datetime
+from utils import dict_subset
+
 from settings import *
 from utils.IO import *
+from datasets.readers import ProcessedSetReader
+from datasets.writers import DataSetWriter
+from datasets.mimic_utils import convert_dtype_value
+from datasets.trackers import PreprocessingTracker
 
 
-class BatchDiscretizer(object):
+class MIMICDiscretizer(object):
     """ Discretize batch data provided by reader.
     """
 
     def __init__(self,
-                 task_name,
-                 time_step_size=None,
-                 start_at_zero=True,
-                 impute_strategy="previous",
-                 mode="legacy",
-                 eps=1e-6):
+                 task: str,
+                 reader: ProcessedSetReader,
+                 tracker: PreprocessingTracker,
+                 storage_path: Path,
+                 time_step_size: float = None,
+                 start_at_zero: bool = True,
+                 impute_strategy: str = "previous",
+                 mode: str = "legacy",
+                 eps: float = 1e-6,
+                 verbose: bool = False):
         """
         """
+        self._storage_path = storage_path
+        self._writer = (None if storage_path is None else DataSetWriter(self._storage_path))
+        self._reader = reader
+        if tracker is not None:
+            self._tracker = tracker
+        else:
+            self._tracker = (None if storage_path is None else PreprocessingTracker(
+                Path(storage_path, "progress")))
+        self._lock = Manager().Lock()
+        self._verbose = verbose
+        self._discretized_reader = (None if storage_path is None else ProcessedSetReader(
+            root_path=storage_path))
+
         self._time_step_size = time_step_size
         self._start_at_zero = start_at_zero
         self._eps = eps
@@ -49,9 +71,9 @@ class BatchDiscretizer(object):
         if mode == "experimental":
             raise NotADirectoryError("Implemented but untested. Will yield nan values.")
         self._mode = mode
-        if not task_name in TASK_NAMES:
-            raise ValueError(f"Task name must be one of {TASK_NAMES}. Task name is {task_name}")
-        self._task_name = task_name
+        if not task in TASK_NAMES:
+            raise ValueError(f"Task name must be one of {TASK_NAMES}. Task name is {task}")
+        self._task_name = task
 
         with open(Path(os.getenv("CONFIG"), "datasets.json")) as file:
             config_dictionary = json.load(file)
@@ -61,6 +83,132 @@ class BatchDiscretizer(object):
             self._possible_values = config_dictionary['possible_values']
             self._is_categorical = config_dictionary['is_categorical_channel']
             self._impute_values = config_dictionary['normal_values']
+
+    @property
+    def tracker(self) -> PreprocessingTracker:
+        return self._tracker
+
+    @property
+    def subjects(self) -> list:
+        """_summary_
+
+        Returns:
+            list: _description_
+        """
+        if self._reader is None:
+            return []
+        return self._reader.subject_ids
+
+    def save_data(self, subjects: list = None):
+        """_summary_
+
+        Args:
+            task_path (_type_, optional): _description_. Defaults to None.
+        """
+        if self._writer is None:
+            info_io("No storage path provided. Data will not be saved.")
+            return
+        with self._lock:
+            if subjects is None:
+                self._writer.write_bysubject({"X": self._X_discretized})  # , file_type="hdf5")
+                self._writer.write_bysubject({"y": self._y_discretized})  # , file_type="hdf5")
+            else:
+                self._writer.write_bysubject({"X": dict_subset(self._X_discretized, subjects)})  # ,
+                # file_type="hdf5")
+                self._writer.write_bysubject({"y": dict_subset(self._y_discretized, subjects)})  #,
+                # file_type="hdf5")
+
+        return
+
+    def transform_subject(self, subject_id: int):
+        X_processed, y_processed = self._reader.read_sample(subject_id,
+                                                            read_ids=True,
+                                                            data_type=pd.DataFrame).values()
+        X = {subject_id: X_processed}
+        y = {subject_id: y_processed}
+
+        X_discretized = self.transform(X, y)
+        if X_discretized is None:
+            return None, None
+        if self._tracker is None:
+            return X_discretized, y
+
+        with self._lock:
+            tracking_info = self._tracker.subjects[subject_id]
+        return (X_discretized, y), tracking_info
+
+    def transform(self, X_dict, y_dict):
+        """
+        """
+        n_subjects = 0
+        n_stays = 0
+        n_samples = 0
+        n_skip = 0
+
+        if self._verbose:
+            info_io(f"Discretizing processed data:\n"
+                    f"Discretized subjects: {0}\n"
+                    f"Discretized stays: {0}\n"
+                    f"Discretized samples: {0}\n"
+                    f"Skipped subjects: {0}")
+
+        self._samples_processed = 0
+
+        self._X_discretized = dict()
+        self._y_discretized = dict()
+
+        for subject_id in X_dict.keys():
+            X_subject = X_dict[subject_id]
+            self._X_discretized[subject_id] = dict()
+            self._y_discretized[subject_id] = dict()
+            tracking_info = dict()
+
+            for stay_id in X_subject:
+                X_df = X_subject[stay_id]
+                if self._mode == "experimental" and self._impute_strategy in ["previous", "next"]:
+                    X_df = self._impute_data(X_df)
+                    X_df = self._categorize_data(X_df)
+                    X_df = self._bin_data(X_df)
+                else:
+                    X_df = self._categorize_data(X_df)
+                    X_df = self._bin_data(X_df)
+                    X_df = self._impute_data(X_df)
+                self._X_discretized[subject_id][stay_id] = X_df
+                self._y_discretized[subject_id][stay_id] = y_dict[subject_id][stay_id]
+
+                tracking_info[stay_id] = len(y_dict[subject_id][stay_id])
+
+                if self._verbose:
+                    info_io(
+                        f"Discretizing processed data:\n"
+                        f"Discretized subjects: {n_subjects}\n"
+                        f"Discretized stays: {n_stays}\n"
+                        f"Discretized samples: {n_samples}"
+                        f"Skipped subjects: {n_skip}",
+                        flush_block=True)
+
+            n_subjects += 1
+            if self._tracker is not None:
+                with self._lock:
+                    self._tracker.subjects.update({subject_id: tracking_info})
+
+            if not len(self._y_discretized[subject_id]) or not len(self._X_discretized[subject_id]):
+                del self._y_discretized[subject_id]
+                del self._X_discretized[subject_id]
+                n_skip += 1
+            else:
+                n_subjects += 1
+
+        if self._verbose:
+            info_io(
+                f"Discretizing processed data:\n"
+                f"Discretized subjects: {n_subjects}\n"
+                f"Discretized stays: {n_stays}\n"
+                f"Discretized samples: {n_samples}"
+                f"Skipped subjects: {n_skip}",
+                flush_block=True)
+
+        return self._X_discretized
 
     def _bin_data(self, X):
         """
@@ -89,20 +237,6 @@ class BatchDiscretizer(object):
             X = X.reindex(range(N_bins))
 
         # return categorized_data
-        return X
-
-    def transform(self, X):
-        """
-        """
-        if self._mode == "experimental" and self._impute_strategy in ["previous", "next"]:
-            X = self._impute_data(X)
-            X = self._categorize_data(X)
-            X = self._bin_data(X)
-        else:
-            X = self._categorize_data(X)
-            X = self._bin_data(X)
-            X = self._impute_data(X)
-
         return X
 
     def _impute_data(self, X):
@@ -160,18 +294,7 @@ class BatchDiscretizer(object):
         for column in X:
             if not self._is_categorical[column]:
                 continue
-            '''
-            categories = [str(cat) for cat in self._possible_values[column]]
-            # nan_indices = categorized_data[column].isna()
-            values = categorized_data[column].dropna().astype('object').values.reshape(-1, 1)
-            # values = categorized_data.pop(column).astype(pd.Categorical).values.reshape(-1, 1)
-            encoder = OneHotEncoder(categories=list( \
-                                    np.array(categories).reshape(1, len(categories))), \
-                                    handle_unknown='ignore')
-            encoded_channel = encoder.fit_transform(values).toarray()
 
-            nan_indices = base_col.isna()
-            '''
             categories = [str(cat) for cat in self._possible_values[column]]
 
             # Finding nan indices

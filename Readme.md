@@ -198,7 +198,7 @@ etc\setup.ps1
 ```
 and for Linux (Ubuntu):
 ```
-sudo bash etc\setup.sh
+bash etc\setup.sh
 ```
 When run in vscode, the environment variables will be set in the integrated terminal from the settings.json. When using a standalone terminal, the environment variable can be sourced from the /.env file. For Ubuntu this can be done by sourcing the envvars.sh:
 ```
@@ -215,7 +215,7 @@ If you have any feature requests, open an issue. If you want to provide a hotfix
 
 To setup the tests, you need to have setup the repository with an active mimic3 conda environment. Next you can setup the tests in Linux by calling:
 ```bash
-sudo bash tests/etc/setup.sh 
+bash tests/etc/setup.sh 
 ```
 or in Windows by calling: 
 ```bash

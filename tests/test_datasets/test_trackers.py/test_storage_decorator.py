@@ -41,7 +41,7 @@ def test_storable_basics():
     tests_io("Succeeded testing initialization.")
 
     # Test the storage path
-    test_instance = TestClass(TEMP_DIR)
+    test_instance = TestClass(Path(TEMP_DIR, "progress"))
 
     assert Path(TEMP_DIR, "progress.dat").is_file()
 
@@ -63,7 +63,7 @@ def test_storable_basics():
 
     # Test restorable assignment
     del test_instance
-    test_instance = TestClass(TEMP_DIR)
+    test_instance = TestClass(Path(TEMP_DIR, "progress"))
 
     assert test_instance.num_samples == 10
     assert test_instance.time_elapsed == 1.0
@@ -86,7 +86,7 @@ def test_storable_basics():
 
     # Test restorable __iadd__
     del test_instance
-    test_instance = TestClass(TEMP_DIR)
+    test_instance = TestClass(Path(TEMP_DIR, "progress"))
 
     assert test_instance.num_samples == 20
     assert test_instance.time_elapsed == 2.1
@@ -97,7 +97,7 @@ def test_storable_basics():
 
 def test_dictionary_iadd():
     tests_io("Test case dictionary iadd.", level=0)
-    test_instance = TestClass(TEMP_DIR)
+    test_instance = TestClass(Path(TEMP_DIR, "progress"))
     test_instance.subjects == {"a": 0, "b": 0}
 
     test_instance.subjects += {"a": 1, "b": 2}
@@ -110,7 +110,7 @@ def test_dictionary_iadd():
 
     # Test restorable dictionary iadd
     del test_instance
-    test_instance = TestClass(TEMP_DIR)
+    test_instance = TestClass(Path(TEMP_DIR, "progress"))
 
     assert test_instance.subjects == {"a": 2, "b": 2}
     tests_io("Succeeded testing restoration of numerical dictionary iadd.")
@@ -118,7 +118,7 @@ def test_dictionary_iadd():
 
 def test_dictionary_update():
     tests_io("Test case dictionary update.", level=0)
-    test_instance = TestClass(TEMP_DIR)
+    test_instance = TestClass(Path(TEMP_DIR, "progress"))
     test_instance.names = {"a": {"a": 1, "b": 1}, "b": {"a": 2, "b": 2}}
     test_instance.names.update({"a": {"c": 1, "d": 1}, "c": {"a": 1, "b": 1}})
     assert test_instance.names == {
@@ -139,7 +139,7 @@ def test_dictionary_update():
     }
     tests_io("Succeeded testing dictionary update.")
     del test_instance
-    test_instance = TestClass(TEMP_DIR)
+    test_instance = TestClass(Path(TEMP_DIR, "progress"))
     assert test_instance.names == {
         "a": {
             "a": 1,
@@ -162,7 +162,7 @@ def test_dictionary_update():
 def test_total_count():
     # Only implemented for single nestation and not for iadd
     tests_io("Test case total count for storable decorator.", level=0)
-    test_instance = CountTestClass(TEMP_DIR)
+    test_instance = CountTestClass(Path(TEMP_DIR, "progress"))
 
     test_instance.subjects = {"a": {"a": 1, "b": 2}, "b": {"a": 2, "b": 4}}
     assert test_instance.subjects == {
@@ -275,7 +275,7 @@ def test_total_count():
 
 def test_list_basic():
     tests_io("Test case basic list for storable decorator.", level=0)
-    test_instance = CountTestClass(TEMP_DIR)
+    test_instance = CountTestClass(Path(TEMP_DIR, "progress"))
 
     test_instance.subject_ids = ["a", "b", "c"]
     assert test_instance.subject_ids == ["a", "b", "c"]
@@ -283,7 +283,7 @@ def test_list_basic():
 
     tests_io("Succeeded testing basic list assignment.")
     del test_instance
-    test_instance = CountTestClass(TEMP_DIR)
+    test_instance = CountTestClass(Path(TEMP_DIR, "progress"))
     assert test_instance.subject_ids == ["a", "b", "c"]
     assert test_instance._progress["subjects"] == ["a", "b", "c"]
     tests_io("Succeeded testing restoration of basic list assignment.")
@@ -291,7 +291,7 @@ def test_list_basic():
     del test_instance
     if TEMP_DIR.is_dir():
         shutil.rmtree(str(TEMP_DIR))
-    test_instance = CountTestClass(TEMP_DIR)
+    test_instance = CountTestClass(Path(TEMP_DIR, "progress"))
     assert test_instance.subject_ids == []
     assert test_instance._progress["subjects"] == []
     tests_io("Succeeded testing list non permanency on database deletion.")
@@ -299,7 +299,7 @@ def test_list_basic():
 
 def test_list_extend():
     tests_io("Test case extend list for storable decorator.", level=0)
-    test_instance = CountTestClass(TEMP_DIR)
+    test_instance = CountTestClass(Path(TEMP_DIR, "progress"))
 
     test_instance.subject_ids.extend(["a", "b", "c"])
     assert test_instance.subject_ids == ["a", "b", "c"]
@@ -307,7 +307,7 @@ def test_list_extend():
     tests_io("Succeeded testing extend list assignment.")
 
     del test_instance
-    test_instance = CountTestClass(TEMP_DIR)
+    test_instance = CountTestClass(Path(TEMP_DIR, "progress"))
     assert test_instance.subject_ids == ["a", "b", "c"]
     assert test_instance._progress["subject_ids"] == ["a", "b", "c"]
     tests_io("Succeeded testing restoration of extend list assignment.")
@@ -318,7 +318,7 @@ def test_list_extend():
     tests_io("Succeeded testing extend list assignment.")
 
     del test_instance
-    test_instance = CountTestClass(TEMP_DIR)
+    test_instance = CountTestClass(Path(TEMP_DIR, "progress"))
     assert test_instance.subject_ids == ["a", "b", "c", "d", "e", "f"]
     assert test_instance._progress["subject_ids"] == ["a", "b", "c", "d", "e", "f"]
     tests_io("Succeeded testing restoration of extend list assignment.")
@@ -326,7 +326,7 @@ def test_list_extend():
 
 def test_list_pop():
     tests_io("Test case pop list for storable decorator.", level=0)
-    test_instance = CountTestClass(TEMP_DIR)
+    test_instance = CountTestClass(Path(TEMP_DIR, "progress"))
 
     # Assign and make sure
     test_instance.subject_ids = ["a", "b", "c"]
@@ -335,7 +335,7 @@ def test_list_pop():
 
     # Restore to see if permament
     del test_instance
-    test_instance = CountTestClass(TEMP_DIR)
+    test_instance = CountTestClass(Path(TEMP_DIR, "progress"))
     assert test_instance.subject_ids == ["a", "b", "c"]
     assert test_instance._progress["subject_ids"] == ["a", "b", "c"]
 
@@ -347,7 +347,7 @@ def test_list_pop():
     tests_io("Succeeded testing pop list assignment.")
     # Restore to see if permament
     del test_instance
-    test_instance = CountTestClass(TEMP_DIR)
+    test_instance = CountTestClass(Path(TEMP_DIR, "progress"))
     assert test_instance.subject_ids == ["a", "b"]
     assert test_instance._progress["subject_ids"] == ["a", "b"]
     tests_io("Succeeded testing restoration of pop list assignment.")
@@ -355,7 +355,7 @@ def test_list_pop():
 
 def test_list_remove():
     tests_io("Test case remove list for storable decorator.", level=0)
-    test_instance = CountTestClass(TEMP_DIR)
+    test_instance = CountTestClass(Path(TEMP_DIR, "progress"))
 
     # Assign and make sure
     test_instance.subject_ids = ["a", "b", "c"]
@@ -364,7 +364,7 @@ def test_list_remove():
 
     # Restore to see if permament
     del test_instance
-    test_instance = CountTestClass(TEMP_DIR)
+    test_instance = CountTestClass(Path(TEMP_DIR, "progress"))
     assert test_instance.subject_ids == ["a", "b", "c"]
     assert test_instance._progress["subject_ids"] == ["a", "b", "c"]
 
@@ -376,7 +376,7 @@ def test_list_remove():
 
     # Restore to see if permament
     del test_instance
-    test_instance = CountTestClass(TEMP_DIR)
+    test_instance = CountTestClass(Path(TEMP_DIR, "progress"))
     assert test_instance.subject_ids == ["a", "c"]
     assert test_instance._progress["subject_ids"] == ["a", "c"]
     tests_io("Succeeded testing restoration of remove list assignment.")
@@ -384,7 +384,7 @@ def test_list_remove():
 
 def test_list_append():
     tests_io("Test case append list for storable decorator.", level=0)
-    test_instance = CountTestClass(TEMP_DIR)
+    test_instance = CountTestClass(Path(TEMP_DIR, "progress"))
 
     # Assign and make sure
     test_instance.subject_ids = ["a", "b", "c"]
@@ -393,7 +393,7 @@ def test_list_append():
 
     # Restore to see if permament
     del test_instance
-    test_instance = CountTestClass(TEMP_DIR)
+    test_instance = CountTestClass(Path(TEMP_DIR, "progress"))
     assert test_instance.subject_ids == ["a", "b", "c"]
     assert test_instance._progress["subject_ids"] == ["a", "b", "c"]
 
@@ -405,7 +405,7 @@ def test_list_append():
 
     # Restore to see if permament
     del test_instance
-    test_instance = CountTestClass(TEMP_DIR)
+    test_instance = CountTestClass(Path(TEMP_DIR, "progress"))
     assert test_instance.subject_ids == ["a", "b", "c", "d"]
     assert test_instance._progress["subject_ids"] == ["a", "b", "c", "d"]
     tests_io("Succeeded testing restoration of append list assignment.")

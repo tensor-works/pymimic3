@@ -4,6 +4,7 @@ import pandas as pd
 from pathlib import Path
 from utils.IO import *
 from tests.settings import *
+from tests.utils import copy_dataset
 from tests.utils.general import assert_dataframe_equals
 from tests.decorators import repeat
 from tests.utils.feature_engineering import extract_test_ids, concatenate_dataset
@@ -28,6 +29,9 @@ def test_iterative_engineer_task(task_name: str):
     generated_path = Path(TEMP_DIR, "engineered", task_name)  # Outpath for task generation
     test_data_dir = Path(TEST_GT_DIR, "engineered",
                          TASK_NAME_MAPPING[task_name])  # Ground truth data dir
+
+    copy_dataset("extracted")
+    copy_dataset(Path("processed", task_name))
 
     tests_io(f"Engineering data for task {task_name}.")
     reader = datasets.load_data(chunksize=75837,
@@ -79,6 +83,9 @@ def test_compact_engineer_task(task_name: str):
     test_data_dir = Path(TEST_GT_DIR, "engineered",
                          task_name_mapping[task_name])  # Ground truth data dir
 
+    copy_dataset("extracted")
+    copy_dataset(Path("processed", task_name))
+
     # Preprocess the data
     tests_io(f"Engineering data for task {task_name}.")
     dataset = datasets.load_data(source_path=TEST_DATA_DEMO,
@@ -114,13 +121,12 @@ def test_compact_engineer_task(task_name: str):
 
 if __name__ == "__main__":
     import shutil
-    engineered_dir = Path(TEMP_DIR, "engineered")
     if TEMP_DIR.is_dir():
         shutil.rmtree(str(TEMP_DIR))
     for task in TASK_NAMES:
-        if engineered_dir.is_dir():
-            shutil.rmtree(str(engineered_dir))
+        if TEMP_DIR.is_dir():
+            shutil.rmtree(str(TEMP_DIR))
         test_compact_engineer_task(task)
-        if engineered_dir.is_dir():
-            shutil.rmtree(str(engineered_dir))
+        if TEMP_DIR.is_dir():
+            shutil.rmtree(str(TEMP_DIR))
         test_iterative_engineer_task(task)

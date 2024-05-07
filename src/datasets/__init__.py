@@ -25,6 +25,7 @@ from utils import get_sample_size, dict_subset, load_json
 from . import extraction
 from . import preprocessing
 from . import feature_engineering
+from . import discretizing
 from .readers import ProcessedSetReader, ExtractedSetReader
 from settings import *
 from utils.IO import *
@@ -39,10 +40,14 @@ def load_data(source_path: str,
               chunksize: int = None,
               subject_ids: list = None,
               num_subjects: int = None,
-              num_samples: int = None,
+              time_step_size: float = 1.0,
+              impute_strategy: str = "previous",
+              mode: str = "legacy",
+              start_at_zero=True,
               extract: bool = True,
               preprocess: bool = False,
               engineer: bool = False,
+              discretize: bool = False,
               task: str = None):
     """_summary_
 
@@ -68,15 +73,15 @@ def load_data(source_path: str,
                                 chunksize=chunksize,
                                 subject_ids=subject_ids,
                                 num_subjects=num_subjects,
-                                num_samples=num_samples,
                                 extract=extract,
                                 preprocess=preprocess,
                                 engineer=engineer,
+                                discretize=discretize,
                                 task=task)
 
     # Iterative generation if a chunk size is specified
     if storage_path is not None and chunksize is not None:
-        if extract or preprocess or engineer:
+        if extract or preprocess or engineer or discretize:
             extracted_storage_path = Path(storage_path, "extracted")
             # Account for missing subjects
             reader = extraction.iterative_extraction(storage_path=extracted_storage_path,
@@ -84,10 +89,9 @@ def load_data(source_path: str,
                                                      chunksize=chunksize,
                                                      subject_ids=subject_ids,
                                                      num_subjects=num_subjects,
-                                                     num_samples=num_samples,
                                                      task=task)
 
-        if preprocess or engineer:
+        if preprocess or engineer or discretize:
             # Contains phenotypes and a list of codes referring to the phenotype
             with Path(source_path, "resources", "hcup_ccs_2015_definitions.yaml").open("r") as file:
                 phenotypes_yaml = yaml.full_load(file)
@@ -97,7 +101,6 @@ def load_data(source_path: str,
                                                         task=task,
                                                         subject_ids=subject_ids,
                                                         num_subjects=num_subjects,
-                                                        num_samples=num_samples,
                                                         storage_path=processed_storage_path,
                                                         phenotypes_yaml=phenotypes_yaml)
 
@@ -106,10 +109,19 @@ def load_data(source_path: str,
             reader = feature_engineering.iterative_fengineering(
                 subject_ids=subject_ids,
                 num_subjects=num_subjects,
-                num_samples=num_samples,
                 reader=reader,
                 task=task,
                 storage_path=engineered_storage_path)
+
+        if discretize:
+            discretized_storage_path = Path(storage_path, "discretized", task)
+            reader = discretizing.iterative_discretization(reader=reader,
+                                                           task=task,
+                                                           storage_path=discretized_storage_path,
+                                                           time_step_size=time_step_size,
+                                                           impute_strategy=impute_strategy,
+                                                           start_at_zero=start_at_zero,
+                                                           mode=mode)
 
         return reader
 
@@ -117,15 +129,14 @@ def load_data(source_path: str,
         raise ValueError("To run iterative iteration, specify storage path!")
 
     # Compact generation otherwise
-    if extract or preprocess or engineer:
+    if extract or preprocess or engineer or discretize:
         extracted_storage_path = Path(storage_path, "extracted")
         dataset = extraction.compact_extraction(storage_path=extracted_storage_path,
                                                 source_path=source_path,
                                                 num_subjects=num_subjects,
-                                                num_samples=num_samples,
                                                 subject_ids=subject_ids,
                                                 task=task)
-    if preprocess or engineer:
+    if preprocess or engineer or discretize:
         processed_storage_path = Path(storage_path, "processed", task)
         # Contains phenotypes and a list of codes referring to the phenotype
         with Path(source_path, "resources", "hcup_ccs_2015_definitions.yaml").open("r") as file:
@@ -134,8 +145,8 @@ def load_data(source_path: str,
                                                    task=task,
                                                    subject_ids=subject_ids,
                                                    num_subjects=num_subjects,
-                                                   num_samples=num_samples,
                                                    storage_path=processed_storage_path,
+                                                   source_path=extracted_storage_path,
                                                    phenotypes_yaml=phenotypes_yaml)
 
     if engineer:
@@ -144,8 +155,21 @@ def load_data(source_path: str,
                                                            dataset["y"],
                                                            task=task,
                                                            storage_path=engineered_storage_path,
+                                                           source_path=processed_storage_path,
                                                            subject_ids=subject_ids,
                                                            num_subjects=num_subjects)
+
+    if discretize:
+        discretized_storage_path = Path(storage_path, "discretized", task)
+        dataset = discretizing.compact_discretization(dataset["X"],
+                                                      dataset["y"],
+                                                      task=task,
+                                                      storage_path=discretized_storage_path,
+                                                      source_path=processed_storage_path,
+                                                      time_step_size=time_step_size,
+                                                      impute_strategy=impute_strategy,
+                                                      start_at_zero=start_at_zero,
+                                                      mode=mode)
 
     # TODO: make dependent from return reader (can also return reader)
     # TODO: write some tests for comparct generation
@@ -153,8 +177,8 @@ def load_data(source_path: str,
 
 
 def _check_inputs(storage_path: str, source_path: str, chunksize: int, subject_ids: list,
-                  num_subjects: int, num_samples: int, extract: bool, preprocess: bool,
-                  engineer: bool, task: str):
+                  num_subjects: int, extract: bool, preprocess: bool, engineer: bool,
+                  discretize: bool, task: str):
     if chunksize and not storage_path:
         raise ValueError(f"Specify storage path if using iterative processing!"
                          f"Storage path is '{storage_path}' and chunksize is '{chunksize}'")
@@ -162,13 +186,11 @@ def _check_inputs(storage_path: str, source_path: str, chunksize: int, subject_i
         raise ValueError(
             "Specify the 'task' parameter for which to preprocess or engineer the data!"
             " Possible values for task are: DECOMP, LOS, IHM, PHENO")
-    if task and not (engineer or preprocess):
+    if task and not (engineer or preprocess or discretize):
         warn_io(f"Specified  task '{task}' for data extraction only, despite "
                 "data extraction being task agnostic. Parameter is ignored.")
     if subject_ids and num_subjects:
         raise ValueError("Specify either subject_ids or num_subjects, not both!")
-    if num_samples and (subject_ids or num_subjects):
-        raise ValueError("Specify either num_sample_sets or subject_ids/num_subjects, not both!")
     if not any([extract, preprocess, engineer]):
         raise ValueError("One of extract, preprocess or engineer must be set to load the dataset.")
     if subject_ids is not None:
@@ -178,8 +200,8 @@ def _check_inputs(storage_path: str, source_path: str, chunksize: int, subject_i
 
 def train_test_split(X=None,
                      y=None,
-                     test_fraction_split: float = 0.,
-                     validation_fraction_split: float = 0.,
+                     test_size: float = 0.,
+                     val_size: float = 0.,
                      dates: list = [],
                      mapping: bool = False,
                      split_info_path: pd.DataFrame = None,
@@ -208,8 +230,8 @@ def train_test_split(X=None,
 
     return su.train_test_split(X=X,
                                y=y,
-                               test_size=test_fraction_split,
-                               val_size=validation_fraction_split,
+                               test_size=test_size,
+                               val_size=val_size,
                                dates=dates,
                                mapping=mapping,
                                subgroup=subgroup,
@@ -263,7 +285,7 @@ class SplitUtility():
 
         def reader_dictionary(subject_sets):
             return {
-                set_name: ProcessedSetReader(source_path, subject_folders=subjects)
+                set_name: ProcessedSetReader(source_path, subject_ids=subjects)
                 for set_name, subjects in subject_sets.items()
             }
 

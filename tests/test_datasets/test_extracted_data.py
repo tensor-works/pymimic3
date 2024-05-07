@@ -130,7 +130,7 @@ def compare_subject_directories(test_data_dir: Path, dataset: dict):
                 if file_name == "subject_events.csv":
                     stay_ids = generated_df["ICUSTAY_ID"].unique()
 
-                test_df = pd.read_csv(Path(test_data_dir, directory. name, test_file_name))
+                test_df = pd.read_csv(Path(test_data_dir, directory.name, test_file_name))
                 assert_dataframe_equals(generated_df, test_df, rename=file_settings["rename"])
                 counts[file_name] += 1
                 tests_io(
@@ -139,9 +139,6 @@ def compare_subject_directories(test_data_dir: Path, dataset: dict):
                     f"timeseries.csv: {ts_counts} subjects, {counts['timeseries_stay_id.csv']} stays\n"
                     f"episodic_data.csv: {counts[file_name]} subjects",
                     flush_block=True)
-
-
-
 
 
 if __name__ == "__main__":

@@ -1,10 +1,8 @@
 import datasets
-import os
 import pandas as pd
-import json
 import shutil
 import pytest
-from itertools import chain
+from tests.utils import copy_dataset
 from typing import Dict
 from pathlib import Path
 from utils.IO import *
@@ -60,9 +58,8 @@ def test_num_subjects_preprocessing_only(task_name: str, extraction_style: str):
 
     # Make sure extracted data is available
     tests_io(f"Preparing fully extracted directory")
-    _: ExtractedSetReader = datasets.load_data(chunksize=75835,
-                                               source_path=TEST_DATA_DEMO,
-                                               storage_path=TEMP_DIR)
+    copy_dataset("extracted")
+
     # Test on existing directory
     for num_subjects in [1, 11, 21]:
         tests_io(f"-> Testing preprocessing-only with {num_subjects}"
@@ -102,11 +99,9 @@ def test_num_subjects_engineer_only(task_name: str, extraction_style: str):
     tests_io(f"Test case num subjects for engineering-only for task {task_name}.", level=0)
     # Test only engineering
     tests_io(f"Preparing fully preprocessed directory")
-    reader: ProcessedSetReader = datasets.load_data(chunksize=75835,
-                                                    source_path=TEST_DATA_DEMO,
-                                                    storage_path=TEMP_DIR,
-                                                    preprocess=True,
-                                                    task=task_name)
+    copy_dataset("extracted")
+    copy_dataset(Path("processed", task_name))
+
     test_data_dir = Path(TEST_GT_DIR, "engineered",
                          TASK_NAME_MAPPING[task_name])  # Ground truth data dir
 
@@ -323,6 +318,12 @@ if __name__ == "__main__":
             shutil.rmtree(str(TEMP_DIR))
         test_num_subjects_extraction(extraction_reader, extraction_style)
         for task in TASK_NAMES:
+            if not Path(SEMITEMP_DIR, "processed", task).is_dir():
+                reader = datasets.load_data(chunksize=75835,
+                                            source_path=TEST_DATA_DEMO,
+                                            storage_path=SEMITEMP_DIR,
+                                            preprocess=True,
+                                            task=task)
             if TEMP_DIR.is_dir():
                 shutil.rmtree(str(TEMP_DIR))
             test_num_subjects_preprocessing_only(task, extraction_style)

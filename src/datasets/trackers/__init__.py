@@ -77,31 +77,45 @@ class PreprocessingTracker():
     """
     subjects: dict = {}
     num_subjects: int = None
-    finished: bool = False
+    is_finished: bool = False
     _store_total: bool = True
+    # These are discretizer only settings
+    time_step_size: int = None
+    start_at_zero: bool = None
+    impute_strategy: str = None
+    mode: str = None
 
-    def __init__(self, num_subjects: int = None, subject_ids: list = None):
+    def __init__(self, num_subjects: int = None, subject_ids: list = None, **kwargs):
         self._lock = None
         # Continue processing if num subjects is not reached
         if num_subjects is not None and len(self.subjects) - 1 < num_subjects:
-            self.finished = False
+            self.is_finished = False
             self.num_subjects = num_subjects
         # Continue processing if num subjects switche to None
         elif self.num_subjects is not None and num_subjects is None:
-            self.finished = False
+            self.is_finished = False
             self.num_subjects = num_subjects
 
         if subject_ids is not None:
             unprocessed_subjects = set(subject_ids) - set(self.subjects.keys())
             if unprocessed_subjects:
-                self.finished = False
+                self.is_finished = False
+
+        # The impute startegies of the discretizer might change
+        # In this case we rediscretize the data
+        if kwargs:
+            for attribute in ["time_step_size", "start_at_zero", "impute_strategy", "mode"]:
+                if attribute in kwargs:
+                    if getattr(self, attribute) is not None and getattr(
+                            self, attribute) != kwargs[attribute]:
+                        self.reset()
+                    setattr(self, attribute, kwargs[attribute])
 
     @property
     def subject_ids(self) -> list:
         if hasattr(self, "_progress"):
             return [
-                subject_id for subject_id in self._progress.get("subjects", {}).keys()
-                if subject_id != "total"
+                subject_id for subject_id in self._read("subjects").keys() if subject_id != "total"
             ]
         return list()
 
@@ -109,7 +123,7 @@ class PreprocessingTracker():
     def stay_ids(self) -> list:
         if hasattr(self, "_progress"):
             return [
-                stay_id for subject_id, subject_data in self._progress.get("subjects", {}).items()
+                stay_id for subject_id, subject_data in self._read("subjects").items()
                 if subject_id != "total" for stay_id in subject_data.keys() if stay_id != "total"
             ]
         return list()
@@ -119,12 +133,50 @@ class PreprocessingTracker():
         if hasattr(self, "_progress"):
             return sum([
                 subject_data["total"]
-                for subject_id, subject_data in self._progress.get("subjects", {}).items()
+                for subject_id, subject_data in self._read("subjects").items()
                 if subject_id != "total"
             ])
         return 0
 
     def reset(self):
         self.subjects = {}
-        self.finished = False
+        self.is_finished = False
         self.num_subjects = None
+
+
+@storable
+class DataSplitTracker():
+    is_finished: bool = False
+    test_size: float = None
+    val_size: float = None
+    train_size: float = None
+    ratios: dict = {}
+    counts: dict = {}
+    subjects: dict = {}
+    test: list = []
+    train: list = []
+    val: list = []
+
+    def __init__(self, tracker: PreprocessingTracker, test_size: float, val_size: float):
+        self.test_size = test_size
+        self.val_size = val_size
+        self.subjects = tracker.subjects
+
+    def reset(self, test_size: float, val_size: float) -> None:
+        self.is_finished = False
+        self.test_size = test_size
+        self.val_size = val_size
+        self.test_size = test_size
+        self.ratios = {}
+        self.counts = {}
+        self.test = []
+        self.train = []
+        self.val = []
+
+    @property
+    def subject_ids(self) -> list:
+        if hasattr(self, "_progress"):
+            return [
+                subject_id for subject_id in self._read("subjects").keys() if subject_id != "total"
+            ]
+        return list()

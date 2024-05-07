@@ -32,7 +32,7 @@ __all__ = ["ExtractedSetReader", "ProcessedSetReader", "EventReader"]
 
 class AbstractReader(object):
 
-    def __init__(self, root_path: Path, subject_folders: list = None) -> None:
+    def __init__(self, root_path: Path, subject_ids: list = None) -> None:
         """_summary_
 
         Args:
@@ -44,31 +44,37 @@ class AbstractReader(object):
         """
         self._root_path = (root_path if isinstance(root_path, Path) else Path(root_path))
 
-        if subject_folders is None:
+        if subject_ids is None:
             self._subject_folders = [
                 folder for folder in self._root_path.iterdir()
                 if folder.is_dir() and folder.name.isnumeric()
             ]
-        elif not subject_folders:
-            raise ValueError("List of subjects passed to mimic dataset reader is empty!")
+            self._update_self = True
+        elif not subject_ids:
+            warn_io("List of subjects passed to mimic dataset reader is empty!")
+            self._update_self = False
+            self._subject_folders = []
         else:
-            if all([Path(str(folder)).is_dir() for folder in subject_folders]):
-                self._subject_folders = subject_folders
-            elif all([Path(self._root_path, str(folder)).is_dir() for folder in subject_folders]):
+            self._update_self = False
+            if all([Path(str(folder)).is_dir() for folder in subject_ids]):
+                self._subject_folders = subject_ids
+            elif all([Path(self._root_path, str(folder)).is_dir() for folder in subject_ids]):
                 self._subject_folders = [
-                    Path(self._root_path, str(folder)) for folder in subject_folders
+                    Path(self._root_path, str(folder)) for folder in subject_ids
                 ]
             else:
                 raise ValueError(
                     f"The following subject do not have existing directories: "
-                    f"{*[ Path(str(folder)).name for folder in subject_folders if not (Path(self._root_path, str(folder)).is_dir() or Path(str(folder)).is_dir())],}"
+                    f"{*[ Path(str(folder)).name for folder in subject_ids if not (Path(self._root_path, str(folder)).is_dir() or Path(str(folder)).is_dir())],}"
                 )
 
-    def _refresh(self):
-        self._subject_folders = [
-            folder for folder in self._root_path.iterdir()
-            if folder.is_dir() and folder.name.isnumeric()
-        ]
+    def _update(self):
+        # Doesn't update if subject_ids specified on creation
+        if self._update_self:
+            self._subject_folders = [
+                folder for folder in self._root_path.iterdir()
+                if folder.is_dir() and folder.name.isnumeric()
+            ]
 
     def _cast_dir_path(self, dir_path: Union[Path, str, int]) -> Path:
         if isinstance(dir_path, int):
@@ -86,8 +92,8 @@ class AbstractReader(object):
 
     def _sample_ids(self, subject_ids: list, num_subjects: int, seed: int = 42):
         # Subject ids overwrites num subjects
-        self._refresh()
         random.seed(seed)
+        self._update()
         if subject_ids is not None:
             return subject_ids
         if num_subjects is not None:
@@ -118,10 +124,7 @@ class ExtractedSetReader(AbstractReader):
 
     convert_datetime = ["INTIME", "CHARTTIME", "OUTTIME", "ADMITTIME", "DISCHTIME", "DEATHTIME"]
 
-    def __init__(self,
-                 root_path: Path,
-                 subject_folders: list = None,
-                 num_samples: int = None) -> None:
+    def __init__(self, root_path: Path, subject_ids: list = None, num_samples: int = None) -> None:
         """_summary_
 
         Args:
@@ -148,7 +151,7 @@ class ExtractedSetReader(AbstractReader):
             "subject_icu_history": DATASET_SETTINGS["icu_history"]["convert_datetime"],
             "subject_events": DATASET_SETTINGS["subject_events"]["convert_datetime"]
         }
-        super().__init__(root_path, subject_folders)
+        super().__init__(root_path, subject_ids)
 
     def read_csv(self, path: Path, dtypes: tuple = None) -> pd.DataFrame:
         """_summary_
@@ -220,7 +223,8 @@ class ExtractedSetReader(AbstractReader):
                     return_data[filename] = self._read_file(filename, dir_path)
                 else:
                     return_data.append(self._read_file(filename, dir_path))
-
+        if not len(return_data):
+            warn_io(f"Directory {str(dir_path)} does not exist!")
         return return_data
 
     def read_subjects(self,
@@ -250,11 +254,14 @@ class ExtractedSetReader(AbstractReader):
             return_data = dict()
             for subject_id in subject_ids:
                 subject_path = Path(self._root_path, str(subject_id))
+                if not subject_path.is_dir():
+                    continue
                 subject_id = int(subject_path.name)
                 return_data[subject_id] = self.read_subject(dir_path=Path(subject_path),
                                                             file_type_keys=file_type_keys,
                                                             file_types=self._file_types,
                                                             read_ids=read_ids)
+            assert all([len(subject) for subject in return_data.values()])
             return return_data
 
         # without ids
@@ -424,7 +431,7 @@ class ProcessedSetReader(AbstractReader):
     """_summary_
     """
 
-    def __init__(self, root_path: Path, subject_folders: list = None) -> None:
+    def __init__(self, root_path: Path, subject_ids: list = None, set_index: bool = True) -> None:
         """_summary_
 
         Args:
@@ -434,8 +441,10 @@ class ProcessedSetReader(AbstractReader):
         self._reader_switch_Xy = {
             "csv": {
                 "X":
-                    lambda x: pd.read_csv(x, dtype=DATASET_SETTINGS["timeseries"]["dtype"]).
-                    set_index('hours'),
+                    (lambda x: pd.read_csv(x, dtype=DATASET_SETTINGS["timeseries"]["dtype"]
+                                          ).set_index('hours')
+                     if set_index else pd.read_csv(x, dtype=DATASET_SETTINGS["timeseries"]["dtype"])
+                    ),
                 "y":
                     lambda x: pd.read_csv(x).set_index("Timestamp")
                     if "Timestamp" else pd.read_csv(x)
@@ -446,7 +455,7 @@ class ProcessedSetReader(AbstractReader):
                 "t": np.load
             }
         }
-        super().__init__(root_path, subject_folders)
+        super().__init__(root_path, subject_ids)
         self._random_ids = deepcopy(self.subject_ids)
         self._convert_datetime = ["INTIME", "CHARTTIME", "OUTTIME"]
         self._possibgle_datatypes = [pd.DataFrame, np.ndarray, np.array, None]
@@ -480,6 +489,8 @@ class ProcessedSetReader(AbstractReader):
                                       read_timestamps=read_timestamps,
                                       data_type=data_type)
             for prefix in sample:
+                if not len(sample[prefix]):
+                    warn_io(f"Subject {subject_id} does not exist!")
                 if read_ids:
                     dataset[prefix].update({subject_id: sample[prefix]})
                 else:

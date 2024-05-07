@@ -50,7 +50,7 @@ class MIMICFeatureEngine(object):
         if tracker is not None:
             self._tracker = tracker
         else:
-            self._tracker = (PreprocessingTracker(storage_path)
+            self._tracker = (PreprocessingTracker(Path(storage_path, "progress"))
                              if storage_path is not None else None)
         self._task = task
         self._save_as_samples = (True if task in ["IHM", "PHENO"]\
@@ -264,7 +264,7 @@ class MIMICFeatureEngine(object):
 
             X_df = create_df(X, "X")
             y_df = create_df(y, "y")
-            if not len(y_df) or not len(X_df):
+            if y_df is None or not len(y_df) or not len(X_df):
                 return
             append(X_df, "X")
             append(y_df, "y")

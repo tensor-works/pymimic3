@@ -3,7 +3,9 @@ import pandas as pd
 import re
 import pytest
 from pathlib import Path
+from datasets.readers import ExtractedSetReader
 from utils.IO import *
+from tests.utils import copy_dataset
 from tests.decorators import repeat
 from tests.settings import *
 from tests.utils.preprocessing import assert_reader_equals, assert_dataset_equals
@@ -24,7 +26,7 @@ kwargs = {
 
 @pytest.mark.parametrize("task_name", TASK_NAMES)
 @repeat(2)
-def test_iterative_processing_task(task_name):
+def test_iterative_processing_task(task_name: str):
     """_summary_
 
     Args:
@@ -36,6 +38,8 @@ def test_iterative_processing_task(task_name):
     generated_path = Path(TEMP_DIR, "processed", task_name)  # Outpath for task generation
     test_data_dir = Path(TEST_GT_DIR, "processed",
                          TASK_NAME_MAPPING[task_name])  # Ground truth data dir
+
+    copy_dataset("extracted")
 
     # Load
     reader = datasets.load_data(chunksize=75835,
@@ -56,7 +60,7 @@ def test_iterative_processing_task(task_name):
 
 @pytest.mark.parametrize("task_name", TASK_NAMES)
 @repeat(2)
-def test_compact_processing_task(task_name):
+def test_compact_processing_task(task_name: str):
     """_summary_
 
     Args:
@@ -68,6 +72,8 @@ def test_compact_processing_task(task_name):
     generated_path = Path(TEMP_DIR, "processed", task_name)  # Outpath for task generation
     test_data_dir = Path(TEST_GT_DIR, "processed",
                          TASK_NAME_MAPPING[task_name])  # Ground truth data dir
+
+    copy_dataset("extracted")
 
     # Load/Create data
     dataset = datasets.load_data(source_path=TEST_DATA_DEMO,
@@ -153,9 +159,9 @@ def assert_file_creation(root_path: Path,
 if __name__ == "__main__":
     import shutil
     for task in TASK_NAMES:
-        if Path(TEMP_DIR, "processed").is_dir():
-            shutil.rmtree(str(Path(TEMP_DIR, "processed")))
+        if Path(TEMP_DIR).is_dir():
+            shutil.rmtree(str(Path(TEMP_DIR)))
         test_compact_processing_task(task)
-        if Path(TEMP_DIR, "processed").is_dir():
-            shutil.rmtree(str(Path(TEMP_DIR, "processed")))
+        if Path(TEMP_DIR).is_dir():
+            shutil.rmtree(str(TEMP_DIR))
         test_iterative_processing_task(task)

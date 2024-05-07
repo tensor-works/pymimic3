@@ -346,9 +346,9 @@ def storable(cls):
             setattr(cls, name, deepcopy(original_value))
 
         if "storage_path" in kwargs:
-            self._path = Path(kwargs.pop('storage_path'), "progress")
+            self._path = Path(kwargs.pop('storage_path'))
         elif args:
-            self._path = Path(args[0], "progress")
+            self._path = Path(args[0])
             args = tuple(args[1:])
         else:
             raise ValueError(
@@ -426,7 +426,7 @@ def storable(cls):
             self._lock.release()
 
         return ret
-    
+
     def __setstate__(self, state):
         self.__dict__.update(state)
         self._wrap_attributes()
@@ -471,59 +471,3 @@ def storable(cls):
     cls._wrap_attributes = _wrap_attributes
 
     return cls
-
-
-from dataclasses import field
-
-if __name__ == "__main__":
-    # Usage example
-    # As would be using the extraction loader
-    @storable
-    class Test:
-        """
-        A test class with storable functionality.
-        """
-
-        num_samples: int = 0
-        finished: bool = False
-        subjects: dict = {"a": 0, "b": 0}
-        names: dict = {"a": "a", "b": "b"}
-
-        def __init__(self, something: int, *args, **kwargs) -> None:
-            self.something = something
-
-    test = Test(19, storage_path=Path(TEMP_DIR))
-    test.num_samples = 10
-    test.num_samples += 10
-    test.subjects += {"a": 1, "b": 2}  # dictionary arritmetics
-    test.subjects += {"a": 1}  # works on subsets
-
-    # As would be used in the preprocssing module
-    @storable
-    class Test:
-        """
-        A test class with storable functionality.
-        """
-
-        num_samples: int = 0
-        finished: bool = False
-        subjects: dict = {}
-        names: dict = {}
-
-        def __init__(self, something: int, *args, **kwargs) -> None:
-            self.something = something
-
-    test = Test(19, storage_path=Path(TEMP_DIR))
-
-    for i in range(10000):  # Instantaneous speed
-        print(i)
-        test.subjects.update({str(i): {"c": 2, "b": 2}})
-
-    # Example usage
-    test.subjects = {"a": {"c": 1, "b": 2}}  # assignment
-    test.subjects.update({"a": {"a": 3}})  # recursive update
-    test.subjects.update({"b": {"a": 3}})  # unrelated update
-
-    test.subjects["b"]["a"] += 1
-
-    pass

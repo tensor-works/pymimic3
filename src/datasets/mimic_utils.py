@@ -11,9 +11,26 @@ import numpy as np
 import pandas as pd
 import os
 import re
+import shutil
 from pathlib import Path
 from typing import Dict
+from utils.IO import *
 from settings import *
+
+
+def copy_subject_info(source_path: Path, storage_path: Path):
+    """
+    Copy subject information from source path to storage path
+    """
+    if source_path is None:
+        if storage_path is not None:
+            warn_io("No source path provided for subject information. Skipping copy.")
+        return
+    if not storage_path.is_dir():
+        storage_path.mkdir(parents=True, exist_ok=True)
+    source_file = Path(source_path, "subject_info.csv")
+    target_file = Path(storage_path, "subject_info.csv")
+    shutil.copy(str(source_file), str(target_file))
 
 
 def get_samples_per_df(event_frames: Dict[str, pd.DataFrame], num_samples: int):
