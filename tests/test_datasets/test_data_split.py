@@ -109,42 +109,73 @@ def test_demographic_filter(
         if is_numerical(attribute_data.to_frame()):
             # Test on all range key words
             sample_filters = sample_numeric_filter(attribute, attribute_data)
-            all_filters.extend(sample_filters)
             for demographic_filter in sample_filters:
-                check_numerical_attribute(attribute, demographic_filter, subject_info_df, curr_iter)
+                split_reader: SplitSetReader = datasets.train_test_split(
+                    reader,
+                    demographic_filter=demographic_filter,
+                    storage_path=Path(TEMP_DIR, str(curr_iter)))
+                if "train" in split_reader.split_names:
+                    check_numerical_attribute(attribute=attribute,
+                                              demographic_filter=demographic_filter,
+                                              subject_info_df=subject_info_df,
+                                              subject_ids=split_reader.train.subject_ids)
+            all_filters.extend(sample_filters)
         else:
             # Categorical column
             demographic_filter = sample_categorical_filter(attribute, attribute_data)
+            split_reader: SplitSetReader = datasets.train_test_split(
+                reader,
+                demographic_filter=demographic_filter,
+                storage_path=Path(TEMP_DIR, str(curr_iter)))
+            if "train" in split_reader.split_names:
+                check_categorical_attribute(attribute=attribute,
+                                            demographic_filter=demographic_filter,
+                                            subject_info_df=subject_info_df,
+                                            subject_ids=split_reader.train.subject_ids)
             all_filters.append(demographic_filter)
-            check_categorical_attribute(attribute, demographic_filter, subject_info_df, curr_iter)
         curr_iter += 1
 
     for _ in range(10):
-        demographic_filter = sample_hetero_filter(all_filters, 3)
-        check_hetero_attributes(attribute, demographic_filter, subject_info_df, curr_iter)
+        demographic_filter = sample_hetero_filter(3, subject_info_df)
+        split_reader: SplitSetReader = datasets.train_test_split(
+            reader,
+            demographic_filter=demographic_filter,
+            storage_path=Path(TEMP_DIR, str(curr_iter)))
+        if "train" in split_reader.split_names:
+            check_hetero_attributes(demographic_filter=demographic_filter,
+                                    subject_info_df=subject_info_df,
+                                    subject_ids=split_reader.train.subject_ids)
         curr_iter += 1
 
 
-def test_demographic_split():
+def test_demographic_split(
+    task_name,
+    preprocessing_style,
+    discretized_readers: Dict[str, ProcessedSetReader],
+    engineered_readers: Dict[str, ProcessedSetReader],
+):
+    tests_io("Test case by demographic filter", level=0)
+    # Discretization or feature engineering
+    if preprocessing_style == "discretized":
+        reader = discretized_readers[task_name]
+    else:
+        reader = engineered_readers[task_name]
+
     subject_info_df = pd.read_csv(Path(reader.root_path, "subject_info.csv"))
     subject_info_df = subject_info_df[subject_info_df["SUBJECT_ID"].isin(reader.subject_ids)]
     curr_iter = 0
-    all_filters = list()
-    for attribute in set(subject_info_df.columns) - set(["SUBJECT_ID", "ICUSTAY_ID"]):
-        if is_numerical(subject_info_df[attribute].to_frame()):
-            # Test on all range key words
-            possible_filter = sample_numeric_filter(attribute, subject_info_df[attribute])
-            all_filters.extend(possible_filter)
-        else:
-            # Categorical column
-            demographic_filter = sample_categorical_filter(attribute, subject_info_df[attribute])
-            all_filters.append(demographic_filter)
-        curr_iter += 1
 
     for _ in range(10):
-        demographic_filter = sample_hetero_filter(all_filters, 1)
-        reader: SplitSetReader = datasets.train_test_split(
+        demographic_filter = sample_hetero_filter(1, subject_info_df)
+
+        split_reader: SplitSetReader = datasets.train_test_split(
             reader, demographic_split={"test": demographic_filter})
+        if "test" in split_reader.split_names:
+            check_hetero_attributes(demographic_filter=demographic_filter,
+                                    subject_info_df=subject_info_df,
+                                    subject_ids=split_reader.test.subject_ids)
+
+        assert not set(split_reader.test.subject_ids) & set(split_reader.train.subject_ids)
         curr_iter += 1
 
 
@@ -157,8 +188,18 @@ def sample_categorical_filter(attribute: str, attribute_data: pd.Series):
     return demographic_filter
 
 
-def sample_hetero_filter(all_filters: list, num: int):
+def sample_hetero_filter(num: int, subject_info_df: pd.DataFrame):
     # Test on random demographic
+    all_filters = list()
+    for attribute in set(subject_info_df.columns) - set(["SUBJECT_ID", "ICUSTAY_ID"]):
+        if is_numerical(subject_info_df[attribute].to_frame()):
+            # Test on all range key words
+            possible_filter = sample_numeric_filter(attribute, subject_info_df[attribute])
+            all_filters.extend(possible_filter)
+        else:
+            # Categorical column
+            demographic_filter = sample_categorical_filter(attribute, subject_info_df[attribute])
+            all_filters.append(demographic_filter)
     demographic_filter = dict()
     filter_selection = random.sample(all_filters, k=max(num * 5, len(all_filters)))
     attributes = list()
@@ -211,51 +252,38 @@ def assert_split_sanity(test_size: float, val_size: float, tolerance: float,
     return split_subjects
 
 
-def check_hetero_attributes(attribute, demographic_filter, subject_info_df, curr_iter):
-    split_reader: SplitSetReader = datasets.train_test_split(reader,
-                                                             demographic_filter=demographic_filter,
-                                                             storage_path=Path(
-                                                                 TEMP_DIR, str(curr_iter)))
-    if split_reader.train is not None:
-        for attribute in demographic_filter:
-            attribute_data = subject_info_df[attribute]
-            if is_numerical(attribute_data.to_frame()):
-                if attribute in subject_info_df.columns:
-                    selected_attributes = subject_info_df[subject_info_df["SUBJECT_ID"].isin(
-                        split_reader.train.subject_ids)][attribute]
-                    assert_range(selected_attributes, demographic_filter[attribute])
-            else:
-                selected_attributes = subject_info_df[subject_info_df["SUBJECT_ID"].isin(
-                    split_reader.train.subject_ids)][attribute]
-                assert set(selected_attributes).issubset(demographic_filter[attribute]["choice"])
+def check_hetero_attributes(demographic_filter: dict, subject_info_df: pd.DataFrame,
+                            subject_ids: List[int]):
+
+    for attribute in demographic_filter:
+        attribute_data = subject_info_df[attribute]
+        if is_numerical(attribute_data.to_frame()):
+            check_numerical_attribute(attribute=attribute,
+                                      demographic_filter=demographic_filter,
+                                      subject_info_df=subject_info_df,
+                                      subject_ids=subject_ids)
+        else:
+            check_categorical_attribute(attribute=attribute,
+                                        demographic_filter=demographic_filter,
+                                        subject_info_df=subject_info_df,
+                                        subject_ids=subject_ids)
 
 
-def check_categorical_attribute(attribute, demographic_filter, subject_info_df, curr_iter):
-    # Apply
-    split_reader: SplitSetReader = datasets.train_test_split(reader,
-                                                             demographic_filter=demographic_filter,
-                                                             storage_path=Path(
-                                                                 TEMP_DIR, str(curr_iter)))
-
+def check_categorical_attribute(attribute: str, demographic_filter: dict,
+                                subject_info_df: pd.DataFrame, subject_ids: List[int]):
     selected_attributes = subject_info_df[subject_info_df["SUBJECT_ID"].isin(
-        split_reader.train.subject_ids)][attribute]
-
+        subject_ids)][attribute]
     # Ensure all entries are from choices. Subjects with stays where the attribute is from selected and not selected categories
     # are not included in the demographic.
-    assert not set(selected_attributes) - set(subject_info_df[attribute])
+    assert not set(selected_attributes) - set(demographic_filter[attribute]["choice"])
 
 
-def check_numerical_attribute(attribute, demographic_filter, subject_info_df, curr_iter):
+def check_numerical_attribute(attribute: str, demographic_filter: dict,
+                              subject_info_df: pd.DataFrame, subject_ids: List[int]):
     # Make the split
-    split_reader: SplitSetReader = datasets.train_test_split(reader,
-                                                             demographic_filter=demographic_filter,
-                                                             storage_path=Path(
-                                                                 TEMP_DIR, str(curr_iter)))
-
-    if split_reader.train is not None:
-        selected_attributes = subject_info_df[subject_info_df["SUBJECT_ID"].isin(
-            split_reader.train.subject_ids)][attribute]
-        assert_range(selected_attributes, demographic_filter[attribute])  #
+    selected_attributes = subject_info_df[subject_info_df["SUBJECT_ID"].isin(
+        subject_ids)][attribute]
+    assert_range(selected_attributes, demographic_filter[attribute])
 
 
 def assert_range(column, demographic_filter, invert=False):
@@ -321,10 +349,6 @@ def sample_numeric_filter(column_name: str, column_sr: pd.Series):
     return filters
 
 
-def test_demographic_split():
-    ...
-
-
 if __name__ == "__main__":
     reader = datasets.load_data(chunksize=75836,
                                 source_path=TEST_DATA_DEMO,
@@ -334,20 +358,8 @@ if __name__ == "__main__":
                                 start_at_zero=True,
                                 impute_strategy='previous',
                                 task='DECOMP')
-    demographic_filter = {
-        "DISCHARGE_LOCATION": {
-            'choice': [
-                'REHAB/DISTINCT PART HOSP', 'HOME HEALTH CARE', 'DEAD/EXPIRED',
-                'HOME WITH HOME IV PROVIDR'
-            ]
-        }
-    }
-    split_reader = datasets.train_test_split(reader, demographic_filter=demographic_filter)
-    subject_info_df = pd.read_csv(Path(reader.root_path, "subject_info.csv"))
-    subject_info_df = subject_info_df[subject_info_df["SUBJECT_ID"].isin(
-        split_reader.train.subject_ids)]
-    subject_info_df.to_csv("trash.csv")
     test_demographic_filter("DECOMP", "discretized", {"DECOMP": reader}, {})
+    test_demographic_split("DECOMP", "discretized", {"DECOMP": reader}, {})
     discretized_readers = dict()
     engineered_readers = dict()
     if TEMP_DIR.is_dir():

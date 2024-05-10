@@ -79,12 +79,25 @@ class AbstractSplitter(object):
                                demographic_split: dict):
         return_ratios = dict()
         return_subjects = dict()
+
+        # Set wise demographics config for test, val and train
         for set_name, setting in demographic_split.items():
             assert set_name in ["test", "val", "train"], "Invalid split attribute"
             curr_subject_ids = self._get_demographics(set_name.capitalize(), source_path,
                                                       subject_ids, setting)
             return_ratios[set_name] = len(curr_subject_ids) / len(subject_ids)
             return_subjects[set_name] = curr_subject_ids
+
+        # If not train specified select the substraction of the other sets
+        if not "train" in demographic_split:
+            train_subjects = set(subject_ids)
+            prefix = "Train"
+            for set_name, setting in demographic_split.items():
+                train_subjects.intersection_update(
+                    self._get_demographics(prefix, source_path, subject_ids, setting, invert=True))
+                prefix = ""
+            return_subjects["train"] = list(train_subjects)
+            return_ratios["train"] = len(train_subjects) / len(subject_ids)
 
         return return_subjects, return_ratios
 
@@ -136,86 +149,131 @@ class AbstractSplitter(object):
 
         return return_subjects, return_ratios
 
-    def _get_demographics(self, prefix: str, source_path: Path, subject_ids: list, settings: dict):
+    def _get_demographics(self,
+                          prefix: str,
+                          source_path: Path,
+                          subject_ids: list,
+                          settings: dict,
+                          invert=False):
         if source_path is None or settings is None:
             return subject_ids
         subject_info_df = pd.read_csv(Path(source_path, "subject_info.csv"))
         subject_info_df = subject_info_df[subject_info_df["SUBJECT_ID"].isin(subject_ids)]
 
-        message = [prefix + ":"]
+        if prefix is not None and prefix:
+            message = [prefix + ":"]
+        else:
+            message = []
 
-        for attribute, setting in settings.items():
-            attribute_message = " "
+        def get_subjects(condition: pd.Series):
+            return subject_info_df[condition]["SUBJECT_ID"].unique()
+
+        def get_categorical_message(choice):
+            choice = list(choice)
+            if len(choice) > 1:
+                return f"is one of " + ", ".join(
+                    str(entry) for entry in choice[:-1]) + " or " + str(choice[-1])
+            else:
+                return f"is {choice[0]}"
+
+        def check_setting(setting, attribute):
             if not attribute in subject_info_df.columns:
                 raise ValueError(f"Invalid demographic. Choose from {*subject_info_df.columns,}\n"
                                  f"Demographic is: {attribute}")
             if "geq" in setting:
-                if "leq" in setting:
-                    if setting["geq"] > setting["leq"]:
-                        raise ValueError(
-                            f"Invalid range: geq={setting['geq']} > leq={setting['leq']}")
-                if "less" in setting:
-                    if setting["geq"] > setting["less"]:
-                        raise ValueError(
-                            f"Invalid range: geq={setting['geq']} > less={setting['less']}")
+                check_range(setting["geq"], setting)
                 assert not "greater" in setting, "Invalid setting, cannot have both less and leq"
+
             if "greater" in setting:
-                if "leq" in setting:
-                    if setting["greater"] > setting["leq"]:
-                        raise ValueError(
-                            f"Invalid range: greater={setting['greater']} > leq={setting['leq']}")
-                if "less" in setting:
-                    if setting["greater"] > setting["less"]:
-                        raise ValueError(
-                            f"Invalid range: greater={setting['greater']} > less={setting['less']}")
+                check_range(setting["greater"], setting)
+
             if "leq" in setting and "less" in setting:
                 raise ValueError("Invalid setting, cannot have both less and leq")
+
             if ("geq" in setting or "leq" in setting or "less" in setting or
                     "greater" in setting) and "choice" in setting:
                 raise ValueError("Invalid setting, cannot have both range and choice")
+
+        def check_range(greater_value, setting):
+            for key in ["leq", "less"]:
+                if key in setting:
+                    if greater_value > setting[key]:
+                        raise ValueError(
+                            f"Invalid range: greater={greater_value} > leq={setting[key]}")
+
+        if invert:
+            exclude_subjects = set(subject_ids)
+        else:
+            exclude_subjects = set()
+
+        for attribute, setting in settings.items():
+            attribute_message = " "
+            check_setting(setting, attribute)
+            attribute_data = subject_info_df[attribute]
+
             if "geq" in setting:
                 # We use this reversed logic to avoid including any subjects where on stay
                 # may fail the specification
-                exclude_subjects = subject_info_df[
-                    subject_info_df[attribute] < setting["geq"]]["SUBJECT_ID"].unique()
-                subject_info_df = subject_info_df[~subject_info_df["SUBJECT_ID"].
-                                                  isin(exclude_subjects)]
-                attribute_message += f"{setting['geq']:0.3f} =< "
-            if "greater" in setting:
-                exclude_subjects = subject_info_df[
-                    subject_info_df[attribute] <= setting["greater"]]["SUBJECT_ID"].unique()
-                subject_info_df = subject_info_df[~subject_info_df["SUBJECT_ID"].
-                                                  isin(exclude_subjects)]
-                attribute_message += f"{setting['greater']:0.3f} < "
-            attribute_message += f"{attribute} "
-            if "leq" in setting:
-                exclude_subjects = subject_info_df[
-                    subject_info_df[attribute] >= setting["leq"]]["SUBJECT_ID"].unique()
-                subject_info_df = subject_info_df[~subject_info_df["SUBJECT_ID"].
-                                                  isin(exclude_subjects)]
-                attribute_message += f"<= {setting['leq']:0.3f}"
-            if "less" in setting:
-                exclude_subjects = subject_info_df[
-                    subject_info_df[attribute] >= setting["less"]]["SUBJECT_ID"].unique()
-                subject_info_df = subject_info_df[~subject_info_df["SUBJECT_ID"].
-                                                  isin(exclude_subjects)]
-                attribute_message += f"< {setting['less']:0.3f}"
-            if "choice" in setting:
-                categories = subject_info_df[attribute].unique()
-                not_choices = set(categories) - set(setting["choice"])
-                exclude_subjects = subject_info_df[subject_info_df[attribute].isin(
-                    not_choices)]["SUBJECT_ID"].unique()
-                subject_info_df = subject_info_df[~subject_info_df["SUBJECT_ID"].
-                                                  isin(exclude_subjects)]
-                if len(setting["choice"]) > 1:
-                    attribute_message += f"is one of " + ", ".join(
-                        str(entry) for entry in setting['choice'][:-1]) + " or " + str(
-                            setting['choice'][-1])
+                if invert:
+                    exclude_subjects.intersection_update(
+                        get_subjects(attribute_data >= setting["geq"]))
+                    attribute_message += f"{setting['geq']:0.3f} > "
                 else:
-                    attribute_message += f"is {setting['choice'][0]}"
+                    exclude_subjects.update(get_subjects(attribute_data < setting["geq"]))
+                    attribute_message += f"{setting['geq']:0.3f} =< "
+
+            if "greater" in setting:
+                if invert:
+                    exclude_subjects.intersection_update(
+                        get_subjects(attribute_data > setting["greater"]))
+                    attribute_message += f"{setting['greater']:0.3f} >= "
+                else:
+                    exclude_subjects.update(get_subjects(attribute_data <= setting["greater"]))
+                    attribute_message += f"{setting['greater']:0.3f} < "
+
+            if invert and ("geq" in setting or "greater" in setting) and\
+                          ("leq" in setting or "less" in setting):
+                attribute_message += f"{attribute} or "
+            elif invert and not ("geq" in setting or "greater" in setting) and \
+                                ("leq" in setting or "less" in setting):
+                pass
+            else:
+                attribute_message += f"{attribute} "
+
+            if "leq" in setting:
+                if invert:
+                    exclude_subjects.intersection_update(
+                        get_subjects(attribute_data < setting["leq"]))
+                    attribute_message += f"{setting['leq']:0.3f} < {attribute}"
+                else:
+                    exclude_subjects.update(get_subjects(attribute_data >= setting["leq"]))
+                    attribute_message += f"<= {setting['leq']:0.3f}"
+
+            if "less" in setting:
+                if invert:
+                    exclude_subjects.intersection_update(
+                        get_subjects(attribute_data < setting["less"]))
+                    attribute_message += f"{setting['less']:0.3f} <= {attribute}"
+                else:
+                    exclude_subjects.update(get_subjects(attribute_data >= setting["less"]))
+                    attribute_message += f"< {setting['less']:0.3f}"
+
+            if "choice" in setting:
+                categories = attribute_data.unique()
+                not_choices = set(categories) - set(setting["choice"])
+                if invert:
+                    exclude_subjects.intersection_update(
+                        get_subjects(attribute_data.isin(setting["choice"])))
+                    attribute_message += get_categorical_message(not_choices)
+                else:
+                    exclude_subjects.update(get_subjects(attribute_data.isin(not_choices)))
+                    attribute_message += get_categorical_message(setting["choice"])
 
             message.append(attribute_message)
-        info_io("\n".join(message))
+
+        if prefix is not None:
+            info_io("\n".join(message))
+        subject_info_df = subject_info_df[~subject_info_df["SUBJECT_ID"].isin(exclude_subjects)]
         return subject_info_df["SUBJECT_ID"].unique().tolist()
 
     def _subjects_for_ratio(self, ratio_df: pd.DataFrame, target_size: float):
