@@ -146,32 +146,56 @@ class PreprocessingTracker():
 
 @storable
 class DataSplitTracker():
-    is_finished: bool = False
+    # Targets
     test_size: float = None
     val_size: float = None
     train_size: float = None
-    ratios: dict = {}
-    counts: dict = {}
     subjects: dict = {}
-    test: list = []
-    train: list = []
-    val: list = []
+    # Demographic settings
+    demographic_filter: dict = None
+    demographic_split: dict = None
+    # Results
+    split: dict = {}
+    ratios: dict = {}
+    is_finished: bool = False
 
-    def __init__(self, tracker: PreprocessingTracker, test_size: float, val_size: float):
+    def __init__(self,
+                 tracker: PreprocessingTracker,
+                 test_size: float = 0.0,
+                 val_size: float = 0.0,
+                 demographic_filter: dict = None,
+                 demographic_split: dict = None):
+        """_summary_
+
+        Args:
+            tracker (PreprocessingTracker): _description_
+            test_size (float, optional): _description_. Defaults to 0.0.
+            val_size (float, optional): _description_. Defaults to 0.0.
+            demographic_filter (dict, optional): _description_. Defaults to None.
+            demographic_split (dict, optional): _description_. Defaults to None.
+        """
+        if self.is_finished:
+            # Reset if changed
+            if self.test_size != test_size:
+                self.reset()
+            elif self.val_size != val_size:
+                self.reset()
+            elif self.demographic_filter != demographic_filter:
+                self.reset()
+            elif self.demographic_split != demographic_split:
+                self.reset()
+        # Apply settings
         self.test_size = test_size
         self.val_size = val_size
+        self.demographic_filter = demographic_filter
+        self.demographic_split = demographic_split
         self.subjects = tracker.subjects
 
-    def reset(self, test_size: float, val_size: float) -> None:
+    def reset(self) -> None:
+        # Reset the results
         self.is_finished = False
-        self.test_size = test_size
-        self.val_size = val_size
-        self.test_size = test_size
         self.ratios = {}
-        self.counts = {}
-        self.test = []
-        self.train = []
-        self.val = []
+        self.split = {}
 
     @property
     def subject_ids(self) -> list:
@@ -179,4 +203,10 @@ class DataSplitTracker():
             return [
                 subject_id for subject_id in self._read("subjects").keys() if subject_id != "total"
             ]
+        return list()
+
+    @property
+    def split_sets(self):
+        if hasattr(self, "_progress"):
+            return list(self.ratios.keys())
         return list()

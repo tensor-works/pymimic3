@@ -25,14 +25,14 @@ from utils.IO import *
 from settings import *
 from .mimic_utils import upper_case_column_names, convert_dtype_dict, read_varmap_csv
 from .trackers import ExtractionTracker
-from typing import List, Union
+from typing import List, Union, Dict
 
-__all__ = ["ExtractedSetReader", "ProcessedSetReader", "EventReader"]
+__all__ = ["ExtractedSetReader", "ProcessedSetReader", "EventReader", "SplitSetReader"]
 
 
 class AbstractReader(object):
 
-    def __init__(self, root_path: Path, subject_ids: list = None) -> None:
+    def __init__(self, root_path: Path, subject_ids: List[int] = None) -> None:
         """_summary_
 
         Args:
@@ -440,14 +440,8 @@ class ProcessedSetReader(AbstractReader):
         """
         self._reader_switch_Xy = {
             "csv": {
-                "X":
-                    (lambda x: pd.read_csv(x, dtype=DATASET_SETTINGS["timeseries"]["dtype"]
-                                          ).set_index('hours')
-                     if set_index else pd.read_csv(x, dtype=DATASET_SETTINGS["timeseries"]["dtype"])
-                    ),
-                "y":
-                    lambda x: pd.read_csv(x).set_index("Timestamp")
-                    if "Timestamp" else pd.read_csv(x)
+                "X": (lambda x: self.read_csv(x, dtypes=DATASET_SETTINGS["timeseries"]["dtype"])),
+                "y": lambda x: self.read_csv(x)
             },
             "npy": {
                 "X": np.load,
@@ -459,6 +453,15 @@ class ProcessedSetReader(AbstractReader):
         self._random_ids = deepcopy(self.subject_ids)
         self._convert_datetime = ["INTIME", "CHARTTIME", "OUTTIME"]
         self._possibgle_datatypes = [pd.DataFrame, np.ndarray, np.array, None]
+
+    @staticmethod
+    def read_csv(path: Path, dtypes: tuple = None) -> pd.DataFrame:
+        df = pd.read_csv(path, dtype=dtypes)
+        if 'hours' in df.columns:
+            df = df.set_index('hours')
+        if 'Timestamp' in df.columns:
+            df = df.set_index('Timestamp')
+        return df
 
     def read_samples(self,
                      subject_ids: Union[List[str], List[int]] = None,
@@ -891,3 +894,40 @@ class EventReader():
             f"Thread for {csv_path.name} has and found last occurence {max(last_occurences.values())}."
         )
         return last_occurences
+
+
+class SplitSetReader(object):
+
+    def __init__(self, root_path: Path, split_sets: Dict[str, List[int]]) -> None:
+        self._root_path = Path(root_path)
+        self._subject_ids = split_sets
+        self._readers = {
+            split: ProcessedSetReader(self._root_path, subject_ids=split_sets[split])
+            for split in split_sets
+        }
+
+        self._splits = list(split_sets.keys())
+        cum_length = sum([len(split) for split in split_sets.values()])
+        self._ratios = {split: len(split_sets[split]) / cum_length for split in split_sets}
+
+    @property
+    def split_names(self) -> list:
+        return self._splits
+
+    @property
+    def train(self) -> ProcessedSetReader:
+        if "train" in self._readers:
+            return self._readers["train"]
+        return
+
+    @property
+    def val(self) -> ProcessedSetReader:
+        if "val" in self._readers:
+            return self._readers["val"]
+        return
+
+    @property
+    def test(self) -> ProcessedSetReader:
+        if "test" in self._readers:
+            return self._readers["test"]
+        return

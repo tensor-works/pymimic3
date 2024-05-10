@@ -69,6 +69,28 @@ def preprocessed_readers() -> Dict[str, ProcessedSetReader]:
 
 
 @pytest.fixture(scope="session")
+def engineered_readers() -> Dict[str, ProcessedSetReader]:
+    return {
+        name: datasets.load_data(chunksize=75835,
+                                 source_path=TEST_DATA_DEMO,
+                                 storage_path=SEMITEMP_DIR,
+                                 engineer=True,
+                                 task=name) for name in TASK_NAMES
+    }
+
+
+@pytest.fixture(scope="session")
+def discretized_readers() -> Dict[str, ProcessedSetReader]:
+    return {
+        name: datasets.load_data(chunksize=75835,
+                                 source_path=TEST_DATA_DEMO,
+                                 storage_path=SEMITEMP_DIR,
+                                 discretize=True,
+                                 task=name) for name in TASK_NAMES
+    }
+
+
+@pytest.fixture(scope="session")
 def discretizer_listfiles() -> None:
     list_files = dict()
     for task_name in TASK_NAMES:
