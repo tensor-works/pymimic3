@@ -1,3 +1,7 @@
+"""
+TODO! Add current iter and test restoral
+"""
+
 import datasets
 import shutil
 import pytest
@@ -13,7 +17,7 @@ from sklearn import model_selection
 from pathlib import Path
 from datasets.trackers import DataSplitTracker, PreprocessingTracker
 from pathos.multiprocessing import Pool, cpu_count
-from datasets.split import ReaderSplitter
+from datasets.split.splitters import ReaderSplitter
 from utils import dict_subset, is_numerical
 
 
@@ -148,7 +152,7 @@ def test_demographic_filter(
         curr_iter += 1
 
 
-def test_demographic_split(
+def test_demo_split(
     task_name,
     preprocessing_style,
     discretized_readers: Dict[str, ProcessedSetReader],
@@ -176,45 +180,332 @@ def test_demographic_split(
                                     subject_ids=split_reader.test.subject_ids)
 
         assert not set(split_reader.test.subject_ids) & set(split_reader.train.subject_ids)
+        #TODO! Add current iter and test restoral
+        tests_io(f"Succeeded testing the filter for test!")
+
+    for _ in range(10):
+        test_filter, val_filter = sample_hetero_filter(1, subject_info_df, val_set=True)
+        #TODO! Add current iter and test restoral
+        split_reader: SplitSetReader = datasets.train_test_split(reader,
+                                                                 demographic_split={
+                                                                     "test": test_filter,
+                                                                     "val": val_filter
+                                                                 })
+        if "test" in split_reader.split_names:
+            check_hetero_attributes(demographic_filter=test_filter,
+                                    subject_info_df=subject_info_df,
+                                    subject_ids=split_reader.test.subject_ids)
+            if "train" in split_reader.split_names:
+                assert not set(split_reader.test.subject_ids) & set(split_reader.train.subject_ids)
+
+        if "val" in split_reader.split_names:
+            check_hetero_attributes(demographic_filter=val_filter,
+                                    subject_info_df=subject_info_df,
+                                    subject_ids=split_reader.val.subject_ids)
+            if "test" in split_reader.split_names:
+                assert not set(split_reader.val.subject_ids) & set(split_reader.train.subject_ids)
+        if "val" in split_reader.split_names and "test" in split_reader.split_names:
+            assert not set(split_reader.test.subject_ids) & set(split_reader.val.subject_ids)
+
         curr_iter += 1
+        tests_io(f"Succeeded testing the filter for val and test!")
 
 
-def sample_categorical_filter(attribute: str, attribute_data: pd.Series):
+def test_demo_and_ratio_split(
+    task_name,
+    preprocessing_style,
+    discretized_readers: Dict[str, ProcessedSetReader],
+    engineered_readers: Dict[str, ProcessedSetReader],
+):
+    tests_io("Test case by demographic filter", level=0)
+    # Discretization or feature engineering
+    if preprocessing_style == "discretized":
+        reader = discretized_readers[task_name]
+    else:
+        reader = engineered_readers[task_name]
+
+    subject_info_df = pd.read_csv(Path(reader.root_path, "subject_info.csv"))
+    subject_info_df = subject_info_df[subject_info_df["SUBJECT_ID"].isin(reader.subject_ids)]
+    attribute = random.choice(["WARDID", "AGE"])
+    attribute_data = subject_info_df[attribute]
+    filters = sample_numeric_filter(attribute, attribute_data)
+    # for _ in range(10):
+    test_size = 0.2
+    none_reader = 0
+
+    for demographic_filter in filters:
+        if not all([value for value in demographic_filter.values()]):
+            continue
+        try:
+            split_reader: SplitSetReader = datasets.train_test_split(
+                reader, 0.2, demographic_split={"test": demographic_filter})
+        except ValueError:
+            none_reader += 1
+            continue
+
+        if "test" in split_reader.split_names and "train" in split_reader.split_names:
+            check_hetero_attributes(demographic_filter=demographic_filter,
+                                    subject_info_df=subject_info_df,
+                                    subject_ids=split_reader.test.subject_ids)
+
+            split_samples = {
+                "test": len(split_reader.test.subject_ids),
+                "train": len(split_reader.train.subject_ids)
+            }
+
+            #
+            assert abs(split_samples["test"] /
+                       (split_samples["test"] + split_samples["train"]) - test_size) < 0.05
+        else:
+            none_reader += 1
+    if none_reader == len(filters):
+        tests_io(f"All splits have invalid sets for {attribute}!")
+
+    filters = sample_numeric_filter(attribute, attribute_data, val_set=True)
+    # for _ in range(10):
+    split_size = 0.2
+    none_reader = 0
+    for test_filter, val_filter in filters:
+        split_filters = {"test": test_filter, "val": val_filter}
+        try:
+            split_reader: SplitSetReader = datasets.train_test_split(
+                reader, split_size, split_size, demographic_split=split_filters)
+        except ValueError as e:
+            none_reader += 1
+            continue
+        if len(split_reader.split_names) > 2:
+            split_samples = {
+                "train": len(split_reader.train.subject_ids),
+            }
+            for split in split_reader.split_names:
+                split_samples[split] = len(getattr(split_reader, split).subject_ids)
+
+            for set_name in split_reader.split_names:
+                if set_name in ["test", "val"]:
+                    check_hetero_attributes(demographic_filter=split_filters[set_name],
+                                            subject_info_df=subject_info_df,
+                                            subject_ids=getattr(split_reader, set_name).subject_ids)
+            tolerance = split_samples["test"] + 1 / (2 + sum(
+                [*split_samples.values()])) - split_samples["test"] / sum([*split_samples.values()])
+            test_size = (0 if not "val" in split_samples else split_size)
+            val_size = (0 if not "val" in split_samples else split_size)
+            check_split_sizes(split_samples, test_size, val_size, tolerance)
+        else:
+            none_reader += 1
+
+    if none_reader == len(filters):
+        tests_io(f"All splits have invalid sets for {attribute}!")
+
+
+def test_train_size(task_name, preprocessing_style, discretized_readers: Dict[str,
+                                                                              ProcessedSetReader],
+                    engineered_readers: Dict[str, ProcessedSetReader]):
+
+    tests_io("Test case train size", level=0)
+    # Discretization or feature engineering
+    if preprocessing_style == "discretized":
+        reader = discretized_readers[task_name]
+    else:
+        reader = engineered_readers[task_name]
+
+    # Train size with ratio
+    tests_io("Specific train size by subjects with test ratio")
+    tolerance = 0.1
+
+    curr_iter = 0
+    write_bool = False
+    train_size = 8
+    for val_size in [0.0, 0.2]:
+        if val_size and write_bool:
+            tests_io("Specific train size with test and val ratio")
+            write_bool = False
+        for test_size in [0.2, 0.4]:
+            split_reader: SplitSetReader = \
+                datasets.train_test_split(reader,
+                                          test_size=test_size,
+                                          val_size=val_size,
+                                          storage_path=Path(
+                                              TEMP_DIR, "split_test",
+                                              str(curr_iter) + "base"))
+
+            test_split_reader: SplitSetReader = \
+                datasets.train_test_split(reader,
+                                          test_size=test_size,
+                                          val_size=val_size,
+                                          train_size=train_size,
+                                          storage_path=Path(TEMP_DIR, "split_test",
+                                          str(curr_iter) + "_test"))
+            if len(split_reader.train.subject_ids) < train_size:
+                assert len(test_split_reader.train.subject_ids) == len(
+                    split_reader.train.subject_ids)
+            else:
+                assert len(test_split_reader.train.subject_ids) == train_size
+            assert_split_sanity(test_size,
+                                val_size,
+                                tolerance,
+                                reader,
+                                test_split_reader,
+                                reduced_set=True)
+            curr_iter += 1
+
+    # Train size with demographic split
+    tests_io("Specific train size with demographic split")
+    subject_info_df = pd.read_csv(Path(reader.root_path, "subject_info.csv"))
+    subject_info_df = subject_info_df[subject_info_df["SUBJECT_ID"].isin(reader.subject_ids)]
+    attribute = random.choice(["WARDID", "AGE"])
+    attribute_data = subject_info_df[attribute]
+    filters = sample_numeric_filter(attribute, attribute_data)
+    test_size = 0.2
+    none_reader = 0
+
+    for demographic_filter in filters:
+        try:
+            split_reader: SplitSetReader = datasets.train_test_split(
+                reader, 0.2, train_size=10, demographic_split={"test": demographic_filter})
+        except ValueError:
+            none_reader += 1
+            continue
+
+        if "test" in split_reader.split_names and "train" in split_reader.split_names:
+            check_hetero_attributes(demographic_filter=demographic_filter,
+                                    subject_info_df=subject_info_df,
+                                    subject_ids=split_reader.test.subject_ids)
+
+            split_samples = {
+                "test": len(split_reader.test.subject_ids),
+                "train": len(split_reader.train.subject_ids)
+            }
+
+            #
+            assert abs(split_samples["test"] /
+                       (split_samples["test"] + split_samples["train"]) - test_size) < 0.05
+        else:
+            none_reader += 1
+    if none_reader == len(filters):
+        tests_io(f"All splits have invalid sets for {attribute}!")
+
+
+def sample_categorical_filter(attribute: str, attribute_sr: pd.Series, val_set: bool = False):
     # Randomly choose half of the possible categories
-    categories = attribute_data.unique()
-    choices = random.sample(categories.tolist(), k=int(np.floor(len(categories) / 2)))
+    categories = attribute_sr.unique()
+    test_choices = random.sample(categories.tolist(), k=int(np.floor(len(categories) / 2)))
     # Demographic filter
-    demographic_filter = {attribute: {"choice": choices}}
-    return demographic_filter
+    if val_set and len(test_choices):
+        val_choices = random.sample(test_choices, k=int(len(test_choices) / 2))
+        test_choices = list(set(test_choices) - set(val_choices))
+        return {attribute: {"choice": test_choices}}, {attribute: {"choice": val_choices}}
+
+    return {attribute: {"choice": test_choices}}
 
 
-def sample_hetero_filter(num: int, subject_info_df: pd.DataFrame):
+def sample_numeric_filter(attribute: str, attribute_sr: pd.Series, val_set: bool = False):
+
+    def get_range_key(greater_key: str,
+                      less_key: str,
+                      min_value: int = -1e10,
+                      max_value: int = -1e10):
+        curr_filter = dict()
+        curr_range = max_value - min_value
+        if greater_key is not None:
+            lower_bound = random.uniform(min_value, min_value + curr_range / 2)
+            curr_filter[greater_key] = lower_bound
+        else:
+            lower_bound = min_value
+        if less_key is not None:
+            upper_bound = random.uniform(lower_bound + curr_range / 10, max_value)
+            curr_filter[less_key] = upper_bound
+        else:
+            upper_bound = max_value
+        return curr_filter
+
+    filters = list()
+    inversion_mapping = {"less": "greater", "leq": "geq", "greater": "less", "geq": "leq"}
+    for less_key in ["less", "leq", None]:
+        for greater_key in ["greater", "geq", None]:
+            # Get a valid range
+            test_filter = get_range_key(greater_key, less_key, attribute_sr.min(),
+                                        attribute_sr.max())
+            if val_set:
+                if test_filter.get(less_key) is None:
+                    if test_filter.get(greater_key) is None:
+                        # Both are None
+                        continue
+                    # Only less is not None
+                    val_filter = get_range_key(greater_key,
+                                               inversion_mapping[greater_key],
+                                               min_value=attribute_sr.min(),
+                                               max_value=test_filter[greater_key])
+                else:
+                    if test_filter.get(greater_key) is None:
+                        # Only greater is not None
+                        val_filter = get_range_key(inversion_mapping[less_key],
+                                                   less_key,
+                                                   min_value=test_filter[less_key],
+                                                   max_value=attribute_sr.max())
+                    else:
+                        # Both are set
+                        if random.choice([True, False]):
+                            val_filter = get_range_key(greater_key,
+                                                       less_key,
+                                                       min_value=test_filter[less_key],
+                                                       max_value=attribute_sr.max())
+                        else:
+                            val_filter = get_range_key(greater_key,
+                                                       less_key,
+                                                       min_value=attribute_sr.min(),
+                                                       max_value=test_filter[greater_key])
+                filters.append(({attribute: test_filter}, {attribute: val_filter}))
+            else:
+                filters.append({attribute: test_filter})
+    return filters
+
+
+def sample_hetero_filter(num: int, subject_info_df: pd.DataFrame, val_set: bool = False):
     # Test on random demographic
     all_filters = list()
     for attribute in set(subject_info_df.columns) - set(["SUBJECT_ID", "ICUSTAY_ID"]):
         if is_numerical(subject_info_df[attribute].to_frame()):
             # Test on all range key words
-            possible_filter = sample_numeric_filter(attribute, subject_info_df[attribute])
+            possible_filter = sample_numeric_filter(attribute=attribute,
+                                                    attribute_sr=subject_info_df[attribute],
+                                                    val_set=val_set)
             all_filters.extend(possible_filter)
         else:
             # Categorical column
-            demographic_filter = sample_categorical_filter(attribute, subject_info_df[attribute])
-            all_filters.append(demographic_filter)
-    demographic_filter = dict()
+            possible_filter = sample_categorical_filter(attribute=attribute,
+                                                        attribute_sr=subject_info_df[attribute],
+                                                        val_set=val_set)
+            all_filters.append(possible_filter)
+    test_filter = dict()
+    val_filter = dict()
     filter_selection = random.sample(all_filters, k=max(num * 5, len(all_filters)))
     attributes = list()
     for curr_filter in filter_selection:
-        if not set(curr_filter.keys()) & set(attributes):
-            if list(curr_filter.values())[0]:
-                demographic_filter.update(curr_filter)
+        # No duplicate for same attribute
+        if val_set and not set(curr_filter[0].keys()) & set(attributes):
+            # No empty filters
+            if val_set and list(curr_filter[0].values())[0] and list(curr_filter[1].values())[0]:
+                test_filter.update(curr_filter[0])
+                val_filter.update(curr_filter[1])
+                attributes.extend(curr_filter[0].keys())
+        elif not val_set and not set(curr_filter.keys()) & set(attributes):
+            # No empty filters
+            if not val_set and list(curr_filter.values())[0]:
+                test_filter.update(curr_filter)
                 attributes.extend(curr_filter.keys())
-        if len(demographic_filter) == num:
+        if len(test_filter) == num:
             break
-    return demographic_filter
+    if val_set:
+        return test_filter, val_filter
+    return test_filter
 
 
-def assert_split_sanity(test_size: float, val_size: float, tolerance: float,
-                        reader: ProcessedSetReader, split_reader: SplitSetReader):
+def assert_split_sanity(test_size: float,
+                        val_size: float,
+                        tolerance: float,
+                        reader: ProcessedSetReader,
+                        split_reader: SplitSetReader,
+                        reduced_set: bool = False):
     tracker = PreprocessingTracker(Path(reader.root_path, "progress"))
     subject_counts = tracker.subjects
     subject_ids = tracker.subject_ids
@@ -234,22 +525,27 @@ def assert_split_sanity(test_size: float, val_size: float, tolerance: float,
             for stay_counts in dict_subset(subject_counts, split_ids).values()
             if isinstance(stay_counts, dict)
         ])
-
+    # Assert ratios are respected
     # Assert no duplicte subjects
     assert not set().intersection(*split_subjects.values())
-    # Assert ratios are respected
+    if not reduced_set:
+        assert sum([
+            len(getattr(split_reader, split_name).subject_ids)
+            for split_name in split_reader.split_names
+        ]) == len(subject_ids)
+    check_split_sizes(split_samples, test_size, val_size, tolerance)
+    return split_subjects
+
+
+def check_split_sizes(split_samples: dict, test_size: float, val_size: float, tolerance: float):
     total_samples = sum(split_samples.values())
-    assert sum([
-        len(getattr(split_reader, split_name).subject_ids)
-        for split_name in split_reader.split_names
-    ]) == len(subject_ids)
     assert abs(split_samples["train"] / total_samples - (1 - test_size - val_size)) < tolerance
+
     if test_size:
         assert abs(split_samples["test"] / total_samples - test_size) < tolerance
+
     if val_size:
         assert abs(split_samples["val"] / total_samples - val_size) < tolerance
-
-    return split_subjects
 
 
 def check_hetero_attributes(demographic_filter: dict, subject_info_df: pd.DataFrame,
@@ -328,27 +624,6 @@ def assert_range(column, demographic_filter, invert=False):
                   ), "Condition failed: Not all elements meet the specified range condition"
 
 
-def sample_numeric_filter(column_name: str, column_sr: pd.Series):
-    filters = list()
-    for less_key in ["less", "leq", None]:
-        for greater_key in ["greater", "geq", None]:
-            # Get a valid range
-            curr_range = column_sr.max() - column_sr.min()
-            curr_filter = dict()
-            if greater_key is not None:
-                lower_bound = random.uniform(column_sr.min(), column_sr.min() + curr_range / 2)
-                curr_filter[greater_key] = lower_bound
-            else:
-                lower_bound = column_sr.min()
-            if less_key is not None:
-                upper_bound = random.uniform(lower_bound + curr_range / 10, column_sr.max())
-                curr_filter[less_key] = upper_bound
-            else:
-                upper_bound = column_sr.max()
-            filters.append({column_name: curr_filter})
-    return filters
-
-
 if __name__ == "__main__":
     reader = datasets.load_data(chunksize=75836,
                                 source_path=TEST_DATA_DEMO,
@@ -358,10 +633,15 @@ if __name__ == "__main__":
                                 start_at_zero=True,
                                 impute_strategy='previous',
                                 task='DECOMP')
-    test_demographic_filter("DECOMP", "discretized", {"DECOMP": reader}, {})
-    test_demographic_split("DECOMP", "discretized", {"DECOMP": reader}, {})
+    # test_demographic_filter("DECOMP", "discretized", {"DECOMP": reader}, {})
+    # test_demographic_split("DECOMP", "discretized", {"DECOMP": reader}, {})
+    # for _ in range(10):
+    #     test_demo_and_ratio_split("DECOMP", "discretized", {"DECOMP": reader}, {})
+    test_train_size("DECOMP", "discretized", {"DECOMP": reader}, {})
+
     discretized_readers = dict()
     engineered_readers = dict()
+    exit()
     if TEMP_DIR.is_dir():
         shutil.rmtree(TEMP_DIR)
     for task_name in TASK_NAMES:

@@ -1,0 +1,48 @@
+    ,SUBJECT_ID ,ICUSTAY_ID ,DBSOURCE   ,CAREUNIT ,WARDID ,ADMISSION_TYPE ,ADMISSION_LOCATION        ,DISCHARGE_LOCATION        ,INSURANCE  ,LANGUAGE ,ETHNICITY              ,GENDER ,AGE
+  0 ,     10006 ,    206504 ,carevue    ,MICU     ,    52 ,EMERGENCY      ,EMERGENCY ROOM ADMIT      ,HOME HEALTH CARE          ,Medicare   ,         ,BLACK/AFRICAN AMERICAN ,F      , 70
+  1 ,     10011 ,    232110 ,carevue    ,MICU     ,    15 ,EMERGENCY      ,TRANSFER FROM HOSP/EXTRAM ,DEAD/EXPIRED              ,Private    ,         ,UNKNOWN/NOT SPECIFIED  ,F      , 36
+  2 ,     10013 ,    264446 ,carevue    ,MICU     ,    15 ,EMERGENCY      ,TRANSFER FROM HOSP/EXTRAM ,DEAD/EXPIRED              ,Medicare   ,         ,UNKNOWN/NOT SPECIFIED  ,F      , 87
+  4 ,     10019 ,    228977 ,carevue    ,MICU     ,    15 ,EMERGENCY      ,TRANSFER FROM HOSP/EXTRAM ,DEAD/EXPIRED              ,Medicare   ,         ,WHITE                  ,M      , 49
+  5 ,     10026 ,    277021 ,carevue    ,SICU     ,    33 ,EMERGENCY      ,EMERGENCY ROOM ADMIT      ,REHAB/DISTINCT PART HOSP  ,Medicare   ,         ,WHITE                  ,F      ,300
+  8 ,     10032 ,    267090 ,carevue    ,MICU     ,    52 ,EMERGENCY      ,EMERGENCY ROOM ADMIT      ,REHAB/DISTINCT PART HOSP  ,Medicare   ,         ,WHITE                  ,M      , 88
+ 11 ,     10036 ,    227834 ,carevue    ,MICU     ,    12 ,EMERGENCY      ,EMERGENCY ROOM ADMIT      ,DEAD/EXPIRED              ,Medicare   ,         ,WHITE                  ,F      ,300
+ 13 ,     10040 ,    272047 ,carevue    ,MICU     ,    12 ,EMERGENCY      ,TRANSFER FROM HOSP/EXTRAM ,REHAB/DISTINCT PART HOSP  ,Medicare   ,         ,UNKNOWN/NOT SPECIFIED  ,F      , 86
+ 14 ,     10042 ,    258147 ,carevue    ,CSRU     ,    14 ,EMERGENCY      ,TRANSFER FROM HOSP/EXTRAM ,HOME HEALTH CARE          ,Medicare   ,         ,WHITE                  ,M      , 71
+ 17 ,     10046 ,    213289 ,carevue    ,CCU      ,    57 ,EMERGENCY      ,EMERGENCY ROOM ADMIT      ,REHAB/DISTINCT PART HOSP  ,Medicaid   ,         ,WHITE                  ,F      , 53
+ 21 ,     10061 ,    223177 ,carevue    ,CCU      ,    57 ,EMERGENCY      ,TRANSFER FROM HOSP/EXTRAM ,REHAB/DISTINCT PART HOSP  ,Medicare   ,         ,WHITE                  ,F      , 76
+ 24 ,     10069 ,    290490 ,carevue    ,CCU      ,    57 ,EMERGENCY      ,EMERGENCY ROOM ADMIT      ,DEAD/EXPIRED              ,Medicaid   ,         ,UNKNOWN/NOT SPECIFIED  ,F      , 42
+ 26 ,     10076 ,    201006 ,carevue    ,MICU     ,    52 ,EMERGENCY      ,EMERGENCY ROOM ADMIT      ,DEAD/EXPIRED              ,Medicare   ,MAND     ,ASIAN                  ,M      , 69
+ 30 ,     10089 ,    246080 ,carevue    ,SICU     ,    57 ,EMERGENCY      ,EMERGENCY ROOM ADMIT      ,DEAD/EXPIRED              ,Medicare   ,         ,WHITE                  ,M      , 86
+ 32 ,     10093 ,    251573 ,carevue    ,CSRU     ,    15 ,EMERGENCY      ,EMERGENCY ROOM ADMIT      ,DEAD/EXPIRED              ,Medicare   ,         ,WHITE                  ,M      , 88
+ 35 ,     10098 ,    262670 ,carevue    ,TSICU    ,    23 ,EMERGENCY      ,EMERGENCY ROOM ADMIT      ,DEAD/EXPIRED              ,Private    ,         ,OTHER                  ,F      , 20
+ 36 ,     10101 ,    293280 ,carevue    ,MICU     ,    52 ,EMERGENCY      ,EMERGENCY ROOM ADMIT      ,DEAD/EXPIRED              ,Government ,         ,WHITE                  ,M      , 73
+ 37 ,     10102 ,    223870 ,carevue    ,MICU     ,    52 ,EMERGENCY      ,CLINIC REFERRAL/PREMATURE ,DEAD/EXPIRED              ,Medicare   ,         ,WHITE                  ,M      , 70
+ 39 ,     10106 ,    217960 ,carevue    ,MICU     ,    12 ,EMERGENCY      ,EMERGENCY ROOM ADMIT      ,HOME WITH HOME IV PROVIDR ,Private    ,         ,WHITE                  ,M      , 64
+ 40 ,     10111 ,    263934 ,carevue    ,MICU     ,    15 ,EMERGENCY      ,EMERGENCY ROOM ADMIT      ,DEAD/EXPIRED              ,Medicare   ,         ,BLACK/AFRICAN AMERICAN ,F      , 83
+ 41 ,     10112 ,    224063 ,carevue    ,MICU     ,    52 ,URGENT         ,TRANSFER FROM HOSP/EXTRAM ,DEAD/EXPIRED              ,Medicare   ,         ,WHITE                  ,F      , 79
+ 42 ,     10114 ,    234989 ,carevue    ,CCU      ,    57 ,URGENT         ,TRANSFER FROM HOSP/EXTRAM ,HOME HEALTH CARE          ,Private    ,         ,UNKNOWN/NOT SPECIFIED  ,F      , 72
+ 44 ,     10119 ,    247686 ,carevue    ,SICU     ,    33 ,EMERGENCY      ,EMERGENCY ROOM ADMIT      ,REHAB/DISTINCT PART HOSP  ,Medicare   ,ENGL     ,WHITE                  ,M      , 81
+ 45 ,     10119 ,    205589 ,carevue    ,SICU     ,    57 ,EMERGENCY      ,EMERGENCY ROOM ADMIT      ,REHAB/DISTINCT PART HOSP  ,Medicare   ,ENGL     ,WHITE                  ,M      , 81
+ 47 ,     10126 ,    249805 ,carevue    ,SICU     ,    57 ,EMERGENCY      ,PHYS REFERRAL/NORMAL DELI ,DEAD/EXPIRED              ,Private    ,         ,WHITE                  ,F      , 44
+ 49 ,     10130 ,    241562 ,carevue    ,SICU     ,    14 ,EMERGENCY      ,EMERGENCY ROOM ADMIT      ,HOME HEALTH CARE          ,Private    ,         ,UNKNOWN/NOT SPECIFIED  ,M      , 52
+ 50 ,     10132 ,    292910 ,carevue    ,MICU     ,    52 ,EMERGENCY      ,EMERGENCY ROOM ADMIT      ,HOME HEALTH CARE          ,Medicare   ,         ,WHITE                  ,F      , 65
+ 53 ,     40177 ,    285750 ,metavision ,MICU     ,    52 ,EMERGENCY      ,TRANSFER FROM HOSP/EXTRAM ,DEAD/EXPIRED              ,Medicare   ,ENGL     ,WHITE                  ,M      , 87
+ 54 ,     40204 ,    285369 ,metavision ,MICU     ,    52 ,EMERGENCY      ,EMERGENCY ROOM ADMIT      ,REHAB/DISTINCT PART HOSP  ,Medicare   ,ENGL     ,BLACK/AFRICAN AMERICAN ,M      , 76
+ 56 ,     40286 ,    238399 ,metavision ,MICU     ,    52 ,ELECTIVE       ,PHYS REFERRAL/NORMAL DELI ,REHAB/DISTINCT PART HOSP  ,Medicare   ,ENGL     ,WHITE                  ,F      , 83
+ 57 ,     40310 ,    204132 ,metavision ,MICU     ,    52 ,EMERGENCY      ,TRANSFER FROM HOSP/EXTRAM ,DEAD/EXPIRED              ,Medicaid   ,ENGL     ,WHITE                  ,M      , 41
+ 59 ,     40503 ,    293429 ,metavision ,CCU      ,     7 ,EMERGENCY      ,TRANSFER FROM HOSP/EXTRAM ,DEAD/EXPIRED              ,Medicare   ,ENGL     ,WHITE                  ,F      , 89
+ 64 ,     40687 ,    279183 ,metavision ,MICU     ,    52 ,EMERGENCY      ,EMERGENCY ROOM ADMIT      ,DEAD/EXPIRED              ,Medicare   ,ENGL     ,WHITE                  ,F      , 82
+ 67 ,     41914 ,    256338 ,metavision ,MICU     ,    52 ,EMERGENCY      ,TRANSFER FROM HOSP/EXTRAM ,REHAB/DISTINCT PART HOSP  ,Medicare   ,ENGL     ,WHITE                  ,M      , 55
+ 82 ,     41983 ,    283875 ,metavision ,TSICU    ,    14 ,EMERGENCY      ,EMERGENCY ROOM ADMIT      ,DEAD/EXPIRED              ,Medicare   ,ENGL     ,WHITE                  ,F      ,300
+ 83 ,     42033 ,    256542 ,metavision ,CCU      ,     7 ,EMERGENCY      ,EMERGENCY ROOM ADMIT      ,DEAD/EXPIRED              ,Medicare   ,ENGL     ,WHITE                  ,F      , 86
+ 84 ,     42066 ,    244243 ,metavision ,TSICU    ,    14 ,EMERGENCY      ,TRANSFER FROM HOSP/EXTRAM ,DEAD/EXPIRED              ,Private    ,ENGL     ,WHITE                  ,M      , 51
+ 85 ,     42075 ,    298685 ,metavision ,CCU      ,     7 ,EMERGENCY      ,TRANSFER FROM HOSP/EXTRAM ,DEAD/EXPIRED              ,Medicare   ,ENGL     ,UNABLE TO OBTAIN       ,M      , 80
+ 89 ,     42231 ,    254635 ,metavision ,MICU     ,    52 ,ELECTIVE       ,PHYS REFERRAL/NORMAL DELI ,HOME HEALTH CARE          ,Medicare   ,ENGL     ,WHITE                  ,F      , 86
+ 96 ,     42367 ,    250305 ,metavision ,SICU     ,    57 ,EMERGENCY      ,EMERGENCY ROOM ADMIT      ,DEAD/EXPIRED              ,Medicare   ,ENGL     ,WHITE                  ,F      , 87
+ 98 ,     42430 ,    210474 ,metavision ,SICU     ,    57 ,EMERGENCY      ,EMERGENCY ROOM ADMIT      ,DEAD/EXPIRED              ,Medicare   ,ENGL     ,WHITE                  ,M      , 81
+100 ,     43779 ,    229194 ,metavision ,SICU     ,    57 ,EMERGENCY      ,EMERGENCY ROOM ADMIT      ,HOME HEALTH CARE          ,Medicare   ,ENGL     ,WHITE                  ,M      , 76
+101 ,     43798 ,    243229 ,metavision ,SICU     ,    57 ,ELECTIVE       ,PHYS REFERRAL/NORMAL DELI ,HOME HEALTH CARE          ,Private    ,ENGL     ,WHITE                  ,M      , 62
+102 ,     43827 ,    243238 ,metavision ,CCU      ,     7 ,EMERGENCY      ,TRANSFER FROM HOSP/EXTRAM ,HOME HEALTH CARE          ,Medicare   ,ENGL     ,UNKNOWN/NOT SPECIFIED  ,F      ,300
+111 ,     44154 ,    217724 ,metavision ,MICU     ,    50 ,EMERGENCY      ,EMERGENCY ROOM ADMIT      ,DEAD/EXPIRED              ,Medicare   ,ENGL     ,WHITE                  ,M      ,300
+112 ,     44212 ,    239396 ,metavision ,MICU     ,    50 ,EMERGENCY      ,TRANSFER FROM HOSP/EXTRAM ,REHAB/DISTINCT PART HOSP  ,Medicare   ,ENGL     ,BLACK/AFRICAN AMERICAN ,F      , 45
+114 ,     44228 ,    217992 ,metavision ,SICU     ,    57 ,EMERGENCY      ,EMERGENCY ROOM ADMIT      ,HOME HEALTH CARE          ,Private    ,ENGL     ,WHITE                  ,F      , 58

@@ -10,6 +10,7 @@ from pathlib import Path
 from datasets.trackers import DataSplitTracker, PreprocessingTracker
 from pathos.multiprocessing import Pool, cpu_count
 from utils import dict_subset
+from collections import OrderedDict
 
 
 class AbstractSplitter(object):
@@ -29,51 +30,79 @@ class AbstractSplitter(object):
         info_io("\n".join(message))
 
     def _reduce_by_ratio(self,
-                         subjects: List[int],
-                         ratios: List[int],
+                         subjects: Dict[str, List[int]],
+                         sample_counts: dict,
                          test_size: float = 0.0,
                          val_size: float = 0.0):
+        # If val_size is specified but no val subjects are present raise an error
         if val_size and (not "val" in subjects or not subjects["val"]):
             raise ValueError(f"'val_size' parameter specified but no val subjects "
                              f"in reduce by ratio function! Val size is: {val_size}")
+        # Same for test
+        if test_size and (not "test" in subjects or not subjects["test"]):
+            raise ValueError(f"'val_size' parameter specified but no val subjects "
+                             f"in reduce by ratio function! Val size is: {val_size}")
 
-        set_ratios = dict()
-        if test_size:
-            set_ratios["test"] = test_size
-        if val_size:
-            set_ratios["val"] = val_size
-        set_ratios["train"] = 1 - test_size - val_size
+        # Remember target ratios
+        target_ratios = dict()
+        if test_size and "test" in subjects:
+            target_ratios["test"] = test_size
+        if val_size and "val" in subjects:
+            target_ratios["val"] = val_size
+        if test_size and "train" in subjects:
+            target_ratios["train"] = 1 - test_size - val_size
 
-        sum_lenghts = sum([len(subjects[split]) for split in subjects])
+        ratio_df = self._create_ratio_df(subjects, sample_counts)
 
-        reduced = list()
+        # if len(target_ratios) < 2:
+        #     return subjects, ratios
+        processed_split_names = list()
+        full_length = ratio_df["ratio"].sum()
+        input_ratios = {
+            set_name:
+            ratio_df[ratio_df["participant"].isin(split_subject)]["ratio"].sum() / full_length
+            for set_name, split_subject in subjects.items()
+        }
 
-        while True:
-            reduction_factors = {
-                set_name:
-                set_ratios * sum([len(subjects[name]) for name in subjects if name != set_name]) /
-                ((1 - set_ratios) * len(subjects[set_name]))
-                for set_name, set_ratios in set_ratios.items()
-                if not set_name in reduced
-            }
-            reduction_factors = {
-                set_name: reduction_factor
-                for set_name, reduction_factor in reduction_factors.items()
-                if reduction_factor < 1
-            }
+        # Deviation from target ratios
+        target_to_input_ratios = OrderedDict({
+            set_name: input_ratios[set_name] / target_ratios[set_name]
+            for set_name in target_ratios
+            if not set_name in processed_split_names
+        })
 
-            if not reduction_factors:
-                break
+        # Reduction based on the smallest input/target ratio (smalles set)
+        target_to_input_ratios = OrderedDict(
+            sorted(target_to_input_ratios.items(), key=lambda item: item[1]))
+        base = target_to_input_ratios.popitem(last=False)[0]
+        base_len = ratio_df[ratio_df["participant"].isin(subjects[base])]["ratio"].sum()
+        real_ratios = dict()
 
-            reduce_by = min(reduction_factors, key=lambda k: abs(reduction_factors[k] - 1))
-            n_samples = int(np.ceil(reduction_factors[reduce_by] * len(subjects[reduce_by])))
-            subjects[reduce_by] = random.sample(subjects[reduce_by], k=n_samples)
+        # Length once reduced
+        new_length = base_len * (
+            1 + sum([target_ratios[name] for name in target_to_input_ratios if name != set_name]) /
+            target_ratios[base])
+        ratio_df["participant"] = ratio_df["participant"] * full_length / new_length
+
+        for set_name in target_to_input_ratios:
+            if not (1 - target_ratios[set_name]):
+                continue
+
+            # Factor by which to reduce
+            reduction_factor = target_ratios[set_name] * full_length / (
+                (1 - target_ratios[set_name]) * len(subjects[set_name]))
+            assert reduction_factor <= 1, "Invalid reduction factor"
+            self._subjects_for_ratio(ratio_df[ratio_df["participant"].isin(subjects[set_name])],
+                                     reduction_factor * target_ratios[set_name])
+
+            # n_samples = int(np.round(reduction_factor * len(subjects[set_name])))
+            # subjects[set_name] = random.sample(subjects[set_name], k=n_samples)
 
             sum_lenghts = sum([len(subjects[name]) for name in subjects])
-            ratios = {set_name: len(subjects[set_name]) / sum_lenghts for set_name in subjects}
-            reduced.append(reduce_by)
+            real_ratios = {set_name: len(subjects[set_name]) / sum_lenghts for set_name in subjects}
+            processed_split_names.append(set_name)
 
-        return subjects, ratios
+        return subjects, real_ratios
 
     def _split_by_demographics(self, subject_ids: List[int], source_path: Path,
                                demographic_split: dict):
@@ -101,9 +130,19 @@ class AbstractSplitter(object):
 
         return return_subjects, return_ratios
 
+    def _create_ratio_df(self, subject_ids: List[int], sample_counts: dict):
+        subject_ratios = [
+            (subject_id, sample_counts[subject_id]["total"]) for subject_id in subject_ids
+        ]
+        ratio_df = pd.DataFrame(subject_ratios, columns=['participant', 'ratio'])
+        total_len = ratio_df["ratio"].sum()
+        ratio_df["ratio"] = ratio_df["ratio"] / total_len
+        ratio_df = ratio_df.sort_values('ratio')
+        return ratio_df
+
     def _split_by_ratio(self,
                         subject_ids: List[int],
-                        subjects: dict,
+                        sample_counts: dict,
                         test_size: float = 0.0,
                         val_size: float = 0.0):
         if test_size < 0 or test_size > 1:
@@ -112,12 +151,8 @@ class AbstractSplitter(object):
             raise ValueError("Invalid val size")
         return_ratios = dict()
         return_subjects = dict()
-        subject_ratios = [(subject_id, subjects[subject_id]["total"]) for subject_id in subject_ids]
-        ratio_df = pd.DataFrame(subject_ratios, columns=['participant', 'ratio'])
-        total_len = ratio_df["ratio"].sum()
-        ratio_df["ratio"] = ratio_df["ratio"] / total_len
+        ratio_df = self._create_ratio_df(subject_ids, sample_counts)
 
-        ratio_df = ratio_df.sort_values('ratio')
         train_subjects = set(subject_ids)
 
         def create_split(total_subjects, ratio_df, size):
@@ -350,6 +385,8 @@ class ReaderSplitter(AbstractSplitter):
                      reader: ProcessedSetReader,
                      test_size: float = 0.0,
                      val_size: float = 0.0,
+                     train_size: int = None,
+                     by_stay: bool = False,
                      demographic_split: dict = None,
                      demographic_filter: dict = None,
                      storage_path: Path = None):
@@ -372,10 +409,10 @@ class ReaderSplitter(AbstractSplitter):
                                              source_path=reader.root_path,
                                              subject_ids=reader.subject_ids,
                                              settings=demographic_filter)
-        orig_subject_ids = set(subject_ids)
         # Get subject counts
         preprocessing_tracker = PreprocessingTracker(Path(reader.root_path, "progress"),
                                                      subject_ids=subject_ids)
+
         # Resotre split state
         storage_path = Path((storage_path \
                              if storage_path is not None \
@@ -402,7 +439,6 @@ class ReaderSplitter(AbstractSplitter):
             # Enforce ratio
             if test_size or val_size:
                 split_dictionary, ratios = self._reduce_by_ratio(subjects=split_dictionary,
-                                                                 ratios=ratios,
                                                                  test_size=test_size,
                                                                  val_size=val_size)
             # Update tracker
@@ -411,9 +447,23 @@ class ReaderSplitter(AbstractSplitter):
         else:
             # Split by ratio
             split_dictionary, ratios = self._split_by_ratio(subject_ids=subject_ids,
-                                                            subjects=split_tracker.subjects,
+                                                            sample_counts=split_tracker.subjects,
                                                             test_size=test_size,
                                                             val_size=val_size)
+            if train_size is not None:
+                if by_stay:
+                    print("Normalizing by stay")
+                    ...
+                else:
+                    if train_size > len(subject_ids):
+                        warn_io(f"Train size {train_size} is larger than the number of subjects")
+                    else:
+                        split_dictionary["train"] = random.sample(split_dictionary["train"],
+                                                                  train_size)
+
+                split_dictionary, ratios = self._reduce_by_ratio(subjects=split_dictionary,
+                                                                 test_size=test_size,
+                                                                 val_size=val_size)
             # Update tracker
             split_tracker.split = split_dictionary
             split_tracker.ratios = ratios
@@ -476,7 +526,7 @@ class CompactSplitter(AbstractSplitter):
                                                            demographic_split)
             if test_size or val_size:
                 subjects, ratios = self._reduce_by_ratio(subjects=subjects,
-                                                         ratios=ratios,
+                                                         input_ratios=ratios,
                                                          test_size=test_size,
                                                          val_size=val_size)
             if split_tracker is not None:

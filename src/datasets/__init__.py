@@ -13,9 +13,7 @@ Todo:
 YerevaNN/mimic3-benchmarks
 """
 import yaml
-import pandas as pd
-from multipledispatch import dispatch
-from typing import Dict, List, Union, overload
+from typing import Union
 from pathlib import Path
 from utils.IO import *
 from settings import *
@@ -23,8 +21,8 @@ from . import extraction
 from . import preprocessing
 from . import feature_engineering
 from . import discretizing
-from .split import ReaderSplitter, CompactSplitter
-from .readers import ProcessedSetReader, ExtractedSetReader, SplitSetReader
+from .readers import ProcessedSetReader, ExtractedSetReader
+from .split import train_test_split
 
 # global settings
 
@@ -192,69 +190,6 @@ def _check_inputs(storage_path: str, source_path: str, chunksize: int, subject_i
     if subject_ids is not None:
         return [int(subject_id) for subject_id in subject_ids]
     return None
-
-
-@dispatch(dict,
-          dict,
-          test_size=float,
-          val_size=float,
-          demographic_split=dict,
-          demographic_filter=dict,
-          source_path=Path)
-def train_test_split(X_subjects: Dict[str, Dict[str, pd.DataFrame]],
-                     y_subjects: Dict[str, Dict[str, pd.DataFrame]],
-                     test_size: float = 0.0,
-                     val_size: float = 0.0,
-                     demographic_split: dict = None,
-                     demographic_filter: dict = None,
-                     source_path: Path = None) -> Dict[str, Dict[str, Dict[str, pd.DataFrame]]]:
-    return CompactSplitter().split_dict(X_subjects=X_subjects,
-                                        y_subjects=y_subjects,
-                                        test_size=test_size,
-                                        val_size=val_size,
-                                        source_path=source_path,
-                                        demographic_split=demographic_split,
-                                        demographic_filter=demographic_filter)
-
-
-@dispatch(ProcessedSetReader,
-          test_size=float,
-          val_size=float,
-          demographic_split=dict,
-          demographic_filter=dict,
-          storage_path=Path)
-def train_test_split(reader: ProcessedSetReader,
-                     test_size: float = 0.0,
-                     val_size: float = 0.0,
-                     demographic_split: dict = None,
-                     demographic_filter: dict = None,
-                     storage_path=None) -> SplitSetReader:
-    return ReaderSplitter().split_reader(reader=reader,
-                                         test_size=test_size,
-                                         val_size=val_size,
-                                         demographic_split=demographic_split,
-                                         demographic_filter=demographic_filter,
-                                         storage_path=storage_path)
-
-
-@dispatch(ProcessedSetReader, float, float)
-def train_test_split(reader: ProcessedSetReader,
-                     test_size: float = 0.0,
-                     val_size: float = 0.0) -> SplitSetReader:
-    return ReaderSplitter().split_reader(reader=reader,
-                                         test_size=test_size,
-                                         val_size=val_size,
-                                         demographic_split=None,
-                                         demographic_filter=None)
-
-
-@dispatch(ProcessedSetReader, float)
-def train_test_split(reader: ProcessedSetReader, test_size: float = 0.0) -> SplitSetReader:
-    return ReaderSplitter().split_reader(reader=reader,
-                                         test_size=test_size,
-                                         val_size=0.0,
-                                         demographic_split=None,
-                                         demographic_filter=None)
 
 
 if __name__ == "__main__":

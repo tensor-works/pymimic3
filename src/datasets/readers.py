@@ -904,9 +904,10 @@ class SplitSetReader(object):
         self._readers = {
             split: ProcessedSetReader(self._root_path, subject_ids=split_sets[split])
             for split in split_sets
+            if split_sets[split]
         }
 
-        self._splits = list(split_sets.keys())
+        self._splits = list(self._readers.keys())
         cum_length = sum([len(split) for split in split_sets.values()])
         self._ratios = {split: len(split_sets[split]) / cum_length for split in split_sets}
 
