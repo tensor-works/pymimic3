@@ -33,6 +33,7 @@ class TFPipeline:
         scaler_type: str = "minmax",
     ):
         self._storage_path = storage_path
+        self._storage_path.mkdir(parents=True, exist_ok=True)
         self._reader = reader
         self._model = model
         self._generator_options = generator_options
@@ -65,23 +66,21 @@ class TFPipeline:
             raise ValueError(
                 f"Invalid scaler type: {scaler_type}. Must be either 'minmax' or 'standard'.")
         if scaler_type == "minmax":
-            self._scaler = MIMICMinMaxScaler(storage_path=self._storage_path,
-                                             **scaler_options).fit_reader(reader)
+            self._scaler = MIMICMinMaxScaler(storage_path=self._storage_path, **scaler_options)
         elif scaler_type == "standard":
-            self._scaler = MIMICStandardScaler(storage_path=self._storage_path,
-                                               **scaler_options).fit_reader(reader)
+            self._scaler = MIMICStandardScaler(storage_path=self._storage_path, **scaler_options)
         elif scaler_type == "maxabs":
-            self._scaler = MIMICMaxAbsScaler(storage_path=self._storage_path,
-                                             **scaler_options).fit_reader(reader)
+            self._scaler = MIMICMaxAbsScaler(storage_path=self._storage_path, **scaler_options)
         elif scaler_type == "robust":
-            self._scaler = MIMICRobustScaler(storage_path=self._storage_path,
-                                             **scaler_options).fit_reader(reader)
+            self._scaler = MIMICRobustScaler(storage_path=self._storage_path, **scaler_options)
 
     def _init_generators(self, generator_options: dict):
         if isinstance(self._reader, ProcessedSetReader):
             self._train_generator = TFGenerator(reader=self._reader,
                                                 scaler=self._scaler,
                                                 **generator_options)
+            self._val_generator = None
+            self._val_steps = None
         elif isinstance(self._reader, SplitSetReader):
             self._train_generator = TFGenerator(reader=self._reader.train,
                                                 scaler=self._scaler,
@@ -91,8 +90,10 @@ class TFPipeline:
                 self._val_generator = TFGenerator(reader=self._reader.val,
                                                   scaler=self._scaler,
                                                   **generator_options)
+                self._val_steps = self._val_generator.steps
             else:
                 self._val_generator = None
+                self._val_steps = None
 
             if "test" in self._reader.split_names:
                 self._split_names.append("test")
@@ -116,25 +117,25 @@ class TFPipeline:
         self._es_callback = EarlyStopping(patience=patience,
                                           restore_best_weights=restore_best_weights)
 
-        self._cp_callback = ModelCheckpoint(filepath=Path(self.directories["model_path"],
-                                                          "cp-{epoch:04d}.ckpt"),
+        cp_pattern = str(Path(self._result_path, "cp-{epoch:04d}.ckpt"))
+        self._cp_callback = ModelCheckpoint(filepath=cp_pattern,
                                             save_weights_only=save_weights_only,
                                             save_best_only=save_best_only,
                                             verbose=0)
 
-        self._hist_callback = HistoryCheckpoint(Path(self._result_path, "history.json"))
+        self._hist_callback = HistoryCheckpoint(self._result_path)
 
-        self._hist_manager = HistoryManager(self._result_path)
+        self._hist_manager = HistoryManager(str(self._result_path))
 
-        self._manager = CheckpointManager(self._result_path,
-                                          epochs,
-                                          custom_objects=self.custom_objects)
+        self._manager = CheckpointManager(str(self._result_path), epochs, custom_objects=[])  #,
+        # custom_objects=self.custom_objects)
 
     def _init_result_path(self, result_name: str, result_path: Path):
         if result_path is not None:
             self._result_path = Path(result_path, result_name)
         else:
             self._result_path = Path(self._storage_path, "results", result_name)
+        self._result_path.mkdir(parents=True, exist_ok=True)
 
     def fit(self,
             result_name: str,
@@ -165,7 +166,7 @@ class TFPipeline:
                         class_weight=class_weight,
                         sample_weight=sample_weight,
                         initial_epoch=self._manager.latest_epoch(),
-                        validation_steps=self._val_generator.steps,
+                        validation_steps=self._val_steps,
                         validation_freq=validation_freq)
 
         self._hist_manager.finished()
@@ -200,10 +201,14 @@ if __name__ == "__main__":
     pipe = TFPipeline(storage_path=Path(TEMP_DIR, "tf_pipeline"),
                       reader=reader,
                       model=model,
+                      compile_options={
+                          "optimizer": "adam",
+                          "loss": "binary_crossentropy"
+                      },
                       generator_options={
                           "batch_size": 16,
                           "shuffle": True
-                      }).fit(epochs=10)
+                      }).fit("result1", epochs=10, save_best_only=False)
     """
     model = LSTM(10,
                  0.2,

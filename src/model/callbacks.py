@@ -3,6 +3,7 @@
 
 import json
 import tensorflow.keras.backend as K
+from pathlib import Path
 from tensorflow.keras import callbacks, backend
 
 
@@ -13,7 +14,7 @@ class HistoryCheckpoint(callbacks.Callback):
     def __init__(self, storage_path):
         """
         """
-        self.storage_path = storage_path
+        self.storage_file = Path(storage_path, "history.json")
         super().__init__()
 
     def on_epoch_end(self, epoch, logs=None):
@@ -24,8 +25,8 @@ class HistoryCheckpoint(callbacks.Callback):
             logs.setdefault('lr', 0)
             logs['lr'] = K.get_value(self.model.optimizer.lr)
 
-        if self.storage_path.is_file():
-            with open(self.storage_path, 'r+') as file:
+        if self.storage_file.is_file():
+            with open(self.storage_file, 'r+') as file:
                 eval_hist = json.load(file)
         else:
             eval_hist = dict()
@@ -36,7 +37,7 @@ class HistoryCheckpoint(callbacks.Callback):
 
             eval_hist[key].append(float(value))
 
-        with open(self.storage_path, 'w') as file:
+        with open(self.storage_file, 'w') as file:
             json.dump(eval_hist, file, indent=4)
 
         return
