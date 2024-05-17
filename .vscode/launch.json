@@ -8,15 +8,7 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "justMyCode": false,
-            "env": {
-                "CONFIG": "${workspaceRoot}/etc",
-                "MODEL": "${workspaceRoot}/models",
-                "TESTS": "${workspaceRoot}/tests",
-                "WORKINGDIR": "${workspaceRoot}",
-                "PYTHONPATH": "${workspaceRoot}/src",
-                "PYDEVD_WARN_SLOW_RESOLVE_TIMEOUT": "3",
-                "DEBUG": "1"
-            }
+            "env": {"DEBUG": "1"}
         },
         {
             "name": "Current File: Python",
@@ -25,15 +17,8 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "justMyCode": false,
-            "env": {
-                "CONFIG": "${workspaceRoot}/etc",
-                "MODEL": "${workspaceRoot}/models",
-                "WORKINGDIR": "${workspaceRoot}",
-                "TESTS": "${workspaceRoot}/tests",
-                "PYTHONPATH": "${workspaceRoot}/src",
-                "PYDEVD_WARN_SLOW_RESOLVE_TIMEOUT": "3",
-                "DEBUG": "0"
-            }
+                        "env": {"DEBUG": "0"}
+
         },
         {
             "name": "MIMIC: logistic",
@@ -42,14 +27,6 @@
             "program": "${workspaceRoot}/entry_point/main.py",
             "console": "integratedTerminal",
             "justMyCode": false,
-            "env": {
-                "CONFIG": "${workspaceRoot}/etc",
-                "MODEL": "${workspaceRoot}/models",
-                "WORKINGDIR": "${workspaceRoot}",
-                "TESTS": "${workspaceRoot}/tests",
-                "PYTHONPATH": "${workspaceRoot}/src",
-                "PYDEVD_WARN_SLOW_RESOLVE_TIMEOUT": "3",
-            },
             "args": [
                 "/home/amadou/Data/ml_data/research-internship/tests_cases/logistic"
             ]
@@ -61,14 +38,6 @@
             "program": "${workspaceRoot}/entry_point/main.py",
             "console": "integratedTerminal",
             "justMyCode": false,
-            "env": {
-                "CONFIG": "${workspaceRoot}/etc",
-                "MODEL": "${workspaceRoot}/models",
-                "WORKINGDIR": "${workspaceRoot}",
-                "TESTS": "${workspaceRoot}/tests",
-                "PYTHONPATH": "${workspaceRoot}/src",
-                "PYDEVD_WARN_SLOW_RESOLVE_TIMEOUT": "3",
-            },
             "args": [
                 "/home/amadou/Data/ml_data/research-internship/tests_cases/logistic/tests/decompensation"
             ]
@@ -80,14 +49,6 @@
             "program": "${workspaceRoot}/entry_point/main.py",
             "console": "integratedTerminal",
             "justMyCode": false,
-            "env": {
-                "CONFIG": "${workspaceRoot}/etc",
-                "MODEL": "${workspaceRoot}/models",
-                "WORKINGDIR": "${workspaceRoot}",
-                "PYTHONPATH": "${workspaceRoot}/src",
-                "TESTS": "${workspaceRoot}/tests",
-                "PYDEVD_WARN_SLOW_RESOLVE_TIMEOUT": "3",
-            },
             "args": [
                 "/home/amadou/Data/ml_data/research-internship/tests_cases/logistic/in_hospital_mortality"
             ]
@@ -99,14 +60,6 @@
             "program": "${workspaceRoot}/entry_point/main.py",
             "console": "integratedTerminal",
             "justMyCode": false,
-            "env": {
-                "CONFIG": "${workspaceRoot}/etc",
-                "MODEL": "${workspaceRoot}/models",
-                "WORKINGDIR": "${workspaceRoot}",
-                "TESTS": "${workspaceRoot}/tests",
-                "PYTHONPATH": "${workspaceRoot}/src",
-                "PYDEVD_WARN_SLOW_RESOLVE_TIMEOUT": "3",
-            },
             "args": [
                 "/home/amadou/Data/ml_data/research-internship/tests_cases/logistic/length_of_stay"
             ]
@@ -118,14 +71,6 @@
             "program": "${workspaceRoot}/entry_point/main.py",
             "console": "integratedTerminal",
             "justMyCode": false,
-            "env": {
-                "CONFIG": "${workspaceRoot}/etc",
-                "MODEL": "${workspaceRoot}/models",
-                "TESTS": "${workspaceRoot}/tests",
-                "WORKINGDIR": "${workspaceRoot}",
-                "PYTHONPATH": "${workspaceRoot}/src",
-                "PYDEVD_WARN_SLOW_RESOLVE_TIMEOUT": "3",
-            },
             "args": [
                 "/home/amadou/Data/ml_data/research-internship/tests_cases/logistic/phenotyping"
             ]

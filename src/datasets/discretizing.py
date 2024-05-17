@@ -234,7 +234,7 @@ def iterative_discretization(reader: ExtractedSetReader,
                     f"Discretized stays: {n_discretizer_stays}\n"
                     f"Discretized samples: {n_discretizer_samples}\n"
                     f"Skipped subjects: {empty_subjects}",
-                    flush_block=(True and not int(os.getenv("DEBUG"))))
+                    flush_block=(True and not int(os.getenv("DEBUG", 0))))
             except StopIteration as e:
                 tracker.is_finished = True
                 info_io(f"Finalized for task {task} in directory:\n{str(storage_path)}")

@@ -8,22 +8,20 @@ YerevaNN/mimic3-benchmarks
 """
 import numpy as np
 import pandas as pd
-import pdb
 import json
 from scipy.stats import skew
-from datetime import timedelta
 from numpy import random
 from multiprocess import Manager
 from datasets.readers import ProcessedSetReader
 from datasets.writers import DataSetWriter
 from utils import dict_subset
 from utils.IO import *
-from pathos.helpers import mp
 from pathlib import Path
 from datasets.trackers import PreprocessingTracker
+from . import AbstractProcessor
 
 
-class MIMICFeatureEngine(object):
+class MIMICFeatureEngine(AbstractProcessor):
     """_summary_
     """
 

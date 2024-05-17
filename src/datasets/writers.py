@@ -109,15 +109,22 @@ class DataSetWriter():
                     path: Path,
                     index: str = True,
                     file_type: str = "csv",
-                    mode: str = 'w',
-                    header: bool = True):
+                    exists_ok: bool = False) -> None:
+            if exists_ok and path.is_file() and not file_type == "hd5f":
+                mode = "a"
+                header = False
+            else:
+                mode = "w"
+                header = True
             if file_type == "hdf5":
-
-                df.to_hdf(path, mode=mode, index=index, header=header)
+                df.to_hdf(Path(path.parent, f"{path.stem}.h5"), key="data", mode=mode, index=index)
             elif file_type == "csv":
-                df.to_csv(path, mode=mode, index=index, header=header)
+                df.to_csv(Path(path.parent, f"{path.stem}.csv"),
+                          mode=mode,
+                          index=index,
+                          header=header)
             elif file_type == "npy":
-                np.save(Path(path.parent, f"{path.name}.npy"), df)
+                np.save(Path(path.parent, f"{path.stem}.npy"), df)
 
         if file_type in ["npy", "hdf5"] and exists_ok:
             raise ValueError("Append mode not supported for numpy files!")
@@ -138,15 +145,11 @@ class DataSetWriter():
                 if not len(item):
                     continue
                 csv_path = Path(subject_path, f"{filename}.csv")
-                if exists_ok and csv_path.is_file():
-                    save_df(df=item,
-                            path=csv_path,
-                            index=index,
-                            file_type=file_type,
-                            mode='a',
-                            header=False)
-                else:
-                    save_df(df=item, path=csv_path, index=index, file_type=file_type)
+                save_df(df=item,
+                        path=csv_path,
+                        index=index,
+                        file_type=file_type,
+                        exists_ok=exists_ok)
             elif isinstance(item, (list, np.ndarray)):
                 np.save(Path(subject_path, f"{filename}.npy"), item)
             elif isinstance(item, dict):
@@ -155,15 +158,11 @@ class DataSetWriter():
                         if not len(data):
                             continue
                         csv_path = Path(subject_path, f"{filename}_{icustay_id}.csv")
-                        if exists_ok and csv_path.is_file():
-                            save_df(df=data,
-                                    path=csv_path,
-                                    index=index,
-                                    file_type=file_type,
-                                    mode='a',
-                                    header=False)
-                        else:
-                            save_df(df=data, path=csv_path, index=index, file_type=file_type)
+                        save_df(df=data,
+                                path=csv_path,
+                                index=index,
+                                file_type=file_type,
+                                exists_ok=exists_ok)
                     elif isinstance(data, np.ndarray):
                         np.save(Path(subject_path, f"{filename}_{icustay_id}.npy"), data)
 

@@ -26,9 +26,10 @@ from datasets.readers import ProcessedSetReader
 from datasets.writers import DataSetWriter
 from datasets.mimic_utils import convert_dtype_value
 from datasets.trackers import PreprocessingTracker
+from . import AbstractProcessor
 
 
-class MIMICDiscretizer(object):
+class MIMICDiscretizer(AbstractProcessor):
     """ Discretize batch data provided by reader.
     """
 
@@ -99,7 +100,7 @@ class MIMICDiscretizer(object):
             return []
         return self._reader.subject_ids
 
-    def save_data(self, subjects: list = None):
+    def save_data(self, subjects: list = None) -> None:
         """_summary_
 
         Args:
@@ -110,13 +111,13 @@ class MIMICDiscretizer(object):
             return
         with self._lock:
             if subjects is None:
-                self._writer.write_bysubject({"X": self._X_discretized})  # , file_type="hdf5")
-                self._writer.write_bysubject({"y": self._y_discretized})  # , file_type="hdf5")
+                self._writer.write_bysubject({"X": self._X_discretized}, file_type="hdf5")
+                self._writer.write_bysubject({"y": self._y_discretized}, file_type="hdf5")
             else:
-                self._writer.write_bysubject({"X": dict_subset(self._X_discretized, subjects)})  # ,
-                # file_type="hdf5")
-                self._writer.write_bysubject({"y": dict_subset(self._y_discretized, subjects)})  #,
-                # file_type="hdf5")
+                self._writer.write_bysubject({"X": dict_subset(self._X_discretized, subjects)},
+                                             file_type="hdf5")
+                self._writer.write_bysubject({"y": dict_subset(self._y_discretized, subjects)},
+                                             file_type="hdf5")
 
         return
 

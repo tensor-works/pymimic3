@@ -19,7 +19,7 @@ import sys
 from pathlib import Path
 from colorama import init, Fore, Style
 
-__all__ = ["info_io", "info_io", "tests_io", "error_io", "debug_io", "warn_io"]
+__all__ = ["info_io", "info_io", "tests_io", "error_io", "debug_io", "warn_io", "suppress_io"]
 
 WORKINGDIR = os.getenv("WORKINGDIR")
 
@@ -217,4 +217,18 @@ def base_io(info_tag: str,
     if unflush:
         print()
     if not _print_iostring(io_string, line_header, flush_block, collor):
+        if flush:
+            end = "\r"
         print(io_string, end=end, flush=flush)
+
+
+#https://stackoverflow.com/questions/8391411/how-to-block-calls-to-print
+class suppress_io:
+
+    def __enter__(self):
+        self._original_stdout = sys.stdout
+        sys.stdout = open(os.devnull, 'w')
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        sys.stdout.close()
+        sys.stdout = self._original_stdout

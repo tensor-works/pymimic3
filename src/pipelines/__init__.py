@@ -1,195 +1,295 @@
-import os
-import pandas as pd
+from typing import Union
 from pathlib import Path
+import datasets
+import pytest
+from model.callbacks import HistoryCheckpoint
 
+from generators.tf2 import TFGenerator
+from generators.torch import TorchGenerator
+from preprocessing.scalers import AbstractScaler, MIMICMinMaxScaler, MIMICStandardScaler, MIMICMaxAbsScaler, MIMICRobustScaler
+import numpy as np
+from managers import HistoryManager
+from managers import CheckpointManager
 from utils.IO import *
-from settings import *
-from utils import make_prediction_vector
-from preprocessing.preprocessors import MIMICPreprocessor
-from visualization import make_history_plot
+from datasets.readers import ProcessedSetReader
+from tests.settings import *
+from datasets.readers import ProcessedSetReader, SplitSetReader
+from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
 
 
-class AbstractMIMICPipeline(object):
+class TFPipeline:
 
-    def __init__(self) -> None:
-        ...
+    def __init__(
+        self,
+        storage_path: Path,
+        reader: Union[ProcessedSetReader, SplitSetReader],
+        model,
+        generator_options: dict,
+        model_options: dict = {},
+        scaler_options: dict = {},
+        compile_options: dict = {},
+        data_split_options: dict = {},
+        scaler: AbstractScaler = None,
+        scaler_type: str = "minmax",
+    ):
+        self._storage_path = storage_path
+        self._reader = reader
+        self._model = model
+        self._generator_options = generator_options
+        self._data_split_options = data_split_options
+        self._split_names = ["train"]
 
-    def _processing(self, timeseries: pd.DataFrame, episodic_data: pd.DataFrame,
-                    subject_diagnoses: pd.DataFrame, subject_icu_history: pd.DataFrame):
-        """_summary_
+        self._init_scaler(scaler_type=scaler_type,
+                          scaler_options=scaler_options,
+                          scaler=scaler,
+                          reader=reader)
 
-        Args:
-            timeseries (pd.DataFrame): _description_
-            episodic_data (pd.DataFrame): _description_
-            subject_diagnoses (pd.DataFrame): _description_
-            subject_icu_history (pd.DataFrame): _description_
+        self._init_generators(generator_options=generator_options)
 
-        Returns:
-            _type_: _description_
-        """
-        info_io("Preprocessing data.")
+        self._init_model(model=model, model_options=model_options, compiler_options=compile_options)
 
-        # TODO: outdated interface
-        self.preprocessor = MIMICPreprocessor(config_dict=Path(os.getenv("CONFIG"),
-                                                               "datasets.json"),
-                                              task=self.task,
-                                              storage_path=self.directories["task_data"],
-                                              source_path=self.data_source_path,
-                                              label_type="one-hot")
-
-        (X_subjects,
-         y_subjects) = self.preprocessor.transform(timeseries,
-                                                   episodic_data,
-                                                   subject_diagnoses,
-                                                   subject_icu_history,
-                                                   self.task,
-                                                   task_path=self.directories["task_data"])
-        if self.save:
-            self.preprocessor.save_data()
-
-        info_io("Done.")
-
-        return X_subjects, y_subjects
-
-    def _init_normalizer(self, train, preprocessor: str):
-        """_summary_
-
-        Args:
-            X_train (_type_, optional): _description_. Defaults to None.
-        """
-        if not self.normalizer.load():
-            if preprocessor == "discretizer":
-                args = {"discretizer": self.discretizer}
-            elif preprocessor == "imputer":
-                args = {"imputer": self.imputer}
-            info_io("Fitting normalizer.")
-            if self.generator_flag:
-                self.normalizer.fit_reader(train, **args)
-            else:
-                self.normalizer.fit_dataset(train, **args)
-        else:
-            info_io(f"Normalizer already fitted and stored at {self.normalizer.storage_path}")
-
-        return
-
-    def _init_imputer(self, train):
-        """_summary_
-
-        Args:
-            X_train (_type_): _description_
-        """
-        if not self.imputer.load():
-            info_io("Fitting imputer.")
-            if self.generator_flag:
-                self.imputer.fit_reader(train)
-            else:
-                self.imputer.fit(train)
-        else:
-            info_io(f"Imputer already fitted and stored at {self.imputer.storage_path}")
-
-        return
-
-    def _init_directories(self):
-        """_summary_
-        """
-        is_subcase = False
-        if not self.root_path:
-            self.root_path = Path(os.getenv("MODEL"))
-
-        if isinstance(self.root_path, str):
-            self.root_path = Path(self.root_path)
-            is_subcase = str(Path(self.root_path.parents[1], self.root_path.parents[1])) == str(
-                Path(self.model_name, self.task))
-
-        self.directories = {
-            "root_path":
-                self.root_path,
-            "model_path":
-                self.root_path if is_subcase else Path(self.root_path, self.model_name, self.task),
-            "config_path":
-                Path(os.getenv("CONFIG")),
-            # ambiguous name but this is where loaded and processed data is stored
-            #TODO! we assume, that the dataset only changes by the task, is why the normalizer shared
-            #TODO! over all cases. This is a lil yanky
-            "normalizer_path":
-                Path(self.root_path, "normalizer", self.task),
-            "imputer_path":
-                Path(self.root_path, "imputer", self.task)
-        }
-
-        self.history_file = Path(self.directories["model_path"], "history.json")
-
-        for directory in self.directories.values():
-            directory.mkdir(parents=True, exist_ok=True)
-
-        return
-
-    def _init_batch_reader_arguments(self):
-        """_summary_
-        """
-        raise NotImplementedError("This method has not been implemented.")
-
-    def _init_batch_readers(self, readers: object):
-        """_summary_
-
-        Args:
-            task_reader (object): _description_
-        """
-        self._init_batch_reader_arguments()
-        self.generators = {
-            set_name: self._batch_reader(readers[set_name], **self.batch_reader_kwargs)
-            for set_name in readers.keys()
-        }
-
-        return
-
-    def _batch_reader(self, reader, **kwargs):
-        """_summary_
-        """
-        raise NotImplementedError("This method has not been implemented.")
-
-    def score(self, test_generator: object = None):
-        """_summary_
-
-        Args:
-            test_generator (object, optional): _description_. Defaults to None.
-
-        Returns:
-            _type_: _description_
-        """
-        if test_generator is None:
-            test_generator = self.generators["test"]
-
-        if test_generator is None:
-            info_io("Pass a training fraction split precentage to score the model")
+    def _init_scaler(self, scaler_type: str, scaler_options: dict, scaler: AbstractScaler,
+                     reader: Union[ProcessedSetReader, SplitSetReader]):
+        if scaler is not None:
+            self._scaler = scaler
             return
+        if isinstance(self._reader, ProcessedSetReader):
+            reader = self._reader
+        elif isinstance(self._reader, SplitSetReader):
+            reader = self._reader.train
+        else:
+            raise ValueError(
+                f"Invalid reader type: {type(self._reader)}. Must be either ProcessedSetReader or SplitSetReader."
+            )
+        if not scaler_type in ["minmax", "standard"]:
+            raise ValueError(
+                f"Invalid scaler type: {scaler_type}. Must be either 'minmax' or 'standard'.")
+        if scaler_type == "minmax":
+            self._scaler = MIMICMinMaxScaler(storage_path=self._storage_path,
+                                             **scaler_options).fit_reader(reader)
+        elif scaler_type == "standard":
+            self._scaler = MIMICStandardScaler(storage_path=self._storage_path,
+                                               **scaler_options).fit_reader(reader)
+        elif scaler_type == "maxabs":
+            self._scaler = MIMICMaxAbsScaler(storage_path=self._storage_path,
+                                             **scaler_options).fit_reader(reader)
+        elif scaler_type == "robust":
+            self._scaler = MIMICRobustScaler(storage_path=self._storage_path,
+                                             **scaler_options).fit_reader(reader)
 
-        info_io("Evaluating model.")
+    def _init_generators(self, generator_options: dict):
+        if isinstance(self._reader, ProcessedSetReader):
+            self._train_generator = TFGenerator(reader=self._reader,
+                                                scaler=self._scaler,
+                                                **generator_options)
+        elif isinstance(self._reader, SplitSetReader):
+            self._train_generator = TFGenerator(reader=self._reader.train,
+                                                scaler=self._scaler,
+                                                **generator_options)
+            if "val" in self._reader.split_names:
+                self._split_names.append("val")
+                self._val_generator = TFGenerator(reader=self._reader.val,
+                                                  scaler=self._scaler,
+                                                  **generator_options)
+            else:
+                self._val_generator = None
 
-        score = self.model.evaluate(test_generator, steps=test_generator.steps)
-        self.hist_manager.update({"score": score})
+            if "test" in self._reader.split_names:
+                self._split_names.append("test")
+                self._test_generator = TFGenerator(reader=self._reader.test,
+                                                   scaler=self._scaler,
+                                                   **generator_options)
 
-        make_history_plot(self.hist_manager.history, self.directories["model_path"])
+    def _init_model(self, model, model_options, compiler_options):
+        if isinstance(model, type):
+            self._model = model(**model_options)
 
-        info_io("Evaluation complete.")
+        if model.optimizer is None:
+            self._model.compile(**compiler_options)
 
-        return score
+    def _init_callbacks(self,
+                        epochs: int = None,
+                        patience: int = None,
+                        restore_best_weights=True,
+                        save_weights_only: bool = False,
+                        save_best_only: bool = True):
+        self._es_callback = EarlyStopping(patience=patience,
+                                          restore_best_weights=restore_best_weights)
 
-    def compute_metrics(self, generator: object, metrics: dict, name: str = ""):
-        """_summary_
+        self._cp_callback = ModelCheckpoint(filepath=Path(self.directories["model_path"],
+                                                          "cp-{epoch:04d}.ckpt"),
+                                            save_weights_only=save_weights_only,
+                                            save_best_only=save_best_only,
+                                            verbose=0)
 
-        Args:
-            generator (object): _description_
-            metrics (dict): _description_
-            name (str, optional): _description_. Defaults to "".
+        self._hist_callback = HistoryCheckpoint(Path(self._result_path, "history.json"))
 
-        Returns:
-            _type_: _description_
-        """
-        y_pred, y_true = make_prediction_vector(self.model,
-                                                generator,
-                                                batches=generator.steps,
-                                                bin_averages=self.preprocessor.bin_averages)
+        self._hist_manager = HistoryManager(self._result_path)
 
-        return {(f"{name}_{key}" if name else key): metric(y_pred, y_true)
-                for key, metric in metrics.items()}
+        self._manager = CheckpointManager(self._result_path,
+                                          epochs,
+                                          custom_objects=self.custom_objects)
+
+    def _init_result_path(self, result_name: str, result_path: Path):
+        if result_path is not None:
+            self._result_path = Path(result_path, result_name)
+        else:
+            self._result_path = Path(self._storage_path, "results", result_name)
+
+    def fit(self,
+            result_name: str,
+            result_path: Path = None,
+            epochs: int = None,
+            patience: int = None,
+            callbacks: list = [],
+            restore_best_weights=True,
+            save_weights_only: bool = False,
+            class_weight: dict = None,
+            sample_weight: dict = None,
+            save_best_only: bool = True,
+            validation_freq: int = 1):
+
+        self._init_result_path(result_name, result_path)
+        self._init_callbacks(epochs=epochs,
+                             patience=patience,
+                             restore_best_weights=restore_best_weights,
+                             save_weights_only=save_weights_only,
+                             save_best_only=save_best_only)
+
+        self._model.fit(self._train_generator,
+                        validation_data=self._val_generator,
+                        epochs=epochs,
+                        steps_per_epoch=self._train_generator.steps,
+                        callbacks=callbacks +
+                        [self._es_callback, self._cp_callback, self._hist_callback],
+                        class_weight=class_weight,
+                        sample_weight=sample_weight,
+                        initial_epoch=self._manager.latest_epoch(),
+                        validation_steps=self._val_generator.steps,
+                        validation_freq=validation_freq)
+
+        self._hist_manager.finished()
+        _, best_epoch = self._hist_manager.best
+        self._manager.clean_directory(best_epoch)
+
+        return self._model
+
+
+if __name__ == "__main__":
+    reader = datasets.load_data(chunksize=75836,
+                                source_path=TEST_DATA_DEMO,
+                                storage_path=SEMITEMP_DIR,
+                                discretize=True,
+                                time_step_size=1.0,
+                                start_at_zero=True,
+                                impute_strategy='previous',
+                                task="IHM")
+
+    from model.tf2.lstm import LSTM
+    from tests.settings import *
+    model = LSTM(10,
+                 0.2,
+                 59,
+                 bidirectional=False,
+                 recurrent_dropout=0.,
+                 task=None,
+                 target_repl=False,
+                 output_dim=1,
+                 depth=1)
+
+    pipe = TFPipeline(storage_path=Path(TEMP_DIR, "tf_pipeline"),
+                      reader=reader,
+                      model=model,
+                      generator_options={
+                          "batch_size": 16,
+                          "shuffle": True
+                      }).fit(epochs=10)
+    """
+    model = LSTM(10,
+                 0.2,
+                 59,
+                 bidirectional=False,
+                 recurrent_dropout=0.,
+                 task=None,
+                 target_repl=False,
+                 output_dim=1,
+                 depth=1)
+
+    generator = TFGenerator(reader=reader, scaler=scaler, batch_size=2, shuffle=True)
+    # Create and compile your model
+
+    model.compile(optimizer='adam', loss='binary_crossentropy')
+
+    # Fit the model
+    batch_size = 32
+    steps_per_epoch = 100
+
+    model.fit(x=generator, steps_per_epoch=steps_per_epoch, epochs=10)
+    """
+    scaler = MinMaxScaler().fit_reader(reader)
+    generator = TorchGenerator(reader=reader, scaler=scaler, batch_size=2, shuffle=True)
+
+    import torch
+    import torch.nn as nn
+    import torch.optim as optim
+
+    class TimeSeriesModel(nn.Module):
+
+        def __init__(self, input_size, hidden_size, num_layers, output_size):
+            super(TimeSeriesModel, self).__init__()
+            self.hidden_size = hidden_size
+            self.num_layers = num_layers
+            self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True)
+            self.fc = nn.Linear(hidden_size, output_size)
+
+        def forward(self, x):
+            # Initialize hidden state and cell state
+            h0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size).to(x.device)
+            c0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size).to(x.device)
+
+            # Forward propagate LSTM
+            out, _ = self.lstm(x, (h0, c0))
+
+            # Decode the hidden state of the last time step
+            out = self.fc(out[:, -1, :])
+            return out
+
+    # Define the model parameters
+    input_size = 59
+    hidden_size = 128
+    num_layers = 2
+    output_size = 1
+
+    # Initialize the model, loss function, and optimizer
+    model = TimeSeriesModel(input_size, hidden_size, num_layers, output_size)
+    criterion = nn.MSELoss()
+    optimizer = optim.Adam(model.parameters(), lr=0.001)
+    # Example training loop
+    num_epochs = 20
+
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    model.to(device)
+
+    for epoch in range(num_epochs):
+        for i, (inputs, labels) in enumerate(generator):
+            # Move tensors to the configured device
+            inputs = inputs.to(device)
+            labels = labels.to(device)
+
+            # Forward pass
+            outputs = model(inputs)
+            loss = criterion(outputs, labels)
+
+            # Backward and optimize
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
+            if (i + 1) % 100 == 0:
+                print(
+                    f'Epoch [{epoch+1}/{num_epochs}], Step [{i+1}/{len(generator)}], Loss: {loss.item():.4f}'
+                )
+
+# model.compile(optimizer='adam', loss='binary_crossentropy')
+# model.summary()
+# model.fit(generator, epochs=1, steps_per_epoch=generator._steps, verbose=1)

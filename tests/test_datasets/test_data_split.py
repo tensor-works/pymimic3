@@ -179,7 +179,7 @@ def test_demo_split(
                                     subject_info_df=subject_info_df,
                                     subject_ids=split_reader.test.subject_ids)
 
-        assert not set(split_reader.test.subject_ids) & set(split_reader.train.subject_ids)
+            assert not set(split_reader.test.subject_ids) & set(split_reader.train.subject_ids)
         #TODO! Add current iter and test restoral
         tests_io(f"Succeeded testing the filter for test!")
 
@@ -217,7 +217,7 @@ def test_demo_and_ratio_split(
     discretized_readers: Dict[str, ProcessedSetReader],
     engineered_readers: Dict[str, ProcessedSetReader],
 ):
-    tests_io("Test case by demographic filter", level=0)
+    tests_io("Test case demographic split with specified ratios", level=0)
     # Discretization or feature engineering
     if preprocessing_style == "discretized":
         reader = discretized_readers[task_name]
@@ -229,11 +229,13 @@ def test_demo_and_ratio_split(
     attribute = random.choice(["WARDID", "AGE"])
     attribute_data = subject_info_df[attribute]
     filters = sample_numeric_filter(attribute, attribute_data)
-    # for _ in range(10):
+
+    tolerance = (1e-2 if task_name in ["DECOMP", "LOS"] else 1e-1)
     test_size = 0.2
     none_reader = 0
 
     for demographic_filter in filters:
+        tests_io(f"Specified demographic filter: 'test': {demographic_filter}")
         if not all([value for value in demographic_filter.values()]):
             continue
         try:
@@ -248,24 +250,19 @@ def test_demo_and_ratio_split(
                                     subject_info_df=subject_info_df,
                                     subject_ids=split_reader.test.subject_ids)
 
-            split_samples = {
-                "test": len(split_reader.test.subject_ids),
-                "train": len(split_reader.train.subject_ids)
-            }
-
-            #
-            assert abs(split_samples["test"] /
-                       (split_samples["test"] + split_samples["train"]) - test_size) < 0.05
+            assert_split_sanity(test_size, 0, tolerance, reader, split_reader, reduced_set=True)
         else:
             none_reader += 1
     if none_reader == len(filters):
         tests_io(f"All splits have invalid sets for {attribute}!")
 
     filters = sample_numeric_filter(attribute, attribute_data, val_set=True)
-    # for _ in range(10):
+
     split_size = 0.2
     none_reader = 0
     for test_filter, val_filter in filters:
+        tests_io(f"Specified demographic filter: 'test': {test_filter}, 'val': {val_filter}")
+
         split_filters = {"test": test_filter, "val": val_filter}
         try:
             split_reader: SplitSetReader = datasets.train_test_split(
@@ -274,22 +271,19 @@ def test_demo_and_ratio_split(
             none_reader += 1
             continue
         if len(split_reader.split_names) > 2:
-            split_samples = {
-                "train": len(split_reader.train.subject_ids),
-            }
-            for split in split_reader.split_names:
-                split_samples[split] = len(getattr(split_reader, split).subject_ids)
-
             for set_name in split_reader.split_names:
                 if set_name in ["test", "val"]:
                     check_hetero_attributes(demographic_filter=split_filters[set_name],
                                             subject_info_df=subject_info_df,
                                             subject_ids=getattr(split_reader, set_name).subject_ids)
-            tolerance = split_samples["test"] + 1 / (2 + sum(
-                [*split_samples.values()])) - split_samples["test"] / sum([*split_samples.values()])
-            test_size = (0 if not "val" in split_samples else split_size)
-            val_size = (0 if not "val" in split_samples else split_size)
-            check_split_sizes(split_samples, test_size, val_size, tolerance)
+
+            assert_split_sanity(split_size,
+                                split_size,
+                                tolerance,
+                                reader,
+                                split_reader,
+                                reduced_set=True)
+
         else:
             none_reader += 1
 
@@ -309,17 +303,19 @@ def test_train_size(task_name, preprocessing_style, discretized_readers: Dict[st
         reader = engineered_readers[task_name]
 
     # Train size with ratio
-    tests_io("Specific train size by subjects with test ratio")
-    tolerance = 0.1
+    tolerance = (1e-2 if task_name in ["DECOMP", "LOS"] else 1e-1)
 
     curr_iter = 0
-    write_bool = False
+    write_bool = True
     train_size = 8
+
     for val_size in [0.0, 0.2]:
         if val_size and write_bool:
-            tests_io("Specific train size with test and val ratio")
+
             write_bool = False
         for test_size in [0.2, 0.4]:
+            tests_io(
+                f"Specified train_size: {train_size}; test_size: {test_size}; val_size: {val_size}")
             split_reader: SplitSetReader = \
                 datasets.train_test_split(reader,
                                           test_size=test_size,
@@ -355,30 +351,35 @@ def test_train_size(task_name, preprocessing_style, discretized_readers: Dict[st
     attribute = random.choice(["WARDID", "AGE"])
     attribute_data = subject_info_df[attribute]
     filters = sample_numeric_filter(attribute, attribute_data)
+
     test_size = 0.2
+    val_size = 0.2
     none_reader = 0
 
     for demographic_filter in filters:
+        print(demographic_filter)
         try:
             split_reader: SplitSetReader = datasets.train_test_split(
-                reader, 0.2, train_size=10, demographic_split={"test": demographic_filter})
+                reader,
+                test_size,
+                val_size,
+                train_size=train_size,
+                demographic_split={"test": demographic_filter})
         except ValueError:
             none_reader += 1
             continue
 
-        if "test" in split_reader.split_names and "train" in split_reader.split_names:
+        if not set(["test", "train", "val"]) - set(split_reader.split_names):
             check_hetero_attributes(demographic_filter=demographic_filter,
                                     subject_info_df=subject_info_df,
                                     subject_ids=split_reader.test.subject_ids)
 
-            split_samples = {
-                "test": len(split_reader.test.subject_ids),
-                "train": len(split_reader.train.subject_ids)
-            }
-
-            #
-            assert abs(split_samples["test"] /
-                       (split_samples["test"] + split_samples["train"]) - test_size) < 0.05
+            assert_split_sanity(test_size,
+                                val_size,
+                                tolerance,
+                                reader,
+                                split_reader,
+                                reduced_set=True)
         else:
             none_reader += 1
     if none_reader == len(filters):
@@ -393,7 +394,10 @@ def sample_categorical_filter(attribute: str, attribute_sr: pd.Series, val_set: 
     if val_set and len(test_choices):
         val_choices = random.sample(test_choices, k=int(len(test_choices) / 2))
         test_choices = list(set(test_choices) - set(val_choices))
-        return {attribute: {"choice": test_choices}}, {attribute: {"choice": val_choices}}
+        if test_choices and val_choices:
+            return {attribute: {"choice": test_choices}}, {attribute: {"choice": val_choices}}
+        else:
+            return {}, {}
 
     return {attribute: {"choice": test_choices}}
 
@@ -423,6 +427,8 @@ def sample_numeric_filter(attribute: str, attribute_sr: pd.Series, val_set: bool
     for less_key in ["less", "leq", None]:
         for greater_key in ["greater", "geq", None]:
             # Get a valid range
+            if less_key is None and greater_key is None:
+                continue
             test_filter = get_range_key(greater_key, less_key, attribute_sr.min(),
                                         attribute_sr.max())
             if val_set:
@@ -634,14 +640,15 @@ if __name__ == "__main__":
                                 impute_strategy='previous',
                                 task='DECOMP')
     # test_demographic_filter("DECOMP", "discretized", {"DECOMP": reader}, {})
-    # test_demographic_split("DECOMP", "discretized", {"DECOMP": reader}, {})
+    # test_demo_split("DECOMP", "discretized", {"DECOMP": reader}, {})
+    # test_demo_and_ratio_split("DECOMP", "discretized", {"DECOMP": reader}, {})
+
     # for _ in range(10):
     #     test_demo_and_ratio_split("DECOMP", "discretized", {"DECOMP": reader}, {})
-    test_train_size("DECOMP", "discretized", {"DECOMP": reader}, {})
+    # test_train_size("DECOMP", "discretized", {"DECOMP": reader}, {})
 
     discretized_readers = dict()
     engineered_readers = dict()
-    exit()
     if TEMP_DIR.is_dir():
         shutil.rmtree(TEMP_DIR)
     for task_name in TASK_NAMES:
@@ -661,5 +668,11 @@ if __name__ == "__main__":
                                     task=task_name)
         engineered_readers[task_name] = reader
         for processing_style in ["discretized", "engineered"]:
+            test_demographic_filter(task_name, processing_style, discretized_readers,
+                                    engineered_readers)
+            test_demo_split(task_name, processing_style, discretized_readers, engineered_readers)
+            test_demo_and_ratio_split(task_name, processing_style, discretized_readers,
+                                      engineered_readers)
+            test_train_size(task_name, processing_style, discretized_readers, engineered_readers)
             test_ratio_split(task_name, processing_style, discretized_readers, engineered_readers)
     pass

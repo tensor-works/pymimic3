@@ -205,7 +205,7 @@ def iterative_processing(reader: ExtractedSetReader,
                     f"Processed stays: {n_processed_stays}\n"
                     f"Processed samples: {n_processed_samples}\n"
                     f"Skipped subjects: {empty_subjects}",
-                    flush_block=(True and not int(os.getenv("DEBUG"))))
+                    flush_block=(True and not int(os.getenv("DEBUG", 0))))
             except StopIteration as e:
                 tracker.is_finished = True
                 info_io(f"Finalized for task {task} in directory:\n{str(storage_path)}")

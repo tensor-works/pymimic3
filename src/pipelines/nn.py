@@ -1,12 +1,11 @@
 import pandas as pd
 import datasets
 from pathlib import Path
-from preprocessing.normalizer import Normalizer
+from preprocessing.scalers import MIMICStandardScaler
 from managers import HistoryManager
 from preprocessing.discretizers import Discretizer
 from utils.IO import *
 from pipelines import AbstractMIMICPipeline
-from generators.nn import MIMICBatchGenerator, BatchReader
 from pathlib import Path
 import datasets
 import numpy as np
@@ -18,16 +17,10 @@ from sklearn import metrics
 from metrics import CustomCategoricalMSE
 from utils.IO import *
 from utils import make_prediction_vector
-from pathos.multiprocessing import cpu_count, Pool
 from preprocessing.preprocessors import MIMICPreprocessor
-from datasets.readers import ProcessedSetReader
-from visualization import make_history_plot
-from trackers import PreprocessingTracker as ProgressTracker
-from utils import load_json
 from model.callbacks import HistoryCheckpoint
 from managers import CheckpointManager
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
-from generators.nn import MIMICBatchGenerator, BatchReader
 
 
 class MIMICPipeline(AbstractMIMICPipeline):
@@ -121,7 +114,7 @@ class MIMICPipeline(AbstractMIMICPipeline):
         normalizer_file = Path(self.directories["normalizer_path"],
                                f"normalizer_{self.task}_acorn-a.obj")
 
-        self.normalizer = Normalizer(normalizer_file)
+        self.normalizer = MIMICStandardScaler(normalizer_file)
         self.reader_flag = reader is not None  # affects init functions
 
         if self.reader_flag:
@@ -165,9 +158,8 @@ class MIMICPipeline(AbstractMIMICPipeline):
 
         if self.custom_objects:
             self.compiler_config = {
-                key:
-                (self.custom_objects[value] if value in list(self.custom_objects.keys()) else value)
-                for key, value in self.compiler_config.items()
+                key: (self.custom_objects[value] if value in list(self.custom_objects.keys()) else
+                      value) for key, value in self.compiler_config.items()
             }
             self.compiler_config["metrics"] = [
                 self.custom_objects[value] if value in list(self.custom_objects.keys()) else value
@@ -267,8 +259,9 @@ class MIMICPipeline(AbstractMIMICPipeline):
         """
         self.init_generator_arguments()
         self.generators = {
-            set_name: MIMICBatchGenerator(X_dataset[set_name], y_dataset[set_name],
-                                          **self.generator_kwargs) for set_name in X_dataset.keys()
+            set_name:
+                MIMICBatchGenerator(X_dataset[set_name], y_dataset[set_name],
+                                    **self.generator_kwargs) for set_name in X_dataset.keys()
         }
 
         return self.generators
@@ -295,7 +288,7 @@ class MIMICPipeline(AbstractMIMICPipeline):
         """
         self._init_batch_reader_arguments()
         self.batch_reader_kwargs.update(kwargs)
-        return BatchReader(reader, **self.batch_reader_kwargs)
+        return IterativeGenerator(reader, **self.batch_reader_kwargs)
 
     @dispatch(object)
     def predict_proba(self, generator, return_labels=False):

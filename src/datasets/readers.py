@@ -447,6 +447,10 @@ class ProcessedSetReader(AbstractReader):
                 "X": np.load,
                 "y": np.load,
                 "t": np.load
+            },
+            "h5": {
+                "X": pd.read_hdf,
+                "y": pd.read_hdf
             }
         }
         super().__init__(root_path, subject_ids)
@@ -526,7 +530,7 @@ class ProcessedSetReader(AbstractReader):
 
         def _extract_number(string: str) -> int:
             stripper = f"abcdefghijklmnopqrstuvwxyzABZDEFGHIJKLMNOPQRSTUVWXYZ."
-            return int(string.strip(stripper).strip("_"))
+            return int(string.replace(".h5", "").replace(".csv", "").strip(stripper).strip("_"))
 
         def _convert_file_data(X):
             if data_type is None:

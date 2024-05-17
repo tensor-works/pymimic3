@@ -15,7 +15,7 @@ from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
 import pandas as pd
 from managers import HistoryManager
 from preprocessing.discretizers import Discretizer
-from preprocessing.normalizer import Normalizer
+from preprocessing.scalers import MIMICStandardScaler
 from preprocessing.imputers import BatchImputer
 from utils.IO import *
 from pipelines import AbstractMIMICPipeline
@@ -315,7 +315,7 @@ class MIMICPipeline(AbstractMIMICPipeline):
         normalizer_file.parent.mkdir(parents=True, exist_ok=True)
         imputer_file = Path(self.directories["model_path"], "objects",
                             f"imputer_{self.task}_acorn-a.obj")
-        self.normalizer = Normalizer(normalizer_file)
+        self.normalizer = MIMICStandardScaler(normalizer_file)
         self.imputer = BatchImputer(missing_values=np.nan,
                                     strategy='mean',
                                     verbose=0,

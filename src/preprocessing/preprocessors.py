@@ -18,30 +18,10 @@ from datasets.trackers import PreprocessingTracker
 from utils import dict_subset
 from utils.IO import *
 from settings import *
+from . import AbstractProcessor
 
 
-class AbstractPreprocessor():
-    """_summary_
-    """
-
-    def __init__(self) -> None:
-        """_summary_
-
-        Raises:
-            NotImplementedError: _description_
-        """
-        raise NotImplementedError
-
-    def transform(self) -> None:
-        """_summary_
-
-        Raises:
-            NotImplementedError: _description_
-        """
-        raise NotImplementedError
-
-
-class MIMICPreprocessor(AbstractPreprocessor):
+class MIMICPreprocessor(AbstractProcessor):
     """_summary_
     """
 
@@ -84,10 +64,6 @@ class MIMICPreprocessor(AbstractPreprocessor):
         self._lock = Manager().Lock()
         self._phenotypes_yaml = phenotypes_yaml
         self._verbose = verbose
-
-    @property
-    def tracker(self) -> PreprocessingTracker:
-        return self._tracker
 
     @property
     def subjects(self) -> list:
@@ -258,7 +234,7 @@ class MIMICPreprocessor(AbstractPreprocessor):
 
         return self._X, self._y
 
-    def save_data(self, subjects: list = None):
+    def save_data(self, subjects: list = None) -> None:
         """_summary_
 
         Args:

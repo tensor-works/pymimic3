@@ -11,26 +11,5 @@
   "yapf.args": [
     "--style",
     "{based_on_style: google, COLUMN_LIMIT: 100, SPLIT_BEFORE_BITWISE_OPERATOR: true}"
-  ],
-  "terminal.integrated.env.linux": {
-    "WORKINGDIR": "${workspaceRoot}",
-    "CONFIG": "${workspaceRoot}/etc",
-    "MODEL": "${workspaceRoot}/models",
-    "TESTS": "${workspaceRoot}/tests",
-    "PYTHONPATH": "${env:PYTHONPATH}:${workspaceRoot}/src",
-  },
-  "terminal.integrated.env.windows": {
-    "WORKINGDIR": "${workspaceRoot}",
-    "CONFIG": "${workspaceRoot}\\etc",
-    "MODEL": "${workspaceRoot}\\models",
-    "TESTS": "${workspaceRoot}\\tests",
-    "PYTHONPATH": "${env:PYTHONPATH};${workspaceRoot}\\src",
-  },
-  "terminal.integrated.env.osx": {
-    "WORKINGDIR": "${workspaceRoot}",
-    "CONFIG": "${workspaceRoot}/etc",
-    "MODEL": "${workspaceRoot}/models",
-    "TESTS": "${workspaceRoot}/tests",
-    "PYTHONPATH": "${env:PYTHONPATH}:${workspaceRoot}/src",
-  }
+  ]
 }

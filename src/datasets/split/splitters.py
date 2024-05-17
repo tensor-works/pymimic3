@@ -11,6 +11,7 @@ from datasets.trackers import DataSplitTracker, PreprocessingTracker
 from pathos.multiprocessing import Pool, cpu_count
 from utils import dict_subset
 from collections import OrderedDict
+from itertools import chain
 
 
 class AbstractSplitter(object):
@@ -52,15 +53,12 @@ class AbstractSplitter(object):
         if test_size and "train" in subjects:
             target_ratios["train"] = 1 - test_size - val_size
 
-        ratio_df = self._create_ratio_df(subjects, sample_counts)
+        ratio_df = self._create_ratio_df(list(chain.from_iterable(subjects.values())),
+                                         sample_counts)
 
-        # if len(target_ratios) < 2:
-        #     return subjects, ratios
         processed_split_names = list()
-        full_length = ratio_df["ratio"].sum()
         input_ratios = {
-            set_name:
-            ratio_df[ratio_df["participant"].isin(split_subject)]["ratio"].sum() / full_length
+            set_name: ratio_df[ratio_df["participant"].isin(split_subject)]["ratio"].sum()
             for set_name, split_subject in subjects.items()
         }
 
@@ -80,29 +78,47 @@ class AbstractSplitter(object):
 
         # Length once reduced
         new_length = base_len * (
-            1 + sum([target_ratios[name] for name in target_to_input_ratios if name != set_name]) /
-            target_ratios[base])
-        ratio_df["participant"] = ratio_df["participant"] * full_length / new_length
+            1 + sum([target_ratios[name] for name in target_to_input_ratios]) / target_ratios[base])
+        ratio_df["ratio"] *= 1 / new_length
 
         for set_name in target_to_input_ratios:
             if not (1 - target_ratios[set_name]):
                 continue
 
-            # Factor by which to reduce
-            reduction_factor = target_ratios[set_name] * full_length / (
-                (1 - target_ratios[set_name]) * len(subjects[set_name]))
-            assert reduction_factor <= 1, "Invalid reduction factor"
-            self._subjects_for_ratio(ratio_df[ratio_df["participant"].isin(subjects[set_name])],
-                                     reduction_factor * target_ratios[set_name])
+            subjects[set_name], _ = self._subjects_for_ratio(
+                ratio_df[ratio_df["participant"].isin(subjects[set_name])], target_ratios[set_name])
 
-            # n_samples = int(np.round(reduction_factor * len(subjects[set_name])))
-            # subjects[set_name] = random.sample(subjects[set_name], k=n_samples)
-
-            sum_lenghts = sum([len(subjects[name]) for name in subjects])
-            real_ratios = {set_name: len(subjects[set_name]) / sum_lenghts for set_name in subjects}
             processed_split_names.append(set_name)
 
+        real_ratios = {
+            set_name: ratio_df[ratio_df["participant"].isin(split_subject)]["ratio"].sum()
+            for set_name, split_subject in subjects.items()
+        }
         return subjects, real_ratios
+
+    def _check_settings(self, settings, parent_key='', set_name=None):
+        """
+        Recursively checks if any setting in a nested dictionary is empty.
+        Raises ValueError if an empty setting is found.
+
+        :param settings: dict, the settings dictionary to check
+        :param parent_key: str, used for recursive tracking of keys
+        """
+        for key, value in settings.items():
+            # Construct the full key path for better error messages
+            full_key = f"{parent_key}.{key}" if parent_key else key
+
+            # Check if the value is a dictionary and if so, recurse into it
+            if isinstance(value, dict) and value:
+                self._check_settings(value, full_key)
+            else:
+                # Check if the value is considered empty (covers empty lists, None, empty strings, etc.)
+                if not value:  # This checks for empty lists, None, empty strings, and other "falsy" values
+                    error_msg = ""
+                    if set_name:
+                        error_msg += f"For set '{set_name}': "
+                    error_msg += f"{full_key} setting is empty"
+                    raise ValueError(error_msg)
 
     def _split_by_demographics(self, subject_ids: List[int], source_path: Path,
                                demographic_split: dict):
@@ -112,6 +128,7 @@ class AbstractSplitter(object):
         # Set wise demographics config for test, val and train
         for set_name, setting in demographic_split.items():
             assert set_name in ["test", "val", "train"], "Invalid split attribute"
+            self._check_settings(setting, set_name=set_name)
             curr_subject_ids = self._get_demographics(set_name.capitalize(), source_path,
                                                       subject_ids, setting)
             return_ratios[set_name] = len(curr_subject_ids) / len(subject_ids)
@@ -192,6 +209,7 @@ class AbstractSplitter(object):
                           invert=False):
         if source_path is None or settings is None:
             return subject_ids
+        self._check_settings(settings)
         subject_info_df = pd.read_csv(Path(source_path, "subject_info.csv"))
         subject_info_df = subject_info_df[subject_info_df["SUBJECT_ID"].isin(subject_ids)]
 
@@ -378,6 +396,19 @@ class AbstractSplitter(object):
 
         return best_subjects, best_size
 
+    def _split_val_from_train(self, val_size: float, split_dictionary: dict, ratios: dict,
+                              split_tracker: DataSplitTracker):
+        adj_val_size = val_size / (val_size + ratios["train"])
+        sub_split_dictionary, sub_ratios = self._split_by_ratio(
+            subject_ids=split_dictionary["train"],
+            sample_counts=split_tracker.subjects,
+            val_size=adj_val_size)
+        split_dictionary["val"] = sub_split_dictionary["val"]
+        split_dictionary["train"] = sub_split_dictionary["train"]
+        ratios["val"] = sub_ratios["val"] * (val_size + ratios["train"])
+        ratios["train"] = sub_ratios["train"] * (val_size + ratios["train"])
+        return split_dictionary, ratios
+
 
 class ReaderSplitter(AbstractSplitter):
 
@@ -386,7 +417,6 @@ class ReaderSplitter(AbstractSplitter):
                      test_size: float = 0.0,
                      val_size: float = 0.0,
                      train_size: int = None,
-                     by_stay: bool = False,
                      demographic_split: dict = None,
                      demographic_filter: dict = None,
                      storage_path: Path = None):
@@ -436,11 +466,23 @@ class ReaderSplitter(AbstractSplitter):
                 subject_ids=subject_ids,
                 source_path=reader.root_path,
                 demographic_split=demographic_split)
+
             # Enforce ratio
             if test_size or val_size:
-                split_dictionary, ratios = self._reduce_by_ratio(subjects=split_dictionary,
-                                                                 test_size=test_size,
-                                                                 val_size=val_size)
+                split_dictionary, ratios = self._reduce_by_ratio(
+                    subjects=split_dictionary,
+                    sample_counts=split_tracker.subjects,
+                    test_size=test_size,
+                    val_size=(val_size if "val" in split_dictionary else 0))
+
+            if train_size is not None and val_size and not "val" in split_dictionary:
+                # In this case we split the val set from the train set
+                split_dictionary, ratios = self._split_val_from_train(
+                    val_size=val_size,
+                    split_dictionary=split_dictionary,
+                    ratios=ratios,
+                    split_tracker=split_tracker)
+
             # Update tracker
             split_tracker.split = split_dictionary
             split_tracker.ratios = ratios
@@ -451,19 +493,17 @@ class ReaderSplitter(AbstractSplitter):
                                                             test_size=test_size,
                                                             val_size=val_size)
             if train_size is not None:
-                if by_stay:
-                    print("Normalizing by stay")
-                    ...
+                # Reduce train size if specified
+                if train_size > len(subject_ids):
+                    warn_io(f"Train size {train_size} is larger than the number of subjects")
                 else:
-                    if train_size > len(subject_ids):
-                        warn_io(f"Train size {train_size} is larger than the number of subjects")
-                    else:
-                        split_dictionary["train"] = random.sample(split_dictionary["train"],
-                                                                  train_size)
+                    split_dictionary["train"] = random.sample(split_dictionary["train"], train_size)
 
-                split_dictionary, ratios = self._reduce_by_ratio(subjects=split_dictionary,
-                                                                 test_size=test_size,
-                                                                 val_size=val_size)
+                split_dictionary, ratios = self._reduce_by_ratio(
+                    subjects=split_dictionary,
+                    sample_counts=split_tracker.subjects,
+                    test_size=test_size,
+                    val_size=val_size)
             # Update tracker
             split_tracker.split = split_dictionary
             split_tracker.ratios = ratios

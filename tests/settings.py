@@ -1,6 +1,10 @@
 import json
 import os
+from dotenv import load_dotenv
 from pathlib import Path
+from utils.IO import *
+
+load_dotenv(verbose=False)
 
 __all__ = [
     'TEST_SETTINGS', 'SEMITEMP_DIR', 'TEMP_DIR', 'DEVTEMP_DIR', 'TEST_DATA_DIR', 'TEST_DATA_DEMO',

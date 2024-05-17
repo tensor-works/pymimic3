@@ -38,6 +38,7 @@ class LSTM(Model):
 
         # Input layers and masking
         input = layers.Input(shape=(None, input_dim), name='x')
+
         x = layers.Masking()(input)
 
         # TODO: compare bidirectional runs to one directiona

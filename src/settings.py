@@ -2,6 +2,10 @@ import json
 import os
 import pandas as pd
 from pathlib import Path
+from dotenv import load_dotenv
+from utils.IO import *
+
+load_dotenv(verbose=False)
 
 __all__ = [
     'TASK_NAMES', 'DATASET_SETTINGS', 'DECOMP_SETTINGS', 'LOS_SETTINGS', 'PHENOT_SETTINGS',
