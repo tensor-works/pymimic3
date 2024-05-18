@@ -9,6 +9,7 @@ from collections import defaultdict
 from pathlib import Path
 from tensorflow.keras.utils import Progbar
 from utils.IO import *
+from .mappings import *
 
 
 class LSTMNetwork(nn.Module):
@@ -71,6 +72,16 @@ class LSTMNetwork(nn.Module):
 
         self.dropout = nn.Dropout(dropout_rate)
         self.output_layer = nn.Linear(input_size, self.num_classes)
+
+    @property
+    def optimizer(self):
+        if hasattr(self, "_optimizer"):
+            return self._optimizer
+
+    @property
+    def loss(self):
+        if hasattr(self, "_loss"):
+            return self._loss
 
     def save(self, epoch):
         """_summary_
@@ -135,13 +146,27 @@ class LSTMNetwork(nn.Module):
         return x
 
     def compile(self, optimizer=None, loss=None, class_weight=None):
-        if optimizer is None:
+        if isinstance(optimizer, str):
+            if optimizer in optimizer_mapping:
+                self._optimizer = optimizer_mapping[optimizer](self.parameters(), lr=0.001)
+            else:
+                raise ValueError(f"Optimizer {optimizer} not supported."
+                                 f"Supported optimizers are {optimizer_mapping.keys()}")
+        elif optimizer is None:
             self._optimizer = optim.Adam(self.parameters(), lr=0.001)
         else:
             self._optimizer = optimizer
-        if loss is None:
+
+        if isinstance(loss, str):
+            if loss in loss_mapping:
+                self._loss = loss_mapping[loss](weight=class_weight)
+            else:
+                raise ValueError(f"Loss {loss} not supported."
+                                 f"Supported losses are {loss_mapping.keys()}")
+        elif loss is None:
             self._loss = nn.CrossEntropyLoss(weight=class_weight)
-        self._loss = loss
+        else:
+            self._loss = loss
         self._device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.to(self._device)
 
@@ -240,7 +265,11 @@ class LSTMNetwork(nn.Module):
             restore_best_weights: bool = True,
             sample_weights: dict = None,
             val_frequency=1,
-            val_generator=None):
+            val_generator=None,
+            model_path: Path = None):
+        if model_path is not None:
+            self._model_path = model_path
+            self._model_path.mkdir(parents=True, exist_ok=True)
         if patience is None:
             patience = epochs
         if val_generator is None:
@@ -287,8 +316,7 @@ class LSTMNetwork(nn.Module):
             if self._patience_counter >= patience:
                 if restore_best_weights:
                     self.load_state_dict(
-                        torch.load(Path(self._model_path,
-                                        f"cp-{self._history['best_epoch']}.ckpt")))
+                        torch.load(Path(self._model_path, f"cp-{best_epoch:04}.ckpt")))
                 return True
 
         return False

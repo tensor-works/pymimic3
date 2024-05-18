@@ -2,7 +2,7 @@ import shelve
 import pandas as pd
 from pathlib import Path
 from utils.IO import *
-from tests.utils.general import assert_dataframe_equals
+from tests.pytest_utils.general import assert_dataframe_equals
 from datasets.readers import ProcessedSetReader
 from tests.settings import *
 
@@ -17,7 +17,8 @@ def assert_reader_equals(reader: ProcessedSetReader, test_data_dir: Path):
     assert reader.subject_ids, "The reader subjects are empty! Extraction must have failed."
     subject_count = 0
     stay_count = 0
-    tests_io(f"Stays frames compared: {stay_count}\n" f"Total subjects checked: {subject_count}")
+    tests_io(f"Stays frames compared: {stay_count}\n"
+             f"Total subjects checked: {subject_count}")
     for subject_id in reader.subject_ids:
         X_stays, y_stays = reader.read_sample(subject_id, read_ids=True).values()
         subject_count += 1
@@ -38,7 +39,8 @@ def assert_dataset_equals(X: dict, y: dict, generated_dir: Path, test_data_dir: 
     assert len(X) and len(y), "The reader subjects are empty! Extraction must have failed."
     subject_count = 0
     stay_count = 0
-    tests_io(f"Stays frames compared: {stay_count}\n" f"Total subjects checked: {subject_count}")
+    tests_io(f"Stays frames compared: {stay_count}\n"
+             f"Total subjects checked: {subject_count}")
     for subject_id in X:
         X_stays, y_stays = X[subject_id], y[subject_id]
         subject_count += 1

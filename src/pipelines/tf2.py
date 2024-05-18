@@ -1,5 +1,6 @@
-from pathlib import Path
 import datasets
+import re
+from pathlib import Path
 from models.callbacks import HistoryCheckpoint
 from generators.tf2 import TFGenerator
 from preprocessing.scalers import AbstractScaler
@@ -16,13 +17,6 @@ class TFPipeline(AbstractPipeline):
     def _create_generator(self, reader: ProcessedSetReader, scaler: AbstractScaler,
                           **generator_options):
         return TFGenerator(reader=reader, scaler=scaler, **generator_options)
-
-    def _init_model(self, model, model_options, compiler_options):
-        if isinstance(model, type):
-            self._model = model(**model_options)
-
-        if model.optimizer is None:
-            self._model.compile(**compiler_options)
 
     def _init_callbacks(self,
                         patience: int = None,
@@ -52,17 +46,9 @@ class TFPipeline(AbstractPipeline):
 
         self._manager = CheckpointManager(str(self._result_path), epochs, custom_objects={})
 
-    def _init_result_path(self, result_name: str, result_path: Path):
-        if result_path is not None:
-            self._result_path = Path(result_path, result_name)
-        else:
-            self._result_path = Path(self._storage_path, "results", result_name)
-        self._result_path.mkdir(parents=True, exist_ok=True)
-
     def fit(self,
-            result_name: str,
-            result_path: Path = None,
-            epochs: int = None,
+            epochs: int,
+            result_name: str = None,
             patience: int = None,
             restore_best_weights=True,
             save_weights_only: bool = False,
@@ -70,9 +56,11 @@ class TFPipeline(AbstractPipeline):
             sample_weight: dict = None,
             save_best_only: bool = True,
             callbacks: list = [],
-            validation_freq: int = 1):
+            validation_freq: int = 1,
+            restore_last_run: bool = False):
 
-        self._init_result_path(result_name, result_path)
+        self._init_result_path(result_name, restore_last_run)
+        info_io(f"Training model in directory\n{self._result_path}")
         self._init_managers(epochs)
         self._init_callbacks(patience=patience,
                              restore_best_weights=restore_best_weights,
@@ -131,4 +119,28 @@ if __name__ == "__main__":
                       generator_options={
                           "batch_size": 1,
                           "shuffle": True
-                      }).fit("result1", epochs=10, save_best_only=False)
+                      }).fit(epochs=10, save_best_only=False)
+
+    pipe = TFPipeline(storage_path=Path(TEMP_DIR, "tf_pipeline"),
+                      reader=reader,
+                      model=model,
+                      compile_options={
+                          "optimizer": "adam",
+                          "loss": "binary_crossentropy"
+                      },
+                      generator_options={
+                          "batch_size": 1,
+                          "shuffle": True
+                      }).fit(epochs=10, save_best_only=False)
+
+    pipe = TFPipeline(storage_path=Path(TEMP_DIR, "tf_pipeline"),
+                      reader=reader,
+                      model=model,
+                      compile_options={
+                          "optimizer": "adam",
+                          "loss": "binary_crossentropy"
+                      },
+                      generator_options={
+                          "batch_size": 1,
+                          "shuffle": True
+                      }).fit(epochs=20, save_best_only=False, restore_last_run=True)

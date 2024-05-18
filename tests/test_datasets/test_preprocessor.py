@@ -5,10 +5,10 @@ import pytest
 from pathlib import Path
 from datasets.readers import ExtractedSetReader
 from utils.IO import *
-from tests.utils import copy_dataset
+from tests.pytest_utils import copy_dataset
 from tests.decorators import repeat
 from tests.settings import *
-from tests.utils.preprocessing import assert_reader_equals, assert_dataset_equals
+from tests.pytest_utils.preprocessing import assert_reader_equals, assert_dataset_equals
 
 kwargs = {
     "IHM": {

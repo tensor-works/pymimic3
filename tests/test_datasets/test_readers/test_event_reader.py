@@ -7,7 +7,7 @@ from pathlib import Path
 from datasets.trackers import ExtractionTracker
 from datasets.readers import EventReader
 from tests.settings import *
-from tests.utils.general import assert_dataframe_equals
+from tests.pytest_utils.general import assert_dataframe_equals
 from utils.IO import *
 
 DTYPES = DATASET_SETTINGS["subject_events"]["dtype"]

@@ -6,7 +6,7 @@ from datasets.readers import ExtractedSetReader
 from pathlib import Path
 from utils.IO import *
 from tests.settings import *
-from tests.utils.general import assert_dataframe_equals
+from tests.pytest_utils.general import assert_dataframe_equals
 
 top_level_files = ["diagnoses.csv", "icu_history.csv"]
 

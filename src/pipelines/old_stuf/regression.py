@@ -16,7 +16,7 @@ import pandas as pd
 from managers import HistoryManager
 from preprocessing.discretizers import Discretizer
 from preprocessing.scalers import MIMICStandardScaler
-from preprocessing.imputers import BatchImputer
+from preprocessing.imputers import PartialImputer
 from utils.IO import *
 from pipelines import AbstractMIMICPipeline
 from generators.regression import MIMICBatchReader
@@ -316,11 +316,11 @@ class MIMICPipeline(AbstractMIMICPipeline):
         imputer_file = Path(self.directories["model_path"], "objects",
                             f"imputer_{self.task}_acorn-a.obj")
         self.normalizer = MIMICStandardScaler(normalizer_file)
-        self.imputer = BatchImputer(missing_values=np.nan,
-                                    strategy='mean',
-                                    verbose=0,
-                                    copy=True,
-                                    storage_path=imputer_file)
+        self.imputer = PartialImputer(missing_values=np.nan,
+                                      strategy='mean',
+                                      verbose=0,
+                                      copy=True,
+                                      storage_path=imputer_file)
 
         if self.reader_flag:
             if self.generator_flag:

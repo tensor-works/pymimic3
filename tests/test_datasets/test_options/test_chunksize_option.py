@@ -9,9 +9,9 @@ from typing import Dict
 from pathlib import Path
 from utils.IO import *
 from tests.settings import *
-from tests.utils.general import assert_dataframe_equals
-from tests.utils.preprocessing import assert_reader_equals
-from tests.utils.feature_engineering import extract_test_ids, concatenate_dataset
+from tests.pytest_utils.general import assert_dataframe_equals
+from tests.pytest_utils.preprocessing import assert_reader_equals
+from tests.pytest_utils.feature_engineering import extract_test_ids, concatenate_dataset
 
 from datasets.readers import ExtractedSetReader, ProcessedSetReader
 '''

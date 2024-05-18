@@ -2,7 +2,6 @@ import json
 import os
 from dotenv import load_dotenv
 from pathlib import Path
-from utils.IO import *
 
 load_dotenv(verbose=False)
 

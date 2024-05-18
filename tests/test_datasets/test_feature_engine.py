@@ -4,10 +4,10 @@ import pandas as pd
 from pathlib import Path
 from utils.IO import *
 from tests.settings import *
-from tests.utils import copy_dataset
-from tests.utils.general import assert_dataframe_equals
+from tests.pytest_utils import copy_dataset
+from tests.pytest_utils.general import assert_dataframe_equals
 from tests.decorators import repeat
-from tests.utils.feature_engineering import extract_test_ids, concatenate_dataset
+from tests.pytest_utils.feature_engineering import extract_test_ids, concatenate_dataset
 
 compare_mode_map = {
     "IHM": "single_entry",

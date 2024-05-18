@@ -117,13 +117,18 @@ class DataSetWriter():
                 mode = "w"
                 header = True
             if file_type == "hdf5":
-                df.to_hdf(Path(path.parent, f"{path.stem}.h5"), key="data", mode=mode, index=index)
+                pd.DataFrame(df).to_hdf(Path(path.parent, f"{path.stem}.h5"),
+                                        key="data",
+                                        mode=mode,
+                                        index=index)
             elif file_type == "csv":
-                df.to_csv(Path(path.parent, f"{path.stem}.csv"),
-                          mode=mode,
-                          index=index,
-                          header=header)
+                pd.DataFrame(df).to_csv(Path(path.parent, f"{path.stem}.csv"),
+                                        mode=mode,
+                                        index=index,
+                                        header=header)
             elif file_type == "npy":
+                if isinstance(df, (pd.DataFrame, pd.Series)):
+                    df = df.to_numpy()
                 np.save(Path(path.parent, f"{path.stem}.npy"), df)
 
         if file_type in ["npy", "hdf5"] and exists_ok:
@@ -140,31 +145,25 @@ class DataSetWriter():
 
             if not subject_path.is_dir():
                 subject_path.mkdir(parents=True, exist_ok=True)
-
-            if isinstance(item, pd.DataFrame):
+            if isinstance(item, (pd.DataFrame, pd.Series, np.ndarray)):
                 if not len(item):
                     continue
-                csv_path = Path(subject_path, f"{filename}.csv")
+                csv_path = Path(subject_path, f"{filename}")
                 save_df(df=item,
                         path=csv_path,
                         index=index,
                         file_type=file_type,
                         exists_ok=exists_ok)
-            elif isinstance(item, (list, np.ndarray)):
-                np.save(Path(subject_path, f"{filename}.npy"), item)
             elif isinstance(item, dict):
                 for icustay_id, data in item.items():
-                    if isinstance(data, pd.DataFrame) or isinstance(data, pd.Series):
-                        if not len(data):
-                            continue
-                        csv_path = Path(subject_path, f"{filename}_{icustay_id}.csv")
-                        save_df(df=data,
-                                path=csv_path,
-                                index=index,
-                                file_type=file_type,
-                                exists_ok=exists_ok)
-                    elif isinstance(data, np.ndarray):
-                        np.save(Path(subject_path, f"{filename}_{icustay_id}.npy"), data)
+                    if not len(data):
+                        continue
+                    csv_path = Path(subject_path, f"{filename}_{icustay_id}")
+                    save_df(df=data,
+                            path=csv_path,
+                            index=index,
+                            file_type=file_type,
+                            exists_ok=exists_ok)
 
             # do not create empty or incomplete folders
             if not [folder for folder in subject_path.iterdir()] or delet_flag:

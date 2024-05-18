@@ -9,7 +9,7 @@ from pathlib import Path
 from datasets.readers import ProcessedSetReader
 from datasets.writers import DataSetWriter
 from preprocessing.discretizers import MIMICDiscretizer
-from tests.utils.general import assert_dataframe_equals
+from tests.pytest_utils.general import assert_dataframe_equals
 from utils.IO import *
 from tests.settings import *
 
@@ -43,7 +43,8 @@ def assert_strategy_equals(X_strategy: dict, test_data_dir: Path):
     subject_count = 0
     stay_count = 0
 
-    tests_io(f"Subjects tested: {subject_count}\n" f"Stays tested: {stay_count}")
+    tests_io(f"Subjects tested: {subject_count}\n"
+             f"Stays tested: {stay_count}")
 
     for test_file_path in test_data_dir.iterdir():
         test_df = pd.read_csv(test_file_path)

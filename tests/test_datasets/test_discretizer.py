@@ -7,9 +7,9 @@ from typing import Dict
 from pathlib import Path
 from datasets.readers import ProcessedSetReader
 from datasets.writers import DataSetWriter
-from tests.utils.discretization import assert_strategy_equals, prepare_processed_data
+from tests.pytest_utils.discretization import assert_strategy_equals, prepare_processed_data
 from utils.IO import *
-from tests.utils import copy_dataset
+from tests.pytest_utils import copy_dataset
 from tests.settings import *
 from tests.conftest import discretizer_listfiles
 

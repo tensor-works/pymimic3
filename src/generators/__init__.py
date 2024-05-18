@@ -46,6 +46,16 @@ class AbstractGenerator(object):
     def steps(self):
         return self._steps
 
+    def __getitem__(self, index=None):
+        X_batch, y_batch = list(), list()
+        for _ in range(self._batch_size):
+            X, y = next(self.generator)
+            X_batch.append(X)
+            y_batch.append(y)
+        X_batch = self._zeropad_samples(X_batch)
+        y_batch = np.array(y_batch)
+        return X_batch.astype(np.float32), y_batch.astype(np.float32)
+
     def _count_batches(self):
         """
         """
@@ -59,16 +69,6 @@ class AbstractGenerator(object):
     def __len__(self):
         'Denotes the number of batches per epoch'
         return self._steps
-
-    def __getitem__(self, index=None):
-        X_batch, y_batch = list(), list()
-        for _ in range(self._batch_size):
-            X, y = next(self.generator)
-            X_batch.append(X)
-            y_batch.append(y)
-        X_batch = self._zeropad_samples(X_batch)
-        y_batch = np.array(y_batch)
-        return X_batch.astype(np.float32), y_batch.astype(np.float32)
 
     def on_epoch_end(self):
         ...

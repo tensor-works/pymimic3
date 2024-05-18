@@ -1,6 +1,6 @@
 # Test the preprocessing.imputer class using the preprocessing_readers from conftest.py. You can find the imputer use case in preprocessing.discretizer and preprocessing.normalizer
 import pytest
-from preprocessing.imputers import BatchImputer
+from preprocessing.imputers import PartialImputer
 from tests.settings import *
 
 
@@ -9,7 +9,7 @@ def test_imputer_fit_dataset(preprocessing_readers, task_name):
     # Arrange
     reader = preprocessing_readers()
     data = reader.get_random()  # assuming the reader has a read method that returns data
-    imp = BatchImputer()  # replace with actual imputer initialization if different
+    imp = PartialImputer()  # replace with actual imputer initialization if different
 
     # Act
     imputed_data = imp.fit_transform(discretized_data)

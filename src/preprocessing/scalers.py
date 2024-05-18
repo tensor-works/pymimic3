@@ -8,16 +8,13 @@ Todo:
     - does the interpolate function need to be able to correct time series with no value?
     - Fix categorical data abuse
 """
-import os
 import numpy as np
-import pickle
-from typing import Dict
+import pandas as pd
+from typing import Union
 from sklearn.preprocessing import MinMaxScaler, StandardScaler, RobustScaler, MaxAbsScaler
 from utils.IO import *
-from tensorflow.keras.utils import Progbar
-from datasets.readers import ProcessedSetReader
 from pathlib import Path
-from abc import ABC, abstractmethod
+from preprocessing import AbstractScikitProcessor as AbstractScaler
 
 __all__ = [
     "AbstractScaler", "MIMICStandardScaler", "MIMICMinMaxScaler", "MIMICMaxAbsScaler",
@@ -25,117 +22,17 @@ __all__ = [
 ]
 
 
-class AbstractScaler(ABC):
-
-    @abstractmethod
-    def __init__(self, storage_path: Path):
-        """_summary_
-
-        Args:
-            storage_path (_type_): _description_
-        """
-        ...
-
-    @abstractmethod
-    def transform(self, X: np.ndarray):
-        ...
-
-    @abstractmethod
-    def fit(self, X: np.ndarray):
-        ...
-
-    @abstractmethod
-    def partial_fit(self, X: np.ndarray):
-        ...
-
-    def save(self, storage_path=None):
-        """_summary_
-        """
-        if storage_path is not None:
-            self._storage_path = Path(storage_path, "scaler.pkl")
-        if self._storage_path is None:
-            raise ValueError("No storage path provided!")
-        with open(self._storage_path, "wb") as save_file:
-            pickle.dump(obj=self.__dict__, file=save_file, protocol=2)
-
-    def load(self):
-        """_summary_
-
-        Returns:
-            _type_: _description_
-        """
-        if self._storage_path is not None:
-            if self._storage_path.is_file():
-                if os.path.getsize(self._storage_path) > 0:
-                    with open(self._storage_path, "rb") as load_file:
-                        load_params = pickle.load(load_file)
-                    for key, value in load_params.items():
-                        setattr(self, key, value)
-
-                    return 1
-        return 0
-
-    def fit_dataset(self, X):
-        """_summary_
-
-        Args:
-            discretizer (_type_): _description_
-            X (_type_): _description_
-        """
-        if self._verbose:
-            info_io(f"Fitting scaler to dataset of size {len(X)}")
-            progbar = Progbar(len(X), unit_name='step')
-        n_fitted = 0
-
-        for frame in X:
-            self.partial_fit(frame)
-            n_fitted += 1
-            if self._verbose:
-                progbar.update(n_fitted)
-
-        if self._storage_path:
-            self.save()
-
-        if self._verbose:
-            info_io(f"Done computing new normalizer.")
-        return self
-
-    def fit_reader(self, reader: ProcessedSetReader):
-        """_summary_
-
-        Args:
-            discretizer (_type_): _description_
-            reader (_type_): _description_
-        """
-        if self._verbose:
-            info_io(f"Fitting scaler to reader of size {len(reader.subject_ids)}")
-            progbar = Progbar(len(reader.subject_ids), unit_name='step')
-
-        n_fitted = 0
-
-        for subject_id in reader.subject_ids:
-            X_subjects, _ = reader.read_sample(subject_id).values()
-            for frame in X_subjects:
-                self.partial_fit(frame)
-            n_fitted += 1
-            if self._verbose:
-                progbar.update(n_fitted)
-        if self._storage_path is None:
-            self.save(reader.root_path)
-        else:
-            self.save()
-
-        if self._verbose:
-            info_io(f"Done computing new normalizer.\nSaved in location {self._storage_path}!")
-
-        return self
-
-
 class MIMICStandardScaler(StandardScaler, AbstractScaler):
     """
     """
 
-    def __init__(self, storage_path=None, copy=True, with_mean=True, with_std=True, verbose=True):
+    def __init__(self,
+                 storage_path=None,
+                 imputer=None,
+                 copy=True,
+                 with_mean=True,
+                 with_std=True,
+                 verbose=True):
         """_summary_
 
         Args:
@@ -144,23 +41,45 @@ class MIMICStandardScaler(StandardScaler, AbstractScaler):
             with_mean (bool, optional): _description_. Defaults to True.
             with_std (bool, optional): _description_. Defaults to True.
         """
-        self._verbose = verbose
         if storage_path is not None:
             self._storage_path = Path(storage_path, "scaler.pkl")
         else:
             self._storage_path = None
+        self._verbose = verbose
+        self._imputer = imputer
         super().__init__(copy=copy, with_mean=with_mean, with_std=with_std)
 
     @classmethod
     def _get_param_names(cls):
         return []
 
+    def transform(self, X: Union[np.ndarray, pd.DataFrame]) -> np.ndarray:
+        if hasattr(self, "_imputer") and self._imputer is not None:
+            X = self._imputer.transform(X)
+        return super().transform(X)
+
+    def fit(self,
+            X: Union[np.ndarray, pd.DataFrame],
+            y: Union[np.ndarray, pd.DataFrame] = None,
+            **fit_params):
+        if hasattr(self, "_imputer") and self._imputer is not None:
+            return self._imputer.transform(X)
+        return super().fit(X, y, **fit_params)
+
+    def fit_transform(self,
+                      X: Union[np.ndarray, pd.DataFrame],
+                      y: Union[np.ndarray, pd.DataFrame] = None,
+                      **fit_params) -> np.ndarray:
+        if hasattr(self, "_imputer") and self._imputer is not None:
+            return self._imputer.transform(X)
+        return super().fit_transform(X, y, **fit_params)
+
 
 class MIMICMinMaxScaler(MinMaxScaler, AbstractScaler):
     """
     """
 
-    def __init__(self, storage_path=None, verbose=True):
+    def __init__(self, storage_path=None, imputer=None, verbose=True):
         """_summary_
 
         Args:
@@ -172,32 +91,77 @@ class MIMICMinMaxScaler(MinMaxScaler, AbstractScaler):
         else:
             self._storage_path = None
         self._verbose = verbose
+        self._imputer = imputer
         super().__init__()
 
     @classmethod
     def _get_param_names(cls):
         return []
 
+    def transform(self, X: Union[np.ndarray, pd.DataFrame]) -> np.ndarray:
+        if hasattr(self, "_imputer") and self._imputer is not None:
+            X = self._imputer.transform(X)
+        return super().transform(X)
+
+    def fit(self,
+            X: Union[np.ndarray, pd.DataFrame],
+            y: Union[np.ndarray, pd.DataFrame] = None,
+            **fit_params):
+        if hasattr(self, "_imputer") and self._imputer is not None:
+            return self._imputer.transform(X)
+        return super().fit(X, y, **fit_params)
+
+    def fit_transform(self,
+                      X: Union[np.ndarray, pd.DataFrame],
+                      y: Union[np.ndarray, pd.DataFrame] = None,
+                      **fit_params) -> np.ndarray:
+        if hasattr(self, "_imputer") and self._imputer is not None:
+            return self._imputer.transform(X)
+        return super().fit_transform(X, y, **fit_params)
+
 
 class MIMICMaxAbsScaler(MaxAbsScaler, AbstractScaler):
 
-    def __init__(self, storage_path=None, verbose=True):
+    def __init__(self, storage_path=None, imputer=None, verbose=True):
         self._verbose = verbose
         if storage_path is not None:
             self._storage_path = Path(storage_path, "scaler.pkl")
         else:
             self._storage_path = None
+        self._imputer = imputer
         super().__init__()
 
     @classmethod
     def _get_param_names(cls):
         return []
+
+    def transform(self, X: Union[np.ndarray, pd.DataFrame]) -> np.ndarray:
+        if hasattr(self, "_imputer") and self._imputer is not None:
+            X = self._imputer.transform(X)
+        return super().transform(X)
+
+    def fit(self,
+            X: Union[np.ndarray, pd.DataFrame],
+            y: Union[np.ndarray, pd.DataFrame] = None,
+            **fit_params):
+        if hasattr(self, "_imputer") and self._imputer is not None:
+            return self._imputer.transform(X)
+        return super().fit(X, y, **fit_params)
+
+    def fit_transform(self,
+                      X: Union[np.ndarray, pd.DataFrame],
+                      y: Union[np.ndarray, pd.DataFrame] = None,
+                      **fit_params) -> np.ndarray:
+        if hasattr(self, "_imputer") and self._imputer is not None:
+            return self._imputer.transform(X)
+        return super().fit_transform(X, y, **fit_params)
 
 
 class MIMICRobustScaler(RobustScaler, AbstractScaler):
 
     def __init__(self,
                  storage_path=None,
+                 imputer=None,
                  with_centering=True,
                  with_scaling=True,
                  quantile_range=(25.0, 75.0),
@@ -208,6 +172,7 @@ class MIMICRobustScaler(RobustScaler, AbstractScaler):
             self._storage_path = Path(storage_path, "scaler.pkl")
         else:
             self._storage_path = None
+        self._imputer = imputer
         super().__init__(with_centering=with_centering,
                          with_scaling=with_scaling,
                          quantile_range=quantile_range,
@@ -216,3 +181,24 @@ class MIMICRobustScaler(RobustScaler, AbstractScaler):
     @classmethod
     def _get_param_names(cls):
         return []
+
+    def transform(self, X: Union[np.ndarray, pd.DataFrame]) -> np.ndarray:
+        if hasattr(self, "_imputer") and self._imputer is not None:
+            X = self._imputer.transform(X)
+        return super().transform(X)
+
+    def fit(self,
+            X: Union[np.ndarray, pd.DataFrame],
+            y: Union[np.ndarray, pd.DataFrame] = None,
+            **fit_params):
+        if hasattr(self, "_imputer") and self._imputer is not None:
+            return self._imputer.transform(X)
+        return super().fit(X, y, **fit_params)
+
+    def fit_transform(self,
+                      X: Union[np.ndarray, pd.DataFrame],
+                      y: Union[np.ndarray, pd.DataFrame] = None,
+                      **fit_params) -> np.ndarray:
+        if hasattr(self, "_imputer") and self._imputer is not None:
+            return self._imputer.transform(X)
+        return super().fit_transform(X, y, **fit_params)

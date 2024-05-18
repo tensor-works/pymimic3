@@ -140,7 +140,7 @@ class MIMICFeatureEngine(AbstractProcessor):
                 X_ss, ys, ts = self._engineer_stay(X_df, y_df)
                 X_ss, ys, ts = self._convert_feature_dtype(X_ss, ys, ts)
                 self._X_processed[subject_id][stay_id] = X_ss
-                self._y_processed[subject_id][stay_id] = np.squeeze(ys)
+                self._y_processed[subject_id][stay_id] = ys.reshape(-1)
                 self._t_processed[subject_id][stay_id] = ts
                 tracking_info[stay_id] = len(ys)
                 n_samples += len(ys)
@@ -230,7 +230,7 @@ class MIMICFeatureEngine(AbstractProcessor):
                 "t": dict_subset(self._t_processed, subject_ids)
             }
         with self._lock:
-            self._writer.write_bysubject(name_data_pairs)
+            self._writer.write_bysubject(name_data_pairs, file_type="hdf5")
 
         def create_df(data, file_name) -> pd.DataFrame:
             if file_name == "X":
@@ -305,7 +305,9 @@ class MIMICFeatureEngine(AbstractProcessor):
             if 'values' in self._impute_config[channel].keys():
                 replace_dict.update(self._impute_config[channel]['values'])
 
-        return X.replace(replace_dict).astype(float)
+        with pd.option_context('future.no_silent_downcasting', True):
+            X = X.replace(replace_dict).astype(float)
+        return X
 
     def _make_engineered_features(self, data):
         """_summary_

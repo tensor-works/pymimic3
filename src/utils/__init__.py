@@ -12,7 +12,7 @@ Todo:
 import json
 import numpy as np
 import pandas as pd
-from typing import Dict
+from typing import Dict, Union
 from multipledispatch import dispatch
 
 from utils.IO import *
@@ -65,6 +65,15 @@ def is_numerical(df: pd.DataFrame) -> bool:
 
 def is_colwise_numerical(df: pd.DataFrame) -> Dict[str, bool]:
     return {col: is_numerical(df[[col]]) for col in df.columns}
+
+
+def is_allnan(data: Union[pd.DataFrame, pd.Series, np.ndarray]):
+    if isinstance(data, (pd.DataFrame, pd.Series)):
+        return data.isna().all().all()
+    elif isinstance(data, np.ndarray):
+        return np.isnan(data).all()
+    else:
+        raise TypeError("Input must be a pandas DataFrame, Series, or numpy array.")
 
 
 def update_json(json_path, items: dict):
@@ -137,88 +146,6 @@ def is_iterable(obj):
         _type_: _description_
     """
     return hasattr(obj, '__iter__')
-
-
-@dispatch(pd.DataFrame, pd.DataFrame)
-def check_data(X_ts, y_ts):
-    return check_data_iterable(X_ts, y_ts)
-
-
-@dispatch(np.ndarray, np.ndarray)
-def check_data(X_ts, y_ts):
-    return check_data_iterable(X_ts, y_ts)
-
-
-@dispatch(list, list)
-def check_data(X_ts, y_ts):
-    return check_data_iterable(X_ts, y_ts)
-
-
-@dispatch(dict)
-def check_data(data):
-    X_ts, y_ts = data["X"], data["y"]
-    X_ts, y_ts = check_data_iterable(X_ts, y_ts)
-    return {"X": X_ts, "y": y_ts}
-
-
-def check_data_iterable(X_ts, y_ts):
-    if not len(X_ts) or not len(y_ts):
-        return None, None
-
-    def check_elements(check_iterable, adjust_iterable):
-
-        def length(element):
-            try:
-                return len(element)
-            except:
-                if isinstance(element, np.ndarray):
-                    return 1
-
-        indices = [idx for idx, element in enumerate(check_iterable) if length(element)]
-
-        def from_indices(iterable, indices):
-            return [element for idx, element in enumerate(iterable) if idx in indices]
-
-        checked_iterable = from_indices(check_iterable, indices)
-        adjusted_iterable = from_indices(adjust_iterable, indices)
-        return checked_iterable, adjusted_iterable
-
-    if is_iterable(X_ts[0]):
-        X_ts, y_ts = check_elements(X_ts, y_ts)
-
-    if not len(X_ts) or not len(y_ts):
-        return None, None
-
-    if is_iterable(y_ts[0]):
-        y_ts, X_ts = check_elements(y_ts, X_ts)
-
-    if not len(X_ts) or not len(y_ts):
-        return None, None
-
-    return X_ts, y_ts
-
-
-def check_nan(X_ts, y_ts, subjectfolder=None):
-
-    def check_df(df):
-        df = df.isna()
-        while not isinstance(df, bool):
-            df.any()
-
-        return df
-
-    def check(data_struct):
-        if is_iterable(data_struct[0]):
-            if isinstance(data_struct[0], pd.DataFrame):
-                if any([check_df(X) for X in data_struct]):
-                    print(subjectfolder)
-            elif isinstance(data_struct[0], np.ndarray):
-                if any([np.isnan(X).any() for X in data_struct]):
-                    print(subjectfolder)
-
-    check(X_ts)
-    check(y_ts)
-    return X_ts, y_ts
 
 
 def make_prediction_vector(model, generator, batches=20, bin_averages=None):

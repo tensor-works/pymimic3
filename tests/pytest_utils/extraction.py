@@ -2,7 +2,7 @@ import pandas as pd
 from typing import Dict
 from utils.IO import *
 from tests.settings import *
-from tests.utils.general import assert_dataframe_equals
+from tests.pytest_utils.general import assert_dataframe_equals
 
 
 def compare_extracted_datasets(generated_data: Dict[str, Dict[str, Dict[str, pd.DataFrame]]],

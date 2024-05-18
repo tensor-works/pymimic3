@@ -1,7 +1,7 @@
 import pytest
 import pandas as pd
 import numpy as np
-from tests.utils.general import assert_dataframe_equals
+from tests.pytest_utils.general import assert_dataframe_equals
 from copy import deepcopy
 
 
@@ -9,11 +9,13 @@ def generate_random_frame(n_rows, n_cols, numeric=False):
     # Generate random data of different types for the DataFrame
 
     data = {
-        f"col_{i}": np.where(
-            np.random.rand(n_rows) < 0.2,
-            np.nan,  # Inject NaNs
-            np.random.randint(0, 100, size=n_rows) if i % 3 == 0 else np.random.rand(n_rows) *
-            100 if i % 3 == 1 or numeric else np.random.choice(['A', 'B', 'C', 'D'], size=n_rows))
+        f"col_{i}":
+            np.where(
+                np.random.rand(n_rows) < 0.2,
+                np.nan,  # Inject NaNs
+                np.random.randint(0, 100, size=n_rows) if i % 3 == 0 else np.random.rand(n_rows) *
+                100 if i %
+                3 == 1 or numeric else np.random.choice(['A', 'B', 'C', 'D'], size=n_rows))
         for i in range(n_cols)
     }
 

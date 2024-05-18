@@ -1,6 +1,5 @@
 import json
 import os
-import pandas as pd
 from pathlib import Path
 from dotenv import load_dotenv
 from utils.IO import *

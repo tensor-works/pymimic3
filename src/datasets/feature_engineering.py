@@ -108,7 +108,7 @@ def iterative_fengineering(reader: ProcessedSetReader,
     n_engineered_stays = len(tracker.stay_ids)
     n_engineered_samples = tracker.samples
 
-    def engineer_subject(subject_id: str):
+    def engineer_subject(subject_id: int):
         """"""
 
         _, tracking_infos = engine_pr.transform_subject(subject_id)
