@@ -352,8 +352,8 @@ class AbstractSplitter(object):
 
             while current_size < target_size_pr:
                 current_to_rarget_diff = target_size_pr - current_size
-                remaining_pairs_df = remaining_pairs_df[
-                    remaining_pairs_df['ratio'] < current_to_rarget_diff]
+                remaining_pairs_df = remaining_pairs_df[remaining_pairs_df['ratio'] <
+                                                        current_to_rarget_diff]
 
                 if remaining_pairs_df.empty:
                     break
@@ -433,20 +433,12 @@ class ReaderSplitter(AbstractSplitter):
             "test": test_size,
             "val": val_size
         })
-        info_io(f"Splitting in directory: {reader.root_path}")
-        # Apply demographic filter
-        subject_ids = self._get_demographics(prefix="Demographic filter",
-                                             source_path=reader.root_path,
-                                             subject_ids=reader.subject_ids,
-                                             settings=demographic_filter)
-        # Get subject counts
-        preprocessing_tracker = PreprocessingTracker(Path(reader.root_path, "progress"),
-                                                     subject_ids=subject_ids)
-
         # Resotre split state
         storage_path = Path((storage_path \
                              if storage_path is not None \
                              else reader.root_path), "split")
+        # Get subject counts
+        preprocessing_tracker = PreprocessingTracker(Path(reader.root_path, "progress"))
 
         split_tracker = DataSplitTracker(storage_path,
                                          tracker=preprocessing_tracker,
@@ -454,10 +446,18 @@ class ReaderSplitter(AbstractSplitter):
                                          val_size=val_size,
                                          demographic_split=demographic_split,
                                          demographic_filter=demographic_filter)
-
         # Identical split settings
         if split_tracker.is_finished:
+            info_io(f"Restoring split from directory:\n{reader.root_path}")
+            self._print_ratio("Real", split_tracker.ratios)
             return SplitSetReader(reader.root_path, split_tracker.split)
+
+        info_io(f"Splitting in directory:\n{reader.root_path}")
+        # Apply demographic filter
+        subject_ids = self._get_demographics(prefix="Demographic filter",
+                                             source_path=reader.root_path,
+                                             subject_ids=reader.subject_ids,
+                                             settings=demographic_filter)
 
         # Split by demographics
         if demographic_split is not None and demographic_split:
@@ -598,8 +598,9 @@ class CompactSplitter(AbstractSplitter):
 
     def _compute_subject_counts(self, y_subjects: Dict[str, Dict[str, pd.DataFrame]]):
         subject_counts = {
-            subject_id: {stay_id: len(stay_data) for stay_id, stay_data in subject_data.items()
-                        } for subject_id, subject_data in y_subjects.items()
+            subject_id: {
+                stay_id: len(stay_data) for stay_id, stay_data in subject_data.items()
+            } for subject_id, subject_data in y_subjects.items()
         }
         for subject in subject_counts:
             subject_counts[subject]["total"] = sum(subject_counts[subject].values())

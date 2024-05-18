@@ -5,7 +5,7 @@ from tensorflow.keras import layers
 from tensorflow.keras.layers import Bidirectional
 
 
-class LSTM(Model):
+class LSTMNetwork(Model):
     """
     """
 
@@ -85,4 +85,4 @@ class LSTM(Model):
 
         x = layers.Dense(num_classes[task], activation=final_activation[task])(x)
 
-        super(LSTM, self).__init__(inputs=[input], outputs=[x])
+        super(LSTMNetwork, self).__init__(inputs=[input], outputs=[x])

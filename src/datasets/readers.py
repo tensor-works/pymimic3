@@ -750,8 +750,8 @@ class EventReader():
             events_df = self._csv_reader[csv_name].get_chunk()
 
             # If start index exceeds last occurence of any subject, stop reader
-            if self._lo_thread_done[
-                    csv_name] and events_df.index[0] >= self._last_occurrence[csv_name]:
+            if self._lo_thread_done[csv_name] and events_df.index[0] >= self._last_occurrence[
+                    csv_name]:
                 debug_io(
                     f"Reader for {csv_name} is done on last occurence at line {events_df.index[0]}."
                 )
@@ -918,6 +918,10 @@ class SplitSetReader(object):
     @property
     def split_names(self) -> list:
         return self._splits
+
+    @property
+    def root_path(self):
+        return self._root_path
 
     @property
     def train(self) -> ProcessedSetReader:

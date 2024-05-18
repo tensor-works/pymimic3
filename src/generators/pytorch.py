@@ -1,12 +1,11 @@
 import torch
-import numpy as np
 from preprocessing.scalers import AbstractScaler
 from datasets.readers import ProcessedSetReader
 from torch.utils.data import Dataset
 from tests.settings import *
 from utils.IO import *
-from . import BaseGenerator
 from torch.utils.data import DataLoader
+from . import AbstractGenerator
 
 
 class TorchGenerator(DataLoader):
@@ -68,7 +67,7 @@ class TorchGenerator(DataLoader):
         return padded_data
 
 
-class TorchDataset(BaseGenerator, Dataset):
+class TorchDataset(AbstractGenerator, Dataset):
 
     def __init__(self,
                  reader: ProcessedSetReader,

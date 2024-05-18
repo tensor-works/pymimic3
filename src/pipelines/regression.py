@@ -9,7 +9,7 @@ import pandas as pd
 from multipledispatch import dispatch
 from utils.IO import *
 from utils import make_prediction_vector
-from model.callbacks import HistoryCheckpoint
+from models.callbacks import HistoryCheckpoint
 from managers import ReducedCheckpointManager
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
 import pandas as pd

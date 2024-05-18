@@ -18,7 +18,7 @@ from metrics import CustomCategoricalMSE
 from utils.IO import *
 from utils import make_prediction_vector
 from preprocessing.preprocessors import MIMICPreprocessor
-from model.callbacks import HistoryCheckpoint
+from models.callbacks import HistoryCheckpoint
 from managers import CheckpointManager
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
 

@@ -72,7 +72,7 @@ class EventProducer(object):
                           out_q=self._out_q,
                           icu_history_df=self._icu_history_df,
                           lock=self._tracker._lock)
-                          # lock=multiprocess.Lock())
+            # lock=multiprocess.Lock())
         ]
 
         consumers[0].start()

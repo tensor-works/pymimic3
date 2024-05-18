@@ -3,7 +3,7 @@ import shutil
 from pathlib import Path
 from utils.IO import *
 from tests.settings import *
-from datasets.trackers.storable import storable
+from storable import storable
 
 
 @storable

@@ -361,7 +361,7 @@ def storable(cls):
         self._access_count = 0
 
         # Load or initialize progress
-        if Path(self._path.parent, "progress.dat").is_file():
+        if Path(self._path.parent, f"{self._path.name}.dat").is_file():
             self._progress = self._read()
             self._wrap_attributes()
         else:

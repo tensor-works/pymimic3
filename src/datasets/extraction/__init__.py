@@ -411,8 +411,8 @@ def get_processable_subjects(task: str, icu_history_df: pd.DataFrame):
             DATASET_SETTINGS[task]["sample_precision"]
         min_los /= 24
         icu_history_df = icu_history_df[icu_history_df["LOS"] >= min_los]
-        return icu_history_df[((icu_history_df["DISCHTIME"] - icu_history_df["ADMITTIME"]) >=
-                               pd.Timedelta(days=min_los))]["SUBJECT_ID"].unique()
+        return icu_history_df[((icu_history_df["DISCHTIME"] - icu_history_df["ADMITTIME"])
+                               >= pd.Timedelta(days=min_los))]["SUBJECT_ID"].unique()
     else:
         return icu_history_df["SUBJECT_ID"].unique()
 

@@ -1,7 +1,7 @@
 import datasets
 import pytest
 from generators.tf2 import TFGenerator
-from generators.torch import TorchGenerator
+from generators.pytorch import TorchGenerator
 from preprocessing.scalers import MinMaxScaler
 import numpy as np
 from utils.IO import *

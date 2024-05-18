@@ -1,6 +1,6 @@
 from pathlib import Path
 from utils.IO import *
-from .storable import storable
+from storable import storable
 
 
 @storable

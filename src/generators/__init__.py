@@ -22,7 +22,7 @@ from datasets.readers import ProcessedSetReader
 from tests.settings import *
 
 
-class BaseGenerator(object):
+class AbstractGenerator(object):
 
     def __init__(self,
                  reader: ProcessedSetReader,

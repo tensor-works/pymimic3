@@ -3,10 +3,10 @@ from datasets.readers import ProcessedSetReader
 from tensorflow.keras.utils import Sequence
 from tests.settings import *
 from utils.IO import *
-from . import BaseGenerator
+from . import AbstractGenerator
 
 
-class TFGenerator(BaseGenerator, Sequence):
+class TFGenerator(AbstractGenerator, Sequence):
 
     def __init__(self,
                  reader: ProcessedSetReader,

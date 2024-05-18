@@ -4,11 +4,11 @@ from pathlib import Path
 from utils import load_json, write_json
 from utils.IO import info_io, error_io
 from sklearn.linear_model import LogisticRegression, SGDClassifier
-from model.sklearn.standard.linear_models import StandardLogReg
+from models.sklearn.standard.linear_models import StandardLogReg
 from sklearn.ensemble import RandomForestClassifier
-from model.tf2.lstm import LSTM
-from model.tf2.logistic_regression import IncrementalLogReg as IncrementalLogRegTF2
-from model.sklearn.incremental.linear_models import IncrementalLogRegSKLearn
+from models.tf2.lstm import LSTMNetwork
+from models.tf2.logistic_regression import IncrementalLogReg as IncrementalLogRegTF2
+from models.sklearn.incremental.linear_models import IncrementalLogRegSKLearn
 from pipelines.nn import MIMICPipeline as MIMICNNPipeline
 from pipelines.regression import MIMICPipeline as MIMICRegPipeline
 from tensorflow.keras.metrics import AUC
@@ -256,7 +256,7 @@ class CaseHandler(AbstractCaseHandler):
         """_summary_
         """
         custom_objects = {"auc_2": AUC(curve='ROC'), "auc_3": AUC(curve='PR')}
-        neural_network_models = {"lstm": LSTM}
+        neural_network_models = {"lstm": LSTMNetwork}
 
         model = neural_network_models[model_type](**config["model_config"])
         config["data_config"].update({"preprocess": True})
