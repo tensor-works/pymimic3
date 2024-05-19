@@ -140,7 +140,7 @@ class MIMICFeatureEngine(AbstractProcessor):
                 X_ss, ys, ts = self._engineer_stay(X_df, y_df)
                 X_ss, ys, ts = self._convert_feature_dtype(X_ss, ys, ts)
                 self._X_processed[subject_id][stay_id] = X_ss
-                self._y_processed[subject_id][stay_id] = ys.reshape(-1)
+                self._y_processed[subject_id][stay_id] = np.atleast_2d(ys)
                 self._t_processed[subject_id][stay_id] = ts
                 tracking_info[stay_id] = len(ys)
                 n_samples += len(ys)

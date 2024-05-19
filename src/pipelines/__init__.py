@@ -1,4 +1,5 @@
 import re
+import datasets
 from typing import Union
 from pathlib import Path
 from generators.tf2 import TFGenerator
@@ -21,22 +22,23 @@ class AbstractPipeline(ABC):
         model_options: dict = {},
         scaler_options: dict = {},
         compile_options: dict = {},
-        data_split_options: dict = {},
+        split_options: dict = {},
         scaler: AbstractScaler = None,
         scaler_type: str = "minmax",
     ):
         self._storage_path = storage_path
         self._storage_path.mkdir(parents=True, exist_ok=True)
-        self._reader = reader
         self._model = model
         self._generator_options = generator_options
-        self._data_split_options = data_split_options
+        self._data_split_options = split_options
         self._split_names = ["train"]
 
-        self._scaler = self._init_scaler(scaler_type=scaler_type,
+        self._scaler = self._init_scaler(storage_path=storage_path,
+                                         scaler_type=scaler_type,
                                          scaler_options=scaler_options,
-                                         scaler=scaler,
-                                         reader=reader)
+                                         scaler=scaler)
+
+        self._reader = self._init_reader(data_split_options=split_options, reader=reader)
 
         self._init_generators(generator_options=generator_options,
                               scaler=self._scaler,
@@ -50,30 +52,43 @@ class AbstractPipeline(ABC):
         if hasattr(model, "optimizer") and model.optimizer is None:
             self._model.compile(**compiler_options)
 
+    def _init_reader(self, data_split_options: dict, reader: Union[ProcessedSetReader,
+                                                                   SplitSetReader]):
+        if isinstance(reader, ProcessedSetReader) and data_split_options:
+            return datasets.train_test_split(reader, **data_split_options)
+        return reader
+
     @abstractmethod
     def _create_generator(self, reader: ProcessedSetReader, scaler: AbstractScaler,
                           **generator_options):
         ...
 
-    def _init_scaler(self, scaler_type: str, scaler_options: dict, scaler: AbstractScaler,
-                     reader: Union[ProcessedSetReader, SplitSetReader]):
-        if scaler is not None:
-            self._scaler = scaler
-            return
-
+    def _init_scaler(self, storage_path: Path, scaler_type: str, scaler_options: dict,
+                     scaler: Union[AbstractScaler, type], reader: Union[ProcessedSetReader,
+                                                                        SplitSetReader]):
         if isinstance(reader, SplitSetReader):
             reader = reader.train
-        if not scaler_type in ["minmax", "standard"]:
+        if not scaler_type in ["minmax", "standard", "maxabs", "robust"]:
             raise ValueError(
                 f"Invalid scaler type: {scaler_type}. Must be either 'minmax' or 'standard'.")
-        if scaler_type == "minmax":
-            return MIMICMinMaxScaler(storage_path=self._storage_path, **scaler_options)
+
+        if scaler is not None and isinstance(scaler, AbstractScaler):
+            return scaler.fit_reader(reader)
+        elif scaler is not None and isinstance(scaler, type):
+            scaler = scaler(storage_path=storage_path, **scaler_options)
+            return scaler.fit_reader(reader)
+        elif scaler_type == "minmax":
+            scaler = MIMICMinMaxScaler(storage_path=storage_path, **scaler_options)
+            return scaler.fit_reader(reader)
         elif scaler_type == "standard":
-            return MIMICStandardScaler(storage_path=self._storage_path, **scaler_options)
+            scaler = MIMICStandardScaler(storage_path=storage_path, **scaler_options)
+            return scaler.fit_reader(reader)
         elif scaler_type == "maxabs":
-            return MIMICMaxAbsScaler(storage_path=self._storage_path, **scaler_options)
+            scaler = MIMICMaxAbsScaler(storage_path=storage_path, **scaler_options)
+            return scaler.fit_reader(reader)
         elif scaler_type == "robust":
-            return MIMICRobustScaler(storage_path=self._storage_path, **scaler_options)
+            scaler = MIMICRobustScaler(storage_path=storage_path, **scaler_options)
+            return scaler.fit_reader(reader)
 
     @staticmethod
     def _check_generator_sanity(set_name: str, batch_size: int, reader: ProcessedSetReader,

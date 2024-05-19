@@ -1,4 +1,5 @@
 import torch
+import pandas as pd
 import numpy as np
 from preprocessing.scalers import AbstractScaler
 from datasets.readers import ProcessedSetReader
@@ -69,3 +70,27 @@ class ScikitDataset(AbstractGenerator, Dataset):
         X, y = super().__getitem__(index)
         X = X.squeeze()
         return X, y
+
+    @staticmethod
+    def read_timeseries(X_frame, y_df: pd.DataFrame):
+        """
+        """
+        Xs = list()
+        ys = list()
+        ts = list()
+
+        for index in range(len(y_df)):
+
+            if index < 0 or index >= len(y_df):
+                raise ValueError(
+                    "Index must be from 0 (inclusive) to number of examples (exclusive).")
+
+            t = y_df.index[index]
+            y = y_df.iloc[index - 1, 0]
+            X = X_frame[index, :]
+
+            Xs.append(X)
+            ys.append(y)
+            ts.append(t)
+
+        return Xs, ys, ts

@@ -95,11 +95,12 @@ if __name__ == "__main__":
                                     start_at_zero=True,
                                     impute_strategy='previous',
                                     task=task_name)
-        # test_tf_generator(task_name, {task_name: reader})
-        # test_torch_generator(task_name, {task_name: reader})
+        test_tf_generator(task_name, {task_name: reader})
+        test_torch_generator(task_name, {task_name: reader})
         reader = datasets.load_data(chunksize=75836,
                                     source_path=TEST_DATA_DEMO,
                                     storage_path=SEMITEMP_DIR,
                                     engineer=True,
                                     task=task_name)
+
         test_scikit_generator(task_name, {task_name: reader})

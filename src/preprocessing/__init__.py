@@ -129,6 +129,8 @@ class AbstractScikitProcessor(ABC):
             discretizer (_type_): _description_
             reader (_type_): _description_
         """
+        if self.load():
+            return self
         if self._verbose:
             info_io(f"Fitting scaler to reader of size {len(reader.subject_ids)}")
             progbar = Progbar(len(reader.subject_ids), unit_name='step')

@@ -38,8 +38,6 @@ class AbstractGenerator(object):
         self._subject_ids = reader.subject_ids
         self._scaler = scaler
         self._remaining_ids = deepcopy(self._reader.subject_ids)
-        if not self._scaler.load():
-            self._scaler.fit_reader(reader)
         self.generator = self._generator()
 
     @property
