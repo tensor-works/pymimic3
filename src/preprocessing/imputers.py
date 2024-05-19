@@ -4,6 +4,7 @@ import os
 import numpy as np
 import pandas as pd
 import warnings
+from pathlib import Path
 from sklearn.impute import SimpleImputer
 from utils.IO import *
 from utils import is_allnan
@@ -17,6 +18,9 @@ class PartialImputer(SimpleImputer, AbstractImputer):
                  strategy='mean',
                  verbose=1,
                  copy=True,
+                 fill_value=0,
+                 add_indicator=False,
+                 keep_empty_features=True,
                  storage_path=None):
         """_summary_
 
@@ -24,12 +28,22 @@ class PartialImputer(SimpleImputer, AbstractImputer):
             storage_path (_type_, optional): _description_. Defaults to None.
             verbose (int, optional): _description_. Defaults to 1.
         """
-        self._storage_path = storage_path
         self._verbose = verbose
         self.statistics_ = None
         self.n_features_in_ = 0
         self.n_samples_in_ = 0
-        super().__init__(missing_values=missing_values, strategy=strategy, copy=copy)
+        self._storage_name = "partial_imputer.pkl"
+        if storage_path is not None:
+            self._storage_path = Path(storage_path, self._storage_name)
+            self._storage_path.parent.mkdir(parents=True, exist_ok=True)
+        else:
+            self._storage_path = None
+        super().__init__(missing_values=missing_values,
+                         strategy=strategy,
+                         copy=copy,
+                         fill_value=fill_value,
+                         add_indicator=add_indicator,
+                         keep_empty_features=keep_empty_features)
 
     def partial_fit(self, X):
         """_summary_

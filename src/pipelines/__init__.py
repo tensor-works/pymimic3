@@ -32,13 +32,13 @@ class AbstractPipeline(ABC):
         self._generator_options = generator_options
         self._data_split_options = split_options
         self._split_names = ["train"]
+        self._reader = self._split_data(data_split_options=split_options, reader=reader)
 
         self._scaler = self._init_scaler(storage_path=storage_path,
                                          scaler_type=scaler_type,
                                          scaler_options=scaler_options,
-                                         scaler=scaler)
-
-        self._reader = self._init_reader(data_split_options=split_options, reader=reader)
+                                         scaler=scaler,
+                                         reader=reader)
 
         self._init_generators(generator_options=generator_options,
                               scaler=self._scaler,
@@ -52,8 +52,8 @@ class AbstractPipeline(ABC):
         if hasattr(model, "optimizer") and model.optimizer is None:
             self._model.compile(**compiler_options)
 
-    def _init_reader(self, data_split_options: dict, reader: Union[ProcessedSetReader,
-                                                                   SplitSetReader]):
+    def _split_data(self, data_split_options: dict, reader: Union[ProcessedSetReader,
+                                                                  SplitSetReader]):
         if isinstance(reader, ProcessedSetReader) and data_split_options:
             return datasets.train_test_split(reader, **data_split_options)
         return reader
@@ -91,13 +91,16 @@ class AbstractPipeline(ABC):
             return scaler.fit_reader(reader)
 
     @staticmethod
-    def _check_generator_sanity(set_name: str, batch_size: int, reader: ProcessedSetReader,
-                                generator: TFGenerator):
+    def _check_generator_sanity(set_name: str, reader: ProcessedSetReader, generator: TFGenerator,
+                                generator_options):
         if not len(generator):
             if reader.subject_ids:
-                raise ValueError(
-                    f"{set_name.capitalize()} generator has no steps, while {len(reader.subject_ids)}"
-                    f" subjects are present in reader. Consider reducing batch size: {batch_size}.")
+                msg = f"{set_name.capitalize()} generator has no steps, while {len(reader.subject_ids)}"
+                msg += f" subjects are present in reader. "
+                if "batch_size" in generator_options:
+                    msg += f"Consider reducing batch size: {generator_options['batch_size']}."
+
+                raise ValueError(msg)
             else:
                 raise ValueError(
                     f"{set_name.capitalize()} reader has no subjects. Consider adjusting the {set_name} split size."
@@ -118,7 +121,7 @@ class AbstractPipeline(ABC):
                                                            **generator_options)
 
             self._check_generator_sanity(set_name="train",
-                                         batch_size=generator_options["batch_size"],
+                                         generator_options=generator_options,
                                          reader=reader.train,
                                          generator=self._train_generator)
 
@@ -130,7 +133,7 @@ class AbstractPipeline(ABC):
 
                 self._val_steps = len(self._val_generator)
                 self._check_generator_sanity(set_name="val",
-                                             batch_size=generator_options["batch_size"],
+                                             generator_options=generator_options,
                                              reader=reader.val,
                                              generator=self._val_generator)
 
@@ -145,7 +148,7 @@ class AbstractPipeline(ABC):
                                                               **generator_options)
 
                 self._check_generator_sanity(set_name="test",
-                                             batch_size=generator_options["batch_size"],
+                                             generator_options=generator_options,
                                              reader=reader.test,
                                              generator=self._test_generator)
 

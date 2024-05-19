@@ -9,6 +9,7 @@ Todo:
 
 """
 
+import re
 import json
 import numpy as np
 import pandas as pd
@@ -61,6 +62,19 @@ def is_numerical(df: pd.DataFrame) -> bool:
        (df.dtypes == "datetime64[ns]").any():
         return False
     return True
+
+
+def to_snake_case(string):
+    # Replace spaces and hyphens with underscores
+    string = re.sub(r'[\s-]+', '_', string)
+
+    # Replace camel case and Pascal case with underscores
+    string = re.sub(r'([a-z0-9])([A-Z])', r'\1_\2', string)
+
+    # Convert the string to lowercase
+    string = string.lower()
+
+    return string
 
 
 def is_colwise_numerical(df: pd.DataFrame) -> Dict[str, bool]:

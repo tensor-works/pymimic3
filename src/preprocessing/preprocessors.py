@@ -18,7 +18,7 @@ from datasets.trackers import PreprocessingTracker
 from utils import dict_subset
 from utils.IO import *
 from settings import *
-from . import AbstractProcessor
+from preprocessing import AbstractProcessor
 
 
 class MIMICPreprocessor(AbstractProcessor):

@@ -2,7 +2,7 @@ import datasets
 import pytest
 from generators.tf2 import TFGenerator
 from generators.pytorch import TorchGenerator
-from generators.scikit import ScikitGenerator, ScikitDataset
+from generators.river import RiverGenerator, RiverDataset
 from preprocessing.scalers import MIMICMinMaxScaler
 import numpy as np
 from utils.IO import *
@@ -68,11 +68,11 @@ def test_scikit_generator(task_name, engineered_readers):
 
     for batch_size in [1, 8, 16]:
         tests_io(f"Test case batch size: {batch_size}")
-        generator = ScikitGenerator(reader=reader,
-                                    scaler=scaler,
-                                    batch_size=batch_size,
-                                    drop_last=True,
-                                    shuffle=True)
+        generator = RiverGenerator(reader=reader,
+                                   scaler=scaler,
+                                   batch_size=batch_size,
+                                   drop_last=True,
+                                   shuffle=True)
         assert len(generator)
         for batch, (X, y) in enumerate(generator):
             assert not np.isnan(X).any()

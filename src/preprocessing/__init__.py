@@ -3,7 +3,6 @@ import numpy as np
 import pickle
 from utils.IO import *
 from tensorflow.keras.utils import Progbar
-from datasets.readers import ProcessedSetReader
 from pathlib import Path
 from typing import List, Tuple
 from abc import ABC, abstractmethod
@@ -72,7 +71,7 @@ class AbstractScikitProcessor(ABC):
         """_summary_
         """
         if storage_path is not None:
-            self._storage_path = Path(storage_path, "scaler.pkl")
+            self._storage_path = Path(storage_path, self._storage_name)
         if self._storage_path is None:
             raise ValueError("No storage path provided!")
         with open(self._storage_path, "wb") as save_file:
@@ -87,6 +86,7 @@ class AbstractScikitProcessor(ABC):
         if self._storage_path is not None:
             if self._storage_path.is_file():
                 if os.path.getsize(self._storage_path) > 0:
+                    info_io(f"Loading {Path(self._storage_path).stem} from:\n{self._storage_path}")
                     with open(self._storage_path, "rb") as load_file:
                         load_params = pickle.load(load_file)
                     for key, value in load_params.items():
@@ -115,24 +115,28 @@ class AbstractScikitProcessor(ABC):
             if self._verbose:
                 progbar.update(n_fitted)
 
-        if self._storage_path:
-            self.save()
+        self.save()
 
         if self._verbose:
-            info_io(f"Done computing new normalizer.")
+            info_io(f"Done computing new {Path(self._storage_path).stem}.")
         return self
 
-    def fit_reader(self, reader: ProcessedSetReader):
+    def fit_reader(self, reader, save=False):
         """_summary_
 
         Args:
             discretizer (_type_): _description_
             reader (_type_): _description_
         """
+        if self._storage_path is None:
+            self._storage_path = Path(reader.root_path, self._storage_name)
+            self._storage_path.parent.mkdir(parents=True, exist_ok=True)
         if self.load():
             return self
         if self._verbose:
-            info_io(f"Fitting scaler to reader of size {len(reader.subject_ids)}")
+            info_io(
+                f"Fitting {Path(self._storage_path).stem} to reader of size {len(reader.subject_ids)}"
+            )
             progbar = Progbar(len(reader.subject_ids), unit_name='step')
 
         n_fitted = 0
@@ -146,12 +150,12 @@ class AbstractScikitProcessor(ABC):
             n_fitted += 1
             if self._verbose:
                 progbar.update(n_fitted)
-        if self._storage_path is None:
-            self.save(reader.root_path)
-        else:
-            self.save()
+
+        self.save()
 
         if self._verbose:
-            info_io(f"Done computing new normalizer.\nSaved in location {self._storage_path}!")
+            info_io(
+                f"Done computing new {Path(self._storage_path).stem}.\nSaved in location {self._storage_path}!"
+            )
 
         return self

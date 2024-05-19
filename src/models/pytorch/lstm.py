@@ -215,7 +215,7 @@ class LSTMNetwork(nn.Module):
 
             self._train_progbar.update(batch_idx + 1,
                                        values=[('loss', loss.item())],
-                                       finalize=not has_val)
+                                       finalize=(batch_idx == generator_size and not has_val))
 
         avg_train_loss = np.mean(train_losses)
         self._history.train_loss[epoch] = avg_train_loss
@@ -264,8 +264,8 @@ class LSTMNetwork(nn.Module):
             save_best_only: bool = True,
             restore_best_weights: bool = True,
             sample_weights: dict = None,
-            val_frequency=1,
-            val_generator=None,
+            val_frequency: int = 1,
+            val_generator: DataLoader = None,
             model_path: Path = None):
         if model_path is not None:
             self._model_path = model_path
