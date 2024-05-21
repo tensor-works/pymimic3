@@ -35,6 +35,8 @@ def _clean_path(path):
         return Path(path).relative_to("tests")
     elif str(path).startswith("script"):
         return Path(path).relative_to("script")
+    elif str(path).startswith("examples"):
+        return Path(path).relative_to("examples")
 
 
 DEBUG_OPTION = None
@@ -55,6 +57,7 @@ else:
 SRC_DIR = Path(WORKINGDIR, "src")
 SCRIPT_DIR = Path(WORKINGDIR, "scripts")
 TEST_DIR = Path(os.getenv("TESTS"))
+EXAMPLE_DIR = Path(os.getenv("EXAMPLES"))
 # Might need adjustment
 HEADER_LENGTH = 5 + 19 + 3 + PATH_PADDING + 3 + 2 + 4
 TAG_PADDING = 8
@@ -70,6 +73,9 @@ def _get_relative_path(file_path: Path):
         return Path(file_path).relative_to(relativa_path)
     elif "tests" in file_path:
         relativa_path = TEST_DIR
+        return Path(file_path).relative_to(relativa_path)
+    elif "examples" in file_path:
+        relativa_path = EXAMPLE_DIR
         return Path(file_path).relative_to(relativa_path)
     return file_path
 

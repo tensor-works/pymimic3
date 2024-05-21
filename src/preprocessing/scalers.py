@@ -33,27 +33,6 @@ class AbstractScaler(AbstractScikitProcessor):
         self._verbose = verbose
         self._imputer = imputer
 
-    def transform(self, X: Union[np.ndarray, pd.DataFrame]) -> np.ndarray:
-        if hasattr(self, "_imputer") and self._imputer is not None:
-            X = self._imputer.transform(X)
-        return super().transform(X)
-
-    def fit(self,
-            X: Union[np.ndarray, pd.DataFrame],
-            y: Union[np.ndarray, pd.DataFrame] = None,
-            **fit_params):
-        if hasattr(self, "_imputer") and self._imputer is not None:
-            return self._imputer.transform(X)
-        return super().fit(X, y, **fit_params)
-
-    def fit_transform(self,
-                      X: Union[np.ndarray, pd.DataFrame],
-                      y: Union[np.ndarray, pd.DataFrame] = None,
-                      **fit_params) -> np.ndarray:
-        if hasattr(self, "_imputer") and self._imputer is not None:
-            return self._imputer.transform(X)
-        return super().fit_transform(X, y, **fit_params)
-
 
 class MIMICStandardScaler(StandardScaler, AbstractScaler):
     """
@@ -82,6 +61,27 @@ class MIMICStandardScaler(StandardScaler, AbstractScaler):
     def _get_param_names(cls):
         return []
 
+    def transform(self, X: Union[np.ndarray, pd.DataFrame]) -> np.ndarray:
+        if hasattr(self, "_imputer") and self._imputer is not None:
+            X = self._imputer.transform(X)
+        return super().transform(X)
+
+    def fit(self,
+            X: Union[np.ndarray, pd.DataFrame],
+            y: Union[np.ndarray, pd.DataFrame] = None,
+            **fit_params):
+        if hasattr(self, "_imputer") and self._imputer is not None:
+            return self._imputer.transform(X)
+        return super().fit(X, y, **fit_params)
+
+    def fit_transform(self,
+                      X: Union[np.ndarray, pd.DataFrame],
+                      y: Union[np.ndarray, pd.DataFrame] = None,
+                      **fit_params) -> np.ndarray:
+        if hasattr(self, "_imputer") and self._imputer is not None:
+            return self._imputer.transform(X)
+        return super().fit_transform(X, y, **fit_params)
+
 
 class MIMICMinMaxScaler(MinMaxScaler, AbstractScaler):
     """
@@ -108,6 +108,28 @@ class MIMICMinMaxScaler(MinMaxScaler, AbstractScaler):
     def _get_param_names(cls):
         return []
 
+    def transform(self, X: Union[np.ndarray, pd.DataFrame]) -> np.ndarray:
+
+        if hasattr(self, "_imputer") and self._imputer is not None:
+            X = self._imputer.transform(X)
+        return super().transform(X)
+
+    def fit(self,
+            X: Union[np.ndarray, pd.DataFrame],
+            y: Union[np.ndarray, pd.DataFrame] = None,
+            **fit_params):
+        if hasattr(self, "_imputer") and self._imputer is not None:
+            return self._imputer.transform(X)
+        return super().fit(X, y, **fit_params)
+
+    def fit_transform(self,
+                      X: Union[np.ndarray, pd.DataFrame],
+                      y: Union[np.ndarray, pd.DataFrame] = None,
+                      **fit_params) -> np.ndarray:
+        if hasattr(self, "_imputer") and self._imputer is not None:
+            return self._imputer.transform(X)
+        return super().fit_transform(X, y, **fit_params)
+
 
 class MIMICMaxAbsScaler(MaxAbsScaler, AbstractScaler):
 
@@ -119,6 +141,28 @@ class MIMICMaxAbsScaler(MaxAbsScaler, AbstractScaler):
     @classmethod
     def _get_param_names(cls):
         return []
+
+    def transform(self, X: Union[np.ndarray, pd.DataFrame]) -> np.ndarray:
+
+        if hasattr(self, "_imputer") and self._imputer is not None:
+            X = self._imputer.transform(X)
+        return super().transform(X)
+
+    def fit(self,
+            X: Union[np.ndarray, pd.DataFrame],
+            y: Union[np.ndarray, pd.DataFrame] = None,
+            **fit_params):
+        if hasattr(self, "_imputer") and self._imputer is not None:
+            return self._imputer.transform(X)
+        return super().fit(X, y, **fit_params)
+
+    def fit_transform(self,
+                      X: Union[np.ndarray, pd.DataFrame],
+                      y: Union[np.ndarray, pd.DataFrame] = None,
+                      **fit_params) -> np.ndarray:
+        if hasattr(self, "_imputer") and self._imputer is not None:
+            return self._imputer.transform(X)
+        return super().fit_transform(X, y, **fit_params)
 
 
 class MIMICRobustScaler(RobustScaler, AbstractScaler):
@@ -141,3 +185,25 @@ class MIMICRobustScaler(RobustScaler, AbstractScaler):
     @classmethod
     def _get_param_names(cls):
         return []
+
+    def transform(self, X: Union[np.ndarray, pd.DataFrame]) -> np.ndarray:
+
+        if hasattr(self, "_imputer") and self._imputer is not None:
+            X = self._imputer.transform(X)
+        return super().transform(X)
+
+    def fit(self,
+            X: Union[np.ndarray, pd.DataFrame],
+            y: Union[np.ndarray, pd.DataFrame] = None,
+            **fit_params):
+        if hasattr(self, "_imputer") and self._imputer is not None:
+            return self._imputer.transform(X)
+        return super().fit(X, y, **fit_params)
+
+    def fit_transform(self,
+                      X: Union[np.ndarray, pd.DataFrame],
+                      y: Union[np.ndarray, pd.DataFrame] = None,
+                      **fit_params) -> np.ndarray:
+        if hasattr(self, "_imputer") and self._imputer is not None:
+            return self._imputer.transform(X)
+        return super().fit_transform(X, y, **fit_params)

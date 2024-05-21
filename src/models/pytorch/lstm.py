@@ -3,28 +3,33 @@ import torch.nn as nn
 import torch.optim as optim
 import numpy as np
 import pickle
+from typing import Union, List, Dict
 from models.trackers import ModelHistory, LocalModelHistory
 from torch.utils.data import DataLoader
 from collections import defaultdict
 from pathlib import Path
+from torchmetrics import Metric
 from tensorflow.keras.utils import Progbar
+from utils import to_snake_case
+from torch.optim import Optimizer
 from utils.IO import *
+from settings import *
 from .mappings import *
 
 
 class LSTMNetwork(nn.Module):
 
     def __init__(self,
-                 layer_size,
-                 dropout_rate,
-                 input_dim,
-                 bidirectional=False,
-                 recurrent_dropout=0.,
-                 task=None,
-                 target_repl=False,
-                 output_dim=1,
-                 depth=1,
-                 model_path=None):
+                 layer_size: Union[List[int], int],
+                 dropout: float,
+                 input_dim: int,
+                 bidirectional: bool = False,
+                 recurrent_dropout: float = 0.,
+                 final_activation: str = None,
+                 target_repl: bool = False,
+                 output_dim: int = 1,
+                 depth: int = 1,
+                 model_path: Path = None):
         super(LSTMNetwork, self).__init__()
         self._model_path = model_path
         if self._model_path is not None:
@@ -34,33 +39,43 @@ class LSTMNetwork(nn.Module):
         else:
             # Mimics the storable
             self._history = LocalModelHistory()
-        self.layer_size = layer_size
-        self.dropout_rate = dropout_rate
-        self.recurrent_dropout = recurrent_dropout
-        self.depth = depth
-        self.bidirectional = bidirectional
+        self._layer_size = layer_size
+        self._dropout_rate = dropout
+        self._recurrent_dropout = recurrent_dropout
+        self._depth = depth
+        self._bidirectional = bidirectional
 
-        final_activation = {
-            "DECOMP": nn.Sigmoid(),
-            "IHM": nn.Sigmoid(),
-            "LOS": nn.Softmax(dim=-1),
-            "PHENO": nn.Softmax(dim=-1),
-            None: nn.Softmax(dim=-1) if output_dim != 1 else None
-        }
+        if final_activation is None:
+            if output_dim == 1:
+                self._final_activation = nn.Sigmoid()
+            else:
+                self._final_activation = nn.Softmax(dim=-1)
+        else:
+            self._final_activation = activation_mapping[final_activation]
 
-        num_classes = {"DECOMP": 1, "IHM": 1, "LOS": 10, "PHENO": 25, None: output_dim}
+        self._output_dim = output_dim
 
-        self.num_classes = num_classes[task]
-        self.final_activation = final_activation[task]
+        if output_dim == 1:
+            self._task = "binary"
+            self._num_classes = 1
+        elif isinstance(self._final_activation, nn.Softmax):
+            self._task = "multiclass"
+            self._num_classes = output_dim
+        elif isinstance(self._final_activation, nn.Sigmoid):
+            self._task = "multilabel"
+            self._num_classes = output_dim
 
         if isinstance(layer_size, int):
-            self.hidden_sizes = [layer_size] * depth
+            self._hidden_sizes = [layer_size] * depth
         else:
-            self.hidden_sizes = layer_size
+            self._hidden_sizes = layer_size
+            if depth != 1:
+                warn_io("Specified hidden sizes and depth are not consistent. "
+                        "Using hidden sizes and ignoring depth.")
 
         self.lstm_layers = nn.ModuleList()
         input_size = input_dim
-        for i, hidden_size in enumerate(self.hidden_sizes):
+        for i, hidden_size in enumerate(self._hidden_sizes):
             self.lstm_layers.append(
                 nn.LSTM(input_size=input_size,
                         hidden_size=hidden_size,
@@ -70,8 +85,8 @@ class LSTMNetwork(nn.Module):
                         bidirectional=bidirectional))
             input_size = hidden_size * (2 if bidirectional else 1)
 
-        self.dropout = nn.Dropout(dropout_rate)
-        self.output_layer = nn.Linear(input_size, self.num_classes)
+        self.dropout = nn.Dropout(dropout)
+        self.output_layer = nn.Linear(input_size, self._output_dim)
 
     @property
     def optimizer(self):
@@ -117,6 +132,9 @@ class LSTMNetwork(nn.Module):
                     return 1
         return 0
 
+    def _allowed_key(self, key: str):
+        return not any([key.endswith(metric) for metric in TEXT_METRICS])
+
     def _clean_directory(self, best_epoch: int, epochs: int, keep_latest: bool = True):
         """_summary_
 
@@ -141,11 +159,36 @@ class LSTMNetwork(nn.Module):
             x = self.dropout(x)
         x = x[:, -1, :]
         x = self.output_layer(x)
-        if self.final_activation:
-            x = self.final_activation(x)
+        if self._final_activation:
+            x = self._final_activation(x)
         return x
 
-    def compile(self, optimizer=None, loss=None, class_weight=None):
+    def _get_metrics(self, metrics: Dict[str, Metric]):
+        keys = list([metric for metric in metrics.keys() if self._allowed_key(metric)])
+        values = [metrics[key].get() for key in keys]
+        return tuple(zip(keys, values))
+
+    def _init_metrics(self, metrics, prefix: str = None) -> Dict[str, Metric]:
+        settings = {"task": self._task, "num_classes": self._num_classes}
+        return_metrics = dict()
+        for metric in metrics:
+            if isinstance(metric, str):
+                metric_name = metric
+                metric = metric_mapping[metric]
+            else:
+                metric_name = to_snake_case(metric.__name__)
+            if isinstance(metric, type):
+                metric = metric(**settings)
+            if prefix is not None:
+                metric_name = f"{prefix}_{metric_name}"
+            return_metrics[metric_name] = metric
+        return return_metrics
+
+    def compile(self,
+                optimizer: Dict[str, Union[str, type, Optimizer]] = None,
+                loss=None,
+                metrics: Dict[str, Union[str, type, Metric]] = None,
+                class_weight=None):
         if isinstance(optimizer, str):
             if optimizer in optimizer_mapping:
                 self._optimizer = optimizer_mapping[optimizer](self.parameters(), lr=0.001)
@@ -163,10 +206,14 @@ class LSTMNetwork(nn.Module):
             else:
                 raise ValueError(f"Loss {loss} not supported."
                                  f"Supported losses are {loss_mapping.keys()}")
-        elif loss is None:
-            self._loss = nn.CrossEntropyLoss(weight=class_weight)
         else:
             self._loss = loss
+        if metrics is not None:
+            self._metrics = self._init_metrics(metrics)
+            self._train_metrics = self._init_metrics(metrics)
+            self._test_metrics = self._init_metrics(metrics, prefix="test")
+            self._val_metrics = self._init_metrics(metrics, prefix="val")
+
         self._device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.to(self._device)
 
@@ -187,6 +234,17 @@ class LSTMNetwork(nn.Module):
             return max(check_point_epochs)
 
         return 0
+
+    def _update_metrics(self, metrics: Dict[str, Metric], x, y_true, y_pred):
+        y_label = None
+
+        for _, metric in metrics.items():
+            if not hasattr(metric, "requires_labels") or not metric.requires_labels:
+                metric.update(y_true, y_pred)
+            else:
+                if y_label is None:
+                    y_label = self.predict_one(x)
+                metric.update(y_true, y_label)
 
     def _train(self,
                train_generator: DataLoader,
@@ -214,7 +272,8 @@ class LSTMNetwork(nn.Module):
             train_losses.append(loss.item())
 
             self._train_progbar.update(batch_idx + 1,
-                                       values=[('loss', loss.item())],
+                                       values=[('loss', loss.item())] +
+                                       self._get_metrics(self._train_metrics),
                                        finalize=(batch_idx == generator_size and not has_val))
 
         avg_train_loss = np.mean(train_losses)

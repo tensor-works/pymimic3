@@ -18,7 +18,7 @@ class AbstractPipeline(ABC):
         storage_path: Path,
         reader: Union[ProcessedSetReader, SplitSetReader],
         model,
-        generator_options: dict,
+        generator_options: dict = {},
         model_options: dict = {},
         scaler_options: dict = {},
         compile_options: dict = {},
@@ -152,8 +152,15 @@ class AbstractPipeline(ABC):
                                              reader=reader.test,
                                              generator=self._test_generator)
 
-    def _init_result_path(self, result_name: str, restore_last_run: bool = False):
-        if result_name is not None:
+    def _init_result_path(self,
+                          result_name: str,
+                          restore_last_run: bool = False,
+                          no_subdirs: bool = False):
+        if no_subdirs:
+            if result_name is not None:
+                warn_io("Ignoring result_name, as no_subdirs is set to True.")
+            self._result_path = self._storage_path
+        elif result_name is not None:
             self._result_path = Path(self._storage_path, result_name)
         else:
             # Iterate over files in the directory
@@ -174,5 +181,8 @@ class AbstractPipeline(ABC):
         self._result_path.mkdir(parents=True, exist_ok=True)
 
     @abstractmethod
-    def fit(self, epochs: int, result_name: str = None, *args, **kwargs):
+    def fit(self, epochs: int, result_name: str = None, no_subdirs: bool = False, *args, **kwargs):
         ...
+
+    # def test(self):
+    #     self._model.test(self._test_generator)

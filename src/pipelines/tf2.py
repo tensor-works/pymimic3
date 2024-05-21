@@ -48,6 +48,7 @@ class TFPipeline(AbstractPipeline):
 
     def fit(self,
             epochs: int,
+            no_subdirs: bool = False,
             result_name: str = None,
             patience: int = None,
             restore_best_weights=True,
@@ -59,7 +60,9 @@ class TFPipeline(AbstractPipeline):
             validation_freq: int = 1,
             restore_last_run: bool = False):
 
-        self._init_result_path(result_name, restore_last_run)
+        self._init_result_path(result_name=result_name,
+                               restore_last_run=restore_last_run,
+                               no_subdirs=no_subdirs)
         info_io(f"Training model in directory\n{self._result_path}")
         self._init_managers(epochs)
         self._init_callbacks(patience=patience,

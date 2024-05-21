@@ -30,19 +30,19 @@ sourceUrl="https://physionet.org/files/mimiciii-demo/1.4/"
 exampleFolder=$(dirname $(dirname $SCRIPT))
 
 # Download the MIMIC-III demo dataset from the web
-destinationDir="$testFolder/data/"
-convertScript="$testFolder/etc/convert_columns.py"
+exampleDataDir="$exampleFolder/data/"
+convertScript="$exampleFolder/etc/convert_columns.py"
 
-if [ ! -d "$destinationDir/physionet.org" ]; then
+if [ ! -d "$exampleDataDir/physionet.org" ]; then
     echo "Downloading the MIMIC-III demo dataset directory..."
-    sudo wget -r -N -c -np $sourceUrl -P $destinationDir
+    sudo wget -r -N -c -np $sourceUrl -P $exampleDataDir
     
     # Correcting defaults of the demo dataset
     echo "Correcting defaults of the demo dataset"
     sudo -E env PATH=$PATH PYTHONPATH=$PYTHONPATH python $convertScript
 fi
 
-csvDir="$destinationDir/physionet.org/files/mimiciii-demo/1.4/"
+csvDir="$exampleDataDir/physionet.org/files/mimiciii-demo/1.4/"
 resourcesDir="$csvDir/resources/"
 if [ ! -d "$resourcesDir" ]; then
     sudo mkdir -p $resourcesDir
@@ -52,8 +52,13 @@ if [ ! -d "$resourcesDir" ]; then
     sudo wget "https://raw.githubusercontent.com/YerevaNN/mimic3-benchmarks/master/mimic3benchmark/resources/hcup_ccs_2015_definitions.yaml" -O "$outputDefinitions"
 fi
 
-generatedDir="$testFolder/data/mimic3benchmarks"
-if [ ! -d "$generatedDir" ]; then
-    echo "Downloading MIMIC-III benchmarks dataset from github"
-    git clone "https://github.com/YerevaNN/mimic3-benchmarks.git" $generatedDir
+split_dir="$exampleFolder/yerva_nn_benchmark/data_split"
+if [ ! -d "$split_dir" ]; then
+    sudo mkdir -p $split_dir
+    echo "Downloading YerevaNN benchmarks train, val, test datasplit from github..."
+    testset="$split_dir/testset.csv"
+    valset="$split_dir/valset.csv"
+    sudo wget "https://raw.githubusercontent.com/YerevaNN/mimic3-benchmarks/master/mimic3benchmark/resources/testset.csv" -O "$testset"
+    sudo wget "https://raw.githubusercontent.com/YerevaNN/mimic3-benchmarks/master/mimic3models/resources/valset.csv" -O "$valset"
+
 fi

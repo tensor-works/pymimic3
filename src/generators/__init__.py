@@ -26,7 +26,7 @@ class AbstractGenerator(object):
 
     def __init__(self,
                  reader: ProcessedSetReader,
-                 scaler: AbstractScaler = None,
+                 scaler: AbstractScaler,
                  batch_size: int = 8,
                  shuffle: bool = True):
         super().__init__()

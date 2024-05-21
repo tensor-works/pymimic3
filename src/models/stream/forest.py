@@ -8,7 +8,7 @@ __all__ = ["ARFClassifier", "AMFClassifier"]
 
 class ARFClassifier(AbstractRiverModel, _ARFClassifier):
 
-    def __init__(self, model_path: Path, metrics: list, *args, **kwargs):
+    def __init__(self, model_path: Path = None, metrics: list = [], *args, **kwargs):
         self._default_name = "arf_classifier"
         AbstractRiverModel.__init__(self, model_path, metrics)
         _ARFClassifier.__init__(self, *args, **kwargs)
@@ -16,7 +16,7 @@ class ARFClassifier(AbstractRiverModel, _ARFClassifier):
 
 class AMFClassifier(AbstractRiverModel, _AMFClassifier):
 
-    def __init__(self, model_path: Path, metrics: list, *args, **kwargs):
+    def __init__(self, model_path: Path = None, metrics: list = [], *args, **kwargs):
         self._default_name = "amf_classifier"
         AbstractRiverModel.__init__(self, model_path, metrics)
         _AMFClassifier.__init__(self, *args, **kwargs)

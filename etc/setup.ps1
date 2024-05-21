@@ -7,6 +7,8 @@ $CONFIG = Join-Path $WORKINGDIR "etc"
 $FRONTEND = Join-Path $WORKINGDIR "frontend"
 $MODEL = Join-Path $WORKINGDIR "models"
 $TESTS = Join-Path $WORKINGDIR "tests"
+$EXAMPLES = Join-Path $WORKINGDIR "examples"
+
 
 # Creating the conda environment
 $envFile = Join-Path -Path $WORKINGDIR -ChildPath ".devcontainer/environment.yml"
@@ -71,6 +73,7 @@ if (-Not (Test-Path $WORKINGDIR\.env)) {
     Set-DotEnvVariable -filePath "$WORKINGDIR\.env" -key "CONFIG" -value "$CONFIG"
     Set-DotEnvVariable -filePath "$WORKINGDIR\.env" -key "MODEL" -value "$MODEL"
     Set-DotEnvVariable -filePath "$WORKINGDIR\.env" -key "TESTS" -value "$TESTS"
+    Set-DotEnvVariable -filePath "$WORKINGDIR\.env" -key "EXAMPLES" -value "$EXAMPLES"
     Set-DotEnvVariable -filePath "$WORKINGDIR\.env" -key "PYTHONPATH" -value "$env:PYTHONPATH"
 }
 

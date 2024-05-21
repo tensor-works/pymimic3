@@ -2,7 +2,7 @@ import torch.optim as optim
 import torch.nn as nn
 import torchmetrics
 
-__all__ = ["optimizer_mapping", "loss_mapping", "metric_mapping"]
+__all__ = ["optimizer_mapping", "loss_mapping", "metric_mapping", "activation_mapping"]
 
 optimizer_mapping = {
     "sgd": optim.SGD,
@@ -31,9 +31,18 @@ metric_mapping = {
     "accuracy": torchmetrics.Accuracy,
     "precision": torchmetrics.Precision,
     "recall": torchmetrics.Recall,
+    "f1": torchmetrics.F1Score,
+    "roc_auc": torchmetrics.AUROC,
+    "msl_error": torchmetrics.MeanSquaredLogError,
     "mean_squared_error": torchmetrics.MeanSquaredError,
     "mean_absolute_error": torchmetrics.MeanAbsoluteError,
-    "auc": torchmetrics.AUROC,
-    "roc": torchmetrics.ROC,
+    "mae": torchmetrics.MeanAbsoluteError,
+    "mse": torchmetrics.MeanSquaredError,
+    "r2": torchmetrics.R2Score,
+    "mape": torchmetrics.MeanAbsolutePercentageError,
     "confusion_matrix": torchmetrics.ConfusionMatrix,
+    "cohen_kappa": torchmetrics.CohenKappa,
+    "pr_auc": torchmetrics.PrecisionRecallCurve
 }
+
+activation_mapping = {"sigmoid": nn.Sigmoid(), "softmax": nn.Softmax(dim=-1), "relu": nn.ReLU()}

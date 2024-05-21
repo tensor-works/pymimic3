@@ -3,6 +3,7 @@ from pathlib import Path
 from utils.IO import *
 from storable import storable
 from utils import update_json
+from settings import *
 
 
 @storable
@@ -44,8 +45,33 @@ class RiverHistory():
     val_metrics: dict = {}
     test_metrics: dict = {}
 
+    def _allowed_key(self, key: str):
+        return not any([key.endswith(metric) for metric in TEXT_METRICS])
+
+    def to_text(self, report_path: Path, report_dict: dict):
+        report = ""
+        for key, value in report_dict.items():
+            report += f"{key}:\n {value}\n"
+
+        with open(report_path, 'w') as file:
+            file.write(report)
+        return report
+
     def to_json(self):
-        update_json(Path(self._path.parent, f"{self._path.stem}.json"), self._progress)
+        numeric_dict = {}
+        for attribute, history in self._progress.items():
+            numeric_dict[attribute] = dict()
+            for metric, value in history.items():
+                if self._allowed_key(metric):
+                    numeric_dict[attribute][metric] = value
+        report_dict = {}
+        for attribute, history in self._progress.items():
+            for metric, value in history.items():
+                if not metric in numeric_dict[attribute]:
+                    report_dict[metric] = value
+
+        update_json(Path(self._path.parent, f"{self._path.stem}.json"), numeric_dict)
+        self.to_text(Path(self._path.parent, f"{self._path.stem}.txt"), report_dict)
         return self._progress
 
 
@@ -54,6 +80,9 @@ class LocalRiverHistory():
     train_metrics: dict = {}
     val_metrics: dict = {}
     test_metrics: dict = {}
+
+    def _allowed_key(self, key: str):
+        return not any([key.endswith(metric) for metric in self._non_numeric_metrics])
 
     def to_json(self):
         return {

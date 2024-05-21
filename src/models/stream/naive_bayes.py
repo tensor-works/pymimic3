@@ -7,7 +7,7 @@ __all__ = ["GaussianNBClassifier"]
 
 class GaussianNBClassifier(AbstractRiverModel, _GaussianNB):
 
-    def __init__(self, model_path: Path, metrics: list, *args, **kwargs):
+    def __init__(self, model_path: Path = None, metrics: list = [], *args, **kwargs):
         self._default_name = "gaussian_nb_classifier"
         AbstractRiverModel.__init__(self, model_path, metrics)
         _GaussianNB.__init__(self, *args, **kwargs)

@@ -11,7 +11,7 @@ class LSTMNetwork(Model):
 
     def __init__(self,
                  layer_size,
-                 dropout_rate,
+                 dropout,
                  input_dim,
                  bidirectional=False,
                  recurrent_dropout=0.,
@@ -22,7 +22,7 @@ class LSTMNetwork(Model):
         """
         """
         self.layer_size = layer_size
-        self.dropout_rate = dropout_rate
+        self.dropout_rate = dropout
         self.recurrent_dropout = recurrent_dropout
         self.depth = depth
 
@@ -57,14 +57,14 @@ class LSTMNetwork(Model):
                                 activation='tanh',
                                 return_sequences=True,
                                 recurrent_dropout=recurrent_dropout,
-                                dropout=dropout_rate,
+                                dropout=dropout,
                                 name=f"lstm_hidden_{i}"))(x)
             else:
                 x = layers.LSTM(units=size,
                                 activation='tanh',
                                 return_sequences=True,
                                 recurrent_dropout=recurrent_dropout,
-                                dropout=dropout_rate,
+                                dropout=dropout,
                                 name=f"lstm_hidden_{i}")(x)
 
         # Output module of the network
@@ -80,7 +80,7 @@ class LSTMNetwork(Model):
         x = layers.LSTM(units=layer_size,
                         activation='tanh',
                         return_sequences=return_sequences,
-                        dropout=dropout_rate,
+                        dropout=dropout,
                         recurrent_dropout=recurrent_dropout)(x)
 
         x = layers.Dense(num_classes[task], activation=final_activation[task])(x)

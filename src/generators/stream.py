@@ -13,15 +13,13 @@ from . import AbstractGenerator
 
 class RiverGenerator(AbstractGenerator, Dataset):
 
-    def __init__(self,
-                 reader: ProcessedSetReader,
-                 scaler: AbstractScaler = None,
-                 shuffle: bool = True):
+    def __init__(self, reader: ProcessedSetReader, scaler: AbstractScaler, shuffle: bool = True):
         super(RiverGenerator, self).__init__(reader=reader,
                                              scaler=scaler,
                                              batch_size=1,
                                              shuffle=shuffle)
         self._names: List[str] = None
+        self._labels: List[str] = None
         self._index = 0
 
     def __iter__(self):
@@ -36,7 +34,13 @@ class RiverGenerator(AbstractGenerator, Dataset):
         if self._names is None:
             self._names = [str(i) for i in range(714)]
         X = dict(zip(self._names, X))
-        y = float(np.squeeze(y))
+        y = np.squeeze(y)
+        if y.shape:
+            if self._labels is None:
+                self._labels = [str(i) for i in range(len(y))]
+            y = dict(zip(self._labels, y))
+        else:
+            y = float(y)
         self._index += 1
         return X, y
 
@@ -48,14 +52,14 @@ class RiverGenerator(AbstractGenerator, Dataset):
         ys = list()
         ts = list()
 
-        for index in range(len(y_df)):
+        for index in range(y_df.shape[0]):
 
             if index < 0 or index >= len(y_df):
                 raise ValueError(
                     "Index must be from 0 (inclusive) to number of examples (exclusive).")
 
             t = y_df.index[index]
-            y = y_df.iloc[index - 1, 0]
+            y = y_df.iloc[index - 1, :].values
             X = X_frame[index, :]
 
             Xs.append(X)

@@ -13,6 +13,7 @@ export WORKINGDIR=`dirname $CONFIG`
 export FRONTEND=$WORKINGDIR/frontend
 export MODEL=$WORKINGDIR/models
 export TESTS=$WORKINGDIR/tests
+export EXAMPLES=$WORKINGDIR/examples
 
 # Create the mimic3-benchmark directory if not existing
 envFile="$WORKINGDIR/.devcontainer/linux-gnu.yml"
@@ -83,6 +84,7 @@ python -m dotenv -f ${WORKINGDIR}/.env set CONFIG ${CONFIG}
 python -m dotenv -f ${WORKINGDIR}/.env set MODEL ${MODEL} 
 python -m dotenv -f ${WORKINGDIR}/.env set PYTHONPATH ${PYTHONPATH} 
 python -m dotenv -f ${WORKINGDIR}/.env set TESTS ${TESTS}
+python -m dotenv -f ${WORKINGDIR}/.env set EXAMPLES ${EXAMPLES}
 python -m dotenv -f ${WORKINGDIR}/.env set CUDNN_PATH ${CUDNN_PATH}
 python -m dotenv -f ${WORKINGDIR}/.env set LD_LIBRARY_PATH ${LD_LIBRARY_PATH}
 source "${CONFIG}/envvars.sh"

@@ -15,6 +15,7 @@ class TorchPipeline(AbstractPipeline):
 
     def fit(self,
             epochs: int,
+            no_subdirs: bool = False,
             result_name: str = None,
             patience: int = None,
             save_best_only: bool = True,
@@ -23,7 +24,10 @@ class TorchPipeline(AbstractPipeline):
             val_frequency=1,
             restore_last_run: bool = False):
 
-        self._init_result_path(result_name, restore_last_run)
+        self._init_result_path(result_name=result_name,
+                               restore_last_run=restore_last_run,
+                               no_subdirs=no_subdirs)
+
         info_io(f"Training model in directory\n{self._result_path}")
         self._model.fit(self._train_generator,
                         model_path=self._result_path,
