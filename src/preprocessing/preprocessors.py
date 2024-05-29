@@ -295,7 +295,8 @@ class MIMICPreprocessor(AbstractProcessor):
         precision = DECOMP_SETTINGS['sample_precision']
         sample_rate = DECOMP_SETTINGS['sample_rate']
         label_start_time = DECOMP_SETTINGS['label_start_time']
-        label_binning_interval = DECOMP_SETTINGS['label_binning_interval']
+        future_time_interval = DECOMP_SETTINGS['future_time_interval']
+        # future_time_interval is Hours in which the preson will have to be dead for label to be 1
 
         mortality = int(episodic_data_df.loc["MORTALITY"])
 
@@ -326,7 +327,6 @@ class MIMICPreprocessor(AbstractProcessor):
 
         # At least one measurement
         sample_times = list(filter(lambda x: x > event_times[0], sample_times))
-        mortality = 1
 
         y = list()
 
@@ -334,7 +334,7 @@ class MIMICPreprocessor(AbstractProcessor):
             if mortality == 0:
                 cur_mortality = 0
             else:
-                cur_mortality = int(lived_time - hour < label_binning_interval)
+                cur_mortality = int(lived_time - hour < future_time_interval)
             y.append((hour, cur_mortality))
 
         if not y:

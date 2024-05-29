@@ -534,7 +534,7 @@
         "sample_rate": 1.0,
         "label_start_time": 4.0,
         "sample_precision": 1e-6,
-        "label_binning_interval": 24.0
+        "future_time_interval": 24.0
     },
     "LOS": {
         "sample_precision": 1e-6,

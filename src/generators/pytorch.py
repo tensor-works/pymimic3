@@ -16,13 +16,13 @@ class TorchGenerator(DataLoader):
                  batch_size: int = 8,
                  shuffle: bool = True,
                  num_workers: int = 1,
-                 drop_last: bool = False):
-        super().__init__(dataset=TorchDataset(
-            reader=reader,
-            scaler=scaler,
-            batch_size=1,
-            shuffle=shuffle,
-        ),
+                 drop_last: bool = False,
+                 bining: str = "none"):
+        super().__init__(dataset=TorchDataset(reader=reader,
+                                              scaler=scaler,
+                                              batch_size=1,
+                                              shuffle=shuffle,
+                                              bining=bining),
                          batch_size=batch_size,
                          shuffle=shuffle,
                          drop_last=drop_last,
@@ -31,8 +31,11 @@ class TorchGenerator(DataLoader):
 
     def collate_fn(self, batch):
         samples, labels = zip(*batch)
-        return torch.stack(self._zeropad_samples(list(samples))), torch.tensor(
-            list(labels)).unsqueeze(1)
+        samples = torch.stack(self._zeropad_samples(samples))
+        labels = torch.cat(labels)
+        if labels.dim() == 1:
+            return samples, labels.unsqueeze(1)
+        return samples, labels
 
     @staticmethod
     def _zeropad_samples(data):
@@ -73,13 +76,15 @@ class TorchDataset(AbstractGenerator, Dataset):
                  reader: ProcessedSetReader,
                  scaler: AbstractScaler = None,
                  batch_size: int = 8,
-                 shuffle: bool = True):
+                 shuffle: bool = True,
+                 bining: str = "none"):
         super(TorchDataset, self).__init__(reader=reader,
                                            scaler=scaler,
                                            batch_size=batch_size,
-                                           shuffle=shuffle)
+                                           shuffle=shuffle,
+                                           bining=bining)
 
     def __getitem__(self, index=None):
         X, y = super().__getitem__(index)
         X = X.squeeze()
-        return torch.from_numpy(X).float(), torch.from_numpy(y).float()
+        return torch.from_numpy(X).to(torch.float32), torch.from_numpy(y).to(torch.int8)

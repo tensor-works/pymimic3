@@ -1,5 +1,6 @@
 import shelve
 import pandas as pd
+import numpy as np
 from pathlib import Path
 from utils.IO import *
 from tests.pytest_utils.general import assert_dataframe_equals
@@ -19,11 +20,16 @@ def assert_reader_equals(reader: ProcessedSetReader, test_data_dir: Path):
     stay_count = 0
     tests_io(f"Stays frames compared: {stay_count}\n"
              f"Total subjects checked: {subject_count}")
+    listfile = pd.read_csv(Path(test_data_dir, "listfile.csv"))
     for subject_id in reader.subject_ids:
         X_stays, y_stays = reader.read_sample(subject_id, read_ids=True).values()
         subject_count += 1
-        stay_count += assert_subject_data_equals(subject_id, X_stays, y_stays, test_data_dir,
-                                                 reader.root_path)
+        stay_count += assert_subject_data_equals(subject_id=subject_id,
+                                                 X_stays=X_stays,
+                                                 y_stays=y_stays,
+                                                 test_data_dir=test_data_dir,
+                                                 root_path=reader.root_path,
+                                                 listfile=listfile)
         tests_io(f"Compared subjects: {subject_count}\n"
                  f"Compared stays: {stay_count}\n",
                  flush_block=True)
@@ -41,18 +47,27 @@ def assert_dataset_equals(X: dict, y: dict, generated_dir: Path, test_data_dir: 
     stay_count = 0
     tests_io(f"Stays frames compared: {stay_count}\n"
              f"Total subjects checked: {subject_count}")
+    listfile = pd.read_csv(Path(test_data_dir, "listfile.csv"))
     for subject_id in X:
         X_stays, y_stays = X[subject_id], y[subject_id]
         subject_count += 1
-        stay_count += assert_subject_data_equals(subject_id, X_stays, y_stays, test_data_dir,
-                                                 generated_dir)
+        stay_count += assert_subject_data_equals(subject_id=subject_id,
+                                                 X_stays=X_stays,
+                                                 y_stays=y_stays,
+                                                 test_data_dir=test_data_dir,
+                                                 root_path=generated_dir,
+                                                 listfile=listfile)
         tests_io(f"Compared subjects: {subject_count}\n"
                  f"Compared stays: {stay_count}\n",
                  flush_block=True)
 
 
-def assert_subject_data_equals(subject_id: int, X_stays: dict, y_stays: dict, test_data_dir: Path,
-                               root_path: Path):
+def assert_subject_data_equals(subject_id: int,
+                               X_stays: dict,
+                               y_stays: dict,
+                               test_data_dir: Path,
+                               root_path: Path,
+                               listfile: pd.DataFrame = None):
     stay_count = 0
     for stay_id in X_stays.keys():
         X = X_stays[stay_id]
@@ -63,6 +78,21 @@ def assert_subject_data_equals(subject_id: int, X_stays: dict, y_stays: dict, te
         except:
             raise FileNotFoundError(f"Test set is missing {subject_id}"
                                     "_episode{stay_id}_timeseries.csv")
+        y_true = listfile[listfile["stay"] == f"{subject_id}_episode{stay_id}_timeseries.csv"]
+        if len(y) == 1:
+            if "y_true" in y_true:
+                assert np.isclose(float(np.squeeze(y_true["y_true"].values)), float(np.squeeze(y)))
+            else:
+                y_true_vals = y_true[[
+                    value for value in y_true.columns if not value in ["stay", "period_length"]
+                ]].values
+                assert np.allclose(np.squeeze(y_true_vals), np.squeeze(y.values))
+        else:
+            if "y_true" in y_true:
+                y_true = y_true.sort_values(by=["period_length"])
+                assert len(
+                    y_true) == y_true["period_length"].max() - y_true["period_length"].min() + 1
+                assert np.allclose(y_true["y_true"].values, np.squeeze(y.values))
 
         # Testing the preprocessing tracker at the same time
         with shelve.open(str(Path(root_path, "progress"))) as db:

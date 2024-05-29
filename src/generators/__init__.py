@@ -20,6 +20,7 @@ from preprocessing.scalers import AbstractScaler
 from datasets.trackers import PreprocessingTracker
 from datasets.readers import ProcessedSetReader
 from tests.settings import *
+from metrics import CustomBins, LogBins
 
 
 class AbstractGenerator(object):
@@ -28,17 +29,24 @@ class AbstractGenerator(object):
                  reader: ProcessedSetReader,
                  scaler: AbstractScaler,
                  batch_size: int = 8,
-                 shuffle: bool = True):
+                 shuffle: bool = True,
+                 bining: str = "none"):
         super().__init__()
         self._batch_size = batch_size
         self._shuffle = shuffle
         self._reader = reader
+        self._columns = None
         self._tracker = PreprocessingTracker(storage_path=Path(reader.root_path, "progress"))
         self._steps = self._count_batches()
         self._subject_ids = reader.subject_ids
         self._scaler = scaler
         self._remaining_ids = deepcopy(self._reader.subject_ids)
         self.generator = self._generator()
+        self._row_only = False
+
+        if bining not in ["none", "log", "custom"]:
+            raise ValueError("Bining must be one of ['none', 'log', 'custom']")
+        self._bining = bining
 
     @property
     def steps(self):
@@ -74,11 +82,17 @@ class AbstractGenerator(object):
     def _generator(self):
 
         while True:
-            X_subject, y_subject = self._reader.random_samples().values()
+            data, subjects = self._reader.random_samples(return_ids=True)
+            X_subject, y_subject = data.values()
             for X_stay, y_stay in zip(X_subject, y_subject):
-                X_stay = self._scaler.transform(X_stay)
+                if self._columns is None:
+                    self._columns = X_stay.columns
+                X_stay[self._columns] = self._scaler.transform(X_stay[self._columns])
 
-                Xs, ys, ts = self.read_timeseries(X_stay, y_stay)
+                Xs, ys, ts = self.read_timeseries(X_df=X_stay,
+                                                  y_df=y_stay,
+                                                  row_only=self._row_only,
+                                                  bining=self._bining)
 
                 (Xs, ys, ts) = self._shuffled_data([Xs, ys, ts])
 
@@ -88,29 +102,31 @@ class AbstractGenerator(object):
                     index += 1
 
     @staticmethod
-    def read_timeseries(X_frame, y_df: pd.DataFrame):
+    def read_timeseries(X_df: pd.DataFrame, y_df: pd.DataFrame, row_only=False, bining="none"):
         """
         """
         Xs = list()
         ys = list()
         ts = list()
 
-        for index in range(len(y_df)):
+        for timestamp in y_df.index:
 
-            if index < 0 or index >= len(y_df):
-                raise ValueError(
-                    "Index must be from 0 (inclusive) to number of examples (exclusive).")
+            y = np.squeeze(y_df.loc[timestamp].values)
+            if not y.shape:
+                y = float(y)
+                if bining == "log":
+                    LogBins.get_bin_log(y)
+                elif bining == "custom":
+                    CustomBins.get_bin_custom(y)
 
-            t = y_df.index[-index - 1]
-            y = y_df.iloc[-index - 1, 0]
-            if index:
-                X = X_frame[:-index, :]
+            if row_only:
+                X = X_df.loc[timestamp].values
             else:
-                X = X_frame
+                X = X_df.loc[:timestamp].values
 
             Xs.append(X)
             ys.append(y)
-            ts.append(t)
+            ts.append(timestamp)
 
         return Xs, ys, ts
 

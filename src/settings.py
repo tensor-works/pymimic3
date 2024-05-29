@@ -15,12 +15,6 @@ __all__ = [
 
 TASK_NAMES = ["DECOMP", "LOS", "PHENO", "IHM"]
 TEXT_METRICS = ["classification_report", "confusion_matrix"]
-LOS_BINS = [(-np.inf, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (6, 7), (7, 8), (8, 14),
-            (14, np.inf)]
-LOS_MEANS = [
-    11.450379, 35.070846, 59.206531, 83.382723, 107.487817, 131.579534, 155.643957, 179.660558,
-    254.306624, 585.325890
-]
 
 with Path(os.getenv("CONFIG"), "datasets.json").open() as file:
     DATASET_SETTINGS = json.load(file)

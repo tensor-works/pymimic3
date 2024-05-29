@@ -577,12 +577,14 @@ class ProcessedSetReader(AbstractReader):
 
         return dataset
 
-    def random_samples(self,
-                       n_samples: int = 1,
-                       read_ids: bool = False,
-                       read_timestamps: bool = False,
-                       data_type=None,
-                       seed: int = 42):
+    def random_samples(
+            self,
+            n_samples: int = 1,
+            read_ids: bool = False,  # This is for debugging
+            read_timestamps: bool = False,
+            data_type=None,
+            return_ids: bool = False,
+            seed: int = 42):
         """ Sampling without replacement from subjects
 
         Args:
@@ -608,7 +610,11 @@ class ProcessedSetReader(AbstractReader):
                         f"Maximum number of samples in dataset reached! Requested {n_samples}, but dataset size is {len(self.subject_ids)}."
                     )
                 break
-
+        if return_ids:
+            return self.read_samples(sample_ids,
+                                     read_ids=read_ids,
+                                     read_timestamps=read_timestamps,
+                                     data_type=data_type), sample_ids
         return self.read_samples(sample_ids,
                                  read_ids=read_ids,
                                  read_timestamps=read_timestamps,

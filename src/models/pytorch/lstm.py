@@ -235,16 +235,11 @@ class LSTMNetwork(nn.Module):
 
         return 0
 
-    def _update_metrics(self, metrics: Dict[str, Metric], x, y_true, y_pred):
-        y_label = None
-
+    def _update_metrics(self, metrics: Dict[str, Metric], y_pred, y_true):
+        # https://torchmetrics.readthedocs.io/en/v0.8.0/pages/classification.html
+        # What do we need?
         for _, metric in metrics.items():
-            if not hasattr(metric, "requires_labels") or not metric.requires_labels:
-                metric.update(y_true, y_pred)
-            else:
-                if y_label is None:
-                    y_label = self.predict_one(x)
-                metric.update(y_true, y_label)
+            metric.update(y_pred, y_true.astype(int))
 
     def _train(self,
                train_generator: DataLoader,
@@ -267,6 +262,7 @@ class LSTMNetwork(nn.Module):
                 loss = self._loss(outputs, labels, sample_weight=sample_weights)
             else:
                 loss = self._loss(outputs, labels)
+            self._update_metrics(self._train_metrics, outputs, labels)
             loss.backward()
             self._optimizer.step()
             train_losses.append(loss.item())
