@@ -158,10 +158,14 @@ def assert_file_creation(root_path: Path,
 
 if __name__ == "__main__":
     import shutil
+    _ = datasets.load_data(
+            chunksize=75835,
+            source_path=TEST_DATA_DEMO,
+            storage_path=SEMITEMP_DIR)
     for task in TASK_NAMES:
         if Path(TEMP_DIR).is_dir():
             shutil.rmtree(str(Path(TEMP_DIR)))
         test_compact_processing_task(task)
         if Path(TEMP_DIR).is_dir():
             shutil.rmtree(str(TEMP_DIR))
-        test_iterative_processing_task(task)
+        # test_iterative_processing_task(task)

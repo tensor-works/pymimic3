@@ -447,7 +447,7 @@ if __name__ == "__main__":
     extraction_reader = datasets.load_data(chunksize=75835,
                                            source_path=TEST_DATA_DEMO,
                                            storage_path=SEMITEMP_DIR)
-    icu_history = extraction_reader.read_csv("icu_history.csv")
+    icu_history = extraction_reader._read_csv("icu_history.csv")
     subjects = icu_history["SUBJECT_ID"].astype(int).unique().tolist()
     for extraction_style in ["iterative"]:  #"compact", "iterative"]:
         if TEMP_DIR.is_dir():

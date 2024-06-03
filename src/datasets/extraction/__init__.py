@@ -1,3 +1,49 @@
+"""
+Dataset Extraction Module
+=========================
+
+This module provides functions and classes for extracting and processing dataset files.
+It supports both compact and iterative extraction methods to handle different use cases.
+
+Functions
+---------
+- compact_extraction(storage_path, source_path, num_subjects, num_samples, subject_ids, task)
+    Performs compact extraction of the dataset.
+- iterative_extraction(source_path, storage_path, chunksize, num_subjects, num_samples, subject_ids, task)
+    Performs iterative extraction of the dataset.
+- read_patients_csv(dataset_folder)
+    Reads the PATIENTS.csv file from the specified dataset folder.
+- read_admission_csv(dataset_folder)
+    Reads the ADMISSIONS.csv file from the specified dataset folder.
+- read_icustays_csv(dataset_folder)
+    Reads the ICUSTAYS.csv file from the specified dataset folder.
+- read_icd9codes_csv(dataset_folder)
+    Reads the D_ICD_DIAGNOSES.csv file from the specified dataset folder.
+- read_events_dictionary(dataset_folder)
+    Reads the D_ITEMS.csv file from the specified dataset folder.
+- merge_patient_history(patients_df, admissions_df, icustays_df, min_nb_stays, max_nb_stays)
+    Merges patient, admission, and ICU stay data to create a patient history DataFrame.
+- make_subject_infos(patients_df, admission_info_df, icustays_df, min_nb_stays, max_nb_stays)
+    Creates a DataFrame containing information about subjects by merging patient, admission, and ICU stay data.
+- make_icu_history(patients_df, admissions_df, icustays_df, min_nb_stays, max_nb_stays)
+    Creates a DataFrame describing each ICU stay with admission data, patient data, and mortality.
+- make_diagnoses(dataset_folder, icd9codes_df, icu_history_df)
+    Creates a DataFrame containing descriptions of diagnoses with direct links to subjects and ICU stays.
+- make_phenotypes(diagnoses_df, definition_map)
+    Creates a binary matrix with diagnoses over ICU stays.
+- get_by_subject(df, sort_by)
+    Groups events by subject ID.
+
+Examples
+--------
+>>> from extraction_module import compact_extraction, iterative_extraction
+>>> storage_path = Path("/path/to/storage")
+>>> source_path = Path("/path/to/source")
+>>> dataset_dict = compact_extraction(storage_path, source_path, num_subjects=100)
+>>> reader = iterative_extraction(source_path, storage_path, chunksize=1000)
+"""
+
+
 import pandas as pd
 import yaml
 import warnings
@@ -10,7 +56,7 @@ from pathlib import Path
 from typing import List
 from utils.IO import *
 from settings import *
-from .extraction_functions import make_subject_events, make_timeseries
+from .extraction_functions import extract_subject_events, extract_timeseries
 from .event_producer import EventProducer
 from .timeseries_processor import TimeseriesProcessor
 from ..trackers import ExtractionTracker
@@ -18,24 +64,41 @@ from ..mimic_utils import *
 from ..readers import ExtractedSetReader, EventReader
 from ..writers import DataSetWriter
 
-__all__ = ["compact_extraction", "iterative_extraction"]
-
 
 def compact_extraction(storage_path: Path,
                        source_path: Path,
                        num_subjects: int = None,
                        num_samples: int = None,
                        subject_ids: list = None,
-                       task: str = None):
-    """_summary_
+                       task: str = None) -> dict:
+    """
+    Perform single shot extraction of the dataset from the original source. Ensure enough RAM is available.
 
-    Args:
-        source_path (_type_, optional): _description_. Defaults to None.
-        ehr (_type_, optional): _description_. Defaults to None.
-        from_storage (bool, optional): _description_. Defaults to True.
+    Parameters
+    ----------
+    storage_path : Path
+        The path to the storage directory where the extracted data will be saved.
+    source_path : Path
+        The path to the source directory containing the raw data files.
+    num_subjects : int, optional
+        The number of subjects to extract. If None, all subjects are extracted. Default is None.
+    num_samples : int, optional
+        The number of samples to extract. If None, all samples are extracted. Default is None.
+    subject_ids : list of int, optional
+        List of subject IDs to extract. If None, all subjects are extracted. Default is None.
+    task : str, optional
+        Specific task to extract data for. If None, all tasks are extracted. Default is None.
 
-    Returns:
-        _type_: _description_
+    Returns
+    -------
+    dict
+        A dictionary containing the extracted data.
+
+    Examples
+    --------
+    >>> storage_path = Path("/path/to/storage")
+    >>> source_path = Path("/path/to/source")
+    >>> dataset = compact_extraction(storage_path, source_path, num_subjects=100)
     """
     original_subject_ids = deepcopy(subject_ids)
     resource_folder = Path(source_path, "resources")
@@ -146,7 +209,7 @@ def compact_extraction(storage_path: Path,
         chartevents_df = event_reader.get_all()
 
         # Make subject event table
-        subject_events = make_subject_events(chartevents_df, icu_history_df)
+        subject_events = extract_subject_events(chartevents_df, icu_history_df)
         dataset_writer.write_bysubject({
             "subject_events": subject_events,
         }, index=False)
@@ -156,7 +219,7 @@ def compact_extraction(storage_path: Path,
         info_io("Extracting subject timeseries and episodic data")
         # Read Dataframes for time series
         varmap_df = read_varmap_csv(resource_folder)
-        episodic_data, timeseries = make_timeseries(subject_events, subject_diagnoses,
+        episodic_data, timeseries = extract_timeseries(subject_events, subject_diagnoses,
                                                     subject_icu_history, varmap_df)
         name_data_pair = {"episodic_data": episodic_data, "timeseries": timeseries}
         dataset_writer.write_bysubject(name_data_pair, exists_ok=True)
@@ -180,19 +243,37 @@ def iterative_extraction(source_path: Path,
                          num_subjects: int = None,
                          num_samples: int = None,
                          subject_ids: list = None,
-                         task: str = None):
-    """_summary_
+                         task: str = None) -> ExtractedSetReader:
+    """
+    Perform iterative extraction of the dataset, with specified chunk size. This will require less RAM and run on multiple processes.
 
-    Args:
-        source_path (_type_): _description_
-        source_path (_type_): _description_
-        ehr (_type_): _description_
-        from_storage (_type_): _description_
-        chunksize (_type_): _description_
-        num_subjects (_type_): _description_
+    Parameters
+    ----------
+    source_path : Path
+        The path to the source directory containing the raw data files.
+    storage_path : Path, optional
+        The path to the storage directory where the extracted data will be saved. Default is None.
+    chunksize : int, optional
+        The size of chunks to read at a time. Default is None.
+    num_subjects : int, optional
+        The number of subjects to extract. If None, all subjects are extracted. Default is None.
+    num_samples : int, optional
+        The number of samples to extract. If None, all samples are extracted. Default is None.
+    subject_ids : list of int, optional
+        List of subject IDs to extract. If None, all subjects are extracted. Default is None.
+    task : str, optional
+        Specific task to extract data for. If None, all tasks are extracted. Default is None.
 
-    Returns:
-        _type_: _description_
+    Returns
+    -------
+    ExtractedSetReader
+        The extracted set reader to access the dataset.
+
+    Examples
+    --------
+    >>> source_path = Path("/path/to/source")
+    >>> storage_path = Path("/path/to/storage")
+    >>> reader = iterative_extraction(source_path, storage_path, chunksize=1000, num_subjects=100)
     """
     # Not sure
     original_subject_ids = deepcopy(subject_ids)
@@ -341,6 +422,29 @@ def iterative_extraction(source_path: Path,
 
 
 def reduce_by_subjects(dataframe: pd.DataFrame, subject_ids: list):
+    """
+    Reduce the dataframe to only include the specified subject IDs.
+
+    Parameters
+    ----------
+    dataframe : pd.DataFrame
+        The dataframe to reduce.
+    subject_ids : list
+        The list of subject IDs to retain in the dataframe.
+
+    Returns
+    -------
+    pd.DataFrame
+        The reduced dataframe containing only the specified subject IDs.
+
+    Examples
+    --------
+    >>> df = pd.DataFrame({"SUBJECT_ID": [10006, 10011, 10019], "value": [10, 20, 30]})
+    >>> reduce_by_subjects(df, [10006, 10019])
+       SUBJECT_ID  value
+    0           10006     10
+    2           10019     30
+    """
     if subject_ids is not None:
         return dataframe[dataframe["SUBJECT_ID"].isin(subject_ids)]
     return dataframe
@@ -351,17 +455,28 @@ def get_subject_ids(task: str,
                     subject_ids: list = None,
                     num_subjects: int = None,
                     existing_subjects: list = None):
-    """Get the subject IDs to be processed or returned.
 
-    Args:
-        task (str): _description_
-        icu_history_df (pd.DataFrame): _description_
-        subject_ids (list, optional): _description_. Defaults to None.
-        num_subjects (int, optional): _description_. Defaults to None.
-        existing_subjects (list, optional): _description_. Defaults to None.
+    """
+    Get the subject IDs that can be processed for the given task. Many subjects will need to be
+    discarded as they do not fulfill the minimum length of stay requirement of 48H for IHM, 4H for DECOMP and LOS.
 
-    Returns:
-        _type_: _description_
+    Parameters
+    ----------
+    task : str
+        The task for which to get the subject IDs.
+    icu_history_df : pd.DataFrame
+        The dataframe containing ICU history information.
+    subject_ids : list of int, optional
+        List of subject IDs to extract. If None, all subjects are extracted. Default is None.
+    num_subjects : int, optional
+        The number of subjects to extract. If None, all subjects are extracted. Default is None.
+    existing_subjects : list of int, optional
+        List of existing subjects to exclude from extraction. Default is None.
+
+    Returns
+    -------
+    tuple
+        A tuple containing the list of subject IDs and the reduced ICU history dataframe.
     """
     if existing_subjects is None:
         existing_subjects = []
@@ -390,6 +505,9 @@ def get_subject_ids(task: str,
 
 def get_subjects_by_number(task: str, num_subjects: int, existing_subjects: List[int],
                            all_subjects: List[int]):
+    """
+    Get a specified number of subject IDs, excluding the existing subjects.
+    """
     # Determined how many are missing
     num_subjects = max(0, num_subjects - len(existing_subjects))
     # Chose from uprocessed subjects
@@ -404,6 +522,9 @@ def get_subjects_by_number(task: str, num_subjects: int, existing_subjects: List
 
 
 def get_processable_subjects(task: str, icu_history_df: pd.DataFrame):
+    """
+    Get the subject IDs that can be processed for a given task.
+    """
     if task is not None and "label_start_time" in DATASET_SETTINGS[task]:
         # Some ids will be removed during the preprocessing step
         # We remove them here to avoid errors
@@ -418,12 +539,7 @@ def get_processable_subjects(task: str, icu_history_df: pd.DataFrame):
 
 
 def create_split_info_csv(episodic_info_df: pd.DataFrame, subject_info_df: pd.DataFrame):
-    """_summary_
-
-    Args:
-        episodic_data_df (pd.DataFrame): _description_
-        icu_history_df (pd.DataFrame): _description_
-        events_info_df (pd.DataFrame): _description_
+    """Create the information used by the dataset split function to split the subjects into demographics groups.
     """
     episodic_info_df["SUBJECT_ID"] = episodic_info_df["SUBJECT_ID"].astype(int)
     episodic_info_df = episodic_info_df.merge(subject_info_df,
@@ -437,11 +553,23 @@ def create_split_info_csv(episodic_info_df: pd.DataFrame, subject_info_df: pd.Da
 
 def read_patients_csv(dataset_folder: Path):
     """
-    Parameters:
-        dataset_folder:     If not default dataset path at data/mimic-iii-demo/
+    Reads the PATIENTS.csv file from the specified dataset folder with correct dtypes and columns.
 
-    Returns:
-        patients_df:        Patients data (birth, death, gender, ethnicity etc.)
+    Parameters
+    ----------
+    dataset_folder : Path
+        Path to the dataset folder. Defaults to 'data/mimic-iii-demo/'.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame containing patient data including birth, death, gender, and ethnicity.
+
+    Notes
+    -----
+    - Column names are converted to uppercase.
+    - Columns specified in the configuration are selected.
+    - Date columns are converted to datetime.
     """
     csv_settings = DATASET_SETTINGS["PATIENTS"]
     patients_df = pd.read_csv(Path(dataset_folder, "PATIENTS.csv"),
@@ -458,11 +586,25 @@ def read_patients_csv(dataset_folder: Path):
 
 def read_admission_csv(dataset_folder: Path):
     """
-    Parameters:
-        dataset_folder:     If not default dataset path at data/mimic-iii-demo/
+    Reads the ADMISSIONS.csv file from the specified dataset folder with correct dtypes and columns.
 
-    Returns:
-        admissions_df:      Hospital admissions data (admission, discharge, type, location, etc.)
+    Parameters
+    ----------
+    dataset_folder : Path
+        Path to the dataset folder. Defaults to 'data/mimic-iii-demo/'.
+
+    Returns
+    -------
+    tuple of pd.DataFrame
+        A tuple containing:
+            - admissions_df: DataFrame with hospital admissions data including admission, discharge, type, and location.
+            - admissions_info_df: DataFrame with additional admission information.
+
+    Notes
+    -----
+    - Column names are converted to uppercase.
+    - Columns specified in the configuration are selected.
+    - Date columns are converted to datetime.
     """
     csv_settings = DATASET_SETTINGS["ADMISSIONS"]
 
@@ -480,11 +622,23 @@ def read_admission_csv(dataset_folder: Path):
 
 def read_icustays_csv(dataset_folder: Path):
     """
-    Parameters:
-        dataset_folder:     If not default dataset path at data/mimic-iii-demo/
+    Reads the ICUSTAYS.csv file from the specified dataset folder with correct dtypes and columns.
 
-    Returns:
-        icustays_df:        ICU admission data (firt & last care unit, ward id, etc.)
+    Parameters
+    ----------
+    dataset_folder : Path
+        Path to the dataset folder. Defaults to 'data/mimic-iii-demo/'.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with ICU admission data including first & last care unit, ward ID, etc.
+
+    Notes
+    -----
+    - Column names are converted to uppercase.
+    - Columns specified in the configuration are selected.
+    - Date columns are converted to datetime.
     """
     csv_settings = DATASET_SETTINGS["ICUSTAYS"]
 
@@ -499,11 +653,23 @@ def read_icustays_csv(dataset_folder: Path):
 
 def read_icd9codes_csv(dataset_folder: Path):
     """
-    Parameters:
-        dataset_folder:     If not default dataset path at data/mimic-iii-demo/
+    Reads the D_ICD_DIAGNOSES.csv file from the specified dataset folder.
 
-    Returns:
-        icd9codes_df:       Dictionaries describing the ICD9 codes
+    Parameters
+    ----------
+    dataset_folder : Path
+        Path to the dataset folder. Defaults to 'data/mimic-iii-demo/'.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with dictionaries describing the ICD9 codes.
+
+    Notes
+    -----
+    - Column names are converted to uppercase.
+    - Columns specified in the configuration are selected.
+    -  International Classification of Diseases, Ninth Revision, are alphanumeric codes used by healthcare providers to classify and code all diagnoses, symptoms, and procedures recorded in conjunction with hospital care in the United States
     """
     csv_settings = DATASET_SETTINGS["ICD9CODES"]
 
@@ -516,10 +682,23 @@ def read_icd9codes_csv(dataset_folder: Path):
 
 
 def read_events_dictionary(dataset_folder: Path):
-    """_summary_
+    """
+    Reads the D_ITEMS.csv file from the specified dataset folder.
 
-    Args:
-        dataset_folder (_type_): _description_
+    Parameters
+    ----------
+    dataset_folder : Path
+        Path to the dataset folder. Defaults to 'data/mimic-iii-demo/'.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame containing the items dictionary with ITEMID and DBSOURCE columns.
+
+    Notes
+    -----
+    - Column names are converted to uppercase.
+    - Only the ITEMID and DBSOURCE columns are selected.
     """
     csv_settings = DATASET_SETTINGS["D_ITEMS"]
     dictionary_df = pd.read_csv(Path(dataset_folder, "D_ITEMS.csv"),
@@ -532,14 +711,32 @@ def read_events_dictionary(dataset_folder: Path):
 
 def merge_patient_history(patients_df, admissions_df, icustays_df, min_nb_stays,
                           max_nb_stays) -> pd.DataFrame:
-    """_summary_
+    """
+    Merges patient, admission, and ICU stay data to create a patient history DataFrame of ICU stays, like admission time and mortality.
 
-    Args:
-        patients_df (_type_): _description_
-        admissions_df (_type_): _description_
-        icustays_df (_type_): _description_
-        min_nb_stays (_type_): _description_
-        max_nb_stays (_type_): _description_
+    Parameters
+    ----------
+    patients_df : pd.DataFrame
+        DataFrame containing patient data.
+    admissions_df : pd.DataFrame
+        DataFrame containing admission data.
+    icustays_df : pd.DataFrame
+        DataFrame containing ICU stay data.
+    min_nb_stays : int
+        Minimum number of ICU stays to include a patient.
+    max_nb_stays : int
+        Maximum number of ICU stays to include a patient.
+
+    Returns
+    -------
+    pd.DataFrame
+        Merged DataFrame with patient history.
+
+    Notes
+    -----
+    - Only ICU stays where the first and last care unit and ward ID match are included.
+    - Filters patients based on the number of ICU stays between min_nb_stays and max_nb_stays.
+    - Calculates patient age and filters out children (age < 18).
     """
     icustays_df = icustays_df[icustays_df["FIRST_CAREUNIT"] == icustays_df["LAST_CAREUNIT"]]
     icustays_df = icustays_df[icustays_df["FIRST_WARDID"] == \
@@ -575,6 +772,32 @@ def make_subject_infos(patients_df,
                        icustays_df,
                        min_nb_stays=1,
                        max_nb_stays=1) -> pd.DataFrame:
+    """
+    Creates a DataFrame containing information about subjects by merging patient, admission, and ICU stay data, like gender and insurance.
+
+    Parameters
+    ----------
+    patients_df : pd.DataFrame
+        DataFrame containing patient data.
+    admission_info_df : pd.DataFrame
+        DataFrame containing additional admission information.
+    icustays_df : pd.DataFrame
+        DataFrame containing ICU stay data.
+    min_nb_stays : int, optional
+        Minimum number of ICU stays to include a patient, by default 1.
+    max_nb_stays : int, optional
+        Maximum number of ICU stays to include a patient, by default 1.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame containing subject information with specified columns.
+
+    Notes
+    -----
+    - Merges patient history data.
+    - Selects and renames columns according to the configuration.
+    """
     csv_settings = DATASET_SETTINGS["subject_info"]
     subject_info_df = merge_patient_history(patients_df, admission_info_df, icustays_df,
                                             min_nb_stays, max_nb_stays)
@@ -593,13 +816,25 @@ def make_icu_history(patients_df,
                      min_nb_stays=1,
                      max_nb_stays=1) -> pd.DataFrame:
     """
-    Parameters:
-        patients_df:        patients data
-        admissions_df:      hospital admissions data
-        icustays_df:        ICU stay data
+    Creates a DataFrame describing each ICU stay with admission data, patient data, and mortality.
 
-    Returns:
-        icu_history_df:     Description of each ICU stay with admission data, patients data and mortality
+    Parameters
+    ----------
+    patients_df : pd.DataFrame
+        DataFrame containing patient data.
+    admissions_df : pd.DataFrame
+        DataFrame containing hospital admissions data.
+    icustays_df : pd.DataFrame
+        DataFrame containing ICU stay data.
+    min_nb_stays : int, optional
+        Minimum number of ICU stays to include a patient, by default 1.
+    max_nb_stays : int, optional
+        Maximum number of ICU stays to include a patient, by default 1.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame describing each ICU stay with admission data, patient data, and mortality.
     """
     csv_settings = DATASET_SETTINGS["icu_history"]
     icu_history_df = merge_patient_history(patients_df, admissions_df, icustays_df, min_nb_stays,
@@ -631,13 +866,22 @@ def make_icu_history(patients_df,
 
 def make_diagnoses(dataset_folder, icd9codes_df, icu_history_df):
     """
-    Parameters:
-        dataset_folder:     If not default dataset path at data/mimic-iii-demo/
-        icd9codes_df:       Diagnoses item ID defintions
-        icu_history_df:     ICU stays descriptions
+    Creates a DataFrame containing descriptions of diagnoses with direct links to subjects and ICU stays.
 
-    Returns:
-        diagnoses_df:       Dataframe containing description of diagnoses with direct link to subject and ICU stay
+    Parameters
+    ----------
+    dataset_folder : str
+        Path to the dataset folder. Defaults to 'data/mimic-iii-demo/'.
+    icd9codes_df : pd.DataFrame
+        DataFrame containing ICD-9 code definitions.
+    icu_history_df : pd.DataFrame
+        DataFrame containing ICU stay descriptions.
+
+    Returns
+    -------
+    tuple of pd.DataFrame and dict
+        - diagnoses_df: DataFrame containing descriptions of diagnoses with links to subjects and ICU stays.
+        - definition_map: Dictionary mapping ICD-9 codes to phenotypes and benchmark usage.
     """
     csv_settings = DATASET_SETTINGS["DIAGNOSES_ICD"]
     diagnoses_df = pd.read_csv(Path(dataset_folder, 'DIAGNOSES_ICD.csv'),
@@ -677,12 +921,19 @@ def make_diagnoses(dataset_folder, icd9codes_df, icu_history_df):
 
 def make_phenotypes(diagnoses_df, definition_map):
     """
-    Parameters:
-        diagnoses_df:       Diagnoses descriptions with ICU stay information
-        resource_folder:    If not default dataset path at data/mimic-iii-demo/resources/
+    Creates a binary matrix with diagnoses over ICU stays.
 
-    Returns:
-        phenotypes_df:      Binary matrix with diagnoses over ICU stays
+    Parameters
+    ----------
+    diagnoses_df : pd.DataFrame
+        DataFrame containing diagnoses descriptions with ICU stay information.
+    definition_map : dict
+        Dictionary mapping ICD-9 codes to phenotypes and benchmark usage.
+
+    Returns
+    -------
+    pd.DataFrame
+        Binary matrix with diagnoses over ICU stays.
     """
     # Merge definitions to diagnoses
     phenotype_dictionary_df = pd.DataFrame(definition_map).T.reset_index().rename(columns={
@@ -716,12 +967,7 @@ def make_phenotypes(diagnoses_df, definition_map):
 
 def get_by_subject(df, sort_by):
     """
-    Parameters:
-        df:         Dataframe with subject_id columns
-        sort_by:    Column by which to sort the subdataframes
-
-    Returns:
-        subject_events:     Dictionary containing events by subject_id
+    Groups events by subject ID.
     """
     return {id: x for id, x in df.sort_values(by=sort_by).groupby('SUBJECT_ID')}
 

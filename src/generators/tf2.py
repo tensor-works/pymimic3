@@ -1,7 +1,6 @@
 from preprocessing.scalers import AbstractScaler
 from datasets.readers import ProcessedSetReader
 from tensorflow.keras.utils import Sequence
-from tests.settings import *
 from utils.IO import *
 from . import AbstractGenerator
 

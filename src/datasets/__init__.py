@@ -4,23 +4,24 @@ This file allows access to the dataset as specified.
 All function in this file are used by the main interface function load_data.
 Subfunctions used within private functions are located in the datasets.utils module.
 
-Todo:
-    - Use a settings.json
-    - This is a construction site, see what you can bring in here
-    - Provid link to kaggle in load_data doc string
-    - Expand function to utils
+TODOS
+- Use a settings.json
+- This is a construction site, see what you can bring in here
+- Provid link to kaggle in load_data doc string
+- Expand function to utils
 
 YerevaNN/mimic3-benchmarks
 """
 import yaml
+import os
 from typing import Union
 from pathlib import Path
 from utils.IO import *
 from settings import *
+from datasets.processors.preprocessors import MIMICPreprocessor
+from datasets.processors.feature_engines import MIMICFeatureEngine
+from datasets.processors.discretizers import MIMICDiscretizer
 from . import extraction
-from . import preprocessing
-from . import feature_engineering
-from . import discretizing
 from .readers import ProcessedSetReader, ExtractedSetReader
 from .split import train_test_split
 
@@ -91,24 +92,39 @@ def load_data(source_path: str,
                 phenotypes_yaml = yaml.full_load(file)
 
             processed_storage_path = Path(storage_path, "processed", task)
-            reader = preprocessing.iterative_processing(reader=reader,
-                                                        task=task,
-                                                        subject_ids=subject_ids,
-                                                        num_subjects=num_subjects,
-                                                        storage_path=processed_storage_path,
-                                                        phenotypes_yaml=phenotypes_yaml)
+            preprocessor = MIMICPreprocessor(task=task,
+                                            storage_path=processed_storage_path,
+                                            phenotypes_yaml=phenotypes_yaml,
+                                            label_type="one-hot",
+                                            verbose=True)
+            
+            reader = preprocessor.transform_reader(reader=reader, 
+                                                   subject_ids=subject_ids, 
+                                                   num_subjects=num_subjects)
 
         if engineer:
             engineered_storage_path = Path(storage_path, "engineered", task)
-            reader = feature_engineering.iterative_fengineering(
-                subject_ids=subject_ids,
-                num_subjects=num_subjects,
-                reader=reader,
-                task=task,
-                storage_path=engineered_storage_path)
-
+            engine = MIMICFeatureEngine(config_dict=Path(os.getenv("CONFIG"), "engineering_config.json"),
+                                        storage_path=storage_path,
+                                        task=task,
+                                        verbose=True)
+            reader = engine.transform_reader(reader=reader,
+                                            subject_ids=subject_ids,
+                                            num_subjects=num_subjects)
         if discretize:
             discretized_storage_path = Path(storage_path, "discretized", task)
+            discretizer = MIMICDiscretizer(reader=reader,
+                                        task=task,
+                                        storage_path=discretized_storage_path,
+                                        time_step_size=time_step_size,
+                                        impute_strategy=impute_strategy,
+                                        start_at_zero=start_at_zero,
+                                        mode=mode,
+                                        verbose=False)
+            reader = discretizer.transform_reader(reader=reader,
+                                                subject_ids=subject_ids,
+                                                num_subjects=num_subjects)
+            '''
             reader = discretizing.iterative_discretization(reader=reader,
                                                            task=task,
                                                            storage_path=discretized_storage_path,
@@ -116,6 +132,7 @@ def load_data(source_path: str,
                                                            impute_strategy=impute_strategy,
                                                            start_at_zero=start_at_zero,
                                                            mode=mode)
+            '''
 
         return reader
 
@@ -135,6 +152,16 @@ def load_data(source_path: str,
         # Contains phenotypes and a list of codes referring to the phenotype
         with Path(source_path, "resources", "hcup_ccs_2015_definitions.yaml").open("r") as file:
             phenotypes_yaml = yaml.full_load(file)
+        preprocessor = MIMICPreprocessor(task=task,
+                                            storage_path=processed_storage_path,
+                                            phenotypes_yaml=phenotypes_yaml,
+                                            label_type="one-hot",
+                                            verbose=True)
+        dataset = preprocessor.transform_dataset(dataset=dataset,
+                                       subject_ids=subject_ids,
+                                       num_subjects=num_subjects,
+                                       source_path=extracted_storage_path)
+        '''
         dataset = preprocessing.compact_processing(dataset=dataset,
                                                    task=task,
                                                    subject_ids=subject_ids,
@@ -142,6 +169,7 @@ def load_data(source_path: str,
                                                    storage_path=processed_storage_path,
                                                    source_path=extracted_storage_path,
                                                    phenotypes_yaml=phenotypes_yaml)
+        '''
 
     if engineer:
         engineered_storage_path = Path(storage_path, "engineered", task)
@@ -193,34 +221,4 @@ def _check_inputs(storage_path: str, source_path: str, chunksize: int, subject_i
 
 
 if __name__ == "__main__":
-    resource_folder = Path(os.getenv("WORKINGDIR"), "datalab", "mimic", "data_splits", "resources")
-    handler = SplitHandler(Path(resource_folder, "subject_info_df.csv"),
-                           Path(resource_folder, "progress.json"))
-    assert len(handler.get_subjects("ETHNICITY", "WHITE")) == 30019
-    assert len(handler.get_subjects("ETHNICITY", "BLACK")) == 3631
-    assert len(handler.get_subjects("ETHNICITY", "UNKNOWN/NOT SPECIFIED")) == 3861
-    assert len(handler.get_subjects("ETHNICITY", "HISPANIC")) == 1538
-    assert len(handler.get_subjects("ETHNICITY", "ASIAN")) == 1623
-    assert len(handler.get_subjects("ETHNICITY", "OTHER")) == 1902
-    assert len(handler.get_subjects("ETHNICITY", "UNABLE TO OBTAIN")) == 703
-
-    assert len(handler.get_subjects("ETHNICITY", ["WHITE", "BLACK"])) == 30019 + 3631
-    assert len(handler.get_subjects("ETHNICITY", ["HISPANIC", "ASIAN"])) == 1538 + 1623
-
-    dataset, ratios = handler.split("ETHNICITY", test="WHITE", train="BLACK")
-    assert len(dataset["train"]) == 3631
-    assert len(dataset["test"]) == 30019
-
-    dataset, ratios = handler.split("ETHNICITY", test="WHITE")
-    assert sum(list(ratios.values())) == 1
-    assert len(dataset["train"]) == 3631 + 3861 + 1538 + 1623 + 1902 + 703
-    assert len(dataset["test"]) == 30019
-
-    dataset, ratios = handler.split("ETHNICITY", train="WHITE")
-    assert sum(list(ratios.values())) == 1
-    assert len(dataset["train"]) == 30019
-    assert len(dataset["test"]) == 3631 + 3861 + 1538 + 1623 + 1902 + 703
-
-    dataset, ratios = handler.split("LANGUAGE", train=["ENGL", "SPAN"])
-    assert sum(list(ratios.values())) == 1
-    assert len(dataset["train"]) == 19436 + 728
+    ...

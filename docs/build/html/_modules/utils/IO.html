@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>utils.IO &mdash; open-mimic-iii - documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=92fd9be5" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../_static/documentation_options.js?v=b1628c55"></script>
+        <script src="../../_static/doctools.js?v=9a2dae69"></script>
+        <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            open-mimic-iii
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../_rst/datasets.html">datasets package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../_rst/generators.html">generators package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../_rst/metrics.html">metrics package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../_rst/models.html">models package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../_rst/pipelines.html">pipelines package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../_rst/preprocessing.html">preprocessing package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">open-mimic-iii</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+          <li class="breadcrumb-item"><a href="../utils.html">utils</a></li>
+      <li class="breadcrumb-item active">utils.IO</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for utils.IO</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Utility file</span>
+
+<span class="sd">This file implements functionalities used by other modules and accessible to </span>
+<span class="sd">the user</span>
+
+<span class="sd">Todo:</span>
+<span class="sd">    - Use a settings.json</span>
+<span class="sd">    - fix the progressbar bullshit</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="c1"># Import necessary packages</span>
+<span class="kn">import</span> <span class="nn">datetime</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">datetime</span>
+<span class="kn">import</span> <span class="nn">inspect</span>
+<span class="kn">import</span> <span class="nn">pdb</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span> <span class="nn">colorama</span> <span class="kn">import</span> <span class="n">init</span><span class="p">,</span> <span class="n">Fore</span><span class="p">,</span> <span class="n">Style</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;info_io&quot;</span><span class="p">,</span> <span class="s2">&quot;info_io&quot;</span><span class="p">,</span> <span class="s2">&quot;tests_io&quot;</span><span class="p">,</span> <span class="s2">&quot;error_io&quot;</span><span class="p">,</span> <span class="s2">&quot;debug_io&quot;</span><span class="p">,</span> <span class="s2">&quot;warn_io&quot;</span><span class="p">,</span> <span class="s2">&quot;suppress_io&quot;</span><span class="p">]</span>
+
+<span class="n">WORKINGDIR</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;WORKINGDIR&quot;</span><span class="p">)</span>
+
+<span class="c1"># Initialize Colorama</span>
+<span class="n">init</span><span class="p">(</span><span class="n">autoreset</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_clean_path</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    If path is inside of the directroy, make it relative to directory.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span><span class="o">.</span><span class="n">relative_to</span><span class="p">(</span><span class="n">WORKINGDIR</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">str</span><span class="p">(</span><span class="n">path</span><span class="p">)</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;src&quot;</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span><span class="o">.</span><span class="n">relative_to</span><span class="p">(</span><span class="s2">&quot;src&quot;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="nb">str</span><span class="p">(</span><span class="n">path</span><span class="p">)</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;tests&quot;</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span><span class="o">.</span><span class="n">relative_to</span><span class="p">(</span><span class="s2">&quot;tests&quot;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="nb">str</span><span class="p">(</span><span class="n">path</span><span class="p">)</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;script&quot;</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span><span class="o">.</span><span class="n">relative_to</span><span class="p">(</span><span class="s2">&quot;script&quot;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="nb">str</span><span class="p">(</span><span class="n">path</span><span class="p">)</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;examples&quot;</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span><span class="o">.</span><span class="n">relative_to</span><span class="p">(</span><span class="s2">&quot;examples&quot;</span><span class="p">)</span>
+
+
+<span class="n">DEBUG_OPTION</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="n">main_name</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+<span class="k">if</span> <span class="s2">&quot;pytest&quot;</span> <span class="ow">in</span> <span class="nb">str</span><span class="p">(</span><span class="n">main_name</span><span class="p">):</span>
+    <span class="n">PATH_PADDING</span> <span class="o">=</span> <span class="nb">max</span><span class="p">([</span>
+        <span class="nb">len</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">_clean_path</span><span class="p">(</span><span class="n">path</span><span class="p">)))</span>
+        <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">Path</span><span class="p">(</span><span class="n">WORKINGDIR</span><span class="p">)</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s2">&quot;**/*&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">path</span><span class="o">.</span><span class="n">suffix</span> <span class="o">==</span> <span class="s2">&quot;.py&quot;</span>
+    <span class="p">])</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="c1"># Doxygen may break on this</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">PATH_PADDING</span> <span class="o">=</span> <span class="nb">max</span><span class="p">([</span>
+            <span class="nb">len</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">_clean_path</span><span class="p">(</span><span class="n">path</span><span class="p">)))</span>
+            <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">Path</span><span class="p">(</span><span class="n">WORKINGDIR</span><span class="p">)</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s2">&quot;**/*&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">path</span><span class="o">.</span><span class="n">suffix</span> <span class="o">==</span> <span class="s2">&quot;.py&quot;</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">path</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;tests&quot;</span><span class="p">)</span>
+        <span class="p">]</span> <span class="o">+</span> <span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">main_name</span><span class="o">.</span><span class="n">relative_to</span><span class="p">(</span><span class="n">WORKINGDIR</span><span class="p">)))])</span>
+    <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+        <span class="n">PATH_PADDING</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="c1"># {path: len(str(path)) for path in Path().glob(&quot;**/*&quot;) if path.suffix == &quot;.py&quot;}</span>
+<span class="n">SRC_DIR</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">WORKINGDIR</span><span class="p">,</span> <span class="s2">&quot;src&quot;</span><span class="p">)</span>
+<span class="n">SCRIPT_DIR</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">WORKINGDIR</span><span class="p">,</span> <span class="s2">&quot;scripts&quot;</span><span class="p">)</span>
+<span class="n">TEST_DIR</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;TESTS&quot;</span><span class="p">))</span>
+<span class="n">EXAMPLE_DIR</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;EXAMPLES&quot;</span><span class="p">))</span>
+<span class="c1"># Might need adjustment</span>
+<span class="n">HEADER_LENGTH</span> <span class="o">=</span> <span class="mi">5</span> <span class="o">+</span> <span class="mi">19</span> <span class="o">+</span> <span class="mi">3</span> <span class="o">+</span> <span class="n">PATH_PADDING</span> <span class="o">+</span> <span class="mi">3</span> <span class="o">+</span> <span class="mi">2</span> <span class="o">+</span> <span class="mi">4</span>
+<span class="n">TAG_PADDING</span> <span class="o">=</span> <span class="mi">8</span>
+
+
+<span class="k">def</span> <span class="nf">_get_relative_path</span><span class="p">(</span><span class="n">file_path</span><span class="p">:</span> <span class="n">Path</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Get the relative path based on the file location and predefined directories.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">file_path</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">file_path</span><span class="p">)</span>
+    <span class="k">if</span> <span class="s2">&quot;src&quot;</span> <span class="ow">in</span> <span class="n">file_path</span><span class="p">:</span>
+        <span class="n">relativa_path</span> <span class="o">=</span> <span class="n">SRC_DIR</span>
+        <span class="k">return</span> <span class="n">Path</span><span class="p">(</span><span class="n">file_path</span><span class="p">)</span><span class="o">.</span><span class="n">relative_to</span><span class="p">(</span><span class="n">relativa_path</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="s2">&quot;script&quot;</span> <span class="ow">in</span> <span class="n">file_path</span><span class="p">:</span>
+        <span class="n">relativa_path</span> <span class="o">=</span> <span class="n">SCRIPT_DIR</span>
+        <span class="k">return</span> <span class="n">Path</span><span class="p">(</span><span class="n">file_path</span><span class="p">)</span><span class="o">.</span><span class="n">relative_to</span><span class="p">(</span><span class="n">relativa_path</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="s2">&quot;tests&quot;</span> <span class="ow">in</span> <span class="n">file_path</span><span class="p">:</span>
+        <span class="n">relativa_path</span> <span class="o">=</span> <span class="n">TEST_DIR</span>
+        <span class="k">return</span> <span class="n">Path</span><span class="p">(</span><span class="n">file_path</span><span class="p">)</span><span class="o">.</span><span class="n">relative_to</span><span class="p">(</span><span class="n">relativa_path</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="s2">&quot;examples&quot;</span> <span class="ow">in</span> <span class="n">file_path</span><span class="p">:</span>
+        <span class="n">relativa_path</span> <span class="o">=</span> <span class="n">EXAMPLE_DIR</span>
+        <span class="k">return</span> <span class="n">Path</span><span class="p">(</span><span class="n">file_path</span><span class="p">)</span><span class="o">.</span><span class="n">relative_to</span><span class="p">(</span><span class="n">relativa_path</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">file_path</span>
+
+
+<span class="k">def</span> <span class="nf">_get_line</span><span class="p">(</span><span class="n">caller</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Generates a formatted line with the caller&#39;s file path and line number.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">path</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">_get_relative_path</span><span class="p">(</span><span class="n">caller</span><span class="o">.</span><span class="n">filename</span><span class="p">))</span> <span class="o">+</span> <span class="s2">&quot; &quot;</span>
+    <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">Fore</span><span class="o">.</span><span class="n">LIGHTWHITE_EX</span><span class="si">}{</span><span class="nb">str</span><span class="p">(</span><span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%m-</span><span class="si">%d</span><span class="s1"> %H:%M:%S&#39;</span><span class="p">))[:</span><span class="mi">19</span><span class="p">]</span><span class="si">}{</span><span class="n">Style</span><span class="o">.</span><span class="n">RESET_ALL</span><span class="si">}</span><span class="s2"> : </span><span class="si">{</span><span class="n">path</span><span class="si">:</span><span class="s2">-&lt;</span><span class="si">{</span><span class="n">PATH_PADDING</span><span class="si">}}</span><span class="s2"> : </span><span class="si">{</span><span class="n">Fore</span><span class="o">.</span><span class="n">LIGHTCYAN_EX</span><span class="si">}</span><span class="s2">L </span><span class="si">{</span><span class="n">caller</span><span class="o">.</span><span class="n">lineno</span><span class="si">:</span><span class="s2">&lt;4</span><span class="si">}{</span><span class="n">Style</span><span class="o">.</span><span class="n">RESET_ALL</span><span class="si">}</span><span class="s2">&quot;</span>
+
+
+<span class="k">def</span> <span class="nf">_print_iostring</span><span class="p">(</span><span class="n">string</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">line_header</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">flush_block</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span> <span class="n">collor</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Prints the message itself without the header.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">flush_block</span><span class="p">:</span>
+        <span class="n">lines</span> <span class="o">=</span> <span class="n">string</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="n">num_lines</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\x1b</span><span class="s2">[</span><span class="si">{</span><span class="n">num_lines</span><span class="si">}</span><span class="s2">A&quot;</span><span class="p">)</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\x1b</span><span class="s1">[2K&#39;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">lines</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">lines</span><span class="p">[</span><span class="mi">1</span><span class="p">:]:</span>
+            <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\x1b</span><span class="s1">[2K&#39;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot; &quot;</span> <span class="o">*</span> <span class="n">HEADER_LENGTH</span> <span class="o">+</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">collor</span><span class="si">}</span><span class="s2">-</span><span class="si">{</span><span class="n">Style</span><span class="o">.</span><span class="n">RESET_ALL</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">line</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
+        <span class="k">return</span> <span class="kc">True</span>
+    <span class="k">elif</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="ow">in</span> <span class="n">string</span><span class="p">:</span>
+        <span class="n">lines</span> <span class="o">=</span> <span class="n">string</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">lines</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">lines</span><span class="p">[</span><span class="mi">1</span><span class="p">:]:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot; &quot;</span> <span class="o">*</span> <span class="n">HEADER_LENGTH</span> <span class="o">+</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">collor</span><span class="si">}</span><span class="s2">-</span><span class="si">{</span><span class="n">Style</span><span class="o">.</span><span class="n">RESET_ALL</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">line</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">True</span>
+    <span class="k">return</span> <span class="kc">False</span>
+
+
+<div class="viewcode-block" id="info_io">
+<a class="viewcode-back" href="../../_rst/utils.html#utils.IO.info_io">[docs]</a>
+<span class="k">def</span> <span class="nf">info_io</span><span class="p">(</span><span class="n">message</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+            <span class="n">level</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="n">end</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="n">flush</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="n">unflush</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="n">flush_block</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Prints a message with an information header, which can be formatted at different levels, or without any header formatting.</span>
+<span class="sd">    Level 0: Wide header</span>
+<span class="sd">    Level 1: Medium header</span>
+<span class="sd">    Level 2: Narrow header</span>
+<span class="sd">    Level None: No header formatting, behaves like the original info_io.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    message : str</span>
+<span class="sd">        The message to log.</span>
+<span class="sd">    level : int, optional</span>
+<span class="sd">        The level of the header, or None for no header formatting. Defaults to None.</span>
+<span class="sd">    end : str, optional</span>
+<span class="sd">        How to end the print, e.g., &quot;\n&quot; (newline). Defaults to None.</span>
+<span class="sd">    flush : bool, optional</span>
+<span class="sd">        Whether to forcibly flush the stream. Defaults to None.</span>
+<span class="sd">    unflush : bool, optional</span>
+<span class="sd">        If True, adds an additional newline before the message. Defaults to None.</span>
+<span class="sd">    flush_block : bool, optional</span>
+<span class="sd">        If True, prints the whole block at once to avoid disruptions. Defaults to False.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">base_io</span><span class="p">(</span><span class="s2">&quot;INFO&quot;</span><span class="p">,</span> <span class="n">Fore</span><span class="o">.</span><span class="n">BLUE</span><span class="p">,</span> <span class="n">message</span><span class="p">,</span> <span class="n">level</span><span class="p">,</span> <span class="n">end</span><span class="p">,</span> <span class="n">flush</span><span class="p">,</span> <span class="n">unflush</span><span class="p">,</span> <span class="n">flush_block</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="tests_io">
+<a class="viewcode-back" href="../../_rst/utils.html#utils.IO.tests_io">[docs]</a>
+<span class="k">def</span> <span class="nf">tests_io</span><span class="p">(</span><span class="n">message</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+             <span class="n">level</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+             <span class="n">end</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+             <span class="n">flush</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+             <span class="n">unflush</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+             <span class="n">flush_block</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Prints a message with an information header, which can be formatted at different levels, or without any header formatting.</span>
+<span class="sd">    Level 0: Wide header</span>
+<span class="sd">    Level 1: Medium header</span>
+<span class="sd">    Level 2: Narrow header</span>
+<span class="sd">    Level None: No header formatting, behaves like the original info_io.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    message : str</span>
+<span class="sd">        The message to log.</span>
+<span class="sd">    level : int, optional</span>
+<span class="sd">        The level of the header, or None for no header formatting. Defaults to None.</span>
+<span class="sd">    end : str, optional</span>
+<span class="sd">        How to end the print, e.g., &quot;\n&quot; (newline). Defaults to None.</span>
+<span class="sd">    flush : bool, optional</span>
+<span class="sd">        Whether to forcibly flush the stream. Defaults to None.</span>
+<span class="sd">    unflush : bool, optional</span>
+<span class="sd">        If True, adds an additional newline before the message. Defaults to None.</span>
+<span class="sd">    flush_block : bool, optional</span>
+<span class="sd">        If True, prints the whole block at once to avoid disruptions. Defaults to False.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">base_io</span><span class="p">(</span><span class="s2">&quot;TEST&quot;</span><span class="p">,</span> <span class="n">Fore</span><span class="o">.</span><span class="n">GREEN</span><span class="p">,</span> <span class="n">message</span><span class="p">,</span> <span class="n">level</span><span class="p">,</span> <span class="n">end</span><span class="p">,</span> <span class="n">flush</span><span class="p">,</span> <span class="n">unflush</span><span class="p">,</span> <span class="n">flush_block</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="debug_io">
+<a class="viewcode-back" href="../../_rst/utils.html#utils.IO.debug_io">[docs]</a>
+<span class="k">def</span> <span class="nf">debug_io</span><span class="p">(</span><span class="n">message</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+             <span class="n">end</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+             <span class="n">flush</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+             <span class="n">unflush</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+             <span class="n">flush_block</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Prints a debug message if the DEBUG_OPTION is set to a non-zero value.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    message : str</span>
+<span class="sd">        The debug message to log.</span>
+<span class="sd">    end : str, optional</span>
+<span class="sd">        How to end the print, e.g., &quot;\n&quot; (newline). Defaults to None.</span>
+<span class="sd">    flush : bool, optional</span>
+<span class="sd">        Whether to forcibly flush the stream. Defaults to None.</span>
+<span class="sd">    unflush : bool, optional</span>
+<span class="sd">        If True, adds an additional newline before the message. Defaults to None.</span>
+<span class="sd">    flush_block : bool, optional</span>
+<span class="sd">        If True, prints the whole block at once to avoid disruptions. Defaults to False.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># TODO: Improve this solution (Adopted because file level declaration will initialize before the var can be changed by test fixtures)</span>
+    <span class="k">global</span> <span class="n">DEBUG_OPTION</span>
+    <span class="k">if</span> <span class="n">DEBUG_OPTION</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">DEBUG_OPTION</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;DEBUG&quot;</span><span class="p">,</span> <span class="s2">&quot;0&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">DEBUG_OPTION</span> <span class="o">==</span> <span class="s2">&quot;0&quot;</span><span class="p">:</span>
+        <span class="k">return</span>
+    <span class="n">base_io</span><span class="p">(</span><span class="s2">&quot;DEBUG&quot;</span><span class="p">,</span> <span class="n">Fore</span><span class="o">.</span><span class="n">YELLOW</span><span class="p">,</span> <span class="n">message</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">end</span><span class="p">,</span> <span class="n">flush</span><span class="p">,</span> <span class="n">unflush</span><span class="p">,</span> <span class="n">flush_block</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="warn_io">
+<a class="viewcode-back" href="../../_rst/utils.html#utils.IO.warn_io">[docs]</a>
+<span class="k">def</span> <span class="nf">warn_io</span><span class="p">(</span><span class="n">message</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+            <span class="n">end</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="n">flush</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="n">unflush</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="n">flush_block</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Prints a warning.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    message : str</span>
+<span class="sd">        The warning message to log.</span>
+<span class="sd">    end : str, optional</span>
+<span class="sd">        How to end the print, e.g., &quot;\n&quot; (newline). Defaults to None.</span>
+<span class="sd">    flush : bool, optional</span>
+<span class="sd">        Whether to forcibly flush the stream. Defaults to None.</span>
+<span class="sd">    unflush : bool, optional</span>
+<span class="sd">        If True, adds an additional newline before the message. Defaults to None.</span>
+<span class="sd">    flush_block : bool, optional</span>
+<span class="sd">        If True, prints the whole block at once to avoid disruptions. Defaults to False.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">base_io</span><span class="p">(</span><span class="s2">&quot;WARN&quot;</span><span class="p">,</span> <span class="s2">&quot;</span><span class="se">\033</span><span class="s2">[38;5;208m&quot;</span><span class="p">,</span> <span class="n">message</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">end</span><span class="p">,</span> <span class="n">flush</span><span class="p">,</span> <span class="n">unflush</span><span class="p">,</span> <span class="n">flush_block</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="error_io">
+<a class="viewcode-back" href="../../_rst/utils.html#utils.IO.error_io">[docs]</a>
+<span class="k">def</span> <span class="nf">error_io</span><span class="p">(</span><span class="n">message</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+             <span class="n">exception_type</span><span class="p">:</span> <span class="ne">Exception</span><span class="p">,</span>
+             <span class="n">end</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+             <span class="n">flush</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+             <span class="n">unflush</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+             <span class="n">flush_block</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Prints an error message with an error header and raises the specified exception.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    message : str</span>
+<span class="sd">        The error message to log.</span>
+<span class="sd">    exception_type : Exception</span>
+<span class="sd">        The type of exception to raise after logging the message.</span>
+<span class="sd">    end : str, optional</span>
+<span class="sd">        How to end the print, e.g., &quot;\n&quot; (newline). Defaults to None.</span>
+<span class="sd">    flush : bool, optional</span>
+<span class="sd">        Whether to forcibly flush the stream. Defaults to None.</span>
+<span class="sd">    unflush : bool, optional</span>
+<span class="sd">        If True, adds an additional newline before the message. Defaults to None.</span>
+<span class="sd">    flush_block : bool, optional</span>
+<span class="sd">        If True, prints the whole block at once to avoid disruptions. Defaults to False.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    exception_type</span>
+<span class="sd">        The specified exception type is raised after the error message is logged.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">base_io</span><span class="p">(</span><span class="s2">&quot;ERROR&quot;</span><span class="p">,</span> <span class="n">Fore</span><span class="o">.</span><span class="n">RED</span><span class="p">,</span> <span class="n">message</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">end</span><span class="p">,</span> <span class="n">flush</span><span class="p">,</span> <span class="n">unflush</span><span class="p">,</span> <span class="n">flush_block</span><span class="p">)</span>
+    <span class="k">raise</span> <span class="n">exception_type</span></div>
+
+
+
+<span class="k">def</span> <span class="nf">base_io</span><span class="p">(</span><span class="n">info_tag</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+            <span class="n">collor</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+            <span class="n">message</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+            <span class="n">level</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="n">end</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="n">flush</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="n">unflush</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="n">flush_block</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">):</span>
+
+    <span class="c1"># Get caller information</span>
+    <span class="n">caller</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">getframeinfo</span><span class="p">(</span><span class="n">inspect</span><span class="o">.</span><span class="n">stack</span><span class="p">()[</span><span class="mi">2</span><span class="p">][</span><span class="mi">0</span><span class="p">])</span>
+    <span class="n">line_header</span> <span class="o">=</span> <span class="n">_get_line</span><span class="p">(</span><span class="n">caller</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">level</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">header_message</span> <span class="o">=</span> <span class="n">message</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">assert</span> <span class="n">level</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Header level must be one of 0, 1, 2&quot;</span><span class="p">)</span>
+        <span class="n">width</span> <span class="o">=</span> <span class="p">[</span><span class="mi">60</span><span class="p">,</span> <span class="mi">50</span><span class="p">,</span> <span class="mi">40</span><span class="p">][</span><span class="n">level</span><span class="p">]</span>
+        <span class="n">header_message</span> <span class="o">=</span> <span class="s1">&#39;-&#39;</span> <span class="o">*</span> <span class="mi">10</span> <span class="o">+</span> <span class="s1">&#39; &#39;</span> <span class="o">+</span> <span class="n">collor</span> <span class="o">+</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">message</span><span class="si">}{</span><span class="n">Style</span><span class="o">.</span><span class="n">RESET_ALL</span><span class="si">}</span><span class="s1"> &#39;</span><span class="o">.</span><span class="n">ljust</span><span class="p">(</span>
+            <span class="n">width</span> <span class="o">+</span> <span class="nb">len</span><span class="p">({</span><span class="n">Style</span><span class="o">.</span><span class="n">RESET_ALL</span><span class="p">}),</span> <span class="s2">&quot;-&quot;</span><span class="p">)</span>
+        <span class="n">flush_block</span> <span class="o">=</span> <span class="kc">False</span>  <span class="c1"># Disable flush_block when level is specified</span>
+    <span class="n">collor_info_tag</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">collor</span><span class="si">}{</span><span class="n">info_tag</span><span class="si">}{</span><span class="n">Style</span><span class="o">.</span><span class="n">RESET_ALL</span><span class="si">}</span><span class="s2"> &quot;</span>
+    <span class="n">info_tag_padding</span> <span class="o">=</span> <span class="n">TAG_PADDING</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="n">collor</span><span class="p">)</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="n">Style</span><span class="o">.</span><span class="n">RESET_ALL</span><span class="p">)</span>
+
+    <span class="n">io_string</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">collor_info_tag</span><span class="o">.</span><span class="n">ljust</span><span class="p">(</span><span class="n">info_tag_padding</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;-&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">line_header</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">collor</span><span class="si">}</span><span class="s2">-</span><span class="si">{</span><span class="n">Style</span><span class="o">.</span><span class="n">RESET_ALL</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">header_message</span><span class="si">}</span><span class="s2">&quot;</span>
+
+    <span class="k">if</span> <span class="n">level</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot; &quot;</span> <span class="o">*</span> <span class="n">HEADER_LENGTH</span> <span class="o">+</span> <span class="s2">&quot;-&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">unflush</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">()</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">_print_iostring</span><span class="p">(</span><span class="n">io_string</span><span class="p">,</span> <span class="n">line_header</span><span class="p">,</span> <span class="n">flush_block</span><span class="p">,</span> <span class="n">collor</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">flush</span><span class="p">:</span>
+            <span class="n">end</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\r</span><span class="s2">&quot;</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">io_string</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="n">end</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="n">flush</span><span class="p">)</span>
+
+
+<span class="c1">#https://stackoverflow.com/questions/8391411/how-to-block-calls-to-print</span>
+<div class="viewcode-block" id="suppress_io">
+<a class="viewcode-back" href="../../_rst/utils.html#utils.IO.suppress_io">[docs]</a>
+<span class="k">class</span> <span class="nc">suppress_io</span><span class="p">:</span>
+
+    <span class="k">def</span> <span class="fm">__enter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_original_stdout</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">devnull</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="fm">__exit__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exc_type</span><span class="p">,</span> <span class="n">exc_val</span><span class="p">,</span> <span class="n">exc_tb</span><span class="p">):</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_original_stdout</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Amadou Wolfgang Cisse.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

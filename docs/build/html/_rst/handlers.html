@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>handlers module &mdash; open-mimic-iii - documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=92fd9be5" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../_static/documentation_options.js?v=b1628c55"></script>
+        <script src="../_static/doctools.js?v=9a2dae69"></script>
+        <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            open-mimic-iii
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="datasets.html">datasets package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generators.html">generators package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="metrics.html">metrics package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="models.html">models package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="pipelines.html">pipelines package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="preprocessing.html">preprocessing package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">open-mimic-iii</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">handlers module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/_rst/handlers.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-handlers">
+<span id="handlers-module"></span><h1>handlers module<a class="headerlink" href="#module-handlers" title="Link to this heading"></a></h1>
+<p>import datasets
+from datasets.readers import ProcessedSetReader
+from pathlib import Path
+from utils import load_json, write_json
+from utils.IO import info_io, error_io
+from sklearn.linear_model import LogisticRegression, SGDClassifier
+from models.sklearn.standard.linear_models import StandardLogReg
+from sklearn.ensemble import RandomForestClassifier
+from models.tf2.lstm import LSTMNetwork
+from models.tf2.logistic_regression import IncrementalLogReg as IncrementalLogRegTF2
+from models.sklearn.incremental.linear_models import IncrementalLogRegSKLearn
+from pipelines.nn import MIMICPipeline as MIMICNNPipeline
+from pipelines.regression import MIMICPipeline as MIMICRegPipeline
+from tensorflow.keras.metrics import AUC
+from copy import deepcopy</p>
+<dl>
+<dt>class MultiCaseHandler(object):</dt><dd><p>“””_summary_
+“””</p>
+<dl>
+<dt>def __init__(self):</dt><dd><p>“””_summary_
+“””
+pass</p>
+</dd>
+<dt>def run(path: Path):</dt><dd><p>“””_summary_</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>path (Path): _description_</p>
+</dd>
+</dl>
+<p>“””
+directories = list(path.iterdir())
+for directory in directories:</p>
+<blockquote>
+<div><p>case = CaseHandler()
+case.run(directory)</p>
+</div></blockquote>
+</dd>
+</dl>
+</dd>
+<dt>class AbstractCaseHandler(object):</dt><dd><p>“””_summary_
+“””</p>
+<dl>
+<dt>def __init__(self) -&gt; None:</dt><dd><p>“””_summary_</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>case_folder (Path): _description_</p>
+</dd>
+</dl>
+<p>“””
+#TODO! unused
+self.regression_models = [“sgd_classifier”, “logistic_regression”, “random_forest”]
+self.neural_network_models = [“lstm”]
+self.subcase_configs = list()</p>
+</dd>
+<dt>def read_case_config(self, case_config: dict, case_folder: Path):</dt><dd><p>“””_summary_</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>case_folder (Path): _description_</p>
+</dd>
+</dl>
+<p>“””
+# Constants
+name = case_config[“name”]
+task = case_config[“task”]
+frame_work = case_config[“pipeline_config”][“framework”]
+model_type = case_config[“model_type”]</p>
+<p># Compose default pipeline config
+case_config[“pipeline_config”].update({</p>
+<blockquote>
+<div><p>“model_name”: name,
+“root_path”: case_folder,</p>
+</div></blockquote>
+<p>})
+if task in [“IHM”, “DECOMP”]:</p>
+<blockquote>
+<div><p>case_config[“pipeline_config”][“output_type”] = “sparse”</p>
+</div></blockquote>
+<p># Compose default data config
+case_config[“data_config”] = deepcopy(case_config[“data_config”])
+if not “extracted” == Path(case_config[“data_config”][“storage_path”]).name:</p>
+<blockquote>
+<div><dl class="simple">
+<dt>case_config[“data_config”].update({</dt><dd><p>“storage_path”: str(Path(case_config[“data_config”][“storage_path”], “extracted”)),
+“task”: task</p>
+</dd>
+</dl>
+<p>})</p>
+</div></blockquote>
+<p># Compose defualt config
+default_config = {</p>
+<blockquote>
+<div><p>“name”: name,
+“model_type”: model_type,
+“data_config”: case_config[“data_config”],
+“model_config”: case_config[“model_config”],
+“pipeline_config”: case_config[“pipeline_config”],</p>
+</div></blockquote>
+<p>}</p>
+<p>case_config = self.custom_configs(default_config, case_config)</p>
+<p>return default_config, model_type, frame_work, task, name, case_folder</p>
+</dd>
+<dt>def write_case_folder(self):</dt><dd><p>“””_summary_
+“””</p>
+</dd>
+<dt>def run(self, case_folder: Path):</dt><dd><p>“””_summary_</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>case_folder (Path): _description_</p>
+</dd>
+</dl>
+<p>“””
+case_config_data = load_json(Path(case_folder, “config.json”))
+if “subcases” in case_config_data:</p>
+<blockquote>
+<div><dl>
+<dt>for data in case_config_data[“subcases”]:</dt><dd><p>(config,                 model_type,                 framework,                 task,                 name,                 root_path) = self.read_case_config(data, case_folder)</p>
+<p>info_io(f”Loading model config from: {str(Path(root_path, name))}”)</p>
+<p>case_path = Path(root_path, name, task)
+case_path.mkdir(parents=True, exist_ok=True)</p>
+<p>write_json(Path(case_path, “config.json”), config)
+if model_type in self.regression_models:</p>
+<blockquote>
+<div><p>self.regression(config, framework, model_type, task)</p>
+</div></blockquote>
+<dl>
+<dt>elif model_type in self.neural_network_models:</dt><dd><p>self.neural_network(config, framework, model_type, task)</p>
+</dd>
+<dt>else:</dt><dd><dl class="simple">
+<dt>raise ValueError(</dt><dd><p>f”Model type needs to be in {’, ‘.join(str(x) for x in list([<a href="#id1"><span class="problematic" id="id2">*</span></a>self.regression_models, <a href="#id3"><span class="problematic" id="id4">*</span></a>self.neural_network_models]))}”</p>
+</dd>
+</dl>
+<p>)</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</div></blockquote>
+<dl>
+<dt>else:</dt><dd><p>(config,             model_type,             framework,             task,             name,             root_path) = self.read_case_config(case_config_data, case_folder)</p>
+<p>info_io(f”Loading model config from: {str(Path(root_path))}”)</p>
+<p>case_path = Path(root_path)
+case_path.mkdir(parents=True, exist_ok=True)</p>
+<p>write_json(Path(case_path, “config.json”), config)
+print(config)
+if model_type in self.regression_models:</p>
+<blockquote>
+<div><p>self.regression(config, framework, model_type, task)</p>
+</div></blockquote>
+<dl>
+<dt>elif model_type in self.neural_network_models:</dt><dd><p>self.neural_network(config, framework, model_type, task)</p>
+</dd>
+<dt>else:</dt><dd><dl class="simple">
+<dt>raise ValueError(</dt><dd><p>f”Model type needs to be in {’, ‘.join(str(x) for x in list([<a href="#id5"><span class="problematic" id="id6">*</span></a>self.regression_models, <a href="#id7"><span class="problematic" id="id8">*</span></a>self.neural_network_models]))}”</p>
+</dd>
+</dl>
+<p>)</p>
+</dd>
+</dl>
+<p># except Exception as e:
+#    print(e)</p>
+</dd>
+</dl>
+</dd>
+<dt>def regression(self, config, framework, model_type):</dt><dd><p>“””_summary_</p>
+<dl class="simple">
+<dt>Raises:</dt><dd><p>NotImplementedError: _description_</p>
+</dd>
+</dl>
+<p>“””
+raise NotImplementedError()</p>
+</dd>
+<dt>def neural_network(self, config, framework, model_type):</dt><dd><p>“””_summary_</p>
+<dl class="simple">
+<dt>Raises:</dt><dd><p>NotImplementedError: _description_</p>
+</dd>
+</dl>
+<p>“””
+raise NotImplementedError()</p>
+</dd>
+<dt>def custom_configs(self, config: dict) -&gt; dict:</dt><dd><p>return config</p>
+</dd>
+</dl>
+</dd>
+<dt>class CaseHandler(AbstractCaseHandler):</dt><dd><p>“””_summary_</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>AbstractCaseHandler (_type_): _description_</p>
+</dd>
+</dl>
+<p>“””</p>
+<dl>
+<dt>def __init__(self) -&gt; None:</dt><dd><p>“””_summary_</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>case_folder (Path): _description_</p>
+</dd>
+</dl>
+<p>“””
+super().__init__()</p>
+</dd>
+<dt>def custom_configs(self, config: dict, config_json: dict) -&gt; dict:</dt><dd><p>“””_summary_</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>config (dict): _description_
+config_json (dict): _description_</p>
+</dd>
+<dt>Returns:</dt><dd><p>dict: _description_</p>
+</dd>
+</dl>
+<p>“””
+config[“pipeline_config”][“task”] = config_json[“task”]
+config[“task”] = config_json[“task”]</p>
+<p>return config</p>
+</dd>
+<dt>def regression(self, config, framework, model_type, task):</dt><dd><p>“””_summary_
+“””
+regression_models = {</p>
+<blockquote>
+<div><dl class="simple">
+<dt>“tf2”: {</dt><dd><p>“logistic_regression”: IncrementalLogRegTF2</p>
+</dd>
+</dl>
+<p>},
+“sklearn”: {</p>
+<blockquote>
+<div><dl class="simple">
+<dt>“incremental”: {</dt><dd><p>“sgd_classifier”: SGDClassifier,
+“logistic_regression”: IncrementalLogRegSKLearn,</p>
+</dd>
+</dl>
+<p>},
+“standard”: {</p>
+<blockquote>
+<div><p>“random_forest”: RandomForestClassifier,
+“logistic_regression”: StandardLogReg</p>
+</div></blockquote>
+<p>}</p>
+</div></blockquote>
+<p>}</p>
+</div></blockquote>
+<p>}</p>
+<dl>
+<dt>if framework == “sklearn”:</dt><dd><p>model_switch = regression_models[“sklearn”]
+if task in [“IHM”, “PHENO”]:</p>
+<blockquote>
+<div><p>model_switch = model_switch[“standard”]</p>
+</div></blockquote>
+<dl>
+<dt>else:</dt><dd><p>model_switch = model_switch[“incremental”]</p>
+</dd>
+<dt>try:</dt><dd><dl class="simple">
+<dt>model = model_switch[model_type](task=task,</dt><dd><p>random_state=42,
+<a href="#id9"><span class="problematic" id="id10">**</span></a>config[“model_config”])</p>
+</dd>
+</dl>
+</dd>
+<dt>except KeyError:</dt><dd><dl class="simple">
+<dt>raise ValueError(</dt><dd><p>f”For the framework {framework}, only the models “{’, ‘.join(str(x) for x in model_switch)}” are available.”</p>
+</dd>
+</dl>
+<p>)</p>
+</dd>
+</dl>
+</dd>
+<dt>else:</dt><dd><p>model_switch = regression_models[“tf2”]
+try:</p>
+<blockquote>
+<div><dl class="simple">
+<dt>model = model_switch[model_type](task=task,</dt><dd><p>input_dim=714,
+random_state=42,
+<a href="#id11"><span class="problematic" id="id12">**</span></a>config[“model_config”])</p>
+</dd>
+</dl>
+</div></blockquote>
+<dl>
+<dt>except KeyError:</dt><dd><dl class="simple">
+<dt>raise ValueError(</dt><dd><p>f”For the framework {framework}, only the models “{’, ‘.join(str(x) for x in model_switch)}” are available.”</p>
+</dd>
+</dl>
+<p>)</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p>config[“data_config”].update({“preprocess”: True, “engineer”: True})</p>
+<p>self.run_case(MIMICRegPipeline(model, <a href="#id13"><span class="problematic" id="id14">**</span></a>config[“pipeline_config”]), config[“data_config”])</p>
+</dd>
+<dt>def neural_network(self, config, framework, model_type):</dt><dd><p>“””_summary_
+“””
+custom_objects = {“auc_2”: AUC(curve=’ROC’), “auc_3”: AUC(curve=’PR’)}
+neural_network_models = {“lstm”: LSTMNetwork}</p>
+<p>model = neural_network_models[model_type](<a href="#id15"><span class="problematic" id="id16">**</span></a>config[“model_config”])
+config[“data_config”].update({“preprocess”: True})
+self.run_case(</p>
+<blockquote>
+<div><p>MIMICNNPipeline(model, custom_objects=custom_objects, <a href="#id17"><span class="problematic" id="id18">**</span></a>config[“pipeline_config”]),
+config[“data_config”])</p>
+</div></blockquote>
+</dd>
+<dt>def run_case(self, pipeline, data_config):</dt><dd><p>“””_summary_</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>pipeline (_type_): _description_</p>
+</dd>
+</dl>
+<p>“””
+try:</p>
+<blockquote>
+<div><dl>
+<dt>if not “chunksize” in data_config.keys():</dt><dd><p>timeseries,                 episodic_data,                 subject_diagnoses,                 subject_icu_history = datasets.load_data(<a href="#id19"><span class="problematic" id="id20">**</span></a>data_config)</p>
+<dl class="simple">
+<dt>pipeline.fit(timeseries=timeseries,</dt><dd><p>episodic_data=episodic_data,
+subject_diagnoses=subject_diagnoses,
+subject_icu_history=subject_icu_history)</p>
+</dd>
+</dl>
+</dd>
+<dt>else:</dt><dd><p>data_path = datasets.load_data(<a href="#id21"><span class="problematic" id="id22">**</span></a>data_config)
+pipeline.fit(data_path=data_path)</p>
+</dd>
+</dl>
+</div></blockquote>
+<dl class="simple">
+<dt>except Exception as e:</dt><dd><p>error_io(“Encountered exception:”)
+error_io(e)
+error_io(“Case is finalized and shut down!”)</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd>
+</dl>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Amadou Wolfgang Cisse.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

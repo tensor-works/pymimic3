@@ -20,37 +20,20 @@ from utils.IO import *
 from pathlib import Path
 
 
-@dispatch(dict)
-def get_sample_size(X):
-    """
-    """
-    n_samples = 0
-    for data in X.values():
-        if isinstance(data, dict):
-            n_samples += get_sample_size(data)
-        else:
-            n_samples += len(data)
-
-    return n_samples
-
-
-@dispatch(list)
-def get_sample_size(X):
-    """
-    """
-    n_samples = 0
-    for subject in X:
-        if isinstance(X, dict):
-            for stay in X:
-                n_samples += len(stay)
-        else:
-            n_samples += len(subject)
-
-    return n_samples
-
-
 def is_numerical(df: pd.DataFrame) -> bool:
-    # Check if the DataFrame is numerical
+    """
+    Check if a DataFrame contains only numerical data.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        The DataFrame to check.
+
+    Returns
+    -------
+    bool
+        True if the DataFrame is numerical, False otherwise.
+    """    
     # This is the worst implementation but what works works
     try:
         df.astype(float)
@@ -65,6 +48,19 @@ def is_numerical(df: pd.DataFrame) -> bool:
 
 
 def to_snake_case(string):
+    """
+    Convert a string to snake case.
+
+    Parameters
+    ----------
+    string : str
+        The string to convert.
+
+    Returns
+    -------
+    str
+        The converted string in snake case.
+    """
     # Replace spaces and hyphens with underscores
     string = re.sub(r'[\s-]+', '_', string)
 
@@ -78,10 +74,36 @@ def to_snake_case(string):
 
 
 def is_colwise_numerical(df: pd.DataFrame) -> Dict[str, bool]:
+    """
+    Check if each column in a DataFrame is numerical.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        The DataFrame to check.
+
+    Returns
+    -------
+    dict
+        A dictionary with column names as keys and boolean values indicating if the column is numerical.
+    """
     return {col: is_numerical(df[[col]]) for col in df.columns}
 
 
 def is_allnan(data: Union[pd.DataFrame, pd.Series, np.ndarray]):
+    """
+    Check if all elements in the data are NaN.
+
+    Parameters
+    ----------
+    data : Union[pd.DataFrame, pd.Series, np.ndarray]
+        The data to check.
+
+    Returns
+    -------
+    bool
+        True if all elements are NaN, False otherwise.
+    """
     if isinstance(data, (pd.DataFrame, pd.Series)):
         return data.isna().all().all()
     elif isinstance(data, np.ndarray):
@@ -92,6 +114,19 @@ def is_allnan(data: Union[pd.DataFrame, pd.Series, np.ndarray]):
 
 def update_json(json_path, items: dict):
     """
+    Update a JSON file with new items.
+
+    Parameters
+    ----------
+    json_path : Path
+        The path to the JSON file.
+    items : dict
+        The items to update the JSON file with.
+
+    Returns
+    -------
+    dict
+        The updated JSON data.
     """
     if not json_path.parent.is_dir():
         json_path.parent.mkdir(parents=True, exist_ok=True)
@@ -116,6 +151,17 @@ def update_json(json_path, items: dict):
 
 def load_json(json_path):
     """
+    Load data from a JSON file.
+
+    Parameters
+    ----------
+    json_path : Path
+        The path to the JSON file.
+
+    Returns
+    -------
+    dict
+        The loaded JSON data.
     """
     if not json_path.is_file():
         return {}
@@ -128,6 +174,14 @@ def load_json(json_path):
 
 def write_json(json_path, json_data):
     """
+    Write data to a JSON file.
+
+    Parameters
+    ----------
+    json_path : Path
+        The path to the JSON file.
+    json_data : dict
+        The data to write to the JSON file.
     """
     try:
         with open(json_path, 'w') as file:
@@ -141,23 +195,37 @@ def write_json(json_path, json_data):
 
 
 def dict_subset(dictionary: dict, keys: list):
-    """_summary_
+    """
+    Get a subset of a dictionary.
 
-    Args:
-        dictionary (dict): _description_
-        keys (list): _description_
+    Parameters
+    ----------
+    dictionary : dict
+        The original dictionary.
+    keys : list
+        The keys to extract from the dictionary.
+
+    Returns
+    -------
+    dict
+        A dictionary containing only the specified keys.
     """
     return {k: dictionary[k] for k in keys if k in dictionary}
 
 
 def is_iterable(obj):
-    """_summary_
+    """
+    Check if an object is iterable.
 
-    Args:
-        obj (_type_): _description_
+    Parameters
+    ----------
+    obj : object
+        The object to check.
 
-    Returns:
-        _type_: _description_
+    Returns
+    -------
+    bool
+        True if the object is iterable, False otherwise.
     """
     return hasattr(obj, '__iter__')
 

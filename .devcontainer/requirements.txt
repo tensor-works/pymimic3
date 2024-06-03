@@ -9,3 +9,6 @@ multipledispatch
 python-dotenv
 pathos
 pytest
+tensorflow 
+torch
+tables

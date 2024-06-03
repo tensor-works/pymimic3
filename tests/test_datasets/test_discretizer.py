@@ -75,7 +75,7 @@ if __name__ == "__main__":
         reader = datasets.load_data(chunksize=75837,
                                     source_path=TEST_DATA_DEMO,
                                     storage_path=SEMITEMP_DIR,
-                                    reprocess=True,
+                                    preprocess=True,
                                     task=task_name)
         readers[task_name] = reader
         for start_strategy in ["zero", "relative"]:

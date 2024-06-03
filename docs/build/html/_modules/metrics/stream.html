@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>metrics.stream &mdash; open-mimic-iii - documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=92fd9be5" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../_static/documentation_options.js?v=b1628c55"></script>
+        <script src="../../_static/doctools.js?v=9a2dae69"></script>
+        <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            open-mimic-iii
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../_rst/datasets.html">datasets package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../_rst/generators.html">generators package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../_rst/metrics.html">metrics package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../_rst/models.html">models package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../_rst/pipelines.html">pipelines package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../_rst/preprocessing.html">preprocessing package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">open-mimic-iii</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+          <li class="breadcrumb-item"><a href="../metrics.html">metrics</a></li>
+      <li class="breadcrumb-item active">metrics.stream</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for metrics.stream</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">collections</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Dict</span>
+<span class="kn">from</span> <span class="nn">river</span> <span class="kn">import</span> <span class="n">metrics</span> <span class="k">as</span> <span class="n">river_metrics</span>
+<span class="kn">from</span> <span class="nn">scipy</span> <span class="kn">import</span> <span class="n">integrate</span>
+<span class="kn">from</span> <span class="nn">metrics</span> <span class="kn">import</span> <span class="n">CustomBins</span>
+<span class="kn">from</span> <span class="nn">river</span> <span class="kn">import</span> <span class="n">metrics</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
+
+<span class="c1"># Suppress the specific deprecation warning</span>
+<span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span>
+    <span class="s2">&quot;ignore&quot;</span><span class="p">,</span>
+    <span class="n">category</span><span class="o">=</span><span class="ne">DeprecationWarning</span><span class="p">,</span>
+<span class="p">)</span>
+
+
+<div class="viewcode-block" id="LOSClassificationReport">
+<a class="viewcode-back" href="../../_rst/metrics.html#metrics.stream.LOSClassificationReport">[docs]</a>
+<span class="k">class</span> <span class="nc">LOSClassificationReport</span><span class="p">(</span><span class="n">river_metrics</span><span class="o">.</span><span class="n">ClassificationReport</span><span class="p">):</span>
+
+<div class="viewcode-block" id="LOSClassificationReport.update">
+<a class="viewcode-back" href="../../_rst/metrics.html#metrics.stream.LOSClassificationReport.update">[docs]</a>
+    <span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">y_true</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">,</span> <span class="n">w</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+        <span class="n">y_true_bin</span> <span class="o">=</span> <span class="n">CustomBins</span><span class="o">.</span><span class="n">get_bin_custom</span><span class="p">(</span><span class="n">y_true</span><span class="p">)</span>
+        <span class="n">y_pred_bin</span> <span class="o">=</span> <span class="n">CustomBins</span><span class="o">.</span><span class="n">get_bin_custom</span><span class="p">(</span><span class="n">y_pred</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">y_true_bin</span><span class="p">,</span> <span class="n">y_pred_bin</span><span class="p">,</span> <span class="n">w</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="LOSCohenKappa">
+<a class="viewcode-back" href="../../_rst/metrics.html#metrics.stream.LOSCohenKappa">[docs]</a>
+<span class="k">class</span> <span class="nc">LOSCohenKappa</span><span class="p">(</span><span class="n">river_metrics</span><span class="o">.</span><span class="n">CohenKappa</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cm</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">cm</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">weights</span> <span class="o">=</span> <span class="n">weights</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nbins</span> <span class="o">=</span> <span class="n">CustomBins</span><span class="o">.</span><span class="n">nbins</span>
+
+<div class="viewcode-block" id="LOSCohenKappa.update">
+<a class="viewcode-back" href="../../_rst/metrics.html#metrics.stream.LOSCohenKappa.update">[docs]</a>
+    <span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">y_true</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">):</span>
+        <span class="n">y_true_bin</span> <span class="o">=</span> <span class="n">CustomBins</span><span class="o">.</span><span class="n">get_bin_custom</span><span class="p">(</span><span class="n">y_true</span><span class="p">)</span>
+        <span class="n">y_pred_bin</span> <span class="o">=</span> <span class="n">CustomBins</span><span class="o">.</span><span class="n">get_bin_custom</span><span class="p">(</span><span class="n">y_pred</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cm</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">y_true_bin</span><span class="p">,</span> <span class="n">y_pred_bin</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span></div>
+
+
+<div class="viewcode-block" id="LOSCohenKappa.get">
+<a class="viewcode-back" href="../../_rst/metrics.html#metrics.stream.LOSCohenKappa.get">[docs]</a>
+    <span class="k">def</span> <span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># Number of classes</span>
+        <span class="n">classes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cm</span><span class="o">.</span><span class="n">classes</span>
+        <span class="n">n_classes</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">classes</span><span class="p">)</span>
+
+        <span class="c1"># Calculate expected matrix</span>
+        <span class="n">expected</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">n_classes</span><span class="p">,</span> <span class="n">n_classes</span><span class="p">))</span>
+        <span class="n">sum0</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cm</span><span class="o">.</span><span class="n">sum_col</span>
+        <span class="n">sum1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cm</span><span class="o">.</span><span class="n">sum_row</span>
+        <span class="n">total_sum0</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cm</span><span class="o">.</span><span class="n">n_samples</span>
+
+        <span class="c1"># Calculate the numerator and denominator for kappa</span>
+        <span class="n">numerator</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">denominator</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="c1"># Fill weight matrix according to the specified weights</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_classes</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_classes</span><span class="p">):</span>
+                <span class="n">expected</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">sum0</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">*</span> <span class="n">sum1</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="o">/</span> <span class="n">total_sum0</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">weights</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">weights</span> <span class="o">=</span> <span class="mi">0</span> <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="n">j</span> <span class="k">else</span> <span class="mi">1</span>
+                <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">weights</span> <span class="o">==</span> <span class="s2">&quot;linear&quot;</span><span class="p">:</span>
+                    <span class="n">weights</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">i</span> <span class="o">-</span> <span class="n">j</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>  <span class="c1"># quadratic</span>
+                    <span class="n">weights</span> <span class="o">=</span> <span class="p">(</span><span class="n">i</span> <span class="o">-</span> <span class="n">j</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span>
+                <span class="n">numerator</span> <span class="o">+=</span> <span class="n">weights</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">cm</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="n">j</span><span class="p">]</span>
+                <span class="n">denominator</span> <span class="o">+=</span> <span class="n">weights</span> <span class="o">*</span> <span class="n">expected</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span>
+
+        <span class="c1"># Compute kappa</span>
+        <span class="k">if</span> <span class="n">denominator</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mf">0.0</span>
+        <span class="n">k</span> <span class="o">=</span> <span class="n">numerator</span> <span class="o">/</span> <span class="n">denominator</span>
+        <span class="k">return</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">k</span></div>
+
+
+<div class="viewcode-block" id="LOSCohenKappa.revert">
+<a class="viewcode-back" href="../../_rst/metrics.html#metrics.stream.LOSCohenKappa.revert">[docs]</a>
+    <span class="k">def</span> <span class="nf">revert</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">y_true</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">):</span>
+        <span class="n">y_true_bin</span> <span class="o">=</span> <span class="n">CustomBins</span><span class="o">.</span><span class="n">get_bin_custom</span><span class="p">(</span><span class="n">y_true</span><span class="p">)</span>
+        <span class="n">y_pred_bin</span> <span class="o">=</span> <span class="n">CustomBins</span><span class="o">.</span><span class="n">get_bin_custom</span><span class="p">(</span><span class="n">y_pred</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cm</span><span class="o">.</span><span class="n">revert</span><span class="p">(</span><span class="n">y_true_bin</span><span class="p">,</span> <span class="n">y_pred_bin</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="PRAUC">
+<a class="viewcode-back" href="../../_rst/metrics.html#metrics.stream.PRAUC">[docs]</a>
+<span class="k">class</span> <span class="nc">PRAUC</span><span class="p">(</span><span class="n">river_metrics</span><span class="o">.</span><span class="n">ROCAUC</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n_thresholds</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">pos_val</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pos_val</span> <span class="o">=</span> <span class="n">pos_val</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_thresholds</span> <span class="o">=</span> <span class="n">n_thresholds</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">thresholds</span> <span class="o">=</span> <span class="p">[</span><span class="n">i</span> <span class="o">/</span> <span class="p">(</span><span class="n">n_thresholds</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_thresholds</span><span class="p">)]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">thresholds</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-=</span> <span class="mf">1e-7</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">thresholds</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+=</span> <span class="mf">1e-7</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cms</span> <span class="o">=</span> <span class="p">[</span><span class="n">river_metrics</span><span class="o">.</span><span class="n">ConfusionMatrix</span><span class="p">()</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_thresholds</span><span class="p">)]</span>
+
+<div class="viewcode-block" id="PRAUC.update">
+<a class="viewcode-back" href="../../_rst/metrics.html#metrics.stream.PRAUC.update">[docs]</a>
+    <span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">y_true</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">,</span> <span class="n">w</span><span class="o">=</span><span class="mf">1.0</span><span class="p">):</span>
+        <span class="n">p_true</span> <span class="o">=</span> <span class="n">y_pred</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="kc">True</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">y_pred</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="k">else</span> <span class="n">y_pred</span>
+        <span class="k">for</span> <span class="n">t</span><span class="p">,</span> <span class="n">cm</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">thresholds</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">cms</span><span class="p">):</span>
+            <span class="n">cm</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">y_true</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">pos_val</span><span class="p">,</span> <span class="n">p_true</span> <span class="o">&gt;</span> <span class="n">t</span><span class="p">,</span> <span class="n">w</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="PRAUC.get">
+<a class="viewcode-back" href="../../_rst/metrics.html#metrics.stream.PRAUC.get">[docs]</a>
+    <span class="k">def</span> <span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">tprs</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_thresholds</span>
+        <span class="n">fprs</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_thresholds</span>
+
+        <span class="k">def</span> <span class="nf">safe_div</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">a</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">b</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">return</span> <span class="mf">1.0</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">a</span> <span class="o">/</span> <span class="n">b</span>
+            <span class="k">except</span> <span class="ne">ZeroDivisionError</span><span class="p">:</span>
+                <span class="k">return</span> <span class="mf">0.0</span>
+
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">cm</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cms</span><span class="p">):</span>
+            <span class="n">tp</span> <span class="o">=</span> <span class="n">cm</span><span class="o">.</span><span class="n">true_positives</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pos_val</span><span class="p">)</span>
+            <span class="n">fp</span> <span class="o">=</span> <span class="n">cm</span><span class="o">.</span><span class="n">false_positives</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pos_val</span><span class="p">)</span>
+            <span class="n">fn</span> <span class="o">=</span> <span class="n">cm</span><span class="o">.</span><span class="n">false_negatives</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pos_val</span><span class="p">)</span>
+            <span class="n">tprs</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">safe_div</span><span class="p">(</span><span class="n">tp</span><span class="p">,</span> <span class="n">tp</span> <span class="o">+</span> <span class="n">fp</span><span class="p">)</span>  <span class="c1"># precision</span>
+            <span class="n">fprs</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">safe_div</span><span class="p">(</span><span class="n">tp</span><span class="p">,</span> <span class="n">tp</span> <span class="o">+</span> <span class="n">fn</span><span class="p">)</span>  <span class="c1"># recall</span>
+
+        <span class="k">return</span> <span class="o">-</span><span class="n">integrate</span><span class="o">.</span><span class="n">trapezoid</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="n">fprs</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="n">tprs</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="MicroROCAUC">
+<a class="viewcode-back" href="../../_rst/metrics.html#metrics.stream.MicroROCAUC">[docs]</a>
+<span class="k">class</span> <span class="nc">MicroROCAUC</span><span class="p">(</span><span class="n">river_metrics</span><span class="o">.</span><span class="n">ROCAUC</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n_thresholds</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">pos_val</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_y_true_all</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_y_pred_all</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">n_thresholds</span><span class="o">=</span><span class="n">n_thresholds</span><span class="p">,</span> <span class="n">pos_val</span><span class="o">=</span><span class="n">pos_val</span><span class="p">)</span>
+
+<div class="viewcode-block" id="MicroROCAUC.update">
+<a class="viewcode-back" href="../../_rst/metrics.html#metrics.stream.MicroROCAUC.update">[docs]</a>
+    <span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">y_true</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">:</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">yt</span><span class="p">,</span> <span class="n">yp</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">y_true</span><span class="o">.</span><span class="n">values</span><span class="p">(),</span> <span class="n">y_pred</span><span class="o">.</span><span class="n">values</span><span class="p">()):</span>
+            <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">yt</span><span class="p">,</span> <span class="n">yp</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span></div>
+
+
+<div class="viewcode-block" id="MicroROCAUC.revert">
+<a class="viewcode-back" href="../../_rst/metrics.html#metrics.stream.MicroROCAUC.revert">[docs]</a>
+    <span class="k">def</span> <span class="nf">revert</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">y_true</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">:</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">yt</span><span class="p">,</span> <span class="n">yp</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">y_true</span><span class="o">.</span><span class="n">values</span><span class="p">(),</span> <span class="n">y_pred</span><span class="o">.</span><span class="n">values</span><span class="p">()):</span>
+            <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">revert</span><span class="p">(</span><span class="n">yt</span><span class="p">,</span> <span class="n">yp</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span></div>
+
+
+<div class="viewcode-block" id="MicroROCAUC.works_with">
+<a class="viewcode-back" href="../../_rst/metrics.html#metrics.stream.MicroROCAUC.works_with">[docs]</a>
+    <span class="k">def</span> <span class="nf">works_with</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">y_true</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">:</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">y_true</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">y_pred</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="MacroROCAUC">
+<a class="viewcode-back" href="../../_rst/metrics.html#metrics.stream.MacroROCAUC">[docs]</a>
+<span class="k">class</span> <span class="nc">MacroROCAUC</span><span class="p">(</span><span class="n">river_metrics</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">MultiClassMetric</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n_thresholds</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">pos_val</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_n_thresholds</span> <span class="o">=</span> <span class="n">n_thresholds</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_pos_val</span> <span class="o">=</span> <span class="n">pos_val</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_per_class_rocaucs</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">defaultdict</span><span class="p">(</span><span class="n">river_metrics</span><span class="o">.</span><span class="n">ROCAUC</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_classes</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+
+<div class="viewcode-block" id="MacroROCAUC.update">
+<a class="viewcode-back" href="../../_rst/metrics.html#metrics.stream.MacroROCAUC.update">[docs]</a>
+    <span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">y_true</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">:</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">label_name</span><span class="p">,</span> <span class="n">y_label</span> <span class="ow">in</span> <span class="n">y_pred</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_classes</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">label_name</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_per_class_rocaucs</span><span class="p">[</span><span class="n">label_name</span><span class="p">]</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">y_true</span><span class="p">[</span><span class="n">label_name</span><span class="p">],</span> <span class="n">y_label</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span></div>
+
+
+<div class="viewcode-block" id="MacroROCAUC.get">
+<a class="viewcode-back" href="../../_rst/metrics.html#metrics.stream.MacroROCAUC.get">[docs]</a>
+    <span class="k">def</span> <span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># Calculate the macro-average ROC AUC</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">([</span><span class="n">rocauc</span><span class="o">.</span><span class="n">get</span><span class="p">()</span> <span class="k">for</span> <span class="n">rocauc</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_per_class_rocaucs</span><span class="o">.</span><span class="n">values</span><span class="p">()])</span></div>
+
+
+<div class="viewcode-block" id="MacroROCAUC.revert">
+<a class="viewcode-back" href="../../_rst/metrics.html#metrics.stream.MacroROCAUC.revert">[docs]</a>
+    <span class="k">def</span> <span class="nf">revert</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">y_true</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">label_name</span><span class="p">,</span> <span class="n">y_label</span> <span class="ow">in</span> <span class="n">y_pred</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_per_class_rocaucs</span><span class="p">[</span><span class="n">label_name</span><span class="p">]</span><span class="o">.</span><span class="n">revert</span><span class="p">(</span><span class="n">y_true</span><span class="p">[</span><span class="n">label_name</span><span class="p">],</span> <span class="n">y_label</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span></div>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">bigger_is_better</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">True</span>
+
+<div class="viewcode-block" id="MacroROCAUC.works_with">
+<a class="viewcode-back" href="../../_rst/metrics.html#metrics.stream.MacroROCAUC.works_with">[docs]</a>
+    <span class="k">def</span> <span class="nf">works_with</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">y_true</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">y_true</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">y_pred</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span></div>
+</div>
+
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+
+    <span class="n">y_pred</span> <span class="o">=</span> <span class="p">[</span><span class="mi">23</span><span class="p">,</span> <span class="mi">60</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">130</span><span class="p">,</span> <span class="mi">160</span><span class="p">,</span> <span class="mi">190</span><span class="p">,</span> <span class="mi">220</span><span class="p">,</span> <span class="mi">250</span><span class="p">,</span> <span class="mi">360</span><span class="p">,</span> <span class="mi">830</span><span class="p">]</span>
+    <span class="n">y_true</span> <span class="o">=</span> <span class="p">[</span><span class="mf">11.45</span><span class="p">,</span> <span class="mf">35.07</span><span class="p">,</span> <span class="mf">59.20</span><span class="p">,</span> <span class="mf">83.38</span><span class="p">,</span> <span class="mf">107.48</span><span class="p">,</span> <span class="mf">131.57</span><span class="p">,</span> <span class="mf">155.64</span><span class="p">,</span> <span class="mf">179.66</span><span class="p">,</span> <span class="mf">254.30</span><span class="p">,</span> <span class="mf">585.32</span><span class="p">]</span>
+
+    <span class="c1"># ---------------- Comparing Cohen&#39;s Kappa using River with sklearn --------------------</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;--- Comparing Cohen&#39;s Kappa ---&quot;</span><span class="p">)</span>
+    <span class="n">metric</span> <span class="o">=</span> <span class="n">LOSCohenKappa</span><span class="p">(</span><span class="n">weights</span><span class="o">=</span><span class="s1">&#39;linear&#39;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">yt</span><span class="p">,</span> <span class="n">yp</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">y_true</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">):</span>
+        <span class="n">metric</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">yt</span><span class="p">,</span> <span class="n">yp</span><span class="p">)</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    from time import time</span>
+<span class="sd">    start = time()</span>
+<span class="sd">    for _ in range(100000):</span>
+<span class="sd">        metric.get()</span>
+<span class="sd">    end = time()</span>
+<span class="sd">    print(&quot;Time taken new implementation&quot;, end - start)</span>
+<span class="sd">    #</span>
+<span class="sd">    metric = river_metrics.CohenKappa()</span>
+<span class="sd">    for yt, yp in zip(y_true, y_pred):</span>
+<span class="sd">        metric.update(yt, yp)</span>
+<span class="sd">    from time import time</span>
+<span class="sd">    start = time()</span>
+<span class="sd">    for _ in range(100000):</span>
+<span class="sd">        metric.get()</span>
+<span class="sd">    end = time()</span>
+<span class="sd">    print(&quot;Time taken legacy&quot;, end - start)</span>
+<span class="sd">    metric.get()</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Cohen&#39;s Kappa (river)&quot;</span><span class="p">,</span> <span class="n">metric</span><span class="p">)</span>
+
+    <span class="kn">from</span> <span class="nn">sklearn.metrics</span> <span class="kn">import</span> <span class="n">cohen_kappa_score</span>
+
+    <span class="k">class</span> <span class="nc">CustomBins</span><span class="p">:</span>
+        <span class="n">inf</span> <span class="o">=</span> <span class="mf">1e18</span>
+        <span class="n">bins</span> <span class="o">=</span> <span class="p">[(</span><span class="o">-</span><span class="n">inf</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span> <span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">),</span> <span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">),</span> <span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="mi">7</span><span class="p">),</span> <span class="p">(</span><span class="mi">7</span><span class="p">,</span> <span class="mi">8</span><span class="p">),</span> <span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">14</span><span class="p">),</span>
+                <span class="p">(</span><span class="mi">14</span><span class="p">,</span> <span class="o">+</span><span class="n">inf</span><span class="p">)]</span>
+        <span class="n">nbins</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">bins</span><span class="p">)</span>
+        <span class="c1"># TODO: whats this</span>
+        <span class="n">means</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="mf">11.450379</span><span class="p">,</span> <span class="mf">35.070846</span><span class="p">,</span> <span class="mf">59.206531</span><span class="p">,</span> <span class="mf">83.382723</span><span class="p">,</span> <span class="mf">107.487817</span><span class="p">,</span> <span class="mf">131.579534</span><span class="p">,</span> <span class="mf">155.643957</span><span class="p">,</span>
+            <span class="mf">179.660558</span><span class="p">,</span> <span class="mf">254.306624</span><span class="p">,</span> <span class="mf">585.325890</span>
+        <span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">get_bin_custom</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">nbins</span><span class="p">,</span> <span class="n">one_hot</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nbins</span><span class="p">):</span>
+            <span class="n">a</span> <span class="o">=</span> <span class="n">CustomBins</span><span class="o">.</span><span class="n">bins</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="mf">24.0</span>
+            <span class="n">b</span> <span class="o">=</span> <span class="n">CustomBins</span><span class="o">.</span><span class="n">bins</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="mf">24.0</span>
+            <span class="k">if</span> <span class="n">a</span> <span class="o">&lt;=</span> <span class="n">x</span> <span class="o">&lt;</span> <span class="n">b</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">one_hot</span><span class="p">:</span>
+                    <span class="n">ret</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">CustomBins</span><span class="o">.</span><span class="n">nbins</span><span class="p">,))</span>
+                    <span class="n">ret</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+                    <span class="k">return</span> <span class="n">ret</span>
+                <span class="k">return</span> <span class="n">i</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="n">y_true_bins</span> <span class="o">=</span> <span class="p">[</span><span class="n">get_bin_custom</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">CustomBins</span><span class="o">.</span><span class="n">nbins</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">y_true</span><span class="p">]</span>
+    <span class="n">prediction_bins</span> <span class="o">=</span> <span class="p">[</span><span class="n">get_bin_custom</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">CustomBins</span><span class="o">.</span><span class="n">nbins</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">y_pred</span><span class="p">]</span>
+    <span class="n">kappa</span> <span class="o">=</span> <span class="n">cohen_kappa_score</span><span class="p">(</span><span class="n">y_true_bins</span><span class="p">,</span> <span class="n">prediction_bins</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="s1">&#39;linear&#39;</span><span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Cohen&#39;s Kappa (scikit)&quot;</span><span class="p">,</span> <span class="n">kappa</span><span class="p">)</span>
+
+    <span class="kn">from</span> <span class="nn">river</span> <span class="kn">import</span> <span class="n">metrics</span>
+    <span class="kn">from</span> <span class="nn">sklearn.metrics</span> <span class="kn">import</span> <span class="n">roc_auc_score</span><span class="p">,</span> <span class="n">precision_recall_curve</span><span class="p">,</span> <span class="n">auc</span>
+
+    <span class="c1"># Binary classification data</span>
+    <span class="n">y_true</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span>
+    <span class="n">y_pred</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.4</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.35</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.8</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.8</span><span class="p">]</span>
+
+    <span class="c1"># ---------------- Comparing ROC AUC using River with sklearn --------------------</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;--- Comparing AUC ROC ---&quot;</span><span class="p">)</span>
+    <span class="n">metric</span> <span class="o">=</span> <span class="n">metrics</span><span class="o">.</span><span class="n">ROCAUC</span><span class="p">(</span><span class="n">n_thresholds</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">yt</span><span class="p">,</span> <span class="n">yp</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">y_true</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">):</span>
+        <span class="n">metric</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">yt</span><span class="p">,</span> <span class="n">yp</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Auc-roc (river)&quot;</span><span class="p">,</span> <span class="n">metric</span><span class="p">)</span>
+    <span class="c1"># Compute roc curve</span>
+    <span class="n">auc_roc</span> <span class="o">=</span> <span class="n">roc_auc_score</span><span class="p">(</span><span class="n">y_true</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Auc-roc (scikit)&quot;</span><span class="p">,</span> <span class="n">auc_roc</span><span class="p">)</span>
+
+    <span class="c1"># ---------------- Comparing Precision-Recall AUC using River with sklearn --------------------</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;--- Comparing AUC PR ---&quot;</span><span class="p">)</span>
+    <span class="n">metric</span> <span class="o">=</span> <span class="n">PRAUC</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">yt</span><span class="p">,</span> <span class="n">yp</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">y_true</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">):</span>
+        <span class="n">metric</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">yt</span><span class="p">,</span> <span class="n">yp</span><span class="p">)</span>
+    <span class="n">pr_auc</span> <span class="o">=</span> <span class="n">metric</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Auc-pr (river)&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">metric</span><span class="p">))</span>
+    <span class="c1"># Compute precision-recall curve</span>
+    <span class="n">precision</span><span class="p">,</span> <span class="n">recall</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">precision_recall_curve</span><span class="p">(</span><span class="n">y_true</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">y_pred</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>
+    <span class="c1"># Compute the area under the curve</span>
+    <span class="n">pr_auc</span> <span class="o">=</span> <span class="n">auc</span><span class="p">(</span><span class="n">recall</span><span class="p">,</span> <span class="n">precision</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Auc-pr (scikit)&quot;</span><span class="p">,</span> <span class="n">pr_auc</span><span class="p">)</span>
+
+    <span class="c1"># Multi-class classification data</span>
+    <span class="n">y_true_multi</span> <span class="o">=</span> <span class="p">[[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
+                    <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]]</span>
+    <span class="n">y_true_labeled</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">y</span> <span class="ow">in</span> <span class="n">y_true_multi</span><span class="p">:</span>
+        <span class="n">y_true_labeled</span><span class="o">.</span><span class="n">append</span><span class="p">({</span><span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="p">):</span> <span class="n">yt</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">yt</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">y</span><span class="p">)})</span>
+    <span class="n">y_pred_multi</span> <span class="o">=</span> <span class="p">[[</span><span class="mf">0.8</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.7</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.6</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.7</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">],</span>
+                    <span class="p">[</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.6</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.7</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.6</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">],</span>
+                    <span class="p">[</span><span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.7</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.7</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">]]</span>
+    <span class="n">y_pred_labeled</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">y</span> <span class="ow">in</span> <span class="n">y_pred_multi</span><span class="p">:</span>
+        <span class="n">y_pred_labeled</span><span class="o">.</span><span class="n">append</span><span class="p">({</span><span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="p">):</span> <span class="n">yp</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">yp</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">y</span><span class="p">)})</span>
+
+    <span class="c1"># ---------------- Comparing Micro-Macro ROC AUC using River with sklearn --------------------</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;--- Comparing Micro-Macro ROC AUC ---&quot;</span><span class="p">)</span>
+    <span class="n">micro_rocauc</span> <span class="o">=</span> <span class="n">MicroROCAUC</span><span class="p">()</span>
+    <span class="n">macro_rocauc</span> <span class="o">=</span> <span class="n">MacroROCAUC</span><span class="p">()</span>
+
+    <span class="k">for</span> <span class="n">yt</span><span class="p">,</span> <span class="n">yp</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">y_true_labeled</span><span class="p">,</span> <span class="n">y_pred_labeled</span><span class="p">):</span>
+        <span class="n">micro_rocauc</span> <span class="o">=</span> <span class="n">micro_rocauc</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">yt</span><span class="p">,</span> <span class="n">yp</span><span class="p">)</span>
+        <span class="n">macro_rocauc</span> <span class="o">=</span> <span class="n">macro_rocauc</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">yt</span><span class="p">,</span> <span class="n">yp</span><span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Micro-average Auc-roc (river): </span><span class="si">{</span><span class="n">micro_rocauc</span><span class="o">.</span><span class="n">get</span><span class="p">()</span><span class="si">:</span><span class="s1">.4f</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Macro-average Auc-roc (river): </span><span class="si">{</span><span class="n">macro_rocauc</span><span class="o">.</span><span class="n">get</span><span class="p">()</span><span class="si">:</span><span class="s1">.4f</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="kn">from</span> <span class="nn">sklearn.metrics</span> <span class="kn">import</span> <span class="n">roc_auc_score</span>
+
+    <span class="c1"># Compute micro-average ROC AUC using sklearn</span>
+    <span class="n">micro_rocauc_sklearn</span> <span class="o">=</span> <span class="n">roc_auc_score</span><span class="p">(</span><span class="n">y_true_multi</span><span class="p">,</span>
+                                         <span class="n">y_pred_multi</span><span class="p">,</span>
+                                         <span class="n">average</span><span class="o">=</span><span class="s1">&#39;micro&#39;</span><span class="p">,</span>
+                                         <span class="n">multi_class</span><span class="o">=</span><span class="s1">&#39;ovr&#39;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Micro-average auc-roc (sklearn): </span><span class="si">{</span><span class="n">micro_rocauc_sklearn</span><span class="si">:</span><span class="s1">.4f</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Compute macro-average ROC AUC using sklearn</span>
+    <span class="n">macro_rocauc_sklearn</span> <span class="o">=</span> <span class="n">roc_auc_score</span><span class="p">(</span><span class="n">y_true_multi</span><span class="p">,</span>
+                                         <span class="n">y_pred_multi</span><span class="p">,</span>
+                                         <span class="n">average</span><span class="o">=</span><span class="s1">&#39;macro&#39;</span><span class="p">,</span>
+                                         <span class="n">multi_class</span><span class="o">=</span><span class="s1">&#39;ovr&#39;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Macro-average auc-roc (sklearn): </span><span class="si">{</span><span class="n">macro_rocauc_sklearn</span><span class="si">:</span><span class="s1">.4f</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Amadou Wolfgang Cisse.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

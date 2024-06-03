@@ -36,15 +36,18 @@ function Download-FilesFromWebPage([string]$sourceUrl, [string]$destinationDir) 
 # Create the existing folder index
 $sourceUrl = "https://physionet.org/files/mimiciii-demo/1.4/"
 $testFolder = Split-Path -Path $PSScriptRoot -Parent
+$etcDir = Join-Path -Path $testFolder -ChildPath "etc"
 
 # Download the MIMIC-III demo dataset from the web
 $destinationDir = Join-Path -Path $testFolder -ChildPath "/data/physionet.org/files/mimiciii-demo/1.4/"
+Write-Output "Renaming erroneous demo dataset columns and dtypes "
 
 if (-Not (Test-Path $destinationDir)) {
     Download-FilesFromWebPage -sourceUrl $sourceUrl -destinationDir $destinationDir
     # Correcting defaults of the demo dataset
     Write-Output "Renaming erroneous demo dataset columns and dtypes "
-    $convertScript = Join-Path -Path $benchmarkDir -ChildPath "convert_columns.py"
+    $convertScript = Join-Path -Path $destinationDir -ChildPath "convert_columns.py"
+    Copy-Item (Join-Path $etcDir -ChildPath "convert_columns.py") -Destination $convertScript
     python $convertScript
 }
 
@@ -66,15 +69,15 @@ if (-Not (Test-Path $outputDefinitions)) {
 }
 
 # Download the MIMIC-III benchmarks dataset from github if necessary
-$generatedDir = Join-Path -Path $testFolder -ChildPath "data/generated-benchmark"
 $benchmarkDir = Join-Path -Path $testFolder -ChildPath "data/mimic3benchmarks"
+$generatedDir = Join-Path -Path $testFolder -ChildPath "data/generated-benchmark"
+Write-Output "Benchmark dir $benchmarkDir"
 if (-Not (Test-Path $generatedDir)) {
     Write-Output "Downloading MIMIC-III benchmarks dataset from github"
     git clone "https://github.com/YerevaNN/mimic3-benchmarks.git" $benchmarkDir
 }
 
 # Define the source and destination directory paths
-$etcDir = Join-Path -Path $testFolder -ChildPath "etc"
 $benchmarkDir = Join-Path -Path $testFolder -ChildPath "data/mimic3benchmarks"
 
 # Define a dictionary of file names and iterate over them to set paths and copy items

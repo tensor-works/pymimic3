@@ -8,7 +8,7 @@ import numpy as np
 from pathlib import Path
 from datasets.readers import ProcessedSetReader
 from datasets.writers import DataSetWriter
-from preprocessing.discretizers import MIMICDiscretizer
+from datasets.processors.discretizers import MIMICDiscretizer
 from tests.pytest_utils.general import assert_dataframe_equals
 from utils.IO import *
 from tests.settings import *

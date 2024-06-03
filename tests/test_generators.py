@@ -3,7 +3,7 @@ import pytest
 from generators.tf2 import TFGenerator
 from generators.pytorch import TorchGenerator
 from generators.stream import RiverGenerator
-from preprocessing.scalers import MIMICMinMaxScaler
+from preprocessing.scalers import MinMaxScaler
 import numpy as np
 from utils.IO import *
 from datasets.readers import ProcessedSetReader
@@ -17,7 +17,7 @@ def test_tf_generator(task_name, discretized_readers):
 
     # Prepare generator inputs
     reader = discretized_readers[task_name]
-    scaler = MIMICMinMaxScaler().fit_reader(reader)
+    scaler = MinMaxScaler().fit_reader(reader)
 
     # Bining types for LOS
     for bining in ["none", "log", "custom"]:
@@ -50,7 +50,7 @@ def test_torch_generator(task_name, discretized_readers):
 
     # Prepare generator inputs
     reader = discretized_readers[task_name]
-    scaler = MIMICMinMaxScaler().fit_reader(reader)
+    scaler = MinMaxScaler().fit_reader(reader)
 
     # Bining types for LOS
     for bining in ["none", "log", "custom"]:
@@ -86,7 +86,7 @@ def test_river_generator(task_name, engineered_readers):
     # Prepare generator inputs
     reader = engineered_readers[task_name]
     imputer = PartialImputer().fit_reader(reader)
-    scaler = MIMICMinMaxScaler(imputer=imputer).fit_reader(reader)
+    scaler = MinMaxScaler(imputer=imputer).fit_reader(reader)
 
     # Bining types for LOS
     for bining in ["log", "custom"]:  # ["none", "log", "custom"]:

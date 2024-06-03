@@ -5,7 +5,6 @@ from typing import List
 from preprocessing.scalers import AbstractScaler
 from datasets.readers import ProcessedSetReader
 from torch.utils.data import Dataset
-from tests.settings import *
 from utils.IO import *
 from torch.utils.data import DataLoader
 from . import AbstractGenerator

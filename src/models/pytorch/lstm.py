@@ -380,7 +380,7 @@ class LSTMNetwork(nn.Module):
 if __name__ == "__main__":
     from tests.settings import *
     import datasets
-    from preprocessing.scalers import MIMICMinMaxScaler
+    from preprocessing.scalers import MinMaxScaler
     from generators.pytorch import TorchGenerator
     reader = datasets.load_data(chunksize=75836,
                                 source_path=TEST_DATA_DEMO,
@@ -395,7 +395,7 @@ if __name__ == "__main__":
 
     from models.tf2.lstm import LSTMNetwork
     from tests.settings import *
-    scaler = MIMICMinMaxScaler().fit_reader(reader.train)
+    scaler = MinMaxScaler().fit_reader(reader.train)
     train_generator = TorchGenerator(reader=reader.train, scaler=scaler, batch_size=2, shuffle=True)
     val_generator = TorchGenerator(reader=reader.val, scaler=scaler, batch_size=2, shuffle=True)
 

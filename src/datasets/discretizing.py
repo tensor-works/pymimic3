@@ -8,7 +8,7 @@ from pathlib import Path
 from utils.IO import *
 from utils import dict_subset
 from pathos.multiprocessing import cpu_count, Pool
-from preprocessing.discretizers import MIMICDiscretizer
+from datasets.processors.discretizers import MIMICDiscretizer
 from .trackers import PreprocessingTracker
 from .readers import ExtractedSetReader, ProcessedSetReader
 from .mimic_utils import copy_subject_info

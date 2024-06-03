@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>pipelines package &mdash; open-mimic-iii - documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=92fd9be5" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../_static/documentation_options.js?v=b1628c55"></script>
+        <script src="../_static/doctools.js?v=9a2dae69"></script>
+        <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="preprocessing package" href="preprocessing.html" />
+    <link rel="prev" title="models.tf2 package" href="models.tf2.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            open-mimic-iii
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="datasets.html">datasets package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generators.html">generators package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="metrics.html">metrics package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="models.html">models package</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">pipelines package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-pipelines.pytorch">pipelines.pytorch module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#pipelines.pytorch.TorchPipeline"><code class="docutils literal notranslate"><span class="pre">TorchPipeline</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#pipelines.pytorch.TorchPipeline.fit"><code class="docutils literal notranslate"><span class="pre">TorchPipeline.fit()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#module-pipelines.stream">pipelines.stream module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#pipelines.stream.RiverPipeline"><code class="docutils literal notranslate"><span class="pre">RiverPipeline</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#pipelines.stream.RiverPipeline.fit"><code class="docutils literal notranslate"><span class="pre">RiverPipeline.fit()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pipelines.stream.RiverPipeline.print_metrics"><code class="docutils literal notranslate"><span class="pre">RiverPipeline.print_metrics()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pipelines.stream.RiverPipeline.test"><code class="docutils literal notranslate"><span class="pre">RiverPipeline.test()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#module-pipelines.tf2">pipelines.tf2 module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#pipelines.tf2.TFPipeline"><code class="docutils literal notranslate"><span class="pre">TFPipeline</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#pipelines.tf2.TFPipeline.fit"><code class="docutils literal notranslate"><span class="pre">TFPipeline.fit()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#module-pipelines">Module contents</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#pipelines.AbstractPipeline"><code class="docutils literal notranslate"><span class="pre">AbstractPipeline</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#pipelines.AbstractPipeline._storage_path"><code class="docutils literal notranslate"><span class="pre">AbstractPipeline._storage_path</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pipelines.AbstractPipeline._model"><code class="docutils literal notranslate"><span class="pre">AbstractPipeline._model</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pipelines.AbstractPipeline._generator_options"><code class="docutils literal notranslate"><span class="pre">AbstractPipeline._generator_options</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pipelines.AbstractPipeline._data_split_options"><code class="docutils literal notranslate"><span class="pre">AbstractPipeline._data_split_options</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pipelines.AbstractPipeline._split_names"><code class="docutils literal notranslate"><span class="pre">AbstractPipeline._split_names</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pipelines.AbstractPipeline._reader"><code class="docutils literal notranslate"><span class="pre">AbstractPipeline._reader</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pipelines.AbstractPipeline._scaler"><code class="docutils literal notranslate"><span class="pre">AbstractPipeline._scaler</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pipelines.AbstractPipeline._train_generator"><code class="docutils literal notranslate"><span class="pre">AbstractPipeline._train_generator</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pipelines.AbstractPipeline._val_generator"><code class="docutils literal notranslate"><span class="pre">AbstractPipeline._val_generator</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pipelines.AbstractPipeline._val_steps"><code class="docutils literal notranslate"><span class="pre">AbstractPipeline._val_steps</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pipelines.AbstractPipeline._test_generator"><code class="docutils literal notranslate"><span class="pre">AbstractPipeline._test_generator</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pipelines.AbstractPipeline._result_path"><code class="docutils literal notranslate"><span class="pre">AbstractPipeline._result_path</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pipelines.AbstractPipeline.fit"><code class="docutils literal notranslate"><span class="pre">AbstractPipeline.fit()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="preprocessing.html">preprocessing package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">open-mimic-iii</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">pipelines package</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/_rst/pipelines.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="pipelines-package">
+<h1>pipelines package<a class="headerlink" href="#pipelines-package" title="Link to this heading"></a></h1>
+<section id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Link to this heading"></a></h2>
+</section>
+<section id="module-pipelines.pytorch">
+<span id="pipelines-pytorch-module"></span><h2>pipelines.pytorch module<a class="headerlink" href="#module-pipelines.pytorch" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="pipelines.pytorch.TorchPipeline">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pipelines.pytorch.</span></span><span class="sig-name descname"><span class="pre">TorchPipeline</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">storage_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="datasets.html#datasets.readers.ProcessedSetReader" title="datasets.readers.ProcessedSetReader"><span class="pre">ProcessedSetReader</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="datasets.html#datasets.readers.SplitSetReader" title="datasets.readers.SplitSetReader"><span class="pre">SplitSetReader</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">generator_options</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">{}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_options</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">{}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scaler_options</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">{}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">compile_options</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">{}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">split_options</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">{}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scaler</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="preprocessing.html#preprocessing.scalers.AbstractScaler" title="preprocessing.scalers.AbstractScaler"><span class="pre">AbstractScaler</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scaler_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'minmax'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pipelines/pytorch.html#TorchPipeline"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pipelines.pytorch.TorchPipeline" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#pipelines.AbstractPipeline" title="pipelines.AbstractPipeline"><code class="xref py py-class docutils literal notranslate"><span class="pre">AbstractPipeline</span></code></a></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="pipelines.pytorch.TorchPipeline.fit">
+<span class="sig-name descname"><span class="pre">fit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">epochs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">no_subdirs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">result_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">patience</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save_best_only</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">restore_best_weights</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sample_weights</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">val_frequency</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">restore_last_run</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pipelines/pytorch.html#TorchPipeline.fit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pipelines.pytorch.TorchPipeline.fit" title="Link to this definition"></a></dt>
+<dd><p>Fits the model to the data.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-pipelines.stream">
+<span id="pipelines-stream-module"></span><h2>pipelines.stream module<a class="headerlink" href="#module-pipelines.stream" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="pipelines.stream.RiverPipeline">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pipelines.stream.</span></span><span class="sig-name descname"><span class="pre">RiverPipeline</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">storage_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="datasets.html#datasets.readers.ProcessedSetReader" title="datasets.readers.ProcessedSetReader"><span class="pre">ProcessedSetReader</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="datasets.html#datasets.readers.SplitSetReader" title="datasets.readers.SplitSetReader"><span class="pre">SplitSetReader</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">generator_options</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">{}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_options</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">{}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scaler_options</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">{}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">split_options</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">{}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">imputer_options</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">{}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scaler</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="preprocessing.html#preprocessing.scalers.AbstractScaler" title="preprocessing.scalers.AbstractScaler"><span class="pre">AbstractScaler</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scaler_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'minmax'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">imputer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="preprocessing.html#preprocessing.AbstractScikitProcessor" title="preprocessing.AbstractScikitProcessor"><span class="pre">AbstractScikitProcessor</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pipelines/stream.html#RiverPipeline"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pipelines.stream.RiverPipeline" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#pipelines.AbstractPipeline" title="pipelines.AbstractPipeline"><code class="xref py py-class docutils literal notranslate"><span class="pre">AbstractPipeline</span></code></a></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="pipelines.stream.RiverPipeline.fit">
+<span class="sig-name descname"><span class="pre">fit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">result_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">no_subdirs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">restore_last_run</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pipelines/stream.html#RiverPipeline.fit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pipelines.stream.RiverPipeline.fit" title="Link to this definition"></a></dt>
+<dd><p>Fits the model to the data.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pipelines.stream.RiverPipeline.print_metrics">
+<span class="sig-name descname"><span class="pre">print_metrics</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">metrics</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pipelines/stream.html#RiverPipeline.print_metrics"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pipelines.stream.RiverPipeline.print_metrics" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pipelines.stream.RiverPipeline.test">
+<span class="sig-name descname"><span class="pre">test</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pipelines/stream.html#RiverPipeline.test"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pipelines.stream.RiverPipeline.test" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-pipelines.tf2">
+<span id="pipelines-tf2-module"></span><h2>pipelines.tf2 module<a class="headerlink" href="#module-pipelines.tf2" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="pipelines.tf2.TFPipeline">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pipelines.tf2.</span></span><span class="sig-name descname"><span class="pre">TFPipeline</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">storage_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="datasets.html#datasets.readers.ProcessedSetReader" title="datasets.readers.ProcessedSetReader"><span class="pre">ProcessedSetReader</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="datasets.html#datasets.readers.SplitSetReader" title="datasets.readers.SplitSetReader"><span class="pre">SplitSetReader</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">generator_options</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">{}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_options</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">{}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scaler_options</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">{}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">compile_options</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">{}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">split_options</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">{}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scaler</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="preprocessing.html#preprocessing.scalers.AbstractScaler" title="preprocessing.scalers.AbstractScaler"><span class="pre">AbstractScaler</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scaler_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'minmax'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pipelines/tf2.html#TFPipeline"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pipelines.tf2.TFPipeline" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#pipelines.AbstractPipeline" title="pipelines.AbstractPipeline"><code class="xref py py-class docutils literal notranslate"><span class="pre">AbstractPipeline</span></code></a></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="pipelines.tf2.TFPipeline.fit">
+<span class="sig-name descname"><span class="pre">fit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">epochs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">no_subdirs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">result_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">patience</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">restore_best_weights</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save_weights_only</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">class_weight</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sample_weight</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save_best_only</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">callbacks</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">validation_freq</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">restore_last_run</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pipelines/tf2.html#TFPipeline.fit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pipelines.tf2.TFPipeline.fit" title="Link to this definition"></a></dt>
+<dd><p>Fits the model to the data.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-pipelines">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-pipelines" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="pipelines.AbstractPipeline">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pipelines.</span></span><span class="sig-name descname"><span class="pre">AbstractPipeline</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">storage_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="datasets.html#datasets.readers.ProcessedSetReader" title="datasets.readers.ProcessedSetReader"><span class="pre">ProcessedSetReader</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="datasets.html#datasets.readers.SplitSetReader" title="datasets.readers.SplitSetReader"><span class="pre">SplitSetReader</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">generator_options</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">{}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_options</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">{}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scaler_options</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">{}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">compile_options</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">{}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">split_options</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">{}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scaler</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="preprocessing.html#preprocessing.scalers.AbstractScaler" title="preprocessing.scalers.AbstractScaler"><span class="pre">AbstractScaler</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scaler_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'minmax'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pipelines.html#AbstractPipeline"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pipelines.AbstractPipeline" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ABC</span></code></p>
+<p>Abstract base class for pipelines used in data processing and model training.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>storage_path</strong> (<em>Path</em>) – Path to the directory where results and intermediate files will be stored.</p></li>
+<li><p><strong>reader</strong> (<a class="reference internal" href="datasets.html#datasets.readers.ProcessedSetReader" title="datasets.readers.ProcessedSetReader"><em>ProcessedSetReader</em></a><em> or </em><a class="reference internal" href="datasets.html#datasets.readers.SplitSetReader" title="datasets.readers.SplitSetReader"><em>SplitSetReader</em></a>) – Reader object to read the processed data.</p></li>
+<li><p><strong>model</strong> (<em>object</em>) – The model to be trained.</p></li>
+<li><p><strong>generator_options</strong> (<em>dict</em><em>, </em><em>optional</em>) – Options for the data generator.</p></li>
+<li><p><strong>model_options</strong> (<em>dict</em><em>, </em><em>optional</em>) – Options for the model.</p></li>
+<li><p><strong>scaler_options</strong> (<em>dict</em><em>, </em><em>optional</em>) – Options for the scaler.</p></li>
+<li><p><strong>compile_options</strong> (<em>dict</em><em>, </em><em>optional</em>) – Options for model compilation.</p></li>
+<li><p><strong>split_options</strong> (<em>dict</em><em>, </em><em>optional</em>) – Options for data splitting.</p></li>
+<li><p><strong>scaler</strong> (<a class="reference internal" href="preprocessing.html#preprocessing.scalers.AbstractScaler" title="preprocessing.scalers.AbstractScaler"><em>AbstractScaler</em></a><em>, </em><em>optional</em>) – Scaler object to scale the data.</p></li>
+<li><p><strong>scaler_type</strong> (<em>str</em><em>, </em><em>optional</em>) – Type of scaler to use (‘minmax’, ‘standard’, ‘maxabs’, ‘robust’).</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pipelines.AbstractPipeline._storage_path">
+<span class="sig-name descname"><span class="pre">_storage_path</span></span><a class="headerlink" href="#pipelines.AbstractPipeline._storage_path" title="Link to this definition"></a></dt>
+<dd><p>Path to the directory where results and intermediate files will be stored.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Path</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pipelines.AbstractPipeline._model">
+<span class="sig-name descname"><span class="pre">_model</span></span><a class="headerlink" href="#pipelines.AbstractPipeline._model" title="Link to this definition"></a></dt>
+<dd><p>The model to be trained.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>object</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pipelines.AbstractPipeline._generator_options">
+<span class="sig-name descname"><span class="pre">_generator_options</span></span><a class="headerlink" href="#pipelines.AbstractPipeline._generator_options" title="Link to this definition"></a></dt>
+<dd><p>Options for the data generator.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pipelines.AbstractPipeline._data_split_options">
+<span class="sig-name descname"><span class="pre">_data_split_options</span></span><a class="headerlink" href="#pipelines.AbstractPipeline._data_split_options" title="Link to this definition"></a></dt>
+<dd><p>Options for data splitting.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pipelines.AbstractPipeline._split_names">
+<span class="sig-name descname"><span class="pre">_split_names</span></span><a class="headerlink" href="#pipelines.AbstractPipeline._split_names" title="Link to this definition"></a></dt>
+<dd><p>Names of data splits.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pipelines.AbstractPipeline._reader">
+<span class="sig-name descname"><span class="pre">_reader</span></span><a class="headerlink" href="#pipelines.AbstractPipeline._reader" title="Link to this definition"></a></dt>
+<dd><p>Reader object to read the processed data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Union[<a class="reference internal" href="datasets.html#datasets.readers.ProcessedSetReader" title="datasets.readers.ProcessedSetReader">ProcessedSetReader</a>, <a class="reference internal" href="datasets.html#datasets.readers.SplitSetReader" title="datasets.readers.SplitSetReader">SplitSetReader</a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pipelines.AbstractPipeline._scaler">
+<span class="sig-name descname"><span class="pre">_scaler</span></span><a class="headerlink" href="#pipelines.AbstractPipeline._scaler" title="Link to this definition"></a></dt>
+<dd><p>Scaler object to scale the data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="preprocessing.html#preprocessing.scalers.AbstractScaler" title="preprocessing.scalers.AbstractScaler">AbstractScaler</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pipelines.AbstractPipeline._train_generator">
+<span class="sig-name descname"><span class="pre">_train_generator</span></span><a class="headerlink" href="#pipelines.AbstractPipeline._train_generator" title="Link to this definition"></a></dt>
+<dd><p>Data generator for the training set.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="generators.html#generators.tf2.TFGenerator" title="generators.tf2.TFGenerator">TFGenerator</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pipelines.AbstractPipeline._val_generator">
+<span class="sig-name descname"><span class="pre">_val_generator</span></span><a class="headerlink" href="#pipelines.AbstractPipeline._val_generator" title="Link to this definition"></a></dt>
+<dd><p>Data generator for the validation set.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="generators.html#generators.tf2.TFGenerator" title="generators.tf2.TFGenerator">TFGenerator</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pipelines.AbstractPipeline._val_steps">
+<span class="sig-name descname"><span class="pre">_val_steps</span></span><a class="headerlink" href="#pipelines.AbstractPipeline._val_steps" title="Link to this definition"></a></dt>
+<dd><p>Number of steps in the validation set.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pipelines.AbstractPipeline._test_generator">
+<span class="sig-name descname"><span class="pre">_test_generator</span></span><a class="headerlink" href="#pipelines.AbstractPipeline._test_generator" title="Link to this definition"></a></dt>
+<dd><p>Data generator for the test set.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="generators.html#generators.tf2.TFGenerator" title="generators.tf2.TFGenerator">TFGenerator</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pipelines.AbstractPipeline._result_path">
+<span class="sig-name descname"><span class="pre">_result_path</span></span><a class="headerlink" href="#pipelines.AbstractPipeline._result_path" title="Link to this definition"></a></dt>
+<dd><p>Path to the directory where results will be stored.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Path</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pipelines.AbstractPipeline.fit">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">fit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">epochs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">result_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">no_subdirs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pipelines.html#AbstractPipeline.fit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pipelines.AbstractPipeline.fit" title="Link to this definition"></a></dt>
+<dd><p>Fits the model to the data.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="models.tf2.html" class="btn btn-neutral float-left" title="models.tf2 package" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="preprocessing.html" class="btn btn-neutral float-right" title="preprocessing package" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Amadou Wolfgang Cisse.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

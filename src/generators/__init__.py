@@ -2,11 +2,6 @@
 
 This file provides the implemented preprocessing functionalities.
 
-Todo:
-    - Use a settings.json
-    - implement optional history obj to keept track of the preprocessing history
-    - does the interpolate function need to be able to correct time series with no value?
-    - Fix categorical data abuse
 """
 
 import numpy as np
@@ -19,7 +14,6 @@ from utils.IO import *
 from preprocessing.scalers import AbstractScaler
 from datasets.trackers import PreprocessingTracker
 from datasets.readers import ProcessedSetReader
-from tests.settings import *
 from metrics import CustomBins, LogBins
 
 

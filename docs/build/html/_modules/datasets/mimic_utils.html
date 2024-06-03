@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>datasets.mimic_utils &mdash; open-mimic-iii - documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=92fd9be5" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../_static/documentation_options.js?v=b1628c55"></script>
+        <script src="../../_static/doctools.js?v=9a2dae69"></script>
+        <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            open-mimic-iii
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../_rst/datasets.html">datasets package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../_rst/generators.html">generators package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../_rst/metrics.html">metrics package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../_rst/models.html">models package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../_rst/pipelines.html">pipelines package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../_rst/preprocessing.html">preprocessing package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">open-mimic-iii</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+          <li class="breadcrumb-item"><a href="../datasets.html">datasets</a></li>
+      <li class="breadcrumb-item active">datasets.mimic_utils</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for datasets.mimic_utils</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Collection of utility functions for the MIMIC-III dataset extraction process.</span>
+
+<span class="sd">YerevaNN/mimic3-benchmarks</span>
+
+<span class="sd">Functions</span>
+<span class="sd">---------</span>
+<span class="sd">- copy_subject_info(source_path, storage_path)</span>
+<span class="sd">    Copy subject information from source path to storage path.</span>
+<span class="sd">- get_samples_per_df(event_frames, num_samples)</span>
+<span class="sd">    Get the number of samples per DataFrame based on the specified number of samples.</span>
+<span class="sd">- convert_dtype_value(value, dtype)</span>
+<span class="sd">    Convert a value to the specified dtype.</span>
+<span class="sd">- convert_dtype_dict(dtypes, add_lower=True)</span>
+<span class="sd">    Convert a dictionary of column names to dtype strings to a dictionary of column names to dtype objects.</span>
+<span class="sd">- clean_chartevents_util(chartevents)</span>
+<span class="sd">    Clean the chartevents DataFrame based on the timeseries column.</span>
+<span class="sd">- get_static_value(timeseries, variable)</span>
+<span class="sd">    Get the first non-null value of a specified variable from the time series data.</span>
+<span class="sd">- upper_case_column_names(frame)</span>
+<span class="sd">    Convert the column names to upper case for consistency.</span>
+<span class="sd">- convert_to_numpy_types(frame)</span>
+<span class="sd">    Convert the dtypes to numpy types for consistency.</span>
+<span class="sd">- read_varmap_csv(resource_folder)</span>
+<span class="sd">    Read the variable map CSV file from the specified resource folder.</span>
+<span class="sd">- _clean_height(df)</span>
+<span class="sd">    Convert height from inches to centimeters.</span>
+<span class="sd">- _clean_systolic_bp(df)</span>
+<span class="sd">    Filter out systolic blood pressure only.</span>
+<span class="sd">- _clean_diastolic_bp(df)</span>
+<span class="sd">    Filter out diastolic blood pressure only.</span>
+<span class="sd">- _clean_capilary_rr(df)</span>
+<span class="sd">    Categorize capillary refill rate.</span>
+<span class="sd">- _clean_fraction_inspired_o2(df)</span>
+<span class="sd">    Map fraction of inspired oxygen values to correct scale.</span>
+<span class="sd">- _clean_laboratory_values(df)</span>
+<span class="sd">    Clean laboratory values by removing non-numeric entries.</span>
+<span class="sd">- _clean_o2sat(df)</span>
+<span class="sd">    Scale oxygen saturation values to correct range.</span>
+<span class="sd">- _clean_temperature(df)</span>
+<span class="sd">    Map Fahrenheit temperatures to Celsius.</span>
+<span class="sd">- _clean_weight(df)</span>
+<span class="sd">    Convert weight values to kilograms.</span>
+<span class="sd">- _clean_respiratory_rate(df)</span>
+<span class="sd">    Transform respiratory rate values from greater than 60 to 60.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">shutil</span>
+<span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Dict</span>
+<span class="kn">from</span> <span class="nn">utils.IO</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">settings</span> <span class="kn">import</span> <span class="o">*</span>
+
+
+<div class="viewcode-block" id="copy_subject_info">
+<a class="viewcode-back" href="../../_rst/datasets.html#datasets.mimic_utils.copy_subject_info">[docs]</a>
+<span class="k">def</span> <span class="nf">copy_subject_info</span><span class="p">(</span><span class="n">source_path</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">storage_path</span><span class="p">:</span> <span class="n">Path</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Copy subject information from source path to storage path.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    source_path : Path</span>
+<span class="sd">        The path to the source directory containing the subject information file.</span>
+<span class="sd">    storage_path : Path</span>
+<span class="sd">        The path to the target directory where the subject information file will be copied.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">source_path</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">storage_path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">warn_io</span><span class="p">(</span><span class="s2">&quot;No source path provided for subject information. Skipping copy.&quot;</span><span class="p">)</span>
+        <span class="k">return</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">storage_path</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
+        <span class="n">storage_path</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">source_file</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">source_path</span><span class="p">,</span> <span class="s2">&quot;subject_info.csv&quot;</span><span class="p">)</span>
+    <span class="n">target_file</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">storage_path</span><span class="p">,</span> <span class="s2">&quot;subject_info.csv&quot;</span><span class="p">)</span>
+    <span class="n">shutil</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">source_file</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="n">target_file</span><span class="p">))</span></div>
+
+
+
+<div class="viewcode-block" id="get_samples_per_df">
+<a class="viewcode-back" href="../../_rst/datasets.html#datasets.mimic_utils.get_samples_per_df">[docs]</a>
+<span class="k">def</span> <span class="nf">get_samples_per_df</span><span class="p">(</span><span class="n">event_frames</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">],</span> <span class="n">num_samples</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Get the number of samples per DataFrame based on the specified number of samples.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    event_frames : Dict[str, pd.DataFrame]</span>
+<span class="sd">        A dictionary where the keys are event types and the values are DataFrames containing event data.</span>
+<span class="sd">    num_samples : int</span>
+<span class="sd">        The total number of samples to distribute across the DataFrames.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    sampled_dfs : Dict[str, pd.DataFrame]</span>
+<span class="sd">        A dictionary with the same keys as `event_frames`, where each value is a sampled DataFrame.</span>
+<span class="sd">    subject_events_per_df : Dict[str, int]</span>
+<span class="sd">        A dictionary with the number of events per DataFrame.</span>
+<span class="sd">    samples_per_df : Dict[str, int]</span>
+<span class="sd">        A dictionary with the number of samples allocated to each DataFrame.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">total_length</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">)</span> <span class="k">for</span> <span class="n">df</span> <span class="ow">in</span> <span class="n">event_frames</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+    <span class="n">samples_per_df</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="n">event_types</span><span class="p">:</span> <span class="nb">int</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">)</span> <span class="o">/</span> <span class="n">total_length</span><span class="p">)</span> <span class="o">*</span> <span class="n">num_samples</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">event_types</span><span class="p">,</span> <span class="n">df</span> <span class="ow">in</span> <span class="n">event_frames</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+    <span class="p">}</span>
+
+    <span class="c1"># Adjust for rounding errors if necessary (simple method shown here)</span>
+    <span class="n">samples_adjusted</span> <span class="o">=</span> <span class="n">num_samples</span> <span class="o">-</span> <span class="nb">sum</span><span class="p">(</span><span class="n">samples_per_df</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+    <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">samples_per_df</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">samples_adjusted</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">break</span>
+        <span class="n">samples_per_df</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="n">samples_adjusted</span> <span class="o">-=</span> <span class="mi">1</span>
+
+    <span class="n">sampled_dfs</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="n">event_types</span><span class="p">:</span> <span class="n">event_frames</span><span class="p">[</span><span class="n">event_types</span><span class="p">][</span><span class="n">event_frames</span><span class="p">[</span><span class="n">event_types</span><span class="p">][</span><span class="s2">&quot;CHARTTIME&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span>
+            <span class="n">event_frames</span><span class="p">[</span><span class="n">event_types</span><span class="p">][</span><span class="s2">&quot;CHARTTIME&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">()[:</span><span class="n">samples</span><span class="p">])]</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">event_frames</span><span class="p">[</span><span class="n">event_types</span><span class="p">])</span> <span class="o">&gt;=</span> <span class="n">samples</span> <span class="k">else</span> <span class="n">event_frames</span><span class="p">[</span><span class="n">event_types</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">event_types</span><span class="p">,</span> <span class="n">samples</span> <span class="ow">in</span> <span class="n">samples_per_df</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+    <span class="p">}</span>
+
+    <span class="n">subject_events_per_df</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="n">event_types</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">samples</span><span class="p">)</span> <span class="k">for</span> <span class="n">event_types</span><span class="p">,</span> <span class="n">samples</span> <span class="ow">in</span> <span class="n">sampled_dfs</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+    <span class="p">}</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">sum</span><span class="p">([</span><span class="nb">len</span><span class="p">(</span><span class="n">frames</span><span class="p">)</span> <span class="k">for</span> <span class="n">frames</span> <span class="ow">in</span> <span class="n">sampled_dfs</span><span class="o">.</span><span class="n">values</span><span class="p">()]):</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+            <span class="s2">&quot;Sample limit compliance subsampling produced empty dataframe. Source code is erroneous!&quot;</span>
+        <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">sampled_dfs</span><span class="p">,</span> <span class="n">subject_events_per_df</span><span class="p">,</span> <span class="n">samples_per_df</span></div>
+
+
+
+<div class="viewcode-block" id="convert_dtype_value">
+<a class="viewcode-back" href="../../_rst/datasets.html#datasets.mimic_utils.convert_dtype_value">[docs]</a>
+<span class="k">def</span> <span class="nf">convert_dtype_value</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">dtype</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Convert a value to the specified dtype.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    value : any</span>
+<span class="sd">        The value to be converted.</span>
+<span class="sd">    dtype : str</span>
+<span class="sd">        The target data type. Dtype can be one of &quot;Int8&quot;, &quot;Int16&quot;, &quot;Int32&quot;, &quot;Int64&quot;, &quot;str&quot;, &quot;float&quot;.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    any</span>
+<span class="sd">        The value converted to the specified data type.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">dtype_mapping</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;Int8&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">int8</span><span class="p">,</span>
+        <span class="s2">&quot;Int16&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">int16</span><span class="p">,</span>
+        <span class="s2">&quot;Int32&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">,</span>
+        <span class="s2">&quot;Int64&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">int64</span><span class="p">,</span>
+        <span class="s2">&quot;str&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="s2">&quot;float&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+        <span class="s2">&quot;float64&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">,</span>
+        <span class="s2">&quot;float32&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span>
+        <span class="s2">&quot;object&quot;</span><span class="p">:</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="n">dtype_mapping</span><span class="p">[</span><span class="n">dtype</span><span class="p">](</span><span class="n">value</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="convert_dtype_dict">
+<a class="viewcode-back" href="../../_rst/datasets.html#datasets.mimic_utils.convert_dtype_dict">[docs]</a>
+<span class="k">def</span> <span class="nf">convert_dtype_dict</span><span class="p">(</span><span class="n">dtypes</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">add_lower</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Convert a dictionary of column names to dtype strings to a dictionary of column names to dtype objects.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    dtypes : dict</span>
+<span class="sd">        Column name to dtype mapping. Dtype can be one of &quot;Int8&quot;, &quot;Int16&quot;, &quot;Int32&quot;, &quot;Int64&quot;, &quot;str&quot;, &quot;float&quot;.</span>
+<span class="sd">    add_lower : bool, optional</span>
+<span class="sd">        Whether to add lower case column names as well, by default True.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    dict</span>
+<span class="sd">        A dictionary with column name to dtype object mapping.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">dtype_mapping</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;Int8&quot;</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Int8Dtype</span><span class="p">(),</span>
+        <span class="s2">&quot;Int16&quot;</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Int16Dtype</span><span class="p">(),</span>
+        <span class="s2">&quot;Int32&quot;</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Int32Dtype</span><span class="p">(),</span>
+        <span class="s2">&quot;Int64&quot;</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Int64Dtype</span><span class="p">(),</span>
+        <span class="s2">&quot;str&quot;</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">StringDtype</span><span class="p">(),</span>
+        <span class="s2">&quot;float&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+        <span class="s2">&quot;float64&quot;</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Float64Dtype</span><span class="p">(),</span>
+        <span class="s2">&quot;float32&quot;</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Float32Dtype</span><span class="p">(),</span>
+        <span class="s2">&quot;object&quot;</span><span class="p">:</span> <span class="s2">&quot;object&quot;</span>
+    <span class="p">}</span>
+    <span class="n">dtype_dict</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="n">column</span><span class="p">:</span> <span class="n">dtype_mapping</span><span class="p">[</span><span class="n">type_identifyer</span><span class="p">]</span> <span class="k">for</span> <span class="n">column</span><span class="p">,</span> <span class="n">type_identifyer</span> <span class="ow">in</span> <span class="n">dtypes</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+    <span class="p">}</span>
+    <span class="k">if</span> <span class="n">add_lower</span><span class="p">:</span>
+        <span class="n">dtype_dict</span><span class="o">.</span><span class="n">update</span><span class="p">({</span>
+            <span class="n">column</span><span class="o">.</span><span class="n">lower</span><span class="p">():</span> <span class="n">dtype_mapping</span><span class="p">[</span><span class="n">type_identifyer</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">column</span><span class="p">,</span> <span class="n">type_identifyer</span> <span class="ow">in</span> <span class="n">dtypes</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+        <span class="p">})</span>
+    <span class="k">return</span> <span class="n">dtype_dict</span></div>
+
+
+
+<div class="viewcode-block" id="clean_chartevents_util">
+<a class="viewcode-back" href="../../_rst/datasets.html#datasets.mimic_utils.clean_chartevents_util">[docs]</a>
+<span class="k">def</span> <span class="nf">clean_chartevents_util</span><span class="p">(</span><span class="n">chartevents</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Clean the chartevents DataFrame based on the timeseries column.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    chartevents : pd.DataFrame</span>
+<span class="sd">        DataFrame containing chart events.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pd.DataFrame</span>
+<span class="sd">        Cleaned DataFrame.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">function_switch</span> <span class="o">=</span> <span class="n">DATASET_SETTINGS</span><span class="p">[</span><span class="s2">&quot;CHARTEVENTS&quot;</span><span class="p">][</span><span class="s2">&quot;clean&quot;</span><span class="p">]</span>
+    <span class="k">for</span> <span class="n">variable_name</span><span class="p">,</span> <span class="n">function_identifier</span> <span class="ow">in</span> <span class="n">function_switch</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="n">index</span> <span class="o">=</span> <span class="p">(</span><span class="n">chartevents</span><span class="o">.</span><span class="n">VARIABLE</span> <span class="o">==</span> <span class="n">variable_name</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">chartevents</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">index</span><span class="p">,</span> <span class="s1">&#39;VALUE&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">globals</span><span class="p">()[</span><span class="n">function_identifier</span><span class="p">](</span><span class="n">chartevents</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">index</span><span class="p">])</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exp</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Exception in clean_events function&quot;</span><span class="p">,</span> <span class="n">function_identifier</span><span class="p">,</span> <span class="s2">&quot;: &quot;</span><span class="p">,</span> <span class="n">exp</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;number of rows:&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">index</span><span class="p">))</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;values:&quot;</span><span class="p">,</span> <span class="n">chartevents</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">index</span><span class="p">])</span>
+            <span class="k">raise</span> <span class="n">exp</span>
+
+    <span class="k">return</span> <span class="n">chartevents</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">chartevents</span><span class="o">.</span><span class="n">VALUE</span><span class="o">.</span><span class="n">notnull</span><span class="p">()]</span></div>
+
+
+
+<div class="viewcode-block" id="get_static_value">
+<a class="viewcode-back" href="../../_rst/datasets.html#datasets.mimic_utils.get_static_value">[docs]</a>
+<span class="k">def</span> <span class="nf">get_static_value</span><span class="p">(</span><span class="n">timeseries</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">variable</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Get the first non-null value of a specified variable from the time series data.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    timeseries : pd.DataFrame</span>
+<span class="sd">        DataFrame containing the time series data.</span>
+<span class="sd">    variable : str</span>
+<span class="sd">        The variable to get the static value for.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    any</span>
+<span class="sd">        The first non-null value of the specified variable.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">index</span> <span class="o">=</span> <span class="n">timeseries</span><span class="p">[</span><span class="n">variable</span><span class="p">]</span><span class="o">.</span><span class="n">notnull</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">index</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+        <span class="n">loc</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">index</span><span class="p">)[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">timeseries</span><span class="p">[</span><span class="n">variable</span><span class="p">]</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">loc</span><span class="p">]</span>
+
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span></div>
+
+
+
+<div class="viewcode-block" id="upper_case_column_names">
+<a class="viewcode-back" href="../../_rst/datasets.html#datasets.mimic_utils.upper_case_column_names">[docs]</a>
+<span class="k">def</span> <span class="nf">upper_case_column_names</span><span class="p">(</span><span class="n">frame</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Convert the column names to upper case for consistency.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    frame : pd.DataFrame</span>
+<span class="sd">        Target DataFrame.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pd.DataFrame</span>
+<span class="sd">        DataFrame with upper-cased column names.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">frame</span><span class="o">.</span><span class="n">columns</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">str</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="n">frame</span></div>
+
+
+
+<div class="viewcode-block" id="convert_to_numpy_types">
+<a class="viewcode-back" href="../../_rst/datasets.html#datasets.mimic_utils.convert_to_numpy_types">[docs]</a>
+<span class="k">def</span> <span class="nf">convert_to_numpy_types</span><span class="p">(</span><span class="n">frame</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Convert the dtypes to numpy types for consistency.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    frame : pd.DataFrame</span>
+<span class="sd">        Target DataFrame.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pd.DataFrame</span>
+<span class="sd">        DataFrame with numpy dtypes.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">frame</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+        <span class="c1"># Convert pandas &quot;Int64&quot; (or similar) types to &quot;int64&quot;</span>
+        <span class="k">if</span> <span class="n">pd</span><span class="o">.</span><span class="n">api</span><span class="o">.</span><span class="n">types</span><span class="o">.</span><span class="n">is_integer_dtype</span><span class="p">(</span><span class="n">frame</span><span class="p">[</span><span class="n">col</span><span class="p">]):</span>
+            <span class="n">frame</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">frame</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s1">&#39;int64&#39;</span><span class="p">,</span> <span class="n">errors</span><span class="o">=</span><span class="s1">&#39;ignore&#39;</span><span class="p">)</span>
+        <span class="c1"># Convert pandas &quot;boolean&quot; type to NumPy &quot;bool&quot;</span>
+        <span class="k">elif</span> <span class="n">pd</span><span class="o">.</span><span class="n">api</span><span class="o">.</span><span class="n">types</span><span class="o">.</span><span class="n">is_bool_dtype</span><span class="p">(</span><span class="n">frame</span><span class="p">[</span><span class="n">col</span><span class="p">]):</span>
+            <span class="n">frame</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">frame</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s1">&#39;bool&#39;</span><span class="p">,</span> <span class="n">errors</span><span class="o">=</span><span class="s1">&#39;ignore&#39;</span><span class="p">)</span>
+        <span class="c1"># Convert pandas &quot;string&quot; type to NumPy &quot;object&quot;</span>
+        <span class="k">elif</span> <span class="n">pd</span><span class="o">.</span><span class="n">api</span><span class="o">.</span><span class="n">types</span><span class="o">.</span><span class="n">is_string_dtype</span><span class="p">(</span><span class="n">frame</span><span class="p">[</span><span class="n">col</span><span class="p">]):</span>
+            <span class="n">frame</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">frame</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s1">&#39;object&#39;</span><span class="p">,</span> <span class="n">errors</span><span class="o">=</span><span class="s1">&#39;ignore&#39;</span><span class="p">)</span>
+        <span class="c1"># Convert pandas &quot;Float64&quot; (or similar) types to &quot;float64&quot;</span>
+        <span class="k">elif</span> <span class="n">pd</span><span class="o">.</span><span class="n">api</span><span class="o">.</span><span class="n">types</span><span class="o">.</span><span class="n">is_float_dtype</span><span class="p">(</span><span class="n">frame</span><span class="p">[</span><span class="n">col</span><span class="p">]):</span>
+            <span class="n">frame</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">frame</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s1">&#39;float64&#39;</span><span class="p">,</span> <span class="n">errors</span><span class="o">=</span><span class="s1">&#39;ignore&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">frame</span></div>
+
+
+
+<span class="k">def</span> <span class="nf">_clean_height</span><span class="p">(</span><span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Convert height from inches to centimeters.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    df : pd.DataFrame</span>
+<span class="sd">        DataFrame containing height values.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pd.Series</span>
+<span class="sd">        Series with converted height values.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">value</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">VALUE</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">get_measurment_type</span><span class="p">(</span><span class="n">string</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="s1">&#39;in&#39;</span> <span class="ow">in</span> <span class="n">string</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+
+    <span class="n">index</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">VALUEUOM</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="s1">&#39;&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">get_measurment_type</span><span class="p">)</span> <span class="o">|</span> <span class="n">df</span><span class="o">.</span><span class="n">MIMIC_LABEL</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span>
+        <span class="n">get_measurment_type</span><span class="p">)</span>
+    <span class="n">value</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">index</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">value</span><span class="p">[</span><span class="n">index</span><span class="p">]</span> <span class="o">*</span> <span class="mf">2.54</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">value</span>
+
+
+<span class="k">def</span> <span class="nf">_clean_systolic_bp</span><span class="p">(</span><span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Filter out systolic blood pressure only.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    df : pd.DataFrame</span>
+<span class="sd">        DataFrame containing blood pressure values.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pd.Series</span>
+<span class="sd">        Series with systolic blood pressure values.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">value</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">VALUE</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">index</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">string</span><span class="p">:</span> <span class="s1">&#39;/&#39;</span> <span class="ow">in</span> <span class="n">string</span><span class="p">)</span>
+    <span class="n">value</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">index</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span><span class="p">[</span><span class="n">index</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">string</span><span class="p">:</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="s1">&#39;^(\d+)/(\d+)$&#39;</span><span class="p">,</span> <span class="n">string</span><span class="p">)</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">value</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_clean_diastolic_bp</span><span class="p">(</span><span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Filter out diastolic blood pressure only.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    df : pd.DataFrame</span>
+<span class="sd">        DataFrame containing blood pressure values.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pd.Series</span>
+<span class="sd">        Series with diastolic blood pressure values.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">value</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">VALUE</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">index</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">string</span><span class="p">:</span> <span class="s1">&#39;/&#39;</span> <span class="ow">in</span> <span class="n">string</span><span class="p">)</span>
+    <span class="n">value</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">index</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span><span class="p">[</span><span class="n">index</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">string</span><span class="p">:</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="s1">&#39;^(\d+)/(\d+)$&#39;</span><span class="p">,</span> <span class="n">string</span><span class="p">)</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">2</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">value</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_clean_capilary_rr</span><span class="p">(</span><span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Categorize capillary refill rate.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    df : pd.DataFrame</span>
+<span class="sd">        DataFrame containing capillary refill rate values.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pd.Series</span>
+<span class="sd">        Series with categorized capillary refill rate values.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">value</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="n">index</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="p">)</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">value</span><span class="o">.</span><span class="n">loc</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+
+    <span class="n">df</span><span class="p">[</span><span class="s1">&#39;VALUE&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">VALUE</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span>
+
+    <span class="n">value</span><span class="o">.</span><span class="n">loc</span><span class="p">[(</span><span class="n">df</span><span class="o">.</span><span class="n">VALUE</span> <span class="o">==</span> <span class="s1">&#39;Normal &lt;3 secs&#39;</span><span class="p">)</span> <span class="o">|</span> <span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">VALUE</span> <span class="o">==</span> <span class="s1">&#39;Brisk&#39;</span><span class="p">)]</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">value</span><span class="o">.</span><span class="n">loc</span><span class="p">[(</span><span class="n">df</span><span class="o">.</span><span class="n">VALUE</span> <span class="o">==</span> <span class="s1">&#39;Abnormal &gt;3 secs&#39;</span><span class="p">)</span> <span class="o">|</span> <span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">VALUE</span> <span class="o">==</span> <span class="s1">&#39;Delayed&#39;</span><span class="p">)]</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="k">return</span> <span class="n">value</span>
+
+
+<span class="k">def</span> <span class="nf">_clean_fraction_inspired_o2</span><span class="p">(</span><span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Map fraction of inspired oxygen values to correct scale.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    df : pd.DataFrame</span>
+<span class="sd">        DataFrame containing fraction of inspired oxygen values.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pd.Series</span>
+<span class="sd">        Series with mapped fraction of inspired oxygen values.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">value</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">VALUE</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+    <span class="c1"># Check wheather value is string</span>
+    <span class="n">is_str</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="nb">type</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">==</span> <span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">VALUE</span><span class="p">)),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">get_measurment_type</span><span class="p">(</span><span class="n">string</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        torr is equal to mmHg</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="s1">&#39;torr&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">string</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+
+    <span class="n">index</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">VALUEUOM</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="s1">&#39;&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">get_measurment_type</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">is_str</span> <span class="o">|</span> <span class="p">(</span><span class="o">~</span><span class="n">is_str</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">value</span> <span class="o">&gt;</span> <span class="mf">1.0</span><span class="p">)))</span>
+
+    <span class="n">value</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">index</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span><span class="p">[</span><span class="n">index</span><span class="p">]</span> <span class="o">/</span> <span class="mf">100.</span>
+
+    <span class="k">return</span> <span class="n">value</span>
+
+
+<span class="k">def</span> <span class="nf">_clean_laboratory_values</span><span class="p">(</span><span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Clean laboratory values by removing non-numeric entries.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    df : pd.DataFrame</span>
+<span class="sd">        DataFrame containing laboratory values.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pd.Series</span>
+<span class="sd">        Series with cleaned laboratory values.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">value</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">VALUE</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">index</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span>
+        <span class="k">lambda</span> <span class="n">string</span><span class="p">:</span> <span class="nb">type</span><span class="p">(</span><span class="n">string</span><span class="p">)</span> <span class="ow">is</span> <span class="nb">str</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="s1">&#39;^(\d+(\.\d*)?|\.\d+)$&#39;</span><span class="p">,</span> <span class="n">string</span><span class="p">))</span>
+    <span class="n">value</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">index</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+    <span class="k">return</span> <span class="n">value</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_clean_o2sat</span><span class="p">(</span><span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Scale oxygen saturation values to correct range.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    df : pd.DataFrame</span>
+<span class="sd">        DataFrame containing oxygen saturation values.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pd.Series</span>
+<span class="sd">        Series with scaled oxygen saturation values.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># change &quot;ERROR&quot; to NaN</span>
+    <span class="n">value</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">VALUE</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">index</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span>
+        <span class="k">lambda</span> <span class="n">string</span><span class="p">:</span> <span class="nb">type</span><span class="p">(</span><span class="n">string</span><span class="p">)</span> <span class="ow">is</span> <span class="nb">str</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="s1">&#39;^(\d+(\.\d*)?|\.\d+)$&#39;</span><span class="p">,</span> <span class="n">string</span><span class="p">))</span>
+    <span class="n">value</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">index</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+    <span class="n">value</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+
+    <span class="c1"># Scale values</span>
+    <span class="n">index</span> <span class="o">=</span> <span class="p">(</span><span class="n">value</span> <span class="o">&lt;=</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">value</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">index</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span><span class="p">[</span><span class="n">index</span><span class="p">]</span> <span class="o">*</span> <span class="mf">100.</span>
+    <span class="k">return</span> <span class="n">value</span>
+
+
+<span class="k">def</span> <span class="nf">_clean_temperature</span><span class="p">(</span><span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Map Fahrenheit temperatures to Celsius.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    df : pd.DataFrame</span>
+<span class="sd">        DataFrame containing temperature values.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pd.Series</span>
+<span class="sd">        Series with converted temperature values.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">value</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">VALUE</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">get_measurment_type</span><span class="p">(</span><span class="n">string</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="s1">&#39;F&#39;</span> <span class="ow">in</span> <span class="n">string</span>
+
+    <span class="n">index</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">VALUEUOM</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="s1">&#39;&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">get_measurment_type</span><span class="p">)</span> <span class="o">|</span> <span class="n">df</span><span class="o">.</span><span class="n">MIMIC_LABEL</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span>
+        <span class="n">get_measurment_type</span><span class="p">)</span> <span class="o">|</span> <span class="p">(</span><span class="n">value</span> <span class="o">&gt;=</span> <span class="mi">79</span><span class="p">)</span>
+    <span class="n">value</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">index</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">value</span><span class="p">[</span><span class="n">index</span><span class="p">]</span> <span class="o">-</span> <span class="mi">32</span><span class="p">)</span> <span class="o">*</span> <span class="mf">5.</span> <span class="o">/</span> <span class="mi">9</span>
+    <span class="k">return</span> <span class="n">value</span>
+
+
+<span class="k">def</span> <span class="nf">_clean_weight</span><span class="p">(</span><span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Convert weight values to kilograms.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    df : pd.DataFrame</span>
+<span class="sd">        DataFrame containing weight values.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pd.Series</span>
+<span class="sd">        Series with converted weight values.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">value</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">VALUE</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">get_measurment_type</span><span class="p">(</span><span class="n">string</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="s1">&#39;oz&#39;</span> <span class="ow">in</span> <span class="n">string</span>
+
+    <span class="c1"># ounces</span>
+    <span class="n">index</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">VALUEUOM</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="s1">&#39;&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">get_measurment_type</span><span class="p">)</span> <span class="o">|</span> <span class="n">df</span><span class="o">.</span><span class="n">MIMIC_LABEL</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span>
+        <span class="n">get_measurment_type</span><span class="p">)</span>
+    <span class="n">value</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">index</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span><span class="p">[</span><span class="n">index</span><span class="p">]</span> <span class="o">/</span> <span class="mf">16.</span>
+
+    <span class="k">def</span> <span class="nf">get_measurment_type</span><span class="p">(</span><span class="n">string</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="s1">&#39;lb&#39;</span> <span class="ow">in</span> <span class="n">string</span>
+
+    <span class="c1"># pounds</span>
+    <span class="n">index</span> <span class="o">=</span> <span class="n">index</span> <span class="o">|</span> <span class="n">df</span><span class="o">.</span><span class="n">VALUEUOM</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="s1">&#39;&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">get_measurment_type</span><span class="p">)</span> <span class="o">|</span> <span class="n">df</span><span class="o">.</span><span class="n">MIMIC_LABEL</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span>
+        <span class="n">get_measurment_type</span><span class="p">)</span>
+    <span class="n">value</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">index</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span><span class="p">[</span><span class="n">index</span><span class="p">]</span> <span class="o">*</span> <span class="mf">0.453592</span>
+    <span class="k">return</span> <span class="n">value</span>
+
+
+<span class="k">def</span> <span class="nf">_clean_respiratory_rate</span><span class="p">(</span><span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Transform respiratory rate values from greater than 60 to 60.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    df : pd.DataFrame</span>
+<span class="sd">        DataFrame containing respiratory rate values.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pd.Series</span>
+<span class="sd">        Series with cleaned respiratory rate values.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">value</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">VALUE</span>
+    <span class="n">value</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;&gt;60/min retracts&#39;</span><span class="p">,</span> <span class="mi">60</span><span class="p">)</span>
+    <span class="n">value</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;&gt;60/minute&#39;</span><span class="p">,</span> <span class="mi">60</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">value</span>
+
+
+<div class="viewcode-block" id="read_varmap_csv">
+<a class="viewcode-back" href="../../_rst/datasets.html#datasets.mimic_utils.read_varmap_csv">[docs]</a>
+<span class="k">def</span> <span class="nf">read_varmap_csv</span><span class="p">(</span><span class="n">resource_folder</span><span class="p">:</span> <span class="n">Path</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Read the variable map CSV file from the specified resource folder.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    resource_folder : Path</span>
+<span class="sd">        The path to the resource folder containing the CSV file.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pd.DataFrame</span>
+<span class="sd">        DataFrame containing the variable map.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">csv_settings</span> <span class="o">=</span> <span class="n">DATASET_SETTINGS</span><span class="p">[</span><span class="s2">&quot;varmap&quot;</span><span class="p">]</span>
+    <span class="c1"># Load the resource map</span>
+    <span class="n">varmap_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">resource_folder</span><span class="p">,</span> <span class="s2">&quot;itemid_to_variable_map.csv&quot;</span><span class="p">),</span>
+                            <span class="n">index_col</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                            <span class="n">dtype</span><span class="o">=</span><span class="n">convert_dtype_dict</span><span class="p">(</span><span class="n">csv_settings</span><span class="p">[</span><span class="s2">&quot;dtype&quot;</span><span class="p">]))</span>
+
+    <span class="c1"># Impute empty to string</span>
+    <span class="n">varmap_df</span> <span class="o">=</span> <span class="n">varmap_df</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="s1">&#39;&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span>
+
+    <span class="c1"># Cast columns</span>
+    <span class="n">varmap_df</span><span class="p">[</span><span class="s1">&#39;COUNT&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">varmap_df</span><span class="o">.</span><span class="n">COUNT</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+    <span class="n">varmap_df</span><span class="p">[</span><span class="s1">&#39;ITEMID&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">varmap_df</span><span class="o">.</span><span class="n">ITEMID</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+
+    <span class="c1"># Remove unlabeled and not occuring phenotypes and make sure only variables with ready status</span>
+    <span class="n">varmap_df</span> <span class="o">=</span> <span class="n">varmap_df</span><span class="o">.</span><span class="n">loc</span><span class="p">[(</span><span class="n">varmap_df</span><span class="p">[</span><span class="s1">&#39;LEVEL2&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="s1">&#39;&#39;</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">varmap_df</span><span class="p">[</span><span class="s1">&#39;COUNT&#39;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)]</span>
+    <span class="n">varmap_df</span> <span class="o">=</span> <span class="n">varmap_df</span><span class="o">.</span><span class="n">loc</span><span class="p">[(</span><span class="n">varmap_df</span><span class="o">.</span><span class="n">STATUS</span> <span class="o">==</span> <span class="s1">&#39;ready&#39;</span><span class="p">)]</span>
+
+    <span class="c1"># Get subdf</span>
+    <span class="n">varmap_df</span> <span class="o">=</span> <span class="n">varmap_df</span><span class="p">[[</span><span class="s1">&#39;LEVEL2&#39;</span><span class="p">,</span> <span class="s1">&#39;ITEMID&#39;</span><span class="p">,</span> <span class="s1">&#39;MIMIC LABEL&#39;</span><span class="p">]]</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s1">&#39;ITEMID&#39;</span><span class="p">)</span>
+    <span class="n">name_equivalences</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;LEVEL2&#39;</span><span class="p">:</span> <span class="s1">&#39;VARIABLE&#39;</span><span class="p">,</span> <span class="s1">&#39;MIMIC LABEL&#39;</span><span class="p">:</span> <span class="s1">&#39;MIMIC_LABEL&#39;</span><span class="p">}</span>
+    <span class="n">varmap_df</span> <span class="o">=</span> <span class="n">varmap_df</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="n">name_equivalences</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">varmap_df</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Amadou Wolfgang Cisse.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

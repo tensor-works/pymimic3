@@ -1,16 +1,23 @@
-"""Dataset file
+"""
+Dataset Reader Module
+=====================
 
-This file allows access to the dataset as specified.
-All function in this file are used by the main interface function load_data.
-Subfunctions used within private functions are located in the datasets.utils module.
+This module provides classes and methods for reading and handling dataset files related to medical data, 
+specifically from the MIMIC-III dataset. These classes are designed to facilitate the extraction, processing, 
+and management of large and complex datasets, enabling efficient data manipulation and analysis.
 
-Todo:
-    - Use a settings.json
-    - This is a construction site, see what you can bring in here
-    - Provid link to kaggle in load_data doc string
-    - Expand function to utils
+Classes
+-------
 
-YerevaNN/mimic3-benchmarks
+- AbstractReader: A base reader class for datasets, providing methods to handle and sample subject directories.
+- ExtractedSetReader: A reader for extracted datasets, providing methods to read various types of data including timeseries, episodic data, events, diagnoses, and ICU history.
+- ProcessedSetReader: A reader for processed datasets, providing methods to read samples and individual subject data.
+- EventReader: A reader for event data from CHARTEVENTS, OUTPUTEVENTS, LABEVENTS, providing methods to read data either in chunks or in a single shot.
+- SplitSetReader: A reader for datasets split into training, validation, and test sets, providing access to each split.
+
+References
+----------
+- YerevaNN/mimic3-benchmarks: https://github.com/YerevaNN/mimic3-benchmarks
 """
 import random
 import re
@@ -19,7 +26,7 @@ import threading
 import pandas as pd
 import numpy as np
 from pathlib import Path
-from collections import Iterable
+from collections.abc import Iterable
 from copy import deepcopy
 from utils.IO import *
 from settings import *
@@ -31,17 +38,30 @@ __all__ = ["ExtractedSetReader", "ProcessedSetReader", "EventReader", "SplitSetR
 
 
 class AbstractReader(object):
+    """
+    A base reader class for datasets, providing methods to handle and sample subject directories.
+
+    Parameters
+    ----------
+    root_path : Path
+        The root directory path containing subject folders.
+    subject_ids : list of int, optional
+        List of subject IDs to read. If None, reads all subject directories in the root_path.
+
+    Raises
+    ------
+    ValueError
+        If the specified subject IDs do not have existing directories.
+
+    Examples
+    --------
+    >>> root_path = Path("/path/to/data")
+    >>> reader = AbstractReader(root_path, subject_ids=[10006, 10011, 10019])
+    >>> reader.subject_ids
+    [10006, 10011, 10019]
+    """
 
     def __init__(self, root_path: Path, subject_ids: List[int] = None) -> None:
-        """_summary_
-
-        Args:
-            root_path (Path): _description_
-            subject_folders (list, optional): _description_. Defaults to None.
-
-        Raises:
-            ValueError: _description_
-        """
         self._root_path = (root_path if isinstance(root_path, Path) else Path(root_path))
 
         if subject_ids is None:
@@ -69,6 +89,9 @@ class AbstractReader(object):
                 )
 
     def _update(self):
+        """
+        Update the list of subject folders. Does not update if subject IDs were specified on creation.
+        """
         # Doesn't update if subject_ids specified on creation
         if self._update_self:
             self._subject_folders = [
@@ -77,6 +100,9 @@ class AbstractReader(object):
             ]
 
     def _cast_dir_path(self, dir_path: Union[Path, str, int]) -> Path:
+        """
+        Cast the directory path to a Path object and ensure it is relative to the root path.
+        """
         if isinstance(dir_path, int):
             dir_path = Path(str(dir_path))
         elif isinstance(dir_path, str):
@@ -86,11 +112,17 @@ class AbstractReader(object):
         return dir_path
 
     def _cast_subject_ids(self, subject_ids: Union[List[str], List[int], np.ndarray]) -> List[int]:
+        """
+        Cast the subject IDs to a list of integers.
+        """
         if subject_ids is None:
             return None
         return [int(subject_id) for subject_id in subject_ids]
 
     def _sample_ids(self, subject_ids: list, num_subjects: int, seed: int = 42):
+        """
+        Sample a specified number of subject IDs.
+        """
         # Subject ids overwrites num subjects
         random.seed(seed)
         self._update()
@@ -103,24 +135,84 @@ class AbstractReader(object):
 
     @property
     def root_path(self) -> Path:
+        """
+        Get the root directory path.
+
+        Returns
+        -------
+        Path
+            The root directory path.
+
+        Examples
+        --------
+        >>> reader.root_path
+        PosixPath('/path/to/data')
+        """
         return self._root_path
 
     @property
     def subject_ids(self) -> List[int]:
         """
+        Get the list of subject IDs either past as parameter or located in the directory.
+
+        Returns
+        -------
+        List[int]
+            The list of subject IDs.
+
+        Examples
+        --------
+        >>> reader.subject_ids
+        [10006, 10011, 10019]
         """
         return [int(folder.name) for folder in self._subject_folders]
 
     def _init_returns(self, file_types: tuple, read_ids: bool = True):
-        """_summary_
-
-        Args:
-            file_types (tuple): _description_
+        """
+        Initialize a dictionary or list to store the data to be read, depending on read IDs.
         """
         return {file_type: {} if read_ids else [] for file_type in file_types}
 
 
 class ExtractedSetReader(AbstractReader):
+    """
+    A reader for extracted datasets, providing methods to read various types of data including
+    timeseries, episodic data, events, diagnoses, and ICU history.
+
+    Examples
+    --------
+    >>> root_path = Path("/path/to/data")
+    >>>
+    >>> # Init reader and optionally limit to subjects
+    >>> reader = ExtractedSetReader(root_path, subject_ids=[10006, 10011, 10019])
+    >>> # Read the timeseries
+    >>> timeseries = reader.read_timeseries(num_subjects=2)
+    >>> # Read the episodic data
+    >>> episodic_data = reader.read_episodic_data(subject_ids=[10006, 10011])
+    >>> # Read the data for one subject
+    >>> subject_data = reader.read_subject(dir_path="10019", read_ids=True)
+    >>> subject_data["episodic_data"].columns.tolist()
+        [Icustay,AGE,LOS,MORTALITY,GENDER,ETHNICITY, ... ,71590,2869,2763,5770,V5865,99662,28860]
+    >>> list(subject_data.keys())
+        ['timeseries', 'episodic_data', 'subject_events', 'subject_diagnoses', 'subject_icu_history']
+    >>> # Read the data for several subjects
+    >>> subjects_data = reader.read_subjects(subject_ids=[10006, 10011], read_ids=True)
+    >>> subjects_data[10006]["episodic_data"].columns.tolist()
+        [Icustay,AGE,LOS,MORTALITY,GENDER,ETHNICITY, ... ,71590,2869,2763,5770,V5865,99662,28860]
+    >>> # Read multiple subjects as list
+    >>> subjects_data = reader.read_subjects(num_subjects=2)
+    >>> subjects_data[0]["timeseries"][0].columns.tolist()
+        [Capillary refill rate,Diastolic blood pressure, ... Systolic blood pressure,Temperature]
+
+    Parameters
+    ----------
+    root_path : Path
+        The root directory path containing subject folders.
+    subject_ids : list of int, optional
+        List of subject IDs to read. If None, reads all subjects in the root_path.
+    num_samples : int, optional
+        Number of samples to read. If None, reads all available samples.
+    """
 
     convert_datetime = ["INTIME", "CHARTTIME", "OUTTIME", "ADMITTIME", "DISCHTIME", "DEATHTIME"]
 
@@ -154,17 +246,20 @@ class ExtractedSetReader(AbstractReader):
         super().__init__(root_path, subject_ids)
 
     def read_csv(self, path: Path, dtypes: tuple = None) -> pd.DataFrame:
-        """_summary_
+        """
+        Read a CSV file into a pandas DataFrame, converting specified columns to datetime.
 
-        Args:
-            path (Path): Absolute or relative path to csv.
-            dtypes (tuple, optional): Data type(s) to apply to either the whole dataset or individual columns. 
-                E.g., {'a': np.float64, 'b': np.int32, 'c': 'Int64'} Use str or object together with suitable 
-                na_values settings to preserve and not interpret dtype. If converters are specified, they will be 
-                applied INSTEAD of dtype conversion. Defaults to None.
+        Parameters
+        ----------
+        path : Path
+            Absolute or relative path to the CSV file.
+        dtypes : tuple, optional
+            Data type(s) to apply to either the whole dataset or individual columns.
 
-        Returns:
-            pd.DataFrame: Dataframe from location
+        Returns
+        -------
+        pd.DataFrame
+            The dataframe read from the specified location.
         """
         file_path = Path(path)
         if not file_path.is_relative_to(self._root_path):
@@ -191,12 +286,24 @@ class ExtractedSetReader(AbstractReader):
                      read_ids: bool = False,
                      file_type_keys: bool = True,
                      file_types: tuple = None):
-        """_summary_
+        """
+        Read data for a single subject for specified directory or subject ID.
 
-        Args:
-            file_types (tuple): _description_
-            dir_path (Path): _description_
-            subject_id (int): _description_
+        Parameters
+        ----------
+        dir_path : Union[Path, int, str]
+            The directory path to read the subject data from.
+        read_ids : bool, optional
+            Whether to read IDs. Defaults to False.
+        file_type_keys : bool, optional
+            Whether to use file type keys in the returned dictionary. Defaults to True.
+        file_types : tuple, optional
+            The types of files to read. If None, reads all file types.
+
+        Returns
+        -------
+        dict
+            Dictionary containing the data read for the subject.
         """
         dir_path = self._cast_dir_path(dir_path)
 
@@ -233,15 +340,27 @@ class ExtractedSetReader(AbstractReader):
                       read_ids: bool = False,
                       file_type_keys: bool = True,
                       seed: int = 42):
-        """_summary_
+        """
+        Read data for multiple subjects, with file keys being one of timeseries, episodic_data, subject_events,
+        diagnosis or icu_history.
 
-        Args:
-            root_path (Path): _description_
-            file_types (tuple, optional): _description_. Defaults to ("episodic_data", "subject_events", "subject_diagnoses", "subject_icu_history", "timeseries").
-            num_subjects (int, optional): _description_. Defaults to None.
+        Parameters
+        ----------
+        subject_ids : Union[List[str], List[int]], optional
+            List of subject IDs to read. If None, reads all subjects.
+        num_subjects : int, optional
+            Number of subjects to read. If None, reads all available subjects.
+        read_ids : bool, optional
+            Whether to read IDs. Defaults to False.
+        file_type_keys : bool, optional
+            Whether to use file type keys in the returned dictionary. Defaults to True.
+        seed : int, optional
+            Random seed for reproducibility. Default is 42.
 
-        Returns:
-            _type_: _description_
+        Returns
+        -------
+        dict
+            Dictionary containing the data read for the subjects.
         """
         subject_ids = self._cast_subject_ids(subject_ids)
 
@@ -279,6 +398,25 @@ class ExtractedSetReader(AbstractReader):
                         subject_ids: int = None,
                         read_ids: bool = False,
                         seed: int = 42):
+        """
+        Read timeseries data for specified subjects.
+
+        Parameters
+        ----------
+        num_subjects : int, optional
+            Number of subjects to read. Default is None.
+        subject_ids : int, optional
+            List of subject IDs to read. Default is None.
+        read_ids : bool, optional
+            Whether to read IDs. Default is False.
+        seed : int, optional
+            Random seed for reproducibility. Default is 42.
+
+        Returns
+        -------
+        dict
+            Dictionary containing the timeseries data for the subjects.
+        """
         return self._read_filetype("timeseries", num_subjects, subject_ids, read_ids, seed)
 
     def read_episodic_data(self,
@@ -286,6 +424,25 @@ class ExtractedSetReader(AbstractReader):
                            subject_ids: int = None,
                            read_ids: bool = False,
                            seed: int = 42):
+        """
+        Read episodic data for specified subjects.
+
+        Parameters
+        ----------
+        num_subjects : int, optional
+            Number of subjects to read. Default is None.
+        subject_ids : int, optional
+            List of subject IDs to read. Default is None.
+        read_ids : bool, optional
+            Whether to read IDs. Default is False.
+        seed : int, optional
+            Random seed for reproducibility. Default is 42.
+
+        Returns
+        -------
+        dict
+            Dictionary containing the episodic data for the subjects.
+        """
         return self._read_filetype("episodic_data", num_subjects, subject_ids, read_ids, seed)
 
     def read_events(self,
@@ -293,6 +450,25 @@ class ExtractedSetReader(AbstractReader):
                     subject_ids: int = None,
                     read_ids: bool = False,
                     seed: int = 42):
+        """
+        Read event data for specified subjects.
+
+        Parameters
+        ----------
+        num_subjects : int, optional
+            Number of subjects to read. Default is None.
+        subject_ids : int, optional
+            List of subject IDs to read. Default is None.
+        read_ids : bool, optional
+            Whether to read IDs. Default is False.
+        seed : int, optional
+            Random seed for reproducibility. Default is 42.
+
+        Returns
+        -------
+        dict
+            Dictionary containing the event data for the subjects.
+        """
         return self._read_filetype("subject_events", num_subjects, subject_ids, read_ids, seed)
 
     def read_diagnoses(self,
@@ -300,6 +476,25 @@ class ExtractedSetReader(AbstractReader):
                        subject_ids: int = None,
                        read_ids: bool = False,
                        seed: int = 42):
+        """
+        Read diagnosis data for specified subjects.
+
+        Parameters
+        ----------
+        num_subjects : int, optional
+            Number of subjects to read. Default is None.
+        subject_ids : int, optional
+            List of subject IDs to read. Default is None.
+        read_ids : bool, optional
+            Whether to read IDs. Default is False.
+        seed : int, optional
+            Random seed for reproducibility. Default is 42.
+
+        Returns
+        -------
+        dict
+            Dictionary containing the diagnosis data for the subjects.
+        """
         return self._read_filetype("subject_diagnoses", num_subjects, subject_ids, read_ids, seed)
 
     def read_icu_history(self,
@@ -307,6 +502,25 @@ class ExtractedSetReader(AbstractReader):
                          subject_ids: int = None,
                          read_ids: bool = False,
                          seed: int = 42):
+        """
+        Read ICU history data for specified subjects.
+
+        Parameters
+        ----------
+        num_subjects : int, optional
+            Number of subjects to read. Default is None.
+        subject_ids : int, optional
+            List of subject IDs to read. Default is None.
+        read_ids : bool, optional
+            Whether to read IDs. Default is False.
+        seed : int, optional
+            Random seed for reproducibility. Default is 42.
+
+        Returns
+        -------
+        dict
+            Dictionary containing the ICU history data for the subjects.
+        """
         return self._read_filetype("subject_icu_history", num_subjects, subject_ids, read_ids, seed)
 
     def _read_filetype(
@@ -317,7 +531,13 @@ class ExtractedSetReader(AbstractReader):
         read_ids: bool,
         seed: int,
     ):
+        """
+        Reads the specified type of data file for multiple subjects.
 
+        This method fetches the data for the given file type (e.g., timeseries, episodic_data) from the dataset 
+        for either a specified list of subjects or a specified number of subjects. It ensures reproducibility 
+        by using a random seed.
+        """
         subject_ids = self._cast_subject_ids(subject_ids)
 
         if subject_ids is not None and num_subjects is not None:
@@ -330,6 +550,13 @@ class ExtractedSetReader(AbstractReader):
         return self._read_data_without_ids(subject_folders, file_type)
 
     def _read_data_with_ids(self, subject_folders: Path, file_type: str):
+        """
+        Reads data with subject IDs for multiple subjects.
+
+        This method retrieves the data for a specified file type for multiple subjects, 
+        including their IDs. It is particularly useful when the dataset includes IDs and the user 
+        wants to maintain the association between data and subject IDs.
+        """
         return_data = dict()
         for subject_path in subject_folders:
             subject_id = int(subject_path.name)
@@ -343,6 +570,13 @@ class ExtractedSetReader(AbstractReader):
         return return_data
 
     def _read_data_without_ids(self, subject_folders: Path, file_type: str):
+        """
+        Reads data without subject IDs for multiple subjects.
+
+        This method retrieves the data for a specified file type for multiple subjects, 
+        excluding their IDs. It is useful when IDs are not necessary, and the focus is 
+        on the data itself.
+        """
         return_data = list()
         for subject_id in subject_folders:
             if file_type == 'timeseries':
@@ -360,14 +594,12 @@ class ExtractedSetReader(AbstractReader):
         return return_data
 
     def _check_subject_dir(self, subject_folder: Path, file_types: tuple):
-        """_summary_
+        """
+        Checks if the subject directory contains the required files.
 
-        Args:
-            dir_path (Path): _description_
-            file_types (tuple): _description_
-
-        Returns:
-            _type_: _description_
+        This method verifies the presence of the necessary data files for the specified file types 
+        in the subject's directory. It helps ensure that all required files are available before 
+        attempting to read the data.
         """
         if os.getenv("DEBUG"):
             for filename in file_types:
@@ -379,12 +611,12 @@ class ExtractedSetReader(AbstractReader):
         ])
 
     def _read_file(self, filename: str, dir_path: Path):  # , return_data: dict):
-        """_summary_
+        """
+        Reads a specific file from the directory.
 
-        Args:
-            filename (str): _description_
-            dir_path (Path): _description_
-            subject_id (int): _description_
+        This method reads the data file for the given filename from the specified directory path. 
+        It applies the necessary data types and converts date-time columns as required. This method 
+        is a core part of the data extraction process for individual files.
         """
         file_df = pd.read_csv(Path(dir_path, f"{filename}.csv"),
                               dtype=self._dtypes[filename],
@@ -397,11 +629,12 @@ class ExtractedSetReader(AbstractReader):
         return file_df
 
     def _get_timeseries(self, dir_path: Path, read_ids: bool):
-        """_summary_
+        """
+        Retrieves timeseries data for a subject.
 
-        Args:
-            dir_path (Path): _description_
-            subject_id (int): _description_
+        This method reads and processes the timeseries data files from the specified directory path. 
+        It can optionally include subject IDs in the returned data. This is useful for handling 
+        timeseries data separately due to its unique, stay wise, structure.
         """
         subject_files = os.listdir(dir_path)
         if read_ids:
@@ -428,7 +661,42 @@ class ExtractedSetReader(AbstractReader):
 
 
 class ProcessedSetReader(AbstractReader):
-    """_summary_
+    """
+    A reader for processed datasets, providing methods to read samples and individual subject data.
+
+    Examples
+    --------
+    >>> root_path = Path("/path/to/preprocessed/data")
+    >>> reader = ProcessedSetReader(root_path, subject_ids=[10006, 10011, 10019])
+    >>> # Reading two random samples as dictionary
+    >>> X, y = reader.random_samples(n_samples=2, read_ids=True).values()
+    >>> list(X.keys())
+        [10006, 10019]
+    >>> X[10006][244351].columns
+        [Capillary refill rate,Diastolic blood pressure, ... Systolic blood pressure,Temperature,Weight]
+    >>> # Reading two random samples as list
+    >>> samples = reader.random_samples(n_samples=2)
+    >>> samples["X"]
+        [[Capillary refill rate  Diastolic blood pressure  ... Systolic blood pressure  Temperature  Weight
+            [14425 rows x 17 columns],
+         [Capillary refill rate  Diastolic blood pressure  ... Systolic blood pressure  Temperature  Weight
+            [12025 rows x 17 columns]]
+    >>> data, ids = reader.random_samples(n_samples=3, return_ids=True)
+    >>> ids
+    >>> [10006, 10011, 10019]
+    >>> # Read specific samples
+    >>> reader.read_samples(subject_ids=[10006, 10011], read_ids=True)
+    >>> # Read single sample
+    >>> reader.read_sample(10006, read_ids=True)
+
+    Parameters
+    ----------
+    root_path : Path
+        The root directory path containing subject folders.
+    subject_ids : list of int, optional
+        List of subject IDs to read. If None, reads all subjects in the root_path.
+    set_index : bool, optional
+        Whether to set the index for the dataframes. Defaults to True.
     """
 
     def __init__(self, root_path: Path, subject_ids: list = None, set_index: bool = True) -> None:
@@ -440,8 +708,8 @@ class ProcessedSetReader(AbstractReader):
         """
         self._reader_switch_Xy = {
             "csv": {
-                "X": (lambda x: self.read_csv(x, dtypes=DATASET_SETTINGS["timeseries"]["dtype"])),
-                "y": lambda x: self.read_csv(x)
+                "X": (lambda x: self._read_csv(x, dtypes=DATASET_SETTINGS["timeseries"]["dtype"])),
+                "y": lambda x: self._read_csv(x)
             },
             "npy": {
                 "X": np.load,
@@ -459,7 +727,7 @@ class ProcessedSetReader(AbstractReader):
         self._possibgle_datatypes = [pd.DataFrame, np.ndarray, np.array, None]
 
     @staticmethod
-    def read_csv(path: Path, dtypes: tuple = None) -> pd.DataFrame:
+    def _read_csv(path: Path, dtypes: tuple = None) -> pd.DataFrame:
         df = pd.read_csv(path, dtype=dtypes)
         if 'hours' in df.columns:
             df = df.set_index('hours')
@@ -472,12 +740,24 @@ class ProcessedSetReader(AbstractReader):
                      read_ids: bool = False,
                      read_timestamps: bool = False,
                      data_type=None):
-        """_summary_
+        """
+        Read samples for the specified subject IDs, either as dictionary with ID keys or as list.
 
-        Args:
-            folder_names (List[str]): _description_
-            read_stay_ids (bool, optional): _description_. Defaults to False.
-            read_timestamps (bool, optional): _description_. Defaults to False.
+        Parameters
+        ----------
+        subject_ids : Union[List[str], List[int]], optional
+            List of subject IDs to read. If None, reads all subjects.
+        read_ids : bool, optional
+            Whether to read IDs. Defaults to False.
+        read_timestamps : bool, optional
+            Whether to read timestamps. Defaults to False.
+        data_type : type, optional
+            Data type to cast the read data to. Can be one of [pd.DataFrame, np.ndarray, None]. Defaults to None.
+
+        Returns
+        -------
+        dict
+            Dictionary containing the samples read.
         """
 
         dataset = {"X": {}, "y": {}} if read_ids else {"X": [], "y": []}
@@ -510,13 +790,29 @@ class ProcessedSetReader(AbstractReader):
                     read_ids: bool = False,
                     read_timestamps: bool = False,
                     data_type=None) -> dict:
-        """_summary_
+        """
+        Read data for a single subject.
 
-        Args:
-            folder (Path): _description_
-            folder_name (bool, optional): _description_. Defaults to False.
-            read_timestamps (bool, optional): _description_. Defaults to False.
-            data_type (_type_, optional): _description_. Defaults to None.
+        Parameters
+        ----------
+        subject_id : Union[int, str]
+            The subject ID to read.
+        read_ids : bool, optional
+            Whether to read IDs. Defaults to False.
+        read_timestamps : bool, optional
+            Whether to read timestamps. Defaults to False.
+        data_type : type, optional
+            Data type to cast the read data to. Can be one of [pd.DataFrame, np.ndarray, None]. Defaults to None.
+
+        Returns
+        -------
+        dict
+            Dictionary containing the data read for the subject.
+
+        Raises
+        ------
+        ValueError
+            If the data_type is not one of the possible data types.
         """
         subject_id = int(subject_id)
         if not data_type in self._possibgle_datatypes:
@@ -585,10 +881,30 @@ class ProcessedSetReader(AbstractReader):
             data_type=None,
             return_ids: bool = False,
             seed: int = 42):
-        """ Sampling without replacement from subjects
+        """
+        Sample subjects randomly without replacement until subject list is exhauasted.
 
-        Args:
-            seed (_type_, optional): _description_. Defaults to 42:int.
+        Parameters
+        ----------
+        n_samples : int, optional
+            Number of samples to read. Default is 1.
+        read_ids : bool, optional
+            Whether to read IDs. Default is False.
+        read_timestamps : bool, optional
+            Whether to read timestamps. Default is False.
+        data_type : type, optional
+            Data type to cast the read data to. Can be one of [pd.DataFrame, np.ndarray, None]. Default is None.
+        return_ids : bool, optional
+            Whether to return the sampled IDs along with the data. Default is False.
+        seed : int, optional
+            Random seed for reproducibility. Default is 42.
+
+        Returns
+        -------
+        dict
+            Dictionary containing the sampled data.
+        list, optional
+            List of sampled subject IDs if return_ids is True.
         """
         random.seed(seed)
         sample_ids = list()
@@ -622,7 +938,43 @@ class ProcessedSetReader(AbstractReader):
 
 
 class EventReader():
-    """_summary_
+    """
+    A reader for event data from CHARTEVENTS, OUTPUTEVENTS, and LABEVENTS, providing methods 
+    to read data either in chunks or in a single shot.
+
+    This class is designed to facilitate the extraction and manipulation of event data from the MIMIC-III dataset. 
+    It supports reading data in manageable chunks for efficient processing and allows filtering by specific subject IDs.
+
+    Examples
+    --------
+    Initialize an EventReader with a specific dataset folder and subject IDs, and read data in chunks:
+
+    >>> from pathlib import Path
+    >>> dataset_folder = Path("/path/to/dataset")
+    >>> event_reader = EventReader(dataset_folder, subject_ids=[10006, 10011, 10019], chunksize=1000)
+    >>> event_frames, frame_lengths = event_reader.get_chunk()
+    >>> event_frames["CHARTEVENTS.csv"].columns.tolist()
+        [SUBJECT_ID', 'HADM_ID', 'ICUSTAY_ID', 'ITEMID', 'CHARTTIME', 'VALUE', 'VALUEUOM']
+    >>> event_frames["LABEVENTS.csv"].columns.tolist()
+        [SUBJECT_ID', 'HADM_ID', 'ICUSTAY_ID', 'ITEMID', 'CHARTTIME', 'VALUE', 'VALUEUOM']
+    >>> event_frames["OUTPUTEVENTS.csv"].columns.tolist()
+        [SUBJECT_ID', 'HADM_ID', 'ICUSTAY_ID', 'ITEMID', 'CHARTTIME', 'VALUE', 'VALUEUOM']
+    >>> # Or read all event data at once:
+    >>> event_reader = EventReader(dataset_folder)
+    >>> all_events = event_reader.get_all()
+    >>> all_events.columns.tolist()
+        [SUBJECT_ID', 'HADM_ID', 'ICUSTAY_ID', 'ITEMID', 'CHARTTIME', 'VALUE', 'VALUEUOM']	
+
+    Parameters
+    ----------
+    dataset_folder : Path
+        The path to the dataset folder containing event data files.
+    subject_ids : list of int, optional
+        List of subject IDs to read. If None, reads all subjects. Defaults to None.
+    chunksize : int, optional
+        The size of chunks to read at a time. Defaults to None, which means the entire file is read at once.
+    tracker : ExtractionTracker, optional
+        An object to track the extraction progress. Defaults to None.
     """
 
     def __init__(self,
@@ -715,12 +1067,19 @@ class EventReader():
 
     @property
     def done_reading(self):
-        """Indicates wether all chunks have been read
+        """
+        Check if all chunks have been read.
+
+        Returns
+        -------
+        bool
+            True if all chunks have been read, False otherwise.
         """
         return self._done
 
     def _init_reader(self):
-        """_summary_
+        """
+        Initialize the reader by skipping rows according to the tracker if it exists.
         """
         info_io(f"Starting reader initialization.")
         header = "Initializing reader and starting at row:\n"
@@ -737,12 +1096,18 @@ class EventReader():
         info_io(header + " - ".join(msg))
 
     def get_chunk(self) -> tuple:
-        """_summary_
-
-        Returns:
-            tuple: _description_
         """
+        Get the next chunk of event data and the lengths of the returned frames with keys CHARTEVENTS.csv, LABEVENTS.csv, and OUTPUTEVENTS.csv.
 
+        Returns
+        -------
+        tuple
+            A tuple containing:
+            - event_frames: dict of pd.DataFrame
+                A dictionary where keys are CSV file names and values are dataframes of the read chunk.
+            - frame_lengths: dict of int
+                A dictionary where keys are CSV file names and values are the number of events read in the chunk.        
+        """
         def read_frame(csv_name):
             # Read a frame
             if self._lo_thread_response is not None:
@@ -820,8 +1185,13 @@ class EventReader():
 
     def get_all(self):
         """
-        Returns:
-            events_df:        Chartevent data from ICU bed
+        Get all event data from the dataset.
+
+        Returns
+        -------
+        pd.DataFrame
+            Dataframe containing all event data.
+
         """
         event_csv = ["CHARTEVENTS.csv", "LABEVENTS.csv", "OUTPUTEVENTS.csv"]
         event_frames = list()
@@ -853,18 +1223,9 @@ class EventReader():
                        target_dict: dict,
                        last_occurences: dict,
                        done_event: threading.Event = None):
-        """Finds the last line where the values in the target_dict are found in the csv file.
+        """
+        Finds the last line where the values in the target_dict are found in the csv file.
         Target_dict should be a dictionary with the target value as key and the target column name as value.
-
-        Args:
-            csv_path (Path): _description_
-            target_dict (dict): _description_
-
-        Raises:
-            ValueError: _description_
-
-        Returns:
-            _type_: _description_
         """
         with open(csv_path, 'r', encoding='utf-8') as file:
             # Check if the given column name is valid
@@ -907,6 +1268,34 @@ class EventReader():
 
 
 class SplitSetReader(object):
+    """
+    A reader for datasets split into training, validation, and test sets, providing access to each split.
+
+    Examples
+    --------
+    >>> root_path = Path("/path/to/data")
+    >>> split_sets = {
+    ...     "train": [1, 2, 3],
+    ...     "val": [4, 5],
+    ...     "test": [6, 7]
+    ... }
+    >>> split_reader = SplitSetReader(root_path, split_sets)
+    >>> split_reader.split_names
+        ['train', 'val', 'test']
+    >>> split_reader.root_path
+        PosixPath('/path/to/data')
+    >>> train_reader = split_reader.train
+    >>> train_dataset = train_reader.read_samples()
+    >>> val_reader = split_reader.val
+    >>> test_reader = split_reader.test
+
+    Parameters
+    ----------
+    root_path : Path
+        The root directory path containing the dataset.
+    split_sets : dict of {str: list of int}
+        A dictionary where keys are split names (e.g., "train", "val", "test") and values are lists of subject IDs.
+    """
 
     def __init__(self, root_path: Path, split_sets: Dict[str, List[int]]) -> None:
         self._root_path = Path(root_path)
@@ -923,26 +1312,66 @@ class SplitSetReader(object):
 
     @property
     def split_names(self) -> list:
+        """
+        Get the names of the dataset splits.
+
+        Returns
+        -------
+        list
+            List of split names.
+        """
         return self._splits
 
     @property
     def root_path(self):
+        """
+        Get the root path.
+
+        Returns
+        -------
+        Path
+            The root directory path.
+        """
         return self._root_path
 
     @property
     def train(self) -> ProcessedSetReader:
+        """
+        Get the reader for the training set.
+
+        Returns
+        -------
+        ProcessedSetReader
+            The reader for the training set, or None if not available.
+        """
         if "train" in self._readers:
             return self._readers["train"]
         return
 
     @property
     def val(self) -> ProcessedSetReader:
+        """
+        Get the reader for the validation set.
+
+        Returns
+        -------
+        ProcessedSetReader
+            The reader for the validation set, or None if not available.
+        """
         if "val" in self._readers:
             return self._readers["val"]
         return
 
     @property
     def test(self) -> ProcessedSetReader:
+        """
+        Get the reader for the test set.
+
+        Returns
+        -------
+        ProcessedSetReader
+            The reader for the test set, or None if not available.
+        """
         if "test" in self._readers:
             return self._readers["test"]
         return

@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>src &mdash; open-mimic-iii - documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=92fd9be5" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../_static/documentation_options.js?v=b1628c55"></script>
+        <script src="../_static/doctools.js?v=9a2dae69"></script>
+        <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            open-mimic-iii
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="datasets.html">datasets package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generators.html">generators package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="metrics.html">metrics package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="models.html">models package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="pipelines.html">pipelines package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="preprocessing.html">preprocessing package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">open-mimic-iii</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">src</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/_rst/modules.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="src">
+<h1>src<a class="headerlink" href="#src" title="Link to this heading"></a></h1>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="datasets.html">datasets package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="datasets.html#subpackages">Subpackages</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="datasets.extraction.html">datasets.extraction package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="datasets.extraction.html#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="datasets.extraction.html#module-datasets.extraction.event_consumer">datasets.extraction.event_consumer module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="datasets.extraction.html#module-datasets.extraction.event_producer">datasets.extraction.event_producer module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="datasets.extraction.html#module-datasets.extraction.extraction_functions">datasets.extraction.extraction_functions module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="datasets.extraction.html#module-datasets.extraction.progress_publisher">datasets.extraction.progress_publisher module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="datasets.extraction.html#module-datasets.extraction.timeseries_processor">datasets.extraction.timeseries_processor module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="datasets.extraction.html#module-datasets.extraction">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="datasets.processors.html">datasets.processors package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="datasets.processors.html#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="datasets.processors.html#module-datasets.processors.discretizers">datasets.processors.discretizers module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="datasets.processors.html#module-datasets.processors.feature_engines">datasets.processors.feature_engines module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="datasets.processors.html#module-datasets.processors.preprocessors">datasets.processors.preprocessors module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="datasets.processors.html#module-datasets.processors">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="datasets.split.html">datasets.split package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="datasets.split.html#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="datasets.split.html#module-datasets.split.splitters">datasets.split.splitters module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="datasets.split.html#module-datasets.split">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="datasets.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="datasets.html#module-datasets.discretizing">datasets.discretizing module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="datasets.html#datasets.discretizing.compact_discretization"><code class="docutils literal notranslate"><span class="pre">compact_discretization()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="datasets.html#datasets.discretizing.iterative_discretization"><code class="docutils literal notranslate"><span class="pre">iterative_discretization()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="datasets.html#module-datasets.mimic_utils">datasets.mimic_utils module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="datasets.html#functions">Functions</a></li>
+<li class="toctree-l3"><a class="reference internal" href="datasets.html#datasets.mimic_utils.clean_chartevents_util"><code class="docutils literal notranslate"><span class="pre">clean_chartevents_util()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="datasets.html#datasets.mimic_utils.convert_dtype_dict"><code class="docutils literal notranslate"><span class="pre">convert_dtype_dict()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="datasets.html#datasets.mimic_utils.convert_dtype_value"><code class="docutils literal notranslate"><span class="pre">convert_dtype_value()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="datasets.html#datasets.mimic_utils.convert_to_numpy_types"><code class="docutils literal notranslate"><span class="pre">convert_to_numpy_types()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="datasets.html#datasets.mimic_utils.copy_subject_info"><code class="docutils literal notranslate"><span class="pre">copy_subject_info()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="datasets.html#datasets.mimic_utils.get_samples_per_df"><code class="docutils literal notranslate"><span class="pre">get_samples_per_df()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="datasets.html#datasets.mimic_utils.get_static_value"><code class="docutils literal notranslate"><span class="pre">get_static_value()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="datasets.html#datasets.mimic_utils.read_varmap_csv"><code class="docutils literal notranslate"><span class="pre">read_varmap_csv()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="datasets.html#datasets.mimic_utils.upper_case_column_names"><code class="docutils literal notranslate"><span class="pre">upper_case_column_names()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="datasets.html#module-datasets.readers">datasets.readers module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="datasets.html#dataset-reader-module">Dataset Reader Module</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="datasets.html#classes">Classes</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="datasets.html#datasets.readers.EventReader"><code class="docutils literal notranslate"><span class="pre">EventReader</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="datasets.html#datasets.readers.EventReader.done_reading"><code class="docutils literal notranslate"><span class="pre">EventReader.done_reading</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="datasets.html#datasets.readers.EventReader.get_all"><code class="docutils literal notranslate"><span class="pre">EventReader.get_all()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="datasets.html#datasets.readers.EventReader.get_chunk"><code class="docutils literal notranslate"><span class="pre">EventReader.get_chunk()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="datasets.html#datasets.readers.ExtractedSetReader"><code class="docutils literal notranslate"><span class="pre">ExtractedSetReader</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="datasets.html#datasets.readers.ExtractedSetReader.convert_datetime"><code class="docutils literal notranslate"><span class="pre">ExtractedSetReader.convert_datetime</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="datasets.html#datasets.readers.ExtractedSetReader.read_csv"><code class="docutils literal notranslate"><span class="pre">ExtractedSetReader.read_csv()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="datasets.html#datasets.readers.ExtractedSetReader.read_diagnoses"><code class="docutils literal notranslate"><span class="pre">ExtractedSetReader.read_diagnoses()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="datasets.html#datasets.readers.ExtractedSetReader.read_episodic_data"><code class="docutils literal notranslate"><span class="pre">ExtractedSetReader.read_episodic_data()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="datasets.html#datasets.readers.ExtractedSetReader.read_events"><code class="docutils literal notranslate"><span class="pre">ExtractedSetReader.read_events()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="datasets.html#datasets.readers.ExtractedSetReader.read_icu_history"><code class="docutils literal notranslate"><span class="pre">ExtractedSetReader.read_icu_history()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="datasets.html#datasets.readers.ExtractedSetReader.read_subject"><code class="docutils literal notranslate"><span class="pre">ExtractedSetReader.read_subject()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="datasets.html#datasets.readers.ExtractedSetReader.read_subjects"><code class="docutils literal notranslate"><span class="pre">ExtractedSetReader.read_subjects()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="datasets.html#datasets.readers.ExtractedSetReader.read_timeseries"><code class="docutils literal notranslate"><span class="pre">ExtractedSetReader.read_timeseries()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="datasets.html#datasets.readers.ProcessedSetReader"><code class="docutils literal notranslate"><span class="pre">ProcessedSetReader</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="datasets.html#datasets.readers.ProcessedSetReader.random_samples"><code class="docutils literal notranslate"><span class="pre">ProcessedSetReader.random_samples()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="datasets.html#datasets.readers.ProcessedSetReader.read_sample"><code class="docutils literal notranslate"><span class="pre">ProcessedSetReader.read_sample()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="datasets.html#datasets.readers.ProcessedSetReader.read_samples"><code class="docutils literal notranslate"><span class="pre">ProcessedSetReader.read_samples()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="datasets.html#datasets.readers.SplitSetReader"><code class="docutils literal notranslate"><span class="pre">SplitSetReader</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="datasets.html#datasets.readers.SplitSetReader.root_path"><code class="docutils literal notranslate"><span class="pre">SplitSetReader.root_path</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="datasets.html#datasets.readers.SplitSetReader.split_names"><code class="docutils literal notranslate"><span class="pre">SplitSetReader.split_names</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="datasets.html#datasets.readers.SplitSetReader.test"><code class="docutils literal notranslate"><span class="pre">SplitSetReader.test</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="datasets.html#datasets.readers.SplitSetReader.train"><code class="docutils literal notranslate"><span class="pre">SplitSetReader.train</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="datasets.html#datasets.readers.SplitSetReader.val"><code class="docutils literal notranslate"><span class="pre">SplitSetReader.val</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="datasets.html#module-datasets.trackers">datasets.trackers module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="datasets.html#datasets.trackers.DataSplitTracker"><code class="docutils literal notranslate"><span class="pre">DataSplitTracker</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="datasets.html#datasets.trackers.DataSplitTracker.demographic_filter"><code class="docutils literal notranslate"><span class="pre">DataSplitTracker.demographic_filter</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="datasets.html#datasets.trackers.DataSplitTracker.demographic_split"><code class="docutils literal notranslate"><span class="pre">DataSplitTracker.demographic_split</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="datasets.html#datasets.trackers.DataSplitTracker.is_finished"><code class="docutils literal notranslate"><span class="pre">DataSplitTracker.is_finished</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="datasets.html#datasets.trackers.DataSplitTracker.ratios"><code class="docutils literal notranslate"><span class="pre">DataSplitTracker.ratios</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="datasets.html#datasets.trackers.DataSplitTracker.reset"><code class="docutils literal notranslate"><span class="pre">DataSplitTracker.reset()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="datasets.html#datasets.trackers.DataSplitTracker.split"><code class="docutils literal notranslate"><span class="pre">DataSplitTracker.split</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="datasets.html#datasets.trackers.DataSplitTracker.split_sets"><code class="docutils literal notranslate"><span class="pre">DataSplitTracker.split_sets</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="datasets.html#datasets.trackers.DataSplitTracker.subject_ids"><code class="docutils literal notranslate"><span class="pre">DataSplitTracker.subject_ids</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="datasets.html#datasets.trackers.DataSplitTracker.subjects"><code class="docutils literal notranslate"><span class="pre">DataSplitTracker.subjects</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="datasets.html#datasets.trackers.DataSplitTracker.test_size"><code class="docutils literal notranslate"><span class="pre">DataSplitTracker.test_size</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="datasets.html#datasets.trackers.DataSplitTracker.train_size"><code class="docutils literal notranslate"><span class="pre">DataSplitTracker.train_size</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="datasets.html#datasets.trackers.DataSplitTracker.val_size"><code class="docutils literal notranslate"><span class="pre">DataSplitTracker.val_size</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="datasets.html#datasets.trackers.ExtractionTracker"><code class="docutils literal notranslate"><span class="pre">ExtractionTracker</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="datasets.html#datasets.trackers.ExtractionTracker.count_subject_events"><code class="docutils literal notranslate"><span class="pre">ExtractionTracker.count_subject_events</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="datasets.html#datasets.trackers.ExtractionTracker.count_total_samples"><code class="docutils literal notranslate"><span class="pre">ExtractionTracker.count_total_samples</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="datasets.html#datasets.trackers.ExtractionTracker.has_bysubject_info"><code class="docutils literal notranslate"><span class="pre">ExtractionTracker.has_bysubject_info</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="datasets.html#datasets.trackers.ExtractionTracker.has_diagnoses"><code class="docutils literal notranslate"><span class="pre">ExtractionTracker.has_diagnoses</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="datasets.html#datasets.trackers.ExtractionTracker.has_episodic_data"><code class="docutils literal notranslate"><span class="pre">ExtractionTracker.has_episodic_data</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="datasets.html#datasets.trackers.ExtractionTracker.has_icu_history"><code class="docutils literal notranslate"><span class="pre">ExtractionTracker.has_icu_history</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="datasets.html#datasets.trackers.ExtractionTracker.has_subject_events"><code class="docutils literal notranslate"><span class="pre">ExtractionTracker.has_subject_events</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="datasets.html#datasets.trackers.ExtractionTracker.has_timeseries"><code class="docutils literal notranslate"><span class="pre">ExtractionTracker.has_timeseries</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="datasets.html#datasets.trackers.ExtractionTracker.is_finished"><code class="docutils literal notranslate"><span class="pre">ExtractionTracker.is_finished</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="datasets.html#datasets.trackers.ExtractionTracker.num_samples"><code class="docutils literal notranslate"><span class="pre">ExtractionTracker.num_samples</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="datasets.html#datasets.trackers.ExtractionTracker.num_subjects"><code class="docutils literal notranslate"><span class="pre">ExtractionTracker.num_subjects</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="datasets.html#datasets.trackers.ExtractionTracker.reset"><code class="docutils literal notranslate"><span class="pre">ExtractionTracker.reset()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="datasets.html#datasets.trackers.ExtractionTracker.subject_ids"><code class="docutils literal notranslate"><span class="pre">ExtractionTracker.subject_ids</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="datasets.html#datasets.trackers.PreprocessingTracker"><code class="docutils literal notranslate"><span class="pre">PreprocessingTracker</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="datasets.html#datasets.trackers.PreprocessingTracker.impute_strategy"><code class="docutils literal notranslate"><span class="pre">PreprocessingTracker.impute_strategy</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="datasets.html#datasets.trackers.PreprocessingTracker.is_finished"><code class="docutils literal notranslate"><span class="pre">PreprocessingTracker.is_finished</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="datasets.html#datasets.trackers.PreprocessingTracker.mode"><code class="docutils literal notranslate"><span class="pre">PreprocessingTracker.mode</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="datasets.html#datasets.trackers.PreprocessingTracker.num_subjects"><code class="docutils literal notranslate"><span class="pre">PreprocessingTracker.num_subjects</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="datasets.html#datasets.trackers.PreprocessingTracker.reset"><code class="docutils literal notranslate"><span class="pre">PreprocessingTracker.reset()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="datasets.html#datasets.trackers.PreprocessingTracker.samples"><code class="docutils literal notranslate"><span class="pre">PreprocessingTracker.samples</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="datasets.html#datasets.trackers.PreprocessingTracker.start_at_zero"><code class="docutils literal notranslate"><span class="pre">PreprocessingTracker.start_at_zero</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="datasets.html#datasets.trackers.PreprocessingTracker.stay_ids"><code class="docutils literal notranslate"><span class="pre">PreprocessingTracker.stay_ids</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="datasets.html#datasets.trackers.PreprocessingTracker.subject_ids"><code class="docutils literal notranslate"><span class="pre">PreprocessingTracker.subject_ids</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="datasets.html#datasets.trackers.PreprocessingTracker.subjects"><code class="docutils literal notranslate"><span class="pre">PreprocessingTracker.subjects</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="datasets.html#datasets.trackers.PreprocessingTracker.time_step_size"><code class="docutils literal notranslate"><span class="pre">PreprocessingTracker.time_step_size</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="datasets.html#module-datasets.writers">datasets.writers module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="datasets.html#dataset-writers">Dataset Writers</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="datasets.html#id1">Classes</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="datasets.html#datasets.writers.DataSetWriter"><code class="docutils literal notranslate"><span class="pre">DataSetWriter</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="datasets.html#datasets.writers.DataSetWriter.write_bysubject"><code class="docutils literal notranslate"><span class="pre">DataSetWriter.write_bysubject()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="datasets.html#datasets.writers.DataSetWriter.write_subject_events"><code class="docutils literal notranslate"><span class="pre">DataSetWriter.write_subject_events()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="datasets.html#module-datasets">Module contents</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="datasets.html#datasets.load_data"><code class="docutils literal notranslate"><span class="pre">load_data()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="generators.html">generators package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="generators.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generators.html#module-generators.pytorch">generators.pytorch module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="generators.html#generators.pytorch.TorchDataset"><code class="docutils literal notranslate"><span class="pre">TorchDataset</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="generators.html#generators.pytorch.TorchGenerator"><code class="docutils literal notranslate"><span class="pre">TorchGenerator</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="generators.html#generators.pytorch.TorchGenerator.collate_fn"><code class="docutils literal notranslate"><span class="pre">TorchGenerator.collate_fn()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="generators.html#module-generators.stream">generators.stream module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="generators.html#generators.stream.RiverGenerator"><code class="docutils literal notranslate"><span class="pre">RiverGenerator</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="generators.html#module-generators.tf2">generators.tf2 module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="generators.html#generators.tf2.TFGenerator"><code class="docutils literal notranslate"><span class="pre">TFGenerator</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="generators.html#module-generators">Module contents</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="generators.html#generators.AbstractGenerator"><code class="docutils literal notranslate"><span class="pre">AbstractGenerator</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="generators.html#generators.AbstractGenerator.on_epoch_end"><code class="docutils literal notranslate"><span class="pre">AbstractGenerator.on_epoch_end()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="generators.html#generators.AbstractGenerator.read_timeseries"><code class="docutils literal notranslate"><span class="pre">AbstractGenerator.read_timeseries()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="generators.html#generators.AbstractGenerator.steps"><code class="docutils literal notranslate"><span class="pre">AbstractGenerator.steps</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="handlers.html">handlers module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="managers.html">managers module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="managers.html#managers.AbstractCheckpointManager"><code class="docutils literal notranslate"><span class="pre">AbstractCheckpointManager</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="managers.html#managers.AbstractCheckpointManager.clean_directory"><code class="docutils literal notranslate"><span class="pre">AbstractCheckpointManager.clean_directory()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="managers.html#managers.AbstractCheckpointManager.is_empty"><code class="docutils literal notranslate"><span class="pre">AbstractCheckpointManager.is_empty()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="managers.html#managers.AbstractCheckpointManager.latest"><code class="docutils literal notranslate"><span class="pre">AbstractCheckpointManager.latest</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="managers.html#managers.AbstractCheckpointManager.latest_epoch"><code class="docutils literal notranslate"><span class="pre">AbstractCheckpointManager.latest_epoch()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="managers.html#managers.AbstractCheckpointManager.load_model"><code class="docutils literal notranslate"><span class="pre">AbstractCheckpointManager.load_model()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="managers.html#managers.AbstractCheckpointManager.load_weights"><code class="docutils literal notranslate"><span class="pre">AbstractCheckpointManager.load_weights()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="managers.html#managers.CheckpointManager"><code class="docutils literal notranslate"><span class="pre">CheckpointManager</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="managers.html#managers.CheckpointManager.clean_directory"><code class="docutils literal notranslate"><span class="pre">CheckpointManager.clean_directory()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="managers.html#managers.CheckpointManager.latest_epoch"><code class="docutils literal notranslate"><span class="pre">CheckpointManager.latest_epoch()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="managers.html#managers.HistoryManager"><code class="docutils literal notranslate"><span class="pre">HistoryManager</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="managers.html#managers.HistoryManager.best"><code class="docutils literal notranslate"><span class="pre">HistoryManager.best</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="managers.html#managers.HistoryManager.finished"><code class="docutils literal notranslate"><span class="pre">HistoryManager.finished()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="managers.html#managers.HistoryManager.history"><code class="docutils literal notranslate"><span class="pre">HistoryManager.history</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="managers.html#managers.HistoryManager.is_finished"><code class="docutils literal notranslate"><span class="pre">HistoryManager.is_finished()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="managers.html#managers.HistoryManager.update"><code class="docutils literal notranslate"><span class="pre">HistoryManager.update()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="managers.html#managers.ReducedCheckpointManager"><code class="docutils literal notranslate"><span class="pre">ReducedCheckpointManager</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="managers.html#managers.ReducedCheckpointManager.clean_directory"><code class="docutils literal notranslate"><span class="pre">ReducedCheckpointManager.clean_directory()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="managers.html#managers.ReducedCheckpointManager.latest_epoch"><code class="docutils literal notranslate"><span class="pre">ReducedCheckpointManager.latest_epoch()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="metrics.html">metrics package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="metrics.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="metrics.html#module-metrics.stream">metrics.stream module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="metrics.html#metrics.stream.LOSClassificationReport"><code class="docutils literal notranslate"><span class="pre">LOSClassificationReport</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="metrics.html#metrics.stream.LOSClassificationReport.update"><code class="docutils literal notranslate"><span class="pre">LOSClassificationReport.update()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="metrics.html#metrics.stream.LOSCohenKappa"><code class="docutils literal notranslate"><span class="pre">LOSCohenKappa</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="metrics.html#metrics.stream.LOSCohenKappa.get"><code class="docutils literal notranslate"><span class="pre">LOSCohenKappa.get()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="metrics.html#metrics.stream.LOSCohenKappa.revert"><code class="docutils literal notranslate"><span class="pre">LOSCohenKappa.revert()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="metrics.html#metrics.stream.LOSCohenKappa.update"><code class="docutils literal notranslate"><span class="pre">LOSCohenKappa.update()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="metrics.html#metrics.stream.MacroROCAUC"><code class="docutils literal notranslate"><span class="pre">MacroROCAUC</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="metrics.html#metrics.stream.MacroROCAUC.bigger_is_better"><code class="docutils literal notranslate"><span class="pre">MacroROCAUC.bigger_is_better</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="metrics.html#metrics.stream.MacroROCAUC.get"><code class="docutils literal notranslate"><span class="pre">MacroROCAUC.get()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="metrics.html#metrics.stream.MacroROCAUC.revert"><code class="docutils literal notranslate"><span class="pre">MacroROCAUC.revert()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="metrics.html#metrics.stream.MacroROCAUC.update"><code class="docutils literal notranslate"><span class="pre">MacroROCAUC.update()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="metrics.html#metrics.stream.MacroROCAUC.works_with"><code class="docutils literal notranslate"><span class="pre">MacroROCAUC.works_with()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="metrics.html#metrics.stream.MicroROCAUC"><code class="docutils literal notranslate"><span class="pre">MicroROCAUC</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="metrics.html#metrics.stream.MicroROCAUC.revert"><code class="docutils literal notranslate"><span class="pre">MicroROCAUC.revert()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="metrics.html#metrics.stream.MicroROCAUC.update"><code class="docutils literal notranslate"><span class="pre">MicroROCAUC.update()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="metrics.html#metrics.stream.MicroROCAUC.works_with"><code class="docutils literal notranslate"><span class="pre">MicroROCAUC.works_with()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="metrics.html#metrics.stream.PRAUC"><code class="docutils literal notranslate"><span class="pre">PRAUC</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="metrics.html#metrics.stream.PRAUC.get"><code class="docutils literal notranslate"><span class="pre">PRAUC.get()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="metrics.html#metrics.stream.PRAUC.update"><code class="docutils literal notranslate"><span class="pre">PRAUC.update()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="metrics.html#module-metrics">Module contents</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="metrics.html#metrics.CustomBins"><code class="docutils literal notranslate"><span class="pre">CustomBins</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="metrics.html#metrics.CustomBins.bins"><code class="docutils literal notranslate"><span class="pre">CustomBins.bins</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="metrics.html#metrics.CustomBins.get_bin_custom"><code class="docutils literal notranslate"><span class="pre">CustomBins.get_bin_custom()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="metrics.html#metrics.CustomBins.inf"><code class="docutils literal notranslate"><span class="pre">CustomBins.inf</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="metrics.html#metrics.CustomBins.lower_bounds"><code class="docutils literal notranslate"><span class="pre">CustomBins.lower_bounds</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="metrics.html#metrics.CustomBins.means"><code class="docutils literal notranslate"><span class="pre">CustomBins.means</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="metrics.html#metrics.CustomBins.nbins"><code class="docutils literal notranslate"><span class="pre">CustomBins.nbins</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="metrics.html#metrics.CustomBins.scaled_bins"><code class="docutils literal notranslate"><span class="pre">CustomBins.scaled_bins</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="metrics.html#metrics.LogBins"><code class="docutils literal notranslate"><span class="pre">LogBins</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="metrics.html#metrics.LogBins.get_bin_log"><code class="docutils literal notranslate"><span class="pre">LogBins.get_bin_log()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="metrics.html#metrics.LogBins.means"><code class="docutils literal notranslate"><span class="pre">LogBins.means</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="metrics.html#metrics.LogBins.nbins"><code class="docutils literal notranslate"><span class="pre">LogBins.nbins</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="models.html">models package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="models.html#subpackages">Subpackages</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="models.stream.html">models.stream package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="models.stream.html#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="models.stream.html#module-models.stream.ensemble">models.stream.ensemble module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="models.stream.html#module-models.stream.forest">models.stream.forest module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="models.stream.html#module-models.stream.linear_model">models.stream.linear_model module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="models.stream.html#module-models.stream.mappings">models.stream.mappings module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="models.stream.html#module-models.stream.naive_bayes">models.stream.naive_bayes module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="models.stream.html#module-models.stream.neighbors">models.stream.neighbors module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="models.stream.html#module-models.stream.tree">models.stream.tree module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="models.stream.html#module-models.stream">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="models.tf2.html">models.tf2 package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="models.tf2.html#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="models.tf2.html#module-models.tf2.logistic_regression">models.tf2.logistic_regression module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="models.tf2.html#module-models.tf2.lstm">models.tf2.lstm module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="models.tf2.html#module-models.tf2.transformer">models.tf2.transformer module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="models.tf2.html#module-models.tf2">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="models.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="models.html#module-models.callbacks">models.callbacks module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="models.html#models.callbacks.DecayLearningRate"><code class="docutils literal notranslate"><span class="pre">DecayLearningRate</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="models.html#models.callbacks.DecayLearningRate.on_epoch_end"><code class="docutils literal notranslate"><span class="pre">DecayLearningRate.on_epoch_end()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="models.html#models.callbacks.HistoryCheckpoint"><code class="docutils literal notranslate"><span class="pre">HistoryCheckpoint</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="models.html#models.callbacks.HistoryCheckpoint.on_epoch_end"><code class="docutils literal notranslate"><span class="pre">HistoryCheckpoint.on_epoch_end()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="models.html#module-models.trackers">models.trackers module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="models.html#models.trackers.LocalModelHistory"><code class="docutils literal notranslate"><span class="pre">LocalModelHistory</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="models.html#models.trackers.LocalModelHistory.best_train"><code class="docutils literal notranslate"><span class="pre">LocalModelHistory.best_train</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="models.html#models.trackers.LocalModelHistory.best_val"><code class="docutils literal notranslate"><span class="pre">LocalModelHistory.best_val</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="models.html#models.trackers.LocalModelHistory.test_loss"><code class="docutils literal notranslate"><span class="pre">LocalModelHistory.test_loss</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="models.html#models.trackers.LocalModelHistory.to_json"><code class="docutils literal notranslate"><span class="pre">LocalModelHistory.to_json()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="models.html#models.trackers.LocalModelHistory.train_loss"><code class="docutils literal notranslate"><span class="pre">LocalModelHistory.train_loss</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="models.html#models.trackers.LocalModelHistory.val_loss"><code class="docutils literal notranslate"><span class="pre">LocalModelHistory.val_loss</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="models.html#models.trackers.LocalRiverHistory"><code class="docutils literal notranslate"><span class="pre">LocalRiverHistory</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="models.html#models.trackers.LocalRiverHistory.test_metrics"><code class="docutils literal notranslate"><span class="pre">LocalRiverHistory.test_metrics</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="models.html#models.trackers.LocalRiverHistory.to_json"><code class="docutils literal notranslate"><span class="pre">LocalRiverHistory.to_json()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="models.html#models.trackers.LocalRiverHistory.train_metrics"><code class="docutils literal notranslate"><span class="pre">LocalRiverHistory.train_metrics</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="models.html#models.trackers.LocalRiverHistory.val_metrics"><code class="docutils literal notranslate"><span class="pre">LocalRiverHistory.val_metrics</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="models.html#models.trackers.ModelHistory"><code class="docutils literal notranslate"><span class="pre">ModelHistory</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="models.html#models.trackers.ModelHistory.best_train"><code class="docutils literal notranslate"><span class="pre">ModelHistory.best_train</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="models.html#models.trackers.ModelHistory.best_val"><code class="docutils literal notranslate"><span class="pre">ModelHistory.best_val</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="models.html#models.trackers.ModelHistory.test_loss"><code class="docutils literal notranslate"><span class="pre">ModelHistory.test_loss</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="models.html#models.trackers.ModelHistory.to_json"><code class="docutils literal notranslate"><span class="pre">ModelHistory.to_json()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="models.html#models.trackers.ModelHistory.train_loss"><code class="docutils literal notranslate"><span class="pre">ModelHistory.train_loss</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="models.html#models.trackers.ModelHistory.val_loss"><code class="docutils literal notranslate"><span class="pre">ModelHistory.val_loss</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="models.html#models.trackers.RiverHistory"><code class="docutils literal notranslate"><span class="pre">RiverHistory</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="models.html#models.trackers.RiverHistory.test_metrics"><code class="docutils literal notranslate"><span class="pre">RiverHistory.test_metrics</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="models.html#models.trackers.RiverHistory.to_json"><code class="docutils literal notranslate"><span class="pre">RiverHistory.to_json()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="models.html#models.trackers.RiverHistory.to_text"><code class="docutils literal notranslate"><span class="pre">RiverHistory.to_text()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="models.html#models.trackers.RiverHistory.train_metrics"><code class="docutils literal notranslate"><span class="pre">RiverHistory.train_metrics</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="models.html#models.trackers.RiverHistory.val_metrics"><code class="docutils literal notranslate"><span class="pre">RiverHistory.val_metrics</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="models.html#module-models">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="pipelines.html">pipelines package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="pipelines.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pipelines.html#module-pipelines.pytorch">pipelines.pytorch module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="pipelines.html#pipelines.pytorch.TorchPipeline"><code class="docutils literal notranslate"><span class="pre">TorchPipeline</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="pipelines.html#pipelines.pytorch.TorchPipeline.fit"><code class="docutils literal notranslate"><span class="pre">TorchPipeline.fit()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="pipelines.html#module-pipelines.stream">pipelines.stream module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="pipelines.html#pipelines.stream.RiverPipeline"><code class="docutils literal notranslate"><span class="pre">RiverPipeline</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="pipelines.html#pipelines.stream.RiverPipeline.fit"><code class="docutils literal notranslate"><span class="pre">RiverPipeline.fit()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="pipelines.html#pipelines.stream.RiverPipeline.print_metrics"><code class="docutils literal notranslate"><span class="pre">RiverPipeline.print_metrics()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="pipelines.html#pipelines.stream.RiverPipeline.test"><code class="docutils literal notranslate"><span class="pre">RiverPipeline.test()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="pipelines.html#module-pipelines.tf2">pipelines.tf2 module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="pipelines.html#pipelines.tf2.TFPipeline"><code class="docutils literal notranslate"><span class="pre">TFPipeline</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="pipelines.html#pipelines.tf2.TFPipeline.fit"><code class="docutils literal notranslate"><span class="pre">TFPipeline.fit()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="pipelines.html#module-pipelines">Module contents</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="pipelines.html#pipelines.AbstractPipeline"><code class="docutils literal notranslate"><span class="pre">AbstractPipeline</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="pipelines.html#pipelines.AbstractPipeline._storage_path"><code class="docutils literal notranslate"><span class="pre">AbstractPipeline._storage_path</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="pipelines.html#pipelines.AbstractPipeline._model"><code class="docutils literal notranslate"><span class="pre">AbstractPipeline._model</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="pipelines.html#pipelines.AbstractPipeline._generator_options"><code class="docutils literal notranslate"><span class="pre">AbstractPipeline._generator_options</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="pipelines.html#pipelines.AbstractPipeline._data_split_options"><code class="docutils literal notranslate"><span class="pre">AbstractPipeline._data_split_options</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="pipelines.html#pipelines.AbstractPipeline._split_names"><code class="docutils literal notranslate"><span class="pre">AbstractPipeline._split_names</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="pipelines.html#pipelines.AbstractPipeline._reader"><code class="docutils literal notranslate"><span class="pre">AbstractPipeline._reader</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="pipelines.html#pipelines.AbstractPipeline._scaler"><code class="docutils literal notranslate"><span class="pre">AbstractPipeline._scaler</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="pipelines.html#pipelines.AbstractPipeline._train_generator"><code class="docutils literal notranslate"><span class="pre">AbstractPipeline._train_generator</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="pipelines.html#pipelines.AbstractPipeline._val_generator"><code class="docutils literal notranslate"><span class="pre">AbstractPipeline._val_generator</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="pipelines.html#pipelines.AbstractPipeline._val_steps"><code class="docutils literal notranslate"><span class="pre">AbstractPipeline._val_steps</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="pipelines.html#pipelines.AbstractPipeline._test_generator"><code class="docutils literal notranslate"><span class="pre">AbstractPipeline._test_generator</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="pipelines.html#pipelines.AbstractPipeline._result_path"><code class="docutils literal notranslate"><span class="pre">AbstractPipeline._result_path</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="pipelines.html#pipelines.AbstractPipeline.fit"><code class="docutils literal notranslate"><span class="pre">AbstractPipeline.fit()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="preprocessing.html">preprocessing package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="preprocessing.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="preprocessing.html#module-preprocessing.imputers">preprocessing.imputers module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="preprocessing.html#preprocessing.imputers.PartialImputer"><code class="docutils literal notranslate"><span class="pre">PartialImputer</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="preprocessing.html#preprocessing.imputers.PartialImputer.partial_fit"><code class="docutils literal notranslate"><span class="pre">PartialImputer.partial_fit()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="preprocessing.html#module-preprocessing.scalers">preprocessing.scalers module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="preprocessing.html#preprocessing.scalers.AbstractScaler"><code class="docutils literal notranslate"><span class="pre">AbstractScaler</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="preprocessing.html#preprocessing.scalers.MaxAbsScaler"><code class="docutils literal notranslate"><span class="pre">MaxAbsScaler</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="preprocessing.html#preprocessing.scalers.MaxAbsScaler.fit"><code class="docutils literal notranslate"><span class="pre">MaxAbsScaler.fit()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="preprocessing.html#preprocessing.scalers.MaxAbsScaler.fit_transform"><code class="docutils literal notranslate"><span class="pre">MaxAbsScaler.fit_transform()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="preprocessing.html#preprocessing.scalers.MaxAbsScaler.transform"><code class="docutils literal notranslate"><span class="pre">MaxAbsScaler.transform()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="preprocessing.html#preprocessing.scalers.MinMaxScaler"><code class="docutils literal notranslate"><span class="pre">MinMaxScaler</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="preprocessing.html#preprocessing.scalers.MinMaxScaler.fit"><code class="docutils literal notranslate"><span class="pre">MinMaxScaler.fit()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="preprocessing.html#preprocessing.scalers.MinMaxScaler.fit_transform"><code class="docutils literal notranslate"><span class="pre">MinMaxScaler.fit_transform()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="preprocessing.html#preprocessing.scalers.MinMaxScaler.transform"><code class="docutils literal notranslate"><span class="pre">MinMaxScaler.transform()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="preprocessing.html#preprocessing.scalers.RobustScaler"><code class="docutils literal notranslate"><span class="pre">RobustScaler</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="preprocessing.html#preprocessing.scalers.RobustScaler.fit"><code class="docutils literal notranslate"><span class="pre">RobustScaler.fit()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="preprocessing.html#preprocessing.scalers.RobustScaler.fit_transform"><code class="docutils literal notranslate"><span class="pre">RobustScaler.fit_transform()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="preprocessing.html#preprocessing.scalers.RobustScaler.transform"><code class="docutils literal notranslate"><span class="pre">RobustScaler.transform()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="preprocessing.html#preprocessing.scalers.StandardScaler"><code class="docutils literal notranslate"><span class="pre">StandardScaler</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="preprocessing.html#preprocessing.scalers.StandardScaler.fit"><code class="docutils literal notranslate"><span class="pre">StandardScaler.fit()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="preprocessing.html#preprocessing.scalers.StandardScaler.fit_transform"><code class="docutils literal notranslate"><span class="pre">StandardScaler.fit_transform()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="preprocessing.html#preprocessing.scalers.StandardScaler.set_inverse_transform_request"><code class="docutils literal notranslate"><span class="pre">StandardScaler.set_inverse_transform_request()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="preprocessing.html#preprocessing.scalers.StandardScaler.set_partial_fit_request"><code class="docutils literal notranslate"><span class="pre">StandardScaler.set_partial_fit_request()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="preprocessing.html#preprocessing.scalers.StandardScaler.transform"><code class="docutils literal notranslate"><span class="pre">StandardScaler.transform()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="preprocessing.html#module-preprocessing">Module contents</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="preprocessing.html#preprocessing.AbstractScikitProcessor"><code class="docutils literal notranslate"><span class="pre">AbstractScikitProcessor</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="preprocessing.html#preprocessing.AbstractScikitProcessor.fit"><code class="docutils literal notranslate"><span class="pre">AbstractScikitProcessor.fit()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="preprocessing.html#preprocessing.AbstractScikitProcessor.fit_dataset"><code class="docutils literal notranslate"><span class="pre">AbstractScikitProcessor.fit_dataset()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="preprocessing.html#preprocessing.AbstractScikitProcessor.fit_reader"><code class="docutils literal notranslate"><span class="pre">AbstractScikitProcessor.fit_reader()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="preprocessing.html#preprocessing.AbstractScikitProcessor.load"><code class="docutils literal notranslate"><span class="pre">AbstractScikitProcessor.load()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="preprocessing.html#preprocessing.AbstractScikitProcessor.partial_fit"><code class="docutils literal notranslate"><span class="pre">AbstractScikitProcessor.partial_fit()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="preprocessing.html#preprocessing.AbstractScikitProcessor.save"><code class="docutils literal notranslate"><span class="pre">AbstractScikitProcessor.save()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="preprocessing.html#preprocessing.AbstractScikitProcessor.transform"><code class="docutils literal notranslate"><span class="pre">AbstractScikitProcessor.transform()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="settings.html">settings module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="storable.html">storable module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="storable.html#storable.BoolProperty"><code class="docutils literal notranslate"><span class="pre">BoolProperty</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="storable.html#storable.DictionaryProperty"><code class="docutils literal notranslate"><span class="pre">DictionaryProperty</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="storable.html#storable.FloatPropert"><code class="docutils literal notranslate"><span class="pre">FloatPropert</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="storable.html#storable.IntProperty"><code class="docutils literal notranslate"><span class="pre">IntProperty</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="storable.html#storable.ListProperty"><code class="docutils literal notranslate"><span class="pre">ListProperty</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="storable.html#storable.ProxyDictionary"><code class="docutils literal notranslate"><span class="pre">ProxyDictionary</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="storable.html#storable.ProxyDictionary.update"><code class="docutils literal notranslate"><span class="pre">ProxyDictionary.update()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="storable.html#storable.ProxyList"><code class="docutils literal notranslate"><span class="pre">ProxyList</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="storable.html#storable.ProxyList.append"><code class="docutils literal notranslate"><span class="pre">ProxyList.append()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="storable.html#storable.ProxyList.clear"><code class="docutils literal notranslate"><span class="pre">ProxyList.clear()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="storable.html#storable.ProxyList.extend"><code class="docutils literal notranslate"><span class="pre">ProxyList.extend()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="storable.html#storable.ProxyList.insert"><code class="docutils literal notranslate"><span class="pre">ProxyList.insert()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="storable.html#storable.ProxyList.pop"><code class="docutils literal notranslate"><span class="pre">ProxyList.pop()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="storable.html#storable.ProxyList.remove"><code class="docutils literal notranslate"><span class="pre">ProxyList.remove()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="storable.html#storable.SimpleProperty"><code class="docutils literal notranslate"><span class="pre">SimpleProperty</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="storable.html#storable.storable"><code class="docutils literal notranslate"><span class="pre">storable()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="utils.html">utils package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="utils.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="utils.html#module-utils.IO">utils.IO module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="utils.html#utils.IO.debug_io"><code class="docutils literal notranslate"><span class="pre">debug_io()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="utils.html#utils.IO.error_io"><code class="docutils literal notranslate"><span class="pre">error_io()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="utils.html#utils.IO.info_io"><code class="docutils literal notranslate"><span class="pre">info_io()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="utils.html#utils.IO.suppress_io"><code class="docutils literal notranslate"><span class="pre">suppress_io</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="utils.html#utils.IO.tests_io"><code class="docutils literal notranslate"><span class="pre">tests_io()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="utils.html#utils.IO.warn_io"><code class="docutils literal notranslate"><span class="pre">warn_io()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="utils.html#module-utils.notebooks">utils.notebooks module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="utils.html#utils.notebooks.History"><code class="docutils literal notranslate"><span class="pre">History</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="utils.html#utils.notebooks.History.update"><code class="docutils literal notranslate"><span class="pre">History.update()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="utils.html#utils.notebooks.Metric"><code class="docutils literal notranslate"><span class="pre">Metric</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="utils.html#utils.notebooks.Metric.cat_mse"><code class="docutils literal notranslate"><span class="pre">Metric.cat_mse()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="utils.html#utils.notebooks.make_hist_plot"><code class="docutils literal notranslate"><span class="pre">make_hist_plot()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="utils.html#module-utils">Module contents</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="utils.html#utils.count_csv_size"><code class="docutils literal notranslate"><span class="pre">count_csv_size()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="utils.html#utils.dict_subset"><code class="docutils literal notranslate"><span class="pre">dict_subset()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="utils.html#utils.is_allnan"><code class="docutils literal notranslate"><span class="pre">is_allnan()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="utils.html#utils.is_colwise_numerical"><code class="docutils literal notranslate"><span class="pre">is_colwise_numerical()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="utils.html#utils.is_iterable"><code class="docutils literal notranslate"><span class="pre">is_iterable()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="utils.html#utils.is_numerical"><code class="docutils literal notranslate"><span class="pre">is_numerical()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="utils.html#utils.load_json"><code class="docutils literal notranslate"><span class="pre">load_json()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="utils.html#utils.make_prediction_vector"><code class="docutils literal notranslate"><span class="pre">make_prediction_vector()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="utils.html#utils.to_snake_case"><code class="docutils literal notranslate"><span class="pre">to_snake_case()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="utils.html#utils.update_json"><code class="docutils literal notranslate"><span class="pre">update_json()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="utils.html#utils.write_json"><code class="docutils literal notranslate"><span class="pre">write_json()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="visualization.html">visualization module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="visualization.html#visualization.acorr"><code class="docutils literal notranslate"><span class="pre">acorr()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="visualization.html#visualization.corrMatrix"><code class="docutils literal notranslate"><span class="pre">corrMatrix()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="visualization.html#visualization.get_ax"><code class="docutils literal notranslate"><span class="pre">get_ax()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="visualization.html#visualization.hist"><code class="docutils literal notranslate"><span class="pre">hist()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="visualization.html#visualization.make_history_plot"><code class="docutils literal notranslate"><span class="pre">make_history_plot()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="visualization.html#visualization.make_history_plots"><code class="docutils literal notranslate"><span class="pre">make_history_plots()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="visualization.html#visualization.make_sample_plot"><code class="docutils literal notranslate"><span class="pre">make_sample_plot()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="visualization.html#visualization.make_sample_subplot"><code class="docutils literal notranslate"><span class="pre">make_sample_subplot()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="visualization.html#visualization.plot"><code class="docutils literal notranslate"><span class="pre">plot()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="visualization.html#visualization.plot_fourier_transform"><code class="docutils literal notranslate"><span class="pre">plot_fourier_transform()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</div>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Amadou Wolfgang Cisse.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

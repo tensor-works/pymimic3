@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>utils package &mdash; open-mimic-iii - documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=92fd9be5" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../_static/documentation_options.js?v=b1628c55"></script>
+        <script src="../_static/doctools.js?v=9a2dae69"></script>
+        <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            open-mimic-iii
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="datasets.html">datasets package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generators.html">generators package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="metrics.html">metrics package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="models.html">models package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="pipelines.html">pipelines package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="preprocessing.html">preprocessing package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">open-mimic-iii</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">utils package</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/_rst/utils.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="utils-package">
+<h1>utils package<a class="headerlink" href="#utils-package" title="Link to this heading"></a></h1>
+<section id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Link to this heading"></a></h2>
+</section>
+<section id="module-utils.IO">
+<span id="utils-io-module"></span><h2>utils.IO module<a class="headerlink" href="#module-utils.IO" title="Link to this heading"></a></h2>
+<p>Utility file</p>
+<p>This file implements functionalities used by other modules and accessible to
+the user</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="utils.IO.debug_io">
+<span class="sig-prename descclassname"><span class="pre">utils.IO.</span></span><span class="sig-name descname"><span class="pre">debug_io</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">message</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">flush</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">unflush</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">flush_block</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/utils/IO.html#debug_io"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#utils.IO.debug_io" title="Link to this definition"></a></dt>
+<dd><blockquote>
+<div><p>Prints a debug message if the DEBUG_OPTION is set to a non-zero value.</p>
+<dl class="simple">
+<dt>message<span class="classifier">str</span></dt><dd><p>The debug message to log.</p>
+</dd>
+<dt>end<span class="classifier">str, optional</span></dt><dd><p>How to end the print, e.g., “</p>
+</dd>
+</dl>
+</div></blockquote>
+<dl class="simple">
+<dt>“ (newline). Defaults to None.</dt><dd><dl class="simple">
+<dt>flush<span class="classifier">bool, optional</span></dt><dd><p>Whether to forcibly flush the stream. Defaults to None.</p>
+</dd>
+<dt>unflush<span class="classifier">bool, optional</span></dt><dd><p>If True, adds an additional newline before the message. Defaults to None.</p>
+</dd>
+<dt>flush_block<span class="classifier">bool, optional</span></dt><dd><p>If True, prints the whole block at once to avoid disruptions. Defaults to False.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="utils.IO.error_io">
+<span class="sig-prename descclassname"><span class="pre">utils.IO.</span></span><span class="sig-name descname"><span class="pre">error_io</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">message</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exception_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Exception</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">flush</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">unflush</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">flush_block</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/utils/IO.html#error_io"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#utils.IO.error_io" title="Link to this definition"></a></dt>
+<dd><blockquote>
+<div><p>Prints an error message with an error header and raises the specified exception.</p>
+<dl class="simple">
+<dt>message<span class="classifier">str</span></dt><dd><p>The error message to log.</p>
+</dd>
+<dt>exception_type<span class="classifier">Exception</span></dt><dd><p>The type of exception to raise after logging the message.</p>
+</dd>
+<dt>end<span class="classifier">str, optional</span></dt><dd><p>How to end the print, e.g., “</p>
+</dd>
+</dl>
+</div></blockquote>
+<dl>
+<dt>“ (newline). Defaults to None.</dt><dd><dl class="simple">
+<dt>flush<span class="classifier">bool, optional</span></dt><dd><p>Whether to forcibly flush the stream. Defaults to None.</p>
+</dd>
+<dt>unflush<span class="classifier">bool, optional</span></dt><dd><p>If True, adds an additional newline before the message. Defaults to None.</p>
+</dd>
+<dt>flush_block<span class="classifier">bool, optional</span></dt><dd><p>If True, prints the whole block at once to avoid disruptions. Defaults to False.</p>
+</dd>
+</dl>
+<dl class="simple">
+<dt>exception_type</dt><dd><p>The specified exception type is raised after the error message is logged.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="utils.IO.info_io">
+<span class="sig-prename descclassname"><span class="pre">utils.IO.</span></span><span class="sig-name descname"><span class="pre">info_io</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">message</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">level</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">flush</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">unflush</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">flush_block</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/utils/IO.html#info_io"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#utils.IO.info_io" title="Link to this definition"></a></dt>
+<dd><blockquote>
+<div><p>Prints a message with an information header, which can be formatted at different levels, or without any header formatting.
+Level 0: Wide header
+Level 1: Medium header
+Level 2: Narrow header
+Level None: No header formatting, behaves like the original info_io.</p>
+<dl class="simple">
+<dt>message<span class="classifier">str</span></dt><dd><p>The message to log.</p>
+</dd>
+<dt>level<span class="classifier">int, optional</span></dt><dd><p>The level of the header, or None for no header formatting. Defaults to None.</p>
+</dd>
+<dt>end<span class="classifier">str, optional</span></dt><dd><p>How to end the print, e.g., “</p>
+</dd>
+</dl>
+</div></blockquote>
+<dl class="simple">
+<dt>“ (newline). Defaults to None.</dt><dd><dl class="simple">
+<dt>flush<span class="classifier">bool, optional</span></dt><dd><p>Whether to forcibly flush the stream. Defaults to None.</p>
+</dd>
+<dt>unflush<span class="classifier">bool, optional</span></dt><dd><p>If True, adds an additional newline before the message. Defaults to None.</p>
+</dd>
+<dt>flush_block<span class="classifier">bool, optional</span></dt><dd><p>If True, prints the whole block at once to avoid disruptions. Defaults to False.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="utils.IO.suppress_io">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">utils.IO.</span></span><span class="sig-name descname"><span class="pre">suppress_io</span></span><a class="reference internal" href="../_modules/utils/IO.html#suppress_io"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#utils.IO.suppress_io" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="utils.IO.tests_io">
+<span class="sig-prename descclassname"><span class="pre">utils.IO.</span></span><span class="sig-name descname"><span class="pre">tests_io</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">message</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">level</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">flush</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">unflush</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">flush_block</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/utils/IO.html#tests_io"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#utils.IO.tests_io" title="Link to this definition"></a></dt>
+<dd><blockquote>
+<div><p>Prints a message with an information header, which can be formatted at different levels, or without any header formatting.
+Level 0: Wide header
+Level 1: Medium header
+Level 2: Narrow header
+Level None: No header formatting, behaves like the original info_io.</p>
+<dl class="simple">
+<dt>message<span class="classifier">str</span></dt><dd><p>The message to log.</p>
+</dd>
+<dt>level<span class="classifier">int, optional</span></dt><dd><p>The level of the header, or None for no header formatting. Defaults to None.</p>
+</dd>
+<dt>end<span class="classifier">str, optional</span></dt><dd><p>How to end the print, e.g., “</p>
+</dd>
+</dl>
+</div></blockquote>
+<dl class="simple">
+<dt>“ (newline). Defaults to None.</dt><dd><dl class="simple">
+<dt>flush<span class="classifier">bool, optional</span></dt><dd><p>Whether to forcibly flush the stream. Defaults to None.</p>
+</dd>
+<dt>unflush<span class="classifier">bool, optional</span></dt><dd><p>If True, adds an additional newline before the message. Defaults to None.</p>
+</dd>
+<dt>flush_block<span class="classifier">bool, optional</span></dt><dd><p>If True, prints the whole block at once to avoid disruptions. Defaults to False.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="utils.IO.warn_io">
+<span class="sig-prename descclassname"><span class="pre">utils.IO.</span></span><span class="sig-name descname"><span class="pre">warn_io</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">message</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">flush</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">unflush</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">flush_block</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/utils/IO.html#warn_io"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#utils.IO.warn_io" title="Link to this definition"></a></dt>
+<dd><blockquote>
+<div><p>Prints a warning.</p>
+<dl class="simple">
+<dt>message<span class="classifier">str</span></dt><dd><p>The warning message to log.</p>
+</dd>
+<dt>end<span class="classifier">str, optional</span></dt><dd><p>How to end the print, e.g., “</p>
+</dd>
+</dl>
+</div></blockquote>
+<dl class="simple">
+<dt>“ (newline). Defaults to None.</dt><dd><dl class="simple">
+<dt>flush<span class="classifier">bool, optional</span></dt><dd><p>Whether to forcibly flush the stream. Defaults to None.</p>
+</dd>
+<dt>unflush<span class="classifier">bool, optional</span></dt><dd><p>If True, adds an additional newline before the message. Defaults to None.</p>
+</dd>
+<dt>flush_block<span class="classifier">bool, optional</span></dt><dd><p>If True, prints the whole block at once to avoid disruptions. Defaults to False.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="module-utils.notebooks">
+<span id="utils-notebooks-module"></span><h2>utils.notebooks module<a class="headerlink" href="#module-utils.notebooks" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="utils.notebooks.History">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">utils.notebooks.</span></span><span class="sig-name descname"><span class="pre">History</span></span><a class="reference internal" href="../_modules/utils/notebooks.html#History"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#utils.notebooks.History" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="utils.notebooks.History.update">
+<span class="sig-name descname"><span class="pre">update</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">history</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/utils/notebooks.html#History.update"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#utils.notebooks.History.update" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="utils.notebooks.Metric">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">utils.notebooks.</span></span><span class="sig-name descname"><span class="pre">Metric</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bin_averages</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/utils/notebooks.html#Metric"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#utils.notebooks.Metric" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="utils.notebooks.Metric.cat_mse">
+<span class="sig-name descname"><span class="pre">cat_mse</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">y_true</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y_pred</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/utils/notebooks.html#Metric.cat_mse"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#utils.notebooks.Metric.cat_mse" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="utils.notebooks.make_hist_plot">
+<span class="sig-prename descclassname"><span class="pre">utils.notebooks.</span></span><span class="sig-name descname"><span class="pre">make_hist_plot</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">values</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">history</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/utils/notebooks.html#make_hist_plot"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#utils.notebooks.make_hist_plot" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</section>
+<section id="module-utils">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-utils" title="Link to this heading"></a></h2>
+<p>Utility file</p>
+<p>This file implements functionalities used by other modules and accessible to
+the user</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="utils.count_csv_size">
+<span class="sig-prename descclassname"><span class="pre">utils.</span></span><span class="sig-name descname"><span class="pre">count_csv_size</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/utils.html#count_csv_size"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#utils.count_csv_size" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="utils.dict_subset">
+<span class="sig-prename descclassname"><span class="pre">utils.</span></span><span class="sig-name descname"><span class="pre">dict_subset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dictionary</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">keys</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/utils.html#dict_subset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#utils.dict_subset" title="Link to this definition"></a></dt>
+<dd><p>Get a subset of a dictionary.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>dictionary</strong> (<em>dict</em>) – The original dictionary.</p></li>
+<li><p><strong>keys</strong> (<em>list</em>) – The keys to extract from the dictionary.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A dictionary containing only the specified keys.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="utils.is_allnan">
+<span class="sig-prename descclassname"><span class="pre">utils.</span></span><span class="sig-name descname"><span class="pre">is_allnan</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Series</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">ndarray</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/utils.html#is_allnan"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#utils.is_allnan" title="Link to this definition"></a></dt>
+<dd><p>Check if all elements in the data are NaN.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>data</strong> (<em>Union</em><em>[</em><em>pd.DataFrame</em><em>, </em><em>pd.Series</em><em>, </em><em>np.ndarray</em><em>]</em>) – The data to check.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>True if all elements are NaN, False otherwise.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="utils.is_colwise_numerical">
+<span class="sig-prename descclassname"><span class="pre">utils.</span></span><span class="sig-name descname"><span class="pre">is_colwise_numerical</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">bool</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/utils.html#is_colwise_numerical"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#utils.is_colwise_numerical" title="Link to this definition"></a></dt>
+<dd><p>Check if each column in a DataFrame is numerical.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>df</strong> (<em>pd.DataFrame</em>) – The DataFrame to check.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A dictionary with column names as keys and boolean values indicating if the column is numerical.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="utils.is_iterable">
+<span class="sig-prename descclassname"><span class="pre">utils.</span></span><span class="sig-name descname"><span class="pre">is_iterable</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">obj</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/utils.html#is_iterable"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#utils.is_iterable" title="Link to this definition"></a></dt>
+<dd><p>Check if an object is iterable.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>obj</strong> (<em>object</em>) – The object to check.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>True if the object is iterable, False otherwise.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="utils.is_numerical">
+<span class="sig-prename descclassname"><span class="pre">utils.</span></span><span class="sig-name descname"><span class="pre">is_numerical</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span><a class="reference internal" href="../_modules/utils.html#is_numerical"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#utils.is_numerical" title="Link to this definition"></a></dt>
+<dd><p>Check if a DataFrame contains only numerical data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>df</strong> (<em>pd.DataFrame</em>) – The DataFrame to check.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>True if the DataFrame is numerical, False otherwise.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="utils.load_json">
+<span class="sig-prename descclassname"><span class="pre">utils.</span></span><span class="sig-name descname"><span class="pre">load_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">json_path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/utils.html#load_json"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#utils.load_json" title="Link to this definition"></a></dt>
+<dd><p>Load data from a JSON file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>json_path</strong> (<em>Path</em>) – The path to the JSON file.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The loaded JSON data.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="utils.make_prediction_vector">
+<span class="sig-prename descclassname"><span class="pre">utils.</span></span><span class="sig-name descname"><span class="pre">make_prediction_vector</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">generator</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batches</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">20</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bin_averages</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/utils.html#make_prediction_vector"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#utils.make_prediction_vector" title="Link to this definition"></a></dt>
+<dd><p>_summary_</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="utils.to_snake_case">
+<span class="sig-prename descclassname"><span class="pre">utils.</span></span><span class="sig-name descname"><span class="pre">to_snake_case</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">string</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/utils.html#to_snake_case"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#utils.to_snake_case" title="Link to this definition"></a></dt>
+<dd><p>Convert a string to snake case.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>string</strong> (<em>str</em>) – The string to convert.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The converted string in snake case.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="utils.update_json">
+<span class="sig-prename descclassname"><span class="pre">utils.</span></span><span class="sig-name descname"><span class="pre">update_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">json_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">items</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/utils.html#update_json"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#utils.update_json" title="Link to this definition"></a></dt>
+<dd><p>Update a JSON file with new items.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>json_path</strong> (<em>Path</em>) – The path to the JSON file.</p></li>
+<li><p><strong>items</strong> (<em>dict</em>) – The items to update the JSON file with.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The updated JSON data.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="utils.write_json">
+<span class="sig-prename descclassname"><span class="pre">utils.</span></span><span class="sig-name descname"><span class="pre">write_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">json_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">json_data</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/utils.html#write_json"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#utils.write_json" title="Link to this definition"></a></dt>
+<dd><p>Write data to a JSON file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>json_path</strong> (<em>Path</em>) – The path to the JSON file.</p></li>
+<li><p><strong>json_data</strong> (<em>dict</em>) – The data to write to the JSON file.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Amadou Wolfgang Cisse.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -28,6 +28,9 @@ init(autoreset=True)
 
 
 def _clean_path(path):
+    """
+    If path is inside of the directroy, make it relative to directory.
+    """
     path = Path(path).relative_to(WORKINGDIR)
     if str(path).startswith("src"):
         return Path(path).relative_to("src")
@@ -48,11 +51,15 @@ if "pytest" in str(main_name):
         if path.suffix == ".py"
     ])
 else:
-    PATH_PADDING = max([
-        len(str(_clean_path(path)))
-        for path in Path(WORKINGDIR).glob("**/*")
-        if path.suffix == ".py" and not path.name.startswith("tests")
-    ] + [len(str(main_name.relative_to(WORKINGDIR)))])
+    # Doxygen may break on this
+    try:
+        PATH_PADDING = max([
+            len(str(_clean_path(path)))
+            for path in Path(WORKINGDIR).glob("**/*")
+            if path.suffix == ".py" and not path.name.startswith("tests")
+        ] + [len(str(main_name.relative_to(WORKINGDIR)))])
+    except ValueError:
+        PATH_PADDING = 0
 # {path: len(str(path)) for path in Path().glob("**/*") if path.suffix == ".py"}
 SRC_DIR = Path(WORKINGDIR, "src")
 SCRIPT_DIR = Path(WORKINGDIR, "scripts")
@@ -64,6 +71,9 @@ TAG_PADDING = 8
 
 
 def _get_relative_path(file_path: Path):
+    """
+    Get the relative path based on the file location and predefined directories.
+    """
     file_path = str(file_path)
     if "src" in file_path:
         relativa_path = SRC_DIR
@@ -81,11 +91,17 @@ def _get_relative_path(file_path: Path):
 
 
 def _get_line(caller):
+    """
+    Generates a formatted line with the caller's file path and line number.
+    """
     path = str(_get_relative_path(caller.filename)) + " "
     return f"{Fore.LIGHTWHITE_EX}{str(datetime.datetime.now().strftime('%m-%d %H:%M:%S'))[:19]}{Style.RESET_ALL} : {path:-<{PATH_PADDING}} : {Fore.LIGHTCYAN_EX}L {caller.lineno:<4}{Style.RESET_ALL}"
 
 
 def _print_iostring(string: str, line_header: str, flush_block: bool, collor: str):
+    """
+    Prints the message itself without the header.
+    """
     if flush_block:
         lines = string.split('\n')
         num_lines = len(lines)
@@ -119,14 +135,21 @@ def info_io(message: str,
     Level 1: Medium header
     Level 2: Narrow header
     Level None: No header formatting, behaves like the original info_io.
-    
-    Args:
-    message (str): The message to log.
-    level (int, optional): The level of the header, or None for no header formatting. Defaults to None.
-    end (str, optional): How to end the print, e.g., "\n" (newline). Defaults to None.
-    flush (bool, optional): Whether to forcibly flush the stream. Defaults to None.
-    unflush (bool, optional): If True, adds an additional newline before the message. Defaults to None.
-    flush_block (bool, optional): If True, prints the whole block at once to avoid disruptions. Defaults to False.
+
+    Parameters
+    ----------
+    message : str
+        The message to log.
+    level : int, optional
+        The level of the header, or None for no header formatting. Defaults to None.
+    end : str, optional
+        How to end the print, e.g., "\n" (newline). Defaults to None.
+    flush : bool, optional
+        Whether to forcibly flush the stream. Defaults to None.
+    unflush : bool, optional
+        If True, adds an additional newline before the message. Defaults to None.
+    flush_block : bool, optional
+        If True, prints the whole block at once to avoid disruptions. Defaults to False.
     """
     base_io("INFO", Fore.BLUE, message, level, end, flush, unflush, flush_block)
 
@@ -143,14 +166,21 @@ def tests_io(message: str,
     Level 1: Medium header
     Level 2: Narrow header
     Level None: No header formatting, behaves like the original info_io.
-    
-    Args:
-    message (str): The message to log.
-    level (int, optional): The level of the header, or None for no header formatting. Defaults to None.
-    end (str, optional): How to end the print, e.g., "\n" (newline). Defaults to None.
-    flush (bool, optional): Whether to forcibly flush the stream. Defaults to None.
-    unflush (bool, optional): If True, adds an additional newline before the message. Defaults to None.
-    flush_block (bool, optional): If True, prints the whole block at once to avoid disruptions. Defaults to False.
+
+    Parameters
+    ----------
+    message : str
+        The message to log.
+    level : int, optional
+        The level of the header, or None for no header formatting. Defaults to None.
+    end : str, optional
+        How to end the print, e.g., "\n" (newline). Defaults to None.
+    flush : bool, optional
+        Whether to forcibly flush the stream. Defaults to None.
+    unflush : bool, optional
+        If True, adds an additional newline before the message. Defaults to None.
+    flush_block : bool, optional
+        If True, prints the whole block at once to avoid disruptions. Defaults to False.
     """
     base_io("TEST", Fore.GREEN, message, level, end, flush, unflush, flush_block)
 
@@ -161,6 +191,20 @@ def debug_io(message: str,
              unflush: bool = None,
              flush_block: bool = False):
     """
+    Prints a debug message if the DEBUG_OPTION is set to a non-zero value.
+
+    Parameters
+    ----------
+    message : str
+        The debug message to log.
+    end : str, optional
+        How to end the print, e.g., "\n" (newline). Defaults to None.
+    flush : bool, optional
+        Whether to forcibly flush the stream. Defaults to None.
+    unflush : bool, optional
+        If True, adds an additional newline before the message. Defaults to None.
+    flush_block : bool, optional
+        If True, prints the whole block at once to avoid disruptions. Defaults to False.
     """
     # TODO: Improve this solution (Adopted because file level declaration will initialize before the var can be changed by test fixtures)
     global DEBUG_OPTION
@@ -177,6 +221,20 @@ def warn_io(message: str,
             unflush: bool = None,
             flush_block: bool = False):
     """
+    Prints a warning.
+
+    Parameters
+    ----------
+    message : str
+        The warning message to log.
+    end : str, optional
+        How to end the print, e.g., "\n" (newline). Defaults to None.
+    flush : bool, optional
+        Whether to forcibly flush the stream. Defaults to None.
+    unflush : bool, optional
+        If True, adds an additional newline before the message. Defaults to None.
+    flush_block : bool, optional
+        If True, prints the whole block at once to avoid disruptions. Defaults to False.
     """
     base_io("WARN", "\033[38;5;208m", message, None, end, flush, unflush, flush_block)
 
@@ -187,7 +245,29 @@ def error_io(message: str,
              flush: bool = None,
              unflush: bool = None,
              flush_block: bool = False):
-    """"""
+    """
+    Prints an error message with an error header and raises the specified exception.
+
+    Parameters
+    ----------
+    message : str
+        The error message to log.
+    exception_type : Exception
+        The type of exception to raise after logging the message.
+    end : str, optional
+        How to end the print, e.g., "\n" (newline). Defaults to None.
+    flush : bool, optional
+        Whether to forcibly flush the stream. Defaults to None.
+    unflush : bool, optional
+        If True, adds an additional newline before the message. Defaults to None.
+    flush_block : bool, optional
+        If True, prints the whole block at once to avoid disruptions. Defaults to False.
+
+    Raises
+    ------
+    exception_type
+        The specified exception type is raised after the error message is logged.
+    """
     base_io("ERROR", Fore.RED, message, None, end, flush, unflush, flush_block)
     raise exception_type
 

@@ -7,7 +7,6 @@ import multiprocess as mp
 from copy import deepcopy
 from pathlib import Path
 from typing import Any
-from tests.settings import *
 
 
 class SimpleProperty(object):

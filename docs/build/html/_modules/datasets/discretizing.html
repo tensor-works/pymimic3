@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>datasets.discretizing &mdash; open-mimic-iii - documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=92fd9be5" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../_static/documentation_options.js?v=b1628c55"></script>
+        <script src="../../_static/doctools.js?v=9a2dae69"></script>
+        <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            open-mimic-iii
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../_rst/datasets.html">datasets package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../_rst/generators.html">generators package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../_rst/metrics.html">metrics package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../_rst/models.html">models package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../_rst/pipelines.html">pipelines package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../_rst/preprocessing.html">preprocessing package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">open-mimic-iii</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+          <li class="breadcrumb-item"><a href="../datasets.html">datasets</a></li>
+      <li class="breadcrumb-item active">datasets.discretizing</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for datasets.discretizing</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">random</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">from</span> <span class="nn">copy</span> <span class="kn">import</span> <span class="n">deepcopy</span>
+<span class="kn">from</span> <span class="nn">itertools</span> <span class="kn">import</span> <span class="n">chain</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Dict</span>
+<span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span> <span class="nn">utils.IO</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">utils</span> <span class="kn">import</span> <span class="n">dict_subset</span>
+<span class="kn">from</span> <span class="nn">pathos.multiprocessing</span> <span class="kn">import</span> <span class="n">cpu_count</span><span class="p">,</span> <span class="n">Pool</span>
+<span class="kn">from</span> <span class="nn">datasets.processors.discretizers</span> <span class="kn">import</span> <span class="n">MIMICDiscretizer</span>
+<span class="kn">from</span> <span class="nn">.trackers</span> <span class="kn">import</span> <span class="n">PreprocessingTracker</span>
+<span class="kn">from</span> <span class="nn">.readers</span> <span class="kn">import</span> <span class="n">ExtractedSetReader</span><span class="p">,</span> <span class="n">ProcessedSetReader</span>
+<span class="kn">from</span> <span class="nn">.mimic_utils</span> <span class="kn">import</span> <span class="n">copy_subject_info</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;compact_discretization&quot;</span><span class="p">,</span> <span class="s2">&quot;iterative_discretization&quot;</span><span class="p">]</span>
+
+
+<div class="viewcode-block" id="compact_discretization">
+<a class="viewcode-back" href="../../_rst/datasets.html#datasets.discretizing.compact_discretization">[docs]</a>
+<span class="k">def</span> <span class="nf">compact_discretization</span><span class="p">(</span><span class="n">X_subject</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">]],</span>
+                           <span class="n">y_subject</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">]],</span>
+                           <span class="n">task</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+                           <span class="n">subject_ids</span><span class="p">:</span> <span class="nb">list</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                           <span class="n">num_subjects</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                           <span class="n">time_step_size</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span>
+                           <span class="n">impute_strategy</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;previous&quot;</span><span class="p">,</span>
+                           <span class="n">mode</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;legacy&quot;</span><span class="p">,</span>
+                           <span class="n">start_at_zero</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+                           <span class="n">eps</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-6</span><span class="p">,</span>
+                           <span class="n">storage_path</span><span class="p">:</span> <span class="n">Path</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                           <span class="n">source_path</span><span class="p">:</span> <span class="n">Path</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">]]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;_summary_</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        timeseries (pd.DataFrame): _description_</span>
+<span class="sd">        episodic_data (pd.DataFrame): _description_</span>
+<span class="sd">        subject_diagnoses (pd.DataFrame): _description_</span>
+<span class="sd">        subject_icu_history (pd.DataFrame): _description_</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        _type_: _description_</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">tracker</span> <span class="o">=</span> <span class="n">PreprocessingTracker</span><span class="p">(</span><span class="n">storage_path</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="n">storage_path</span><span class="p">,</span> <span class="s2">&quot;progress&quot;</span><span class="p">),</span>
+                                   <span class="n">num_subjects</span><span class="o">=</span><span class="n">num_subjects</span><span class="p">,</span>
+                                   <span class="n">subject_ids</span><span class="o">=</span><span class="n">subject_ids</span><span class="p">,</span>
+                                   <span class="n">time_step_size</span><span class="o">=</span><span class="n">time_step_size</span><span class="p">,</span>
+                                   <span class="n">impute_strategy</span><span class="o">=</span><span class="n">impute_strategy</span><span class="p">,</span>
+                                   <span class="n">start_at_zero</span><span class="o">=</span><span class="n">start_at_zero</span><span class="p">,</span>
+                                   <span class="n">mode</span><span class="o">=</span><span class="n">mode</span><span class="p">)</span>
+
+    <span class="n">copy_subject_info</span><span class="p">(</span><span class="n">source_path</span><span class="p">,</span> <span class="n">storage_path</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">tracker</span><span class="o">.</span><span class="n">is_finished</span><span class="p">:</span>
+        <span class="n">info_io</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Compact discretization finalized in directory:</span><span class="se">\n</span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">storage_path</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">num_subjects</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">subject_ids</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">tracker</span><span class="o">.</span><span class="n">subject_ids</span><span class="p">,</span> <span class="n">k</span><span class="o">=</span><span class="n">num_subjects</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">ProcessedSetReader</span><span class="p">(</span><span class="n">root_path</span><span class="o">=</span><span class="n">storage_path</span><span class="p">,</span> <span class="n">subject_ids</span><span class="o">=</span><span class="n">subject_ids</span><span class="p">,</span>
+                                  <span class="n">set_index</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span><span class="o">.</span><span class="n">read_samples</span><span class="p">(</span><span class="n">read_ids</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="n">info_io</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Compact Discretization: </span><span class="si">{</span><span class="n">task</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">level</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">discretizer</span> <span class="o">=</span> <span class="n">MIMICDiscretizer</span><span class="p">(</span><span class="n">task</span><span class="o">=</span><span class="n">task</span><span class="p">,</span>
+                                   <span class="n">storage_path</span><span class="o">=</span><span class="n">storage_path</span><span class="p">,</span>
+                                   <span class="n">tracker</span><span class="o">=</span><span class="n">tracker</span><span class="p">,</span>
+                                   <span class="n">time_step_size</span><span class="o">=</span><span class="n">time_step_size</span><span class="p">,</span>
+                                   <span class="n">impute_strategy</span><span class="o">=</span><span class="n">impute_strategy</span><span class="p">,</span>
+                                   <span class="n">start_at_zero</span><span class="o">=</span><span class="n">start_at_zero</span><span class="p">,</span>
+                                   <span class="n">mode</span><span class="o">=</span><span class="n">mode</span><span class="p">,</span>
+                                   <span class="n">eps</span><span class="o">=</span><span class="n">eps</span><span class="p">,</span>
+                                   <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="n">subject_ids</span><span class="p">,</span> <span class="n">excluded_subject_ids</span> <span class="o">=</span> <span class="n">get_subject_ids</span><span class="p">(</span><span class="n">num_subjects</span><span class="o">=</span><span class="n">num_subjects</span><span class="p">,</span>
+                                                        <span class="n">subject_ids</span><span class="o">=</span><span class="n">subject_ids</span><span class="p">,</span>
+                                                        <span class="n">all_subjects</span><span class="o">=</span><span class="n">X_subject</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+    <span class="n">missing_subjects</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">if</span> <span class="n">num_subjects</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">X_discretized</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="n">y_discretized</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="k">while</span> <span class="ow">not</span> <span class="nb">len</span><span class="p">(</span><span class="n">X_discretized</span><span class="p">)</span> <span class="o">==</span> <span class="n">num_subjects</span><span class="p">:</span>
+            <span class="n">curr_X_subject</span> <span class="o">=</span> <span class="n">dict_subset</span><span class="p">(</span><span class="n">X_subject</span><span class="p">,</span> <span class="n">subject_ids</span><span class="p">)</span>
+            <span class="n">curr_y_subject</span> <span class="o">=</span> <span class="n">dict_subset</span><span class="p">(</span><span class="n">y_subject</span><span class="p">,</span> <span class="n">subject_ids</span><span class="p">)</span>
+
+            <span class="n">X</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">discretizer</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">curr_X_subject</span><span class="p">,</span> <span class="n">curr_y_subject</span><span class="p">)</span>
+            <span class="n">X_discretized</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+            <span class="n">y_discretized</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+            <span class="n">it_missing_subjects</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">X</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span> <span class="o">-</span> <span class="nb">set</span><span class="p">(</span><span class="n">subject_ids</span><span class="p">)</span>
+            <span class="n">subject_ids</span><span class="p">,</span> <span class="n">excluded_subject_ids</span> <span class="o">=</span> <span class="n">get_subject_ids</span><span class="p">(</span><span class="n">num_subjects</span><span class="o">=</span><span class="n">num_subjects</span> <span class="o">-</span>
+                                                                <span class="nb">len</span><span class="p">(</span><span class="n">X_discretized</span><span class="p">),</span>
+                                                                <span class="n">subject_ids</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                                                                <span class="n">all_subjects</span><span class="o">=</span><span class="n">excluded_subject_ids</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">it_missing_subjects</span><span class="p">:</span>
+                <span class="n">missing_subjects</span> <span class="o">+=</span> <span class="nb">len</span><span class="p">(</span><span class="n">it_missing_subjects</span><span class="p">)</span>
+                <span class="n">debug_io</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Missing subjects are: </span><span class="si">{</span><span class="o">*</span><span class="n">it_missing_subjects</span><span class="p">,</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">subject_ids</span><span class="p">:</span>
+                <span class="k">break</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">X_discretized</span><span class="p">)</span> <span class="o">==</span> <span class="n">num_subjects</span><span class="p">:</span>
+                <span class="n">debug_io</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Missing </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">X_discretized</span><span class="p">)</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">num_subjects</span><span class="si">}</span><span class="s2"> subjects.&quot;</span><span class="p">)</span>
+                <span class="n">debug_io</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unprocessable subjects are: </span><span class="si">{</span><span class="o">*</span><span class="n">it_missing_subjects</span><span class="p">,</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">X_subject</span> <span class="o">=</span> <span class="n">dict_subset</span><span class="p">(</span><span class="n">X_subject</span><span class="p">,</span> <span class="n">subject_ids</span><span class="p">)</span>
+        <span class="n">y_subject</span> <span class="o">=</span> <span class="n">dict_subset</span><span class="p">(</span><span class="n">y_subject</span><span class="p">,</span> <span class="n">subject_ids</span><span class="p">)</span>
+
+        <span class="p">(</span><span class="n">X_discretized</span><span class="p">,</span> <span class="n">y_discretized</span><span class="p">)</span> <span class="o">=</span> <span class="n">discretizer</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">X_subject</span><span class="p">,</span> <span class="n">y_subject</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">storage_path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">discretizer</span><span class="o">.</span><span class="n">save_data</span><span class="p">()</span>
+        <span class="n">info_io</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Finalized discretization for </span><span class="si">{</span><span class="n">task</span><span class="si">}</span><span class="s2"> in directory:</span><span class="se">\n</span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">storage_path</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">info_io</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Finalized discretization for </span><span class="si">{</span><span class="n">task</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span>
+    <span class="c1"># TODO! this doesn&#39;t work, reimagine</span>
+    <span class="c1"># if missing_subjects:</span>
+    <span class="c1">#     warn_io(f&quot;The subject target was not reached, missing {missing_subjects} subjects.&quot;)</span>
+    <span class="n">tracker</span><span class="o">.</span><span class="n">is_finished</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;X&quot;</span><span class="p">:</span> <span class="n">X_discretized</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">:</span> <span class="n">y_discretized</span><span class="p">}</span></div>
+
+
+
+<div class="viewcode-block" id="iterative_discretization">
+<a class="viewcode-back" href="../../_rst/datasets.html#datasets.discretizing.iterative_discretization">[docs]</a>
+<span class="k">def</span> <span class="nf">iterative_discretization</span><span class="p">(</span><span class="n">reader</span><span class="p">:</span> <span class="n">ExtractedSetReader</span><span class="p">,</span>
+                             <span class="n">task</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+                             <span class="n">subject_ids</span><span class="p">:</span> <span class="nb">list</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                             <span class="n">num_subjects</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                             <span class="n">time_step_size</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span>
+                             <span class="n">impute_strategy</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;previous&quot;</span><span class="p">,</span>
+                             <span class="n">mode</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;legacy&quot;</span><span class="p">,</span>
+                             <span class="n">start_at_zero</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+                             <span class="n">eps</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-6</span><span class="p">,</span>
+                             <span class="n">storage_path</span><span class="p">:</span> <span class="n">Path</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ProcessedSetReader</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;_summary_</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        timeseries (pd.DataFrame): _description_</span>
+<span class="sd">        episodic_data (pd.DataFrame): _description_</span>
+<span class="sd">        subject_diagnoses (pd.DataFrame): _description_</span>
+<span class="sd">        subject_icu_history (pd.DataFrame): _description_</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        _type_: _description_</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">original_subject_ids</span> <span class="o">=</span> <span class="n">deepcopy</span><span class="p">(</span><span class="n">subject_ids</span><span class="p">)</span>
+    <span class="n">tracker</span> <span class="o">=</span> <span class="n">PreprocessingTracker</span><span class="p">(</span><span class="n">storage_path</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="n">storage_path</span><span class="p">,</span> <span class="s2">&quot;progress&quot;</span><span class="p">),</span>
+                                   <span class="n">num_subjects</span><span class="o">=</span><span class="n">num_subjects</span><span class="p">,</span>
+                                   <span class="n">subject_ids</span><span class="o">=</span><span class="n">subject_ids</span><span class="p">,</span>
+                                   <span class="n">time_step_size</span><span class="o">=</span><span class="n">time_step_size</span><span class="p">,</span>
+                                   <span class="n">impute_strategy</span><span class="o">=</span><span class="n">impute_strategy</span><span class="p">,</span>
+                                   <span class="n">start_at_zero</span><span class="o">=</span><span class="n">start_at_zero</span><span class="p">,</span>
+                                   <span class="n">mode</span><span class="o">=</span><span class="n">mode</span><span class="p">)</span>
+
+    <span class="n">copy_subject_info</span><span class="p">(</span><span class="n">reader</span><span class="o">.</span><span class="n">root_path</span><span class="p">,</span> <span class="n">storage_path</span><span class="p">)</span>
+
+    <span class="n">discretizer</span> <span class="o">=</span> <span class="n">MIMICDiscretizer</span><span class="p">(</span><span class="n">reader</span><span class="o">=</span><span class="n">reader</span><span class="p">,</span>
+                                   <span class="n">task</span><span class="o">=</span><span class="n">task</span><span class="p">,</span>
+                                   <span class="n">storage_path</span><span class="o">=</span><span class="n">storage_path</span><span class="p">,</span>
+                                   <span class="n">tracker</span><span class="o">=</span><span class="n">tracker</span><span class="p">,</span>
+                                   <span class="n">time_step_size</span><span class="o">=</span><span class="n">time_step_size</span><span class="p">,</span>
+                                   <span class="n">impute_strategy</span><span class="o">=</span><span class="n">impute_strategy</span><span class="p">,</span>
+                                   <span class="n">start_at_zero</span><span class="o">=</span><span class="n">start_at_zero</span><span class="p">,</span>
+                                   <span class="n">mode</span><span class="o">=</span><span class="n">mode</span><span class="p">,</span>
+                                   <span class="n">eps</span><span class="o">=</span><span class="n">eps</span><span class="p">,</span>
+                                   <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">tracker</span><span class="o">.</span><span class="n">is_finished</span><span class="p">:</span>
+        <span class="n">info_io</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Data discretization for </span><span class="si">{</span><span class="n">task</span><span class="si">}</span><span class="s2"> is already in directory:</span><span class="se">\n</span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">storage_path</span><span class="p">)</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">num_subjects</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">subject_ids</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">tracker</span><span class="o">.</span><span class="n">subject_ids</span><span class="p">,</span> <span class="n">k</span><span class="o">=</span><span class="n">num_subjects</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">ProcessedSetReader</span><span class="p">(</span><span class="n">storage_path</span><span class="p">,</span> <span class="n">subject_ids</span><span class="o">=</span><span class="n">subject_ids</span><span class="p">,</span> <span class="n">set_index</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+    <span class="n">info_io</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Iterative Discretization: </span><span class="si">{</span><span class="n">task</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">level</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">info_io</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Discretizing for task </span><span class="si">{</span><span class="n">task</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Tracking info</span>
+    <span class="n">n_discretizer_subjects</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">tracker</span><span class="o">.</span><span class="n">subject_ids</span><span class="p">)</span>
+    <span class="n">n_discretizer_stays</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">tracker</span><span class="o">.</span><span class="n">stay_ids</span><span class="p">)</span>
+    <span class="n">n_discretizer_samples</span> <span class="o">=</span> <span class="n">tracker</span><span class="o">.</span><span class="n">samples</span>
+
+    <span class="c1"># Parallel processing logic</span>
+    <span class="c1"># discretizer_pr = discretizer</span>
+
+    <span class="k">def</span> <span class="nf">discretize_subject</span><span class="p">(</span><span class="n">subject_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;_summary_</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">tracking_infos</span> <span class="o">=</span> <span class="n">discretizer_pr</span><span class="o">.</span><span class="n">transform_subject</span><span class="p">(</span><span class="n">subject_id</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">tracking_infos</span><span class="p">:</span>
+            <span class="n">discretizer_pr</span><span class="o">.</span><span class="n">save_data</span><span class="p">([</span><span class="n">subject_id</span><span class="p">])</span>
+            <span class="k">return</span> <span class="n">subject_id</span><span class="p">,</span> <span class="n">tracking_infos</span>
+
+        <span class="k">return</span> <span class="n">subject_id</span><span class="p">,</span> <span class="kc">None</span>
+
+    <span class="k">def</span> <span class="nf">init</span><span class="p">(</span><span class="n">discretizer</span><span class="p">:</span> <span class="n">MIMICDiscretizer</span><span class="p">):</span>
+        <span class="k">global</span> <span class="n">discretizer_pr</span>
+        <span class="n">discretizer_pr</span> <span class="o">=</span> <span class="n">discretizer</span>
+
+    <span class="n">subject_ids</span><span class="p">,</span> <span class="n">excluded_subject_ids</span> <span class="o">=</span> <span class="n">get_subject_ids</span><span class="p">(</span><span class="n">num_subjects</span><span class="o">=</span><span class="n">num_subjects</span><span class="p">,</span>
+                                                        <span class="n">subject_ids</span><span class="o">=</span><span class="n">subject_ids</span><span class="p">,</span>
+                                                        <span class="n">all_subjects</span><span class="o">=</span><span class="n">discretizer</span><span class="o">.</span><span class="n">subjects</span><span class="p">,</span>
+                                                        <span class="n">discretizer_subjects</span><span class="o">=</span><span class="n">tracker</span><span class="o">.</span><span class="n">subject_ids</span><span class="p">)</span>
+    <span class="c1"># for subject_id in subject_ids:</span>
+    <span class="c1">#     discretize_subject(subject_id)</span>
+    <span class="n">info_io</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Discretizing task data:</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;Discretize subjects: </span><span class="si">{</span><span class="n">n_discretizer_subjects</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;Discretize stays: </span><span class="si">{</span><span class="n">n_discretizer_stays</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;Discretize samples: </span><span class="si">{</span><span class="n">n_discretizer_samples</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;Skipped subjects: </span><span class="si">{</span><span class="mi">0</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Start the run</span>
+    <span class="k">with</span> <span class="n">Pool</span><span class="p">(</span><span class="n">cpu_count</span><span class="p">()</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="n">initializer</span><span class="o">=</span><span class="n">init</span><span class="p">,</span> <span class="n">initargs</span><span class="o">=</span><span class="p">(</span><span class="n">discretizer</span><span class="p">,))</span> <span class="k">as</span> <span class="n">pool</span><span class="p">:</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="n">pool</span><span class="o">.</span><span class="n">imap_unordered</span><span class="p">(</span><span class="n">discretize_subject</span><span class="p">,</span> <span class="n">subject_ids</span><span class="p">,</span> <span class="n">chunksize</span><span class="o">=</span><span class="mi">500</span><span class="p">)</span>
+
+        <span class="n">empty_subjects</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">missing_subjects</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">subject_id</span><span class="p">,</span> <span class="n">tracker_data</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">res</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">tracker_data</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">empty_subjects</span> <span class="o">+=</span> <span class="mi">1</span>
+                    <span class="c1"># Add new samples if to meet the num subjects target</span>
+                    <span class="k">if</span> <span class="n">num_subjects</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                        <span class="k">continue</span>
+                    <span class="n">debug_io</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Missing subject is: </span><span class="si">{</span><span class="n">subject_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="n">subj</span> <span class="o">=</span> <span class="n">excluded_subject_ids</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+                        <span class="n">res</span> <span class="o">=</span> <span class="n">chain</span><span class="p">(</span><span class="n">res</span><span class="p">,</span> <span class="p">[</span><span class="n">pool</span><span class="o">.</span><span class="n">apply_async</span><span class="p">(</span><span class="n">discretize_subject</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="p">(</span><span class="n">subj</span><span class="p">,))</span><span class="o">.</span><span class="n">get</span><span class="p">()])</span>
+                    <span class="k">except</span> <span class="ne">IndexError</span><span class="p">:</span>
+                        <span class="n">missing_subjects</span> <span class="o">+=</span> <span class="mi">1</span>
+                        <span class="n">debug_io</span><span class="p">(</span>
+                            <span class="sa">f</span><span class="s2">&quot;Could not replace missing subject. Excluded subjects is: </span><span class="si">{</span><span class="n">excluded_subject_ids</span><span class="si">}</span><span class="s2">&quot;</span>
+                        <span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">n_discretizer_subjects</span> <span class="o">+=</span> <span class="mi">1</span>
+                    <span class="n">n_discretizer_stays</span> <span class="o">+=</span> <span class="nb">len</span><span class="p">(</span><span class="n">tracker_data</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+                    <span class="n">n_discretizer_samples</span> <span class="o">+=</span> <span class="n">tracker_data</span><span class="p">[</span><span class="s2">&quot;total&quot;</span><span class="p">]</span>
+
+                <span class="n">info_io</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Discretizing timeseries data:</span><span class="se">\n</span><span class="s2">&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;Discretized subjects: </span><span class="si">{</span><span class="n">n_discretizer_subjects</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;Discretized stays: </span><span class="si">{</span><span class="n">n_discretizer_stays</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;Discretized samples: </span><span class="si">{</span><span class="n">n_discretizer_samples</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;Skipped subjects: </span><span class="si">{</span><span class="n">empty_subjects</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                    <span class="n">flush_block</span><span class="o">=</span><span class="p">(</span><span class="kc">True</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">int</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;DEBUG&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">))))</span>
+            <span class="k">except</span> <span class="ne">StopIteration</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">tracker</span><span class="o">.</span><span class="n">is_finished</span> <span class="o">=</span> <span class="kc">True</span>
+                <span class="n">info_io</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Finalized for task </span><span class="si">{</span><span class="n">task</span><span class="si">}</span><span class="s2"> in directory:</span><span class="se">\n</span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">storage_path</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">num_subjects</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">missing_subjects</span><span class="p">:</span>
+                    <span class="n">warn_io</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;The subject target was not reached, missing </span><span class="si">{</span><span class="n">missing_subjects</span><span class="si">}</span><span class="s2"> subjects.&quot;</span><span class="p">)</span>
+                <span class="k">break</span>
+
+    <span class="k">if</span> <span class="n">original_subject_ids</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">original_subject_ids</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">original_subject_ids</span><span class="p">)</span> <span class="o">&amp;</span> <span class="nb">set</span><span class="p">(</span><span class="n">tracker</span><span class="o">.</span><span class="n">subject_ids</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">ProcessedSetReader</span><span class="p">(</span><span class="n">storage_path</span><span class="p">,</span> <span class="n">subject_ids</span><span class="o">=</span><span class="n">original_subject_ids</span><span class="p">,</span> <span class="n">set_index</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></div>
+
+
+
+<span class="k">def</span> <span class="nf">get_subject_ids</span><span class="p">(</span><span class="n">num_subjects</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+                    <span class="n">subject_ids</span><span class="p">:</span> <span class="nb">list</span><span class="p">,</span>
+                    <span class="n">all_subjects</span><span class="p">:</span> <span class="nb">list</span><span class="p">,</span>
+                    <span class="n">discretizer_subjects</span><span class="p">:</span> <span class="nb">list</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()):</span>
+    <span class="n">remaining_subject_ids</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">all_subjects</span><span class="p">)</span> <span class="o">-</span> <span class="nb">set</span><span class="p">(</span><span class="n">discretizer_subjects</span><span class="p">))</span>
+    <span class="c1"># Select subjects to process logic</span>
+    <span class="n">n_processed_subjects</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">discretizer_subjects</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">num_subjects</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">num_subjects</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">num_subjects</span> <span class="o">-</span> <span class="n">n_processed_subjects</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">selected_subjects_ids</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">remaining_subject_ids</span><span class="p">,</span> <span class="n">k</span><span class="o">=</span><span class="n">num_subjects</span><span class="p">)</span>
+        <span class="n">remaining_subject_ids</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">remaining_subject_ids</span><span class="p">)</span> <span class="o">-</span> <span class="nb">set</span><span class="p">(</span><span class="n">selected_subjects_ids</span><span class="p">))</span>
+        <span class="n">random</span><span class="o">.</span><span class="n">shuffle</span><span class="p">(</span><span class="n">remaining_subject_ids</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">subject_ids</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">unknown_subjects</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">subject_ids</span><span class="p">)</span> <span class="o">-</span> <span class="nb">set</span><span class="p">(</span><span class="n">all_subjects</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">unknown_subjects</span><span class="p">:</span>
+            <span class="n">warn_io</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unknown subjects: </span><span class="si">{</span><span class="o">*</span><span class="n">unknown_subjects</span><span class="p">,</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">selected_subjects_ids</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">subject_ids</span><span class="p">)</span> <span class="o">&amp;</span> <span class="nb">set</span><span class="p">(</span><span class="n">all_subjects</span><span class="p">))</span>
+        <span class="n">remaining_subject_ids</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">remaining_subject_ids</span><span class="p">)</span> <span class="o">-</span> <span class="nb">set</span><span class="p">(</span><span class="n">selected_subjects_ids</span><span class="p">))</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">selected_subjects_ids</span> <span class="o">=</span> <span class="n">remaining_subject_ids</span>
+    <span class="k">return</span> <span class="n">selected_subjects_ids</span><span class="p">,</span> <span class="n">remaining_subject_ids</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Amadou Wolfgang Cisse.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

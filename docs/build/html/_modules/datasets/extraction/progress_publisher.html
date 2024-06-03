@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>datasets.extraction.progress_publisher &mdash; open-mimic-iii - documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=92fd9be5" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../../_static/documentation_options.js?v=b1628c55"></script>
+        <script src="../../../_static/doctools.js?v=9a2dae69"></script>
+        <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            open-mimic-iii
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../_rst/datasets.html">datasets package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../_rst/generators.html">generators package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../_rst/metrics.html">metrics package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../_rst/models.html">models package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../_rst/pipelines.html">pipelines package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../_rst/preprocessing.html">preprocessing package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">open-mimic-iii</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+          <li class="breadcrumb-item"><a href="../../datasets.html">datasets</a></li>
+          <li class="breadcrumb-item"><a href="../extraction.html">datasets.extraction</a></li>
+      <li class="breadcrumb-item active">datasets.extraction.progress_publisher</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for datasets.extraction.progress_publisher</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Dataset Extraction Module</span>
+<span class="sd">=========================</span>
+
+<span class="sd">This module provides a class for publishing the progress of the event processing.</span>
+<span class="sd">This class is used for multiprocessing and employed by the iterative extraction.</span>
+
+<span class="sd">Classes</span>
+<span class="sd">-------</span>
+<span class="sd">- ProgressPublisher(n_consumers, source_path, in_q, tracker)</span>
+<span class="sd">    Publishes the progress of the event processing.</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    .. code-block:: python</span>
+<span class="sd">    </span>
+<span class="sd">        from pathlib import Path</span>
+<span class="sd">        from multiprocess import JoinableQueue, Lock</span>
+<span class="sd">        from ..trackers import ExtractionTracker</span>
+
+<span class="sd">        # Initialize parameters</span>
+<span class="sd">        source_path = Path(&#39;/path/to/source&#39;)</span>
+<span class="sd">        storage_path = Path(&#39;/path/to/storage&#39;)</span>
+<span class="sd">        in_q = JoinableQueue()</span>
+<span class="sd">        out_q = JoinableQueue()</span>
+<span class="sd">        icu_history_df = pd.read_csv(&#39;/path/to/icu_history.csv&#39;)</span>
+<span class="sd">        lock = Lock()</span>
+<span class="sd">        tracker = ExtractionTracker(storage_path)</span>
+
+<span class="sd">        # Create and start the progress publisher</span>
+<span class="sd">        progress_publisher = ProgressPublisher(n_consumers=4,</span>
+<span class="sd">                                               source_path=source_path,</span>
+<span class="sd">                                               in_q=out_q,</span>
+<span class="sd">                                               tracker=tracker)</span>
+<span class="sd">        progress_publisher.start() </span>
+
+<span class="sd">        # Create and start the event consumer</span>
+<span class="sd">        consumer = EventConsumer(storage_path=storage_path,</span>
+<span class="sd">                                 in_q=in_q,</span>
+<span class="sd">                                 out_q=out_q,</span>
+<span class="sd">                                 icu_history_df=icu_history_df,</span>
+<span class="sd">                                 lock=lock)</span>
+<span class="sd">        consumer.start()</span>
+
+<span class="sd">        # Read and process events</span>
+<span class="sd">        event_reader = EventReader(dataset_folder=&#39;/path/to/data&#39;, chunksize=1000)</span>
+<span class="sd">        event_frames, frame_lengths = event_reader.get_chunk()</span>
+<span class="sd">        events_df = pd.concat(event_frames.values(), ignore_index=True)</span>
+<span class="sd">        in_q.put((events_df, frame_lengths))</span>
+
+<span class="sd">        Processed event rows:</span>
+<span class="sd">        CHARTEVENTS:    1000/5000</span>
+<span class="sd">        LABEVENTS:      1000/6000</span>
+<span class="sd">        OUTPUTEVENTS:   1000/4500</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">from</span> <span class="nn">utils</span> <span class="kn">import</span> <span class="n">count_csv_size</span>
+<span class="kn">from</span> <span class="nn">utils.IO</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span> <span class="nn">multiprocess</span> <span class="kn">import</span> <span class="n">JoinableQueue</span><span class="p">,</span> <span class="n">Process</span>
+<span class="kn">from</span> <span class="nn">..trackers</span> <span class="kn">import</span> <span class="n">ExtractionTracker</span>
+
+
+<div class="viewcode-block" id="ProgressPublisher">
+<a class="viewcode-back" href="../../../_rst/datasets.extraction.html#datasets.extraction.progress_publisher.ProgressPublisher">[docs]</a>
+<span class="k">class</span> <span class="nc">ProgressPublisher</span><span class="p">(</span><span class="n">Process</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Publishes the progress of the event processing to the command line.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    n_consumers : int</span>
+<span class="sd">        Number of consumer processes.</span>
+<span class="sd">    source_path : Path</span>
+<span class="sd">        Path to the source directory containing the raw data files.</span>
+<span class="sd">    in_q : JoinableQueue</span>
+<span class="sd">        Queue from which to read the progress updates.</span>
+<span class="sd">    tracker : ExtractionTracker</span>
+<span class="sd">        Tracker to keep track of extraction progress.</span>
+
+<span class="sd">    Methods</span>
+<span class="sd">    -------</span>
+<span class="sd">    run()</span>
+<span class="sd">        Runs the progress publisher, updating and printing the progress.</span>
+<span class="sd">    start()</span>
+<span class="sd">        Starts the progress publisher process.</span>
+<span class="sd">    join()</span>
+<span class="sd">        Joins the progress publisher process.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n_consumers</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">source_path</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">in_q</span><span class="p">:</span> <span class="n">JoinableQueue</span><span class="p">,</span>
+                 <span class="n">tracker</span><span class="p">:</span> <span class="n">ExtractionTracker</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_in_q</span> <span class="o">=</span> <span class="n">in_q</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_tracker</span> <span class="o">=</span> <span class="n">tracker</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_n_consumers</span> <span class="o">=</span> <span class="n">n_consumers</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_event_file_lengths</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="n">name</span><span class="p">:</span> <span class="n">count_csv_size</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">source_path</span><span class="p">,</span> <span class="n">name</span><span class="p">))</span>
+            <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;CHARTEVENTS.csv&quot;</span><span class="p">,</span> <span class="s2">&quot;LABEVENTS.csv&quot;</span><span class="p">,</span> <span class="s2">&quot;OUTPUTEVENTS.csv&quot;</span><span class="p">]</span>
+        <span class="p">}</span>
+
+<div class="viewcode-block" id="ProgressPublisher.run">
+<a class="viewcode-back" href="../../../_rst/datasets.extraction.html#datasets.extraction.progress_publisher.ProgressPublisher.run">[docs]</a>
+    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">done_count</span> <span class="o">=</span> <span class="mi">0</span>  <span class="c1"># Track consumer finishes</span>
+
+        <span class="c1"># Print initial state</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;Processed event rows: &quot;</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">csv_name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_event_file_lengths</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="n">csv_event_count</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_tracker</span><span class="o">.</span><span class="n">count_subject_events</span><span class="p">[</span><span class="n">csv_name</span><span class="p">]</span>
+            <span class="n">total_event_count</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_event_file_lengths</span><span class="p">[</span><span class="n">csv_name</span><span class="p">]</span>
+            <span class="n">print_name</span> <span class="o">=</span> <span class="n">csv_name</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="s1">&#39;.csv&#39;</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;: &quot;</span>
+            <span class="n">msg</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">print_name</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">csv_event_count</span><span class="si">:</span><span class="s2">&gt;</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">total_event_count</span><span class="p">))</span><span class="si">}}</span><span class="s2">/</span><span class="si">{</span><span class="n">total_event_count</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+        <span class="n">info_io</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">msg</span><span class="p">))</span>
+
+        <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="c1"># Draw tracking information from queue</span>
+            <span class="n">frame_lengths</span><span class="p">,</span> <span class="n">finished</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_in_q</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
+            <span class="c1"># TODO! real crash resilience can only be achieved by updating in the event consumer</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_tracker</span><span class="o">.</span><span class="n">count_subject_events</span> <span class="o">+=</span> <span class="n">frame_lengths</span>
+            <span class="c1"># Track consumer finishes</span>
+            <span class="k">if</span> <span class="n">finished</span><span class="p">:</span>
+                <span class="n">done_count</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="n">debug_io</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Publisher received consumer finished: </span><span class="si">{</span><span class="n">done_count</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_n_consumers</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="c1"># Print current state</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;Processed event rows: &quot;</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">csv_name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_event_file_lengths</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                <span class="n">csv_event_count</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_tracker</span><span class="o">.</span><span class="n">count_subject_events</span><span class="p">[</span><span class="n">csv_name</span><span class="p">]</span>
+                <span class="n">total_event_count</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_event_file_lengths</span><span class="p">[</span><span class="n">csv_name</span><span class="p">]</span>
+                <span class="n">print_name</span> <span class="o">=</span> <span class="n">csv_name</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="s1">&#39;.csv&#39;</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;: &quot;</span>
+                <span class="n">msg</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">print_name</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">csv_event_count</span><span class="si">:</span><span class="s2">&gt;</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">total_event_count</span><span class="p">))</span><span class="si">}}</span><span class="s2">/</span><span class="si">{</span><span class="n">total_event_count</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
+
+            <span class="n">info_io</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">msg</span><span class="p">),</span> <span class="n">flush_block</span><span class="o">=</span><span class="ow">not</span> <span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;DEBUG&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">))))</span>
+            <span class="c1"># Join publisher</span>
+            <span class="k">if</span> <span class="n">done_count</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">_n_consumers</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_tracker</span><span class="o">.</span><span class="n">has_subject_events</span> <span class="o">=</span> <span class="kc">True</span>
+                <span class="n">debug_io</span><span class="p">(</span><span class="s2">&quot;All consumers finished, publisher finishes now.&quot;</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_in_q</span><span class="o">.</span><span class="n">task_done</span><span class="p">()</span>
+                <span class="k">break</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_in_q</span><span class="o">.</span><span class="n">task_done</span><span class="p">()</span>
+        <span class="k">return</span></div>
+
+
+<div class="viewcode-block" id="ProgressPublisher.start">
+<a class="viewcode-back" href="../../../_rst/datasets.extraction.html#datasets.extraction.progress_publisher.ProgressPublisher.start">[docs]</a>
+    <span class="k">def</span> <span class="nf">start</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+        <span class="n">debug_io</span><span class="p">(</span><span class="s2">&quot;Started publisher&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ProgressPublisher.join">
+<a class="viewcode-back" href="../../../_rst/datasets.extraction.html#datasets.extraction.progress_publisher.ProgressPublisher.join">[docs]</a>
+    <span class="k">def</span> <span class="nf">join</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">join</span><span class="p">()</span>
+        <span class="n">debug_io</span><span class="p">(</span><span class="s2">&quot;Joined publisher&quot;</span><span class="p">)</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Amadou Wolfgang Cisse.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

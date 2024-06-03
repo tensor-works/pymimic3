@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>datasets.processors.feature_engines &mdash; open-mimic-iii - documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=92fd9be5" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../../_static/documentation_options.js?v=b1628c55"></script>
+        <script src="../../../_static/doctools.js?v=9a2dae69"></script>
+        <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            open-mimic-iii
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../_rst/datasets.html">datasets package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../_rst/generators.html">generators package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../_rst/metrics.html">metrics package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../_rst/models.html">models package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../_rst/pipelines.html">pipelines package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../_rst/preprocessing.html">preprocessing package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">open-mimic-iii</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+          <li class="breadcrumb-item"><a href="../../datasets.html">datasets</a></li>
+          <li class="breadcrumb-item"><a href="../processors.html">datasets.processors</a></li>
+      <li class="breadcrumb-item active">datasets.processors.feature_engines</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for datasets.processors.feature_engines</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">This module provides the MIMICFeatureEngine class to process time series data from the MIMIC-III dataset, applying various feature engineering techniques and storing the processed data for downstream tasks.</span>
+
+<span class="sd">Usage Examples</span>
+<span class="sd">--------------</span>
+<span class="sd">.. code-block:: python</span>
+
+<span class="sd">    from pathlib import Path</span>
+<span class="sd">    import json</span>
+<span class="sd">    from datasets.readers import ProcessedSetReader</span>
+<span class="sd">    from datasets.trackers import PreprocessingTracker</span>
+<span class="sd">    from datasets.processors import MIMICFeatureEngine</span>
+
+<span class="sd">    # Define the path to the dataset, storage, and configuration file</span>
+<span class="sd">    dataset_path = Path(&quot;/path/to/extracted/dataset&quot;)</span>
+<span class="sd">    storage_path = Path(&quot;/path/to/store/processed/data&quot;)</span>
+
+<span class="sd">    # example file located at etc/engineering_config.json</span>
+<span class="sd">    config_path = Path(&quot;/path/to/config.json&quot;)</span>
+
+<span class="sd">    # Initialize the reader and tracker</span>
+<span class="sd">    reader = ProcessedSetReader(dataset_path)</span>
+<span class="sd">    tracker = PreprocessingTracker(storage_path)</span>
+
+<span class="sd">    # Initialize the MIMICFeatureEngine for the LOS (length-of-stay) task</span>
+<span class="sd">    # Tasks are IHM, DECOMP, LOS, PHENO</span>
+<span class="sd">    feature_engine = MIMICFeatureEngine(</span>
+<span class="sd">        config_dict=config_path,</span>
+<span class="sd">        task=&quot;LOS&quot;,</span>
+<span class="sd">        reader=reader,</span>
+<span class="sd">        storage_path=storage_path,</span>
+<span class="sd">        tracker=tracker,</span>
+<span class="sd">        verbose=True</span>
+<span class="sd">    )</span>
+
+<span class="sd">    # Transform a subject</span>
+<span class="sd">    subject_id = 12345</span>
+<span class="sd">    X, y = feature_engine.transform_subject(subject_id)</span>
+<span class="sd">    </span>
+<span class="sd">    # Transform the entire dataset</span>
+<span class="sd">    dataset = reader.read_samples(read_ids=True)</span>
+<span class="sd">    X, y, t = feature_engine.transform_dataset(dataset)</span>
+
+<span class="sd">    # Or transfrom the reader directly</span>
+<span class="sd">    reader = feature_engine.transform_reader(reader)</span>
+
+<span class="sd">    # Save the transformed data</span>
+<span class="sd">    feature_engine.save_data()</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">import</span> <span class="nn">json</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Tuple</span>
+<span class="kn">from</span> <span class="nn">scipy.stats</span> <span class="kn">import</span> <span class="n">skew</span>
+<span class="kn">from</span> <span class="nn">numpy</span> <span class="kn">import</span> <span class="n">random</span>
+<span class="kn">from</span> <span class="nn">multiprocess</span> <span class="kn">import</span> <span class="n">Manager</span>
+<span class="kn">from</span> <span class="nn">datasets.readers</span> <span class="kn">import</span> <span class="n">ProcessedSetReader</span>
+<span class="kn">from</span> <span class="nn">datasets.writers</span> <span class="kn">import</span> <span class="n">DataSetWriter</span>
+<span class="kn">from</span> <span class="nn">utils</span> <span class="kn">import</span> <span class="n">dict_subset</span>
+<span class="kn">from</span> <span class="nn">utils.IO</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span> <span class="nn">datasets.trackers</span> <span class="kn">import</span> <span class="n">PreprocessingTracker</span>
+<span class="kn">from</span> <span class="nn">datasets.processors</span> <span class="kn">import</span> <span class="n">AbstractProcessor</span>
+
+
+<div class="viewcode-block" id="MIMICFeatureEngine">
+<a class="viewcode-back" href="../../../_rst/datasets.processors.html#datasets.processors.feature_engines.MIMICFeatureEngine">[docs]</a>
+<span class="k">class</span> <span class="nc">MIMICFeatureEngine</span><span class="p">(</span><span class="n">AbstractProcessor</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This class processes time series data from the MIMIC-III dataset, applying various feature </span>
+<span class="sd">    engineering techniques and storing the processed data for downstream tasks.</span>
+<span class="sd">    The feature engineering is sped up using multiprocessing.</span>
+<span class="sd">    The features are engineered using min, max, mean, std, skew and len.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    config_dict : Path</span>
+<span class="sd">        The path to the configuration dictionary for feature engineering.</span>
+<span class="sd">    task : str</span>
+<span class="sd">        The task name, used to determine specific processing steps.</span>
+<span class="sd">    reader : ProcessedSetReader, optional</span>
+<span class="sd">        The reader object for reading batch data, by default None.</span>
+<span class="sd">    storage_path : Path, optional</span>
+<span class="sd">        The path where the processed data will be stored, by default None.</span>
+<span class="sd">    tracker : PreprocessingTracker, optional</span>
+<span class="sd">        The tracker object for keeping track of preprocessing steps, by default None.</span>
+<span class="sd">    verbose : bool, optional</span>
+<span class="sd">        If True, print verbose logs during processing, by default False.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                 <span class="n">config_dict</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+                 <span class="n">task</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+                 <span class="n">reader</span><span class="p">:</span> <span class="n">ProcessedSetReader</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">storage_path</span><span class="p">:</span> <span class="n">Path</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">tracker</span><span class="p">:</span> <span class="n">PreprocessingTracker</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_storage_path</span> <span class="o">=</span> <span class="n">storage_path</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_writer</span> <span class="o">=</span> <span class="p">(</span><span class="n">DataSetWriter</span><span class="p">(</span><span class="n">storage_path</span><span class="p">)</span> <span class="k">if</span> <span class="n">storage_path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_source_reader</span> <span class="o">=</span> <span class="n">reader</span>
+        <span class="k">if</span> <span class="n">tracker</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_tracker</span> <span class="o">=</span> <span class="n">tracker</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_tracker</span> <span class="o">=</span> <span class="p">(</span><span class="n">PreprocessingTracker</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">storage_path</span><span class="p">,</span> <span class="s2">&quot;progress&quot;</span><span class="p">))</span>
+                             <span class="k">if</span> <span class="n">storage_path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_task</span> <span class="o">=</span> <span class="n">task</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_save_as_samples</span> <span class="o">=</span> <span class="p">(</span><span class="kc">True</span> <span class="k">if</span> <span class="n">task</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;IHM&quot;</span><span class="p">,</span> <span class="s2">&quot;PHENO&quot;</span><span class="p">]</span>\
+                                 <span class="k">else</span> <span class="kc">False</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_subsample_switch</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;first_percentage&quot;</span><span class="p">:</span>
+                <span class="k">lambda</span> <span class="n">start_t</span><span class="p">,</span> <span class="n">end_t</span><span class="p">,</span> <span class="n">percentage</span><span class="p">:</span> <span class="p">(</span><span class="n">start_t</span><span class="p">,</span> <span class="n">start_t</span> <span class="o">+</span>
+                                                    <span class="p">(</span><span class="n">end_t</span> <span class="o">-</span> <span class="n">start_t</span><span class="p">)</span> <span class="o">*</span> <span class="n">percentage</span> <span class="o">/</span> <span class="mf">100.0</span><span class="p">),</span>
+            <span class="s2">&quot;last_percentage&quot;</span><span class="p">:</span>
+                <span class="k">lambda</span> <span class="n">start_t</span><span class="p">,</span> <span class="n">end_t</span><span class="p">,</span> <span class="n">percentage</span><span class="p">:</span> <span class="p">(</span><span class="n">end_t</span> <span class="o">-</span>
+                                                    <span class="p">(</span><span class="n">end_t</span> <span class="o">-</span> <span class="n">start_t</span><span class="p">)</span> <span class="o">*</span> <span class="n">percentage</span> <span class="o">/</span> <span class="mf">100.0</span><span class="p">,</span> <span class="n">end_t</span><span class="p">)</span>
+        <span class="p">}</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_lock</span> <span class="o">=</span> <span class="n">Manager</span><span class="p">()</span><span class="o">.</span><span class="n">Lock</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_verbose</span> <span class="o">=</span> <span class="n">verbose</span>
+
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">config_dict</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span>
+            <span class="n">config_dict</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_sampler_combinations</span> <span class="o">=</span> <span class="n">config_dict</span><span class="p">[</span><span class="s2">&quot;sampler_combinations&quot;</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_impute_config</span> <span class="o">=</span> <span class="n">config_dict</span><span class="p">[</span><span class="s2">&quot;channels&quot;</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_channel_names</span> <span class="o">=</span> <span class="n">config_dict</span><span class="p">[</span><span class="s2">&quot;channel_names&quot;</span><span class="p">]</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">subjects</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get the list of subject IDs available in the reader.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        list</span>
+<span class="sd">            A list of subject IDs.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_source_reader</span><span class="o">.</span><span class="n">subject_ids</span>
+
+<div class="viewcode-block" id="MIMICFeatureEngine.transform_subject">
+<a class="viewcode-back" href="../../../_rst/datasets.processors.html#datasets.processors.feature_engines.MIMICFeatureEngine.transform_subject">[docs]</a>
+    <span class="k">def</span> <span class="nf">transform_subject</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">subject_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Transform the data for a specific subject.</span>
+
+<span class="sd">        This method reads the data for a specific subject, processes it, and returns</span>
+<span class="sd">        the engineered features along with tracking information.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        subject_id : int</span>
+<span class="sd">            The ID of the subject to transform data for.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        tuple</span>
+<span class="sd">            A tuple containing the engineered features and tracking information.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">X_processed</span><span class="p">,</span> <span class="n">y_processed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_source_reader</span><span class="o">.</span><span class="n">read_sample</span><span class="p">(</span><span class="n">subject_id</span><span class="p">,</span>
+                                                            <span class="n">read_ids</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                                                            <span class="n">data_type</span><span class="o">=</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
+        <span class="n">X</span> <span class="o">=</span> <span class="p">{</span><span class="n">subject_id</span><span class="p">:</span> <span class="n">X_processed</span><span class="p">}</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="p">{</span><span class="n">subject_id</span><span class="p">:</span> <span class="n">y_processed</span><span class="p">}</span>
+        <span class="k">if</span> <span class="n">X</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">y</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span>
+
+        <span class="n">X_engineered</span><span class="p">,</span> <span class="n">y_engineered</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">X_engineered</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">y_engineered</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_tracker</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">X_engineered</span><span class="p">,</span> <span class="n">y_engineered</span>
+
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lock</span><span class="p">:</span>
+            <span class="n">tracking_info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_tracker</span><span class="o">.</span><span class="n">subjects</span><span class="p">[</span><span class="n">subject_id</span><span class="p">]</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">X_engineered</span><span class="p">,</span> <span class="n">y_engineered</span><span class="p">),</span> <span class="n">tracking_info</span></div>
+
+
+<div class="viewcode-block" id="MIMICFeatureEngine.transform">
+<a class="viewcode-back" href="../../../_rst/datasets.processors.html#datasets.processors.feature_engines.MIMICFeatureEngine.transform">[docs]</a>
+    <span class="k">def</span> <span class="nf">transform</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X_dict</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">]],</span> <span class="n">y_dict</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">]]):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Save the engineered data to the storage path.</span>
+
+<span class="sd">        If no subject IDs are specified, all the engineered data will be saved.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        subject_ids : list, optional</span>
+<span class="sd">            A list of subject IDs to save data for. If None, all data is saved. Default is None.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">n_subjects</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">n_stays</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">n_samples</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_verbose</span><span class="p">:</span>
+            <span class="n">info_io</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Engineering processed data:</span><span class="se">\n</span><span class="s2">&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;Engineered subjects: </span><span class="si">{</span><span class="mi">0</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;Engineered stays: </span><span class="si">{</span><span class="mi">0</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;Engineered samples: </span><span class="si">{</span><span class="mi">0</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_samples_processed</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_X_processed</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_y_processed</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_t_processed</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+
+        <span class="k">for</span> <span class="n">subject_id</span> <span class="ow">in</span> <span class="n">X_dict</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="n">X_subject</span> <span class="o">=</span> <span class="n">X_dict</span><span class="p">[</span><span class="n">subject_id</span><span class="p">]</span>
+            <span class="n">y_subject</span> <span class="o">=</span> <span class="n">y_dict</span><span class="p">[</span><span class="n">subject_id</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_X_processed</span><span class="p">[</span><span class="n">subject_id</span><span class="p">]</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_y_processed</span><span class="p">[</span><span class="n">subject_id</span><span class="p">]</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_t_processed</span><span class="p">[</span><span class="n">subject_id</span><span class="p">]</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+            <span class="n">tracking_info</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+
+            <span class="k">for</span> <span class="n">stay_id</span> <span class="ow">in</span> <span class="n">X_subject</span><span class="p">:</span>
+                <span class="n">X_df</span> <span class="o">=</span> <span class="n">X_subject</span><span class="p">[</span><span class="n">stay_id</span><span class="p">]</span>
+                <span class="n">y_df</span> <span class="o">=</span> <span class="n">y_subject</span><span class="p">[</span><span class="n">stay_id</span><span class="p">]</span>
+
+                <span class="n">X_ss</span><span class="p">,</span> <span class="n">ys</span><span class="p">,</span> <span class="n">ts</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_engineer_stay</span><span class="p">(</span><span class="n">X_df</span><span class="p">,</span> <span class="n">y_df</span><span class="p">)</span>
+                <span class="n">X_ss</span><span class="p">,</span> <span class="n">ys</span><span class="p">,</span> <span class="n">ts</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_convert_feature_dtype</span><span class="p">(</span><span class="n">X_ss</span><span class="p">,</span> <span class="n">ys</span><span class="p">,</span> <span class="n">ts</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_X_processed</span><span class="p">[</span><span class="n">subject_id</span><span class="p">][</span><span class="n">stay_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">X_ss</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_y_processed</span><span class="p">[</span><span class="n">subject_id</span><span class="p">][</span><span class="n">stay_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">atleast_2d</span><span class="p">(</span><span class="n">ys</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_t_processed</span><span class="p">[</span><span class="n">subject_id</span><span class="p">][</span><span class="n">stay_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">ts</span>
+                <span class="n">tracking_info</span><span class="p">[</span><span class="n">stay_id</span><span class="p">]</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">ys</span><span class="p">)</span>
+                <span class="n">n_samples</span> <span class="o">+=</span> <span class="nb">len</span><span class="p">(</span><span class="n">ys</span><span class="p">)</span>
+                <span class="n">n_stays</span> <span class="o">+=</span> <span class="mi">1</span>
+
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_verbose</span><span class="p">:</span>
+                    <span class="n">info_io</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;Engineering processed data:</span><span class="se">\n</span><span class="s2">&quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;Engineered subjects: </span><span class="si">{</span><span class="n">n_subjects</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;Engineered stays: </span><span class="si">{</span><span class="n">n_stays</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;Engineered samples: </span><span class="si">{</span><span class="n">n_samples</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                        <span class="n">flush_block</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+            <span class="n">n_subjects</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_tracker</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lock</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_tracker</span><span class="o">.</span><span class="n">subjects</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="n">subject_id</span><span class="p">:</span> <span class="n">tracking_info</span><span class="p">})</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_verbose</span><span class="p">:</span>
+            <span class="n">info_io</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Engineering processed data:</span><span class="se">\n</span><span class="s2">&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;Engineered subjects: </span><span class="si">{</span><span class="n">n_subjects</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;Engineered stays: </span><span class="si">{</span><span class="n">n_stays</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;Engineered samples: </span><span class="si">{</span><span class="n">n_samples</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                <span class="n">flush_block</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_X_processed</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_y_processed</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_t_processed</span></div>
+
+
+    <span class="k">def</span> <span class="nf">_engineer_stay</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X_df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">y_df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Engineer features for a single ICU stay.</span>
+
+<span class="sd">        This method applies feature engineering techniques to the data from a single ICU stay.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        X_df : pd.DataFrame</span>
+<span class="sd">            DataFrame containing the input data for the ICU stay.</span>
+<span class="sd">        y_df : pd.DataFrame</span>
+<span class="sd">            DataFrame containing the output data for the ICU stay.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        tuple</span>
+<span class="sd">            A tuple containing the engineered features, output data, and timestamps.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">X_df</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_impute_categorical_data</span><span class="p">(</span><span class="n">X_df</span><span class="p">)</span>
+        <span class="n">Xs</span><span class="p">,</span> <span class="n">ys</span><span class="p">,</span> <span class="n">ts</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_read_timeseries_windows</span><span class="p">(</span><span class="n">X_df</span><span class="p">,</span> <span class="n">y_df</span><span class="p">)</span>
+
+        <span class="p">(</span><span class="n">Xs</span><span class="p">,</span> <span class="n">ys</span><span class="p">,</span> <span class="n">ts</span><span class="p">)</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_shuffle</span><span class="p">([</span><span class="n">Xs</span><span class="p">,</span> <span class="n">ys</span><span class="p">,</span> <span class="n">ts</span><span class="p">])</span>
+
+        <span class="n">X_ss</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+        <span class="n">ys</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">ys</span><span class="p">)</span>
+        <span class="n">ts</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">ts</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">df</span> <span class="ow">in</span> <span class="n">Xs</span><span class="p">:</span>
+            <span class="n">subsamples</span> <span class="o">=</span> <span class="p">[[</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_channel_subsampler</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="n">column</span><span class="p">],</span> <span class="o">*</span><span class="n">combination</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">combination</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sampler_combinations</span>
+            <span class="p">]</span>
+                          <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_channel_names</span><span class="p">]</span>
+            <span class="c1"># Iterating by channel name from config allows normalization</span>
+            <span class="c1"># and ensures comparability to ground truth data from original dir</span>
+
+            <span class="n">engineered_features</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_make_engineered_features</span><span class="p">(</span><span class="n">channel</span><span class="o">.</span><span class="n">values</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">subsample</span> <span class="ow">in</span> <span class="n">subsamples</span>
+                <span class="k">for</span> <span class="n">channel</span> <span class="ow">in</span> <span class="n">subsample</span>
+            <span class="p">]</span>
+
+            <span class="n">X_ss</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span><span class="n">engineered_features</span><span class="p">))</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">_samples_processed</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="k">return</span> <span class="n">X_ss</span><span class="p">,</span> <span class="n">ys</span><span class="p">,</span> <span class="n">ts</span>
+
+    <span class="k">def</span> <span class="nf">_convert_feature_dtype</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">t</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Does nothing, need because of inheritance.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">t</span>
+
+<div class="viewcode-block" id="MIMICFeatureEngine.save_data">
+<a class="viewcode-back" href="../../../_rst/datasets.processors.html#datasets.processors.feature_engines.MIMICFeatureEngine.save_data">[docs]</a>
+    <span class="k">def</span> <span class="nf">save_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">subject_ids</span><span class="p">:</span> <span class="nb">list</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Saves the engineered feature data.</span>
+
+<span class="sd">        This method saves the engineered feature data to the specified storage path. If no subject IDs are provided, all </span>
+<span class="sd">        engineered data will be saved. The data is saved in HDF5 format and optionally concatenated into CSV format for PHENO and IHM.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">subject_ids</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">name_data_pairs</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">&quot;X&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_X_processed</span><span class="p">,</span>
+                <span class="s2">&quot;y&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_y_processed</span><span class="p">,</span>
+                <span class="s2">&quot;t&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_t_processed</span>
+            <span class="p">}</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">name_data_pairs</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">&quot;X&quot;</span><span class="p">:</span> <span class="n">dict_subset</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_X_processed</span><span class="p">,</span> <span class="n">subject_ids</span><span class="p">),</span>
+                <span class="s2">&quot;y&quot;</span><span class="p">:</span> <span class="n">dict_subset</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_y_processed</span><span class="p">,</span> <span class="n">subject_ids</span><span class="p">),</span>
+                <span class="s2">&quot;t&quot;</span><span class="p">:</span> <span class="n">dict_subset</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_t_processed</span><span class="p">,</span> <span class="n">subject_ids</span><span class="p">)</span>
+            <span class="p">}</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lock</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_writer</span><span class="o">.</span><span class="n">write_bysubject</span><span class="p">(</span><span class="n">name_data_pairs</span><span class="p">,</span> <span class="n">file_type</span><span class="o">=</span><span class="s2">&quot;hdf5&quot;</span><span class="p">)</span>
+
+        <span class="k">def</span> <span class="nf">create_df</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">file_name</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">file_name</span> <span class="o">==</span> <span class="s2">&quot;X&quot;</span><span class="p">:</span>
+                <span class="n">dfs</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">([([</span><span class="n">subject_id</span><span class="p">,</span> <span class="n">stay_id</span><span class="p">]</span> <span class="o">+</span>
+                                     <span class="n">np</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(</span><span class="n">frame</span><span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(</span><span class="n">frame</span><span class="p">))</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="k">else</span>
+                                    <span class="p">([</span><span class="n">subject_id</span><span class="p">,</span> <span class="n">stay_id</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="n">frame</span><span class="p">)])</span>
+                                    <span class="k">for</span> <span class="n">subject_id</span><span class="p">,</span> <span class="n">subject_stays</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+                                    <span class="k">for</span> <span class="n">stay_id</span><span class="p">,</span> <span class="n">frame</span> <span class="ow">in</span> <span class="n">subject_stays</span><span class="o">.</span><span class="n">items</span><span class="p">()])</span>
+
+            <span class="k">elif</span> <span class="n">file_name</span> <span class="o">==</span> <span class="s2">&quot;y&quot;</span><span class="p">:</span>
+                <span class="n">dfs</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">([([</span><span class="n">subject_id</span><span class="p">,</span> <span class="n">stay_id</span><span class="p">]</span> <span class="o">+</span>
+                                     <span class="n">frame</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">frame</span><span class="o">.</span><span class="n">tolist</span><span class="p">(),</span> <span class="nb">list</span><span class="p">)</span> <span class="k">else</span>
+                                    <span class="p">([</span><span class="n">subject_id</span><span class="p">,</span> <span class="n">stay_id</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="n">frame</span><span class="p">)])</span>
+                                    <span class="k">for</span> <span class="n">subject_id</span><span class="p">,</span> <span class="n">subject_stays</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+                                    <span class="k">for</span> <span class="n">stay_id</span><span class="p">,</span> <span class="n">frame</span> <span class="ow">in</span> <span class="n">subject_stays</span><span class="o">.</span><span class="n">items</span><span class="p">()])</span>
+            <span class="n">dfs</span> <span class="o">=</span> <span class="n">dfs</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">{</span><span class="mi">0</span><span class="p">:</span> <span class="s2">&quot;subject_id&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">:</span> <span class="s2">&quot;stay_id&quot;</span><span class="p">})</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">len</span><span class="p">(</span><span class="n">dfs</span><span class="p">):</span>
+                <span class="k">return</span>
+            <span class="k">return</span> <span class="n">dfs</span>
+
+        <span class="k">def</span> <span class="nf">append_data</span><span class="p">(</span><span class="n">X</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nb">dict</span><span class="p">):</span>
+
+            <span class="k">def</span> <span class="nf">append</span><span class="p">(</span><span class="n">dfs</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">file_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+                <span class="n">file</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_storage_path</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">file_name</span><span class="si">}</span><span class="s2">.csv&quot;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">file</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
+                    <span class="n">dfs</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="n">file</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;a&#39;</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">dfs</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="n">file</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+            <span class="n">X_df</span> <span class="o">=</span> <span class="n">create_df</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="s2">&quot;X&quot;</span><span class="p">)</span>
+            <span class="n">y_df</span> <span class="o">=</span> <span class="n">create_df</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">y_df</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="ow">not</span> <span class="nb">len</span><span class="p">(</span><span class="n">y_df</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="nb">len</span><span class="p">(</span><span class="n">X_df</span><span class="p">):</span>
+                <span class="k">return</span>
+            <span class="n">append</span><span class="p">(</span><span class="n">X_df</span><span class="p">,</span> <span class="s2">&quot;X&quot;</span><span class="p">)</span>
+            <span class="n">append</span><span class="p">(</span><span class="n">y_df</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_save_as_samples</span><span class="p">:</span>
+            <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lock</span><span class="p">:</span>
+                <span class="n">append_data</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_X_processed</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_y_processed</span><span class="p">)</span>
+
+        <span class="k">return</span></div>
+
+
+    <span class="k">def</span> <span class="nf">_shuffle</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">tuple</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Shuffle the data.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">2</span>
+
+        <span class="n">data</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="o">*</span><span class="n">data</span><span class="p">))</span>
+        <span class="n">random</span><span class="o">.</span><span class="n">shuffle</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="o">*</span><span class="n">data</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="n">data</span>
+
+    <span class="k">def</span> <span class="nf">_impute_categorical_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Imputes specified columns to categorical data.</span>
+
+<span class="sd">        This method replaces specified values in the input DataFrame with their categorical equivalents based on</span>
+<span class="sd">        the impute configuration. It ensures that the specified columns are treated as categorical data types.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">replace_dict</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;nan&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">}</span>
+
+        <span class="k">for</span> <span class="n">channel</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_impute_config</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="k">if</span> <span class="s1">&#39;values&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_impute_config</span><span class="p">[</span><span class="n">channel</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                <span class="n">replace_dict</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_impute_config</span><span class="p">[</span><span class="n">channel</span><span class="p">][</span><span class="s1">&#39;values&#39;</span><span class="p">])</span>
+
+        <span class="k">with</span> <span class="n">pd</span><span class="o">.</span><span class="n">option_context</span><span class="p">(</span><span class="s1">&#39;future.no_silent_downcasting&#39;</span><span class="p">,</span> <span class="kc">True</span><span class="p">):</span>
+            <span class="n">X</span> <span class="o">=</span> <span class="n">X</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">replace_dict</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">X</span>
+
+    <span class="k">def</span> <span class="nf">_make_engineered_features</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Generate engineered features.</span>
+
+<span class="sd">        This method generates engineered features from the input data using statistical functions such as min, max,</span>
+<span class="sd">        mean, standard deviation, skewness, and length.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">functions</span> <span class="o">=</span> <span class="p">[</span><span class="nb">min</span><span class="p">,</span> <span class="nb">max</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">,</span> <span class="n">skew</span><span class="p">,</span> <span class="nb">len</span><span class="p">]</span>
+        <span class="kn">import</span> <span class="nn">warnings</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s2">&quot;error&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">engineered_data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">functions</span><span class="p">,)),</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># !TODO DEBUGGING</span>
+            <span class="n">engineered_data</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="n">fn</span><span class="p">(</span><span class="n">data</span><span class="p">)</span> <span class="k">if</span> <span class="n">fn</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">skew</span> <span class="ow">or</span>
+                <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">all</span><span class="p">(</span><span class="n">i</span> <span class="o">==</span> <span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                                           <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">data</span><span class="p">)</span> <span class="ow">or</span> <span class="n">fn</span> <span class="ow">is</span> <span class="nb">len</span><span class="p">)</span> <span class="k">else</span>
+                <span class="mi">0</span>  <span class="c1">#TODO! This will fail and be NaN in Windows</span>
+                <span class="k">for</span> <span class="n">fn</span> <span class="ow">in</span> <span class="n">functions</span>
+            <span class="p">]</span>
+            <span class="n">engineered_data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">engineered_data</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">engineered_data</span>
+
+    <span class="k">def</span> <span class="nf">_channel_subsampler</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">Sr</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span> <span class="n">sampler_function</span><span class="p">,</span> <span class="n">percentage</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Subsample a time series channel.</span>
+
+<span class="sd">        This method subsamples a time series channel based on specified time window percentage.</span>
+<span class="sd">        For example this could mean first 25% or last 50% of the time series.</span>
+<span class="sd">        It returns the subsampled series within the calculated time window.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">Sr</span> <span class="o">=</span> <span class="n">Sr</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">Sr</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">()</span>
+
+        <span class="n">start_t</span> <span class="o">=</span> <span class="n">Sr</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">end_t</span> <span class="o">=</span> <span class="n">Sr</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+        <span class="n">sampled_start_t</span><span class="p">,</span> <span class="n">sampled_end_t</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_subsample_switch</span><span class="p">[</span><span class="n">sampler_function</span><span class="p">](</span><span class="n">start_t</span><span class="p">,</span> <span class="n">end_t</span><span class="p">,</span>
+                                                                                  <span class="n">percentage</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">Sr</span><span class="p">[(</span><span class="n">Sr</span><span class="o">.</span><span class="n">index</span> <span class="o">&lt;</span> <span class="n">sampled_end_t</span> <span class="o">+</span> <span class="mf">1e-6</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">Sr</span><span class="o">.</span><span class="n">index</span> <span class="o">&gt;</span> <span class="n">sampled_start_t</span> <span class="o">-</span> <span class="mf">1e-6</span><span class="p">)]</span>
+
+    <span class="k">def</span> <span class="nf">_timeseries_subsampler</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">sampler_function</span><span class="p">,</span> <span class="n">percentage</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Subsample a time series DataFrame.</span>
+
+<span class="sd">        This method subsamples the input DataFrame based on specified time window percentage.</span>
+<span class="sd">        For example this could mean first 25% or last 50% of the time series.</span>
+<span class="sd">        It returns a list of subsampled columns.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">X</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">((</span><span class="mi">6</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">start_t</span> <span class="o">=</span> <span class="n">X</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">end_t</span> <span class="o">=</span> <span class="n">X</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+            <span class="n">sampled_start_t</span><span class="p">,</span> <span class="n">sampled_end_t</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_subsample_switch</span><span class="p">[</span><span class="n">sampler_function</span><span class="p">](</span><span class="n">start_t</span><span class="p">,</span>
+                                                                                      <span class="n">end_t</span><span class="p">,</span>
+                                                                                      <span class="n">percentage</span><span class="p">)</span>
+
+            <span class="n">data</span> <span class="o">=</span> <span class="n">X</span><span class="p">[(</span><span class="n">X</span><span class="o">.</span><span class="n">index</span> <span class="o">&lt;</span> <span class="n">sampled_end_t</span> <span class="o">+</span> <span class="mf">1e-6</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">X</span><span class="o">.</span><span class="n">index</span> <span class="o">&gt;</span> <span class="n">sampled_start_t</span> <span class="o">-</span> <span class="mf">1e-6</span><span class="p">)]</span>
+
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">X</span><span class="p">,)),</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="p">[</span><span class="n">data</span><span class="p">[</span><span class="n">channel</span><span class="p">]</span> <span class="k">for</span> <span class="n">channel</span> <span class="ow">in</span> <span class="n">data</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">_read_timeseries_windows</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X_df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">y_df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;tuple[list]&#39;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Read time series windows.</span>
+
+<span class="sd">        This method reads the time series data to create windows for feature engineering, reaching from the</span>
+<span class="sd">        start time-stamp to the current timestamp. The window is paired with the current label. </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">Xs</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+        <span class="n">ys</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+        <span class="n">ts</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">y_df</span><span class="p">)):</span>
+            <span class="n">index</span> <span class="o">=</span> <span class="n">i</span>
+
+            <span class="k">if</span> <span class="n">index</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">index</span> <span class="o">&gt;=</span> <span class="nb">len</span><span class="p">(</span><span class="n">y_df</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="s2">&quot;Index must be from 0 (inclusive) to number of examples (exclusive).&quot;</span><span class="p">)</span>
+
+            <span class="n">t</span> <span class="o">=</span> <span class="n">y_df</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">index</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
+            <span class="n">y</span> <span class="o">=</span> <span class="n">y_df</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">index</span><span class="p">,</span> <span class="mi">1</span><span class="p">:]</span>
+            <span class="n">X</span> <span class="o">=</span> <span class="n">X_df</span><span class="p">[</span><span class="n">X_df</span><span class="o">.</span><span class="n">index</span> <span class="o">&lt;</span> <span class="n">t</span> <span class="o">+</span> <span class="mf">1e-6</span><span class="p">]</span>
+
+            <span class="n">Xs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+            <span class="n">ys</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+            <span class="n">ts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">Xs</span><span class="p">,</span> <span class="n">ys</span><span class="p">,</span> <span class="n">ts</span>
+
+    <span class="k">def</span> <span class="nf">_convert_feature_dtype</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">t</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Convert feature data types.</span>
+
+<span class="sd">        This method converts the data types of the input features, target values, and timestamps to numpy arrays.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">X</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">X</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">y</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">t</span><span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Amadou Wolfgang Cisse.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

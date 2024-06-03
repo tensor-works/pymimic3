@@ -1,16 +1,18 @@
-"""Dataset file
+"""
+Dataset Writers
+===============
 
-This file allows access to the dataset as specified.
-All function in this file are used by the main interface function load_data.
-Subfunctions used within private functions are located in the datasets.utils module.
+This module provides classes and methods for writing dataset files, and creating the subject directories named with the respecitve subject ID. The main class `DataSetWriter`
+is used to write the subject data either as .npy, .csv, or .hdf5 files. 
+and ICU history.
 
-Todo:
-    - Use a settings.json
-    - This is a construction site, see what you can bring in here
-    - Provid link to kaggle in load_data doc string
-    - Expand function to utils
+Classes
+-------
+- DataSetWriter: A writer class for datasets, providing methods to write data to files.
 
-YerevaNN/mimic3-benchmarks
+References
+----------
+- YerevaNN/mimic3-benchmarks: https://github.com/YerevaNN/mimic3-benchmarks
 """
 import pandas as pd
 import shutil
@@ -25,22 +27,31 @@ __all__ = ["DataSetWriter"]
 
 
 class DataSetWriter():
-    """_summary_
+    """
+    A writer class for datasets, providing methods to write data to files and create subject ID labeld directories.
+
+    Parameters
+    ----------
+    root_path : Path
+        The root directory path where the dataset files will be written.
+
+    Examples
+    --------
+    >>> root_path = Path("/path/to/data")
+    >>> writer = DataSetWriter(root_path)
+    >>> data = {
+    ...     "subject_events": {10006: pd.DataFrame(...), 10011: pd.DataFrame(...)},
+    ...     "episodic_data": {10006: pd.DataFrame(...), 10011: pd.DataFrame(...)}
+    ... }
+    >>> writer.write_bysubject(data, file_type="csv")
     """
 
     def __init__(self, root_path: Path) -> None:
-        """_summary_
-
-        Args:
-            root_path (Path): _description_
-        """
         self.root_path = root_path
 
-    def check_filename(self, filename: str):
-        """_summary_
-
-        Args:
-            filename (str): _description_
+    def _check_filename(self, filename: str):
+        """
+        Check if the filename is valid.
         """
         possible_filenames = [
             "episodic_data", "timeseries", "subject_events", "subject_diagnoses",
@@ -50,14 +61,9 @@ class DataSetWriter():
         if filename not in possible_filenames:
             raise (f"choose a filename from {possible_filenames}")
 
-    def get_subject_ids(self, data: dict):
-        """_summary_
-
-        Args:
-            data (dict): _description_
-
-        Returns:
-            _type_: _description_
+    def _get_subject_ids(self, data: dict):
+        """
+        Get the subject IDs from the data dictionary.
         """
 
         id_sets = [set(dictionary.keys()) for dictionary in data.values()]
@@ -69,10 +75,24 @@ class DataSetWriter():
                         index: bool = True,
                         exists_ok: bool = False,
                         file_type: str = "csv"):
-        """_summary_
+        """
+        Write data of file type by subject and create subject ID labeled directories.
 
-        Args:
-            data (dict): _description_
+        Parameters
+        ----------
+        data : dict
+            The data to write.
+        index : bool, optional
+            Whether to write the index. Default is True.
+        exists_ok : bool, optional
+            Whether to overwrite existing files. Default is False.
+        file_type : str, optional
+            The file type to write. Must be one of ['csv', 'npy', 'hdf5']. Default is 'csv'.
+
+        Raises
+        ------
+        ValueError
+            If the file_type is not supported.
         """
         if self.root_path is None:
             return
@@ -81,9 +101,9 @@ class DataSetWriter():
             raise ValueError(
                 f"file_type {file_type} not supported. Must be one of ['csv', 'npy', 'hdf5']")
 
-        for subject_id in self.get_subject_ids(data):
+        for subject_id in self._get_subject_ids(data):
 
-            self.write_file(subject_id=subject_id,
+            self._write_subject(subject_id=subject_id,
                             data={filename: data[filename][subject_id] for filename in data.keys()},
                             index=index,
                             exists_ok=exists_ok,
@@ -91,18 +111,14 @@ class DataSetWriter():
 
         return
 
-    def write_file(self,
+    def _write_subject(self,
                    subject_id: int,
                    data: dict,
                    index: bool = True,
                    exists_ok: bool = False,
                    file_type: str = "csv"):
-        """_summary_
-
-        Args:
-            subject_id (int): _description_
-            data (dict): _description_
-            exists_ok (bool): switch to append mode if file exists for CSVs
+        """
+        Write all files for a single subject
         """
 
         def save_df(df: pd.DataFrame,
@@ -139,7 +155,7 @@ class DataSetWriter():
                 f"file_type {file_type} not supported. Must be one of ['csv', 'npy', 'hdf5']")
         for filename, item in data.items():
             delet_flag = False
-            self.check_filename(filename)
+            self._check_filename(filename)
 
             subject_path = Path(self.root_path, str(subject_id))
 
@@ -173,11 +189,17 @@ class DataSetWriter():
                 shutil.rmtree(str(subject_path))
 
     def write_subject_events(self, data: dict, lock: mp.Lock = None, dtypes: dict = None):
-        """_summary_
+        """
+        Write subject events data to files by creating a new file or appending to existing file and create subject ID labeled directories.
 
-        Args:
-            root_path (pd.DataFrame): _description_
-            data (dict): _description_
+        Parameters
+        ----------
+        data : dict
+            The subject events data to write.
+        lock : mp.Lock, optional
+            A lock object to synchronize writing. Default is None.
+        dtypes : dict, optional
+            Data types to cast the dataframe to. Default is None.
         """
         if self.root_path is None:
             return
