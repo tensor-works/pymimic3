@@ -1,4 +1,3 @@
-
 import pandas as pd
 import numpy as np
 import os
@@ -179,8 +178,8 @@ class MIMICDiscretizer(AbstractProcessor):
             A tuple containing the discretized data and the tracking information.
         """
         X_processed, y_processed = self._source_reader.read_sample(subject_id,
-                                                            read_ids=True,
-                                                            data_type=pd.DataFrame).values()
+                                                                   read_ids=True,
+                                                                   data_type=pd.DataFrame).values()
         X = {subject_id: X_processed}
         y = {subject_id: y_processed}
 

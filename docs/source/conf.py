@@ -9,6 +9,7 @@
 from dotenv import load_dotenv
 import os
 import sys
+
 sys.path.insert(0, os.path.abspath('../src'))
 load_dotenv()
 
@@ -21,19 +22,25 @@ release = '-'
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 extensions = [
-    "sphinx.ext.autodoc",
-    "sphinx.ext.napoleon",
-    "sphinx.ext.viewcode",
+    'sphinx.ext.autodoc',
+    'sphinx.ext.napoleon',
+    'sphinx.ext.viewcode',
+    'sphinx.ext.autosummary',
+    'sphinx.ext.intersphinx',
 ]
 
 templates_path = ['_templates']
-exclude_patterns = [
-]
-
-exclude_patterns = ["../src/managers.py"]
+exclude_patterns = []
+default_role = "autolink"
+exclude_patterns = ["../src/handlers.py"]
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
 html_theme = 'sphinx_rtd_theme'
 html_static_path = ['_static']
+
+autosummary_generate = True
+napoleon_numpy_docstring = True
+numpydoc_class_members_toctree = False
+numpydoc_show_class_members = False

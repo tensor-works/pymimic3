@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>metrics &mdash; open-mimic-iii - documentation</title>
-      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=92fd9be5" />
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=80d5e7a1" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=19f00094" />
 
   
@@ -33,22 +33,22 @@
           <a href="../index.html" class="icon icon-home">
             open-mimic-iii
           </a>
-<div role="search">
-  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
-    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
-    <input type="hidden" name="check_keywords" value="yes" />
-    <input type="hidden" name="area" value="default" />
-  </form>
+<div id="searchbox" style="display: none" role="search">
+  <h4>Quick search</h4>
+    <div>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" style="width: inherit;" name="q" />
+      <input type="submit" value="search" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
 </div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="../_rst/datasets.html">datasets package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../_rst/generators.html">generators package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../_rst/metrics.html">metrics package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../_rst/models.html">models package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../_rst/pipelines.html">pipelines package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../_rst/preprocessing.html">preprocessing package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../_reference/api_reference.html">API Reference</a></li>
 </ul>
 
         </div>
@@ -82,7 +82,7 @@
 
 
 <div class="viewcode-block" id="CustomBins">
-<a class="viewcode-back" href="../_rst/metrics.html#metrics.CustomBins">[docs]</a>
+<a class="viewcode-back" href="../_reference/generated/metrics.CustomBins.html#metrics.CustomBins">[docs]</a>
 <span class="k">class</span> <span class="nc">CustomBins</span><span class="p">:</span>
     <span class="n">inf</span> <span class="o">=</span> <span class="mf">1e18</span>
     <span class="n">bins</span> <span class="o">=</span> <span class="p">[(</span><span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span> <span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">),</span> <span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">),</span> <span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="mi">7</span><span class="p">),</span> <span class="p">(</span><span class="mi">7</span><span class="p">,</span> <span class="mi">8</span><span class="p">),</span> <span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">14</span><span class="p">),</span>
@@ -96,8 +96,6 @@
     <span class="n">scaled_bins</span> <span class="o">=</span> <span class="p">[(</span><span class="n">a</span> <span class="o">*</span> <span class="mf">24.0</span><span class="p">,</span> <span class="n">b</span> <span class="o">*</span> <span class="mf">24.0</span><span class="p">)</span> <span class="k">for</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">bins</span><span class="p">]</span>
     <span class="n">lower_bounds</span> <span class="o">=</span> <span class="p">[</span><span class="n">a</span> <span class="o">*</span> <span class="mf">24.0</span> <span class="k">for</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">bins</span><span class="p">]</span>
 
-<div class="viewcode-block" id="CustomBins.get_bin_custom">
-<a class="viewcode-back" href="../_rst/metrics.html#metrics.CustomBins.get_bin_custom">[docs]</a>
     <span class="nd">@staticmethod</span>
     <span class="k">def</span> <span class="nf">get_bin_custom</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">one_hot</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
         <span class="n">index</span> <span class="o">=</span> <span class="n">bisect</span><span class="o">.</span><span class="n">bisect_right</span><span class="p">(</span><span class="n">CustomBins</span><span class="o">.</span><span class="n">lower_bounds</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
@@ -106,12 +104,11 @@
             <span class="n">ret</span><span class="p">[</span><span class="n">index</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
             <span class="k">return</span> <span class="n">ret</span>
         <span class="k">return</span> <span class="n">index</span></div>
-</div>
 
 
 
 <div class="viewcode-block" id="LogBins">
-<a class="viewcode-back" href="../_rst/metrics.html#metrics.LogBins">[docs]</a>
+<a class="viewcode-back" href="../_reference/generated/metrics.LogBins.html#metrics.LogBins">[docs]</a>
 <span class="k">class</span> <span class="nc">LogBins</span><span class="p">:</span>
     <span class="n">nbins</span> <span class="o">=</span> <span class="mi">10</span>
     <span class="n">means</span> <span class="o">=</span> <span class="p">[</span>
@@ -119,8 +116,6 @@
         <span class="mf">810.964040</span><span class="p">,</span> <span class="mf">1715.702848</span>
     <span class="p">]</span>
 
-<div class="viewcode-block" id="LogBins.get_bin_log">
-<a class="viewcode-back" href="../_rst/metrics.html#metrics.LogBins.get_bin_log">[docs]</a>
     <span class="k">def</span> <span class="nf">get_bin_log</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">nbins</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">one_hot</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
         <span class="n">binid</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">x</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="mf">8.0</span> <span class="o">*</span> <span class="n">nbins</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">binid</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
@@ -133,7 +128,6 @@
             <span class="n">ret</span><span class="p">[</span><span class="n">binid</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
             <span class="k">return</span> <span class="n">ret</span>
         <span class="k">return</span> <span class="n">binid</span></div>
-</div>
 
 </pre></div>
 

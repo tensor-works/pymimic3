@@ -113,9 +113,10 @@ def get_samples_per_df(event_frames: Dict[str, pd.DataFrame], num_samples: int):
         samples_adjusted -= 1
 
     sampled_dfs = {
-        event_types: event_frames[event_types][event_frames[event_types]["CHARTTIME"].isin(
-            event_frames[event_types]["CHARTTIME"].unique()[:samples])]
-        if len(event_frames[event_types]) >= samples else event_frames[event_types]
+        event_types:
+            event_frames[event_types][event_frames[event_types]["CHARTTIME"].isin(
+                event_frames[event_types]["CHARTTIME"].unique()[:samples])]
+            if len(event_frames[event_types]) >= samples else event_frames[event_types]
         for event_types, samples in samples_per_df.items()
     }
 

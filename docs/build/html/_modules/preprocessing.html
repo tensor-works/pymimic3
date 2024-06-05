@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>preprocessing &mdash; open-mimic-iii - documentation</title>
-      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=92fd9be5" />
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=80d5e7a1" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=19f00094" />
 
   
@@ -33,22 +33,22 @@
           <a href="../index.html" class="icon icon-home">
             open-mimic-iii
           </a>
-<div role="search">
-  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
-    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
-    <input type="hidden" name="check_keywords" value="yes" />
-    <input type="hidden" name="area" value="default" />
-  </form>
+<div id="searchbox" style="display: none" role="search">
+  <h4>Quick search</h4>
+    <div>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" style="width: inherit;" name="q" />
+      <input type="submit" value="search" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
 </div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="../_rst/datasets.html">datasets package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../_rst/generators.html">generators package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../_rst/metrics.html">metrics package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../_rst/models.html">models package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../_rst/pipelines.html">pipelines package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../_rst/preprocessing.html">preprocessing package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../_reference/api_reference.html">API Reference</a></li>
 </ul>
 
         </div>
@@ -87,7 +87,7 @@
 
 
 <div class="viewcode-block" id="AbstractScikitProcessor">
-<a class="viewcode-back" href="../_rst/preprocessing.html#preprocessing.AbstractScikitProcessor">[docs]</a>
+<a class="viewcode-back" href="../_reference/generated/preprocessing.AbstractScikitProcessor.html#preprocessing.AbstractScikitProcessor">[docs]</a>
 <span class="k">class</span> <span class="nc">AbstractScikitProcessor</span><span class="p">(</span><span class="n">ABC</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Abstract base class for scikit-learn style processors.</span>
@@ -110,8 +110,6 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="o">...</span>
 
-<div class="viewcode-block" id="AbstractScikitProcessor.transform">
-<a class="viewcode-back" href="../_rst/preprocessing.html#preprocessing.AbstractScikitProcessor.transform">[docs]</a>
     <span class="nd">@abstractmethod</span>
     <span class="k">def</span> <span class="nf">transform</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
@@ -127,11 +125,8 @@
 <span class="sd">        np.ndarray</span>
 <span class="sd">            The transformed data.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="o">...</span></div>
+        <span class="o">...</span>
 
-
-<div class="viewcode-block" id="AbstractScikitProcessor.fit">
-<a class="viewcode-back" href="../_rst/preprocessing.html#preprocessing.AbstractScikitProcessor.fit">[docs]</a>
     <span class="nd">@abstractmethod</span>
     <span class="k">def</span> <span class="nf">fit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
@@ -142,11 +137,8 @@
 <span class="sd">        X : np.ndarray</span>
 <span class="sd">            The input data to fit.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="o">...</span></div>
+        <span class="o">...</span>
 
-
-<div class="viewcode-block" id="AbstractScikitProcessor.partial_fit">
-<a class="viewcode-back" href="../_rst/preprocessing.html#preprocessing.AbstractScikitProcessor.partial_fit">[docs]</a>
     <span class="nd">@abstractmethod</span>
     <span class="k">def</span> <span class="nf">partial_fit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
@@ -157,11 +149,8 @@
 <span class="sd">        X : np.ndarray</span>
 <span class="sd">            The input data to partially fit.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="o">...</span></div>
+        <span class="o">...</span>
 
-
-<div class="viewcode-block" id="AbstractScikitProcessor.save">
-<a class="viewcode-back" href="../_rst/preprocessing.html#preprocessing.AbstractScikitProcessor.save">[docs]</a>
     <span class="k">def</span> <span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">storage_path</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Save the processor&#39;s state to the storage path.</span>
@@ -181,11 +170,8 @@
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_storage_path</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;No storage path provided!&quot;</span><span class="p">)</span>
         <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_storage_path</span><span class="p">,</span> <span class="s2">&quot;wb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">save_file</span><span class="p">:</span>
-            <span class="n">pickle</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">obj</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">save_file</span><span class="p">,</span> <span class="n">protocol</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span></div>
+            <span class="n">pickle</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">obj</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">save_file</span><span class="p">,</span> <span class="n">protocol</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
 
-
-<div class="viewcode-block" id="AbstractScikitProcessor.load">
-<a class="viewcode-back" href="../_rst/preprocessing.html#preprocessing.AbstractScikitProcessor.load">[docs]</a>
     <span class="k">def</span> <span class="nf">load</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Load the processor&#39;s state from the storage path.</span>
@@ -205,11 +191,8 @@
                         <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
 
                     <span class="k">return</span> <span class="mi">1</span>
-        <span class="k">return</span> <span class="mi">0</span></div>
+        <span class="k">return</span> <span class="mi">0</span>
 
-
-<div class="viewcode-block" id="AbstractScikitProcessor.fit_dataset">
-<a class="viewcode-back" href="../_rst/preprocessing.html#preprocessing.AbstractScikitProcessor.fit_dataset">[docs]</a>
     <span class="k">def</span> <span class="nf">fit_dataset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Fit the processor to an entire dataset.</span>
@@ -241,11 +224,8 @@
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_verbose</span><span class="p">:</span>
             <span class="n">info_io</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Done computing new </span><span class="si">{</span><span class="n">Path</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_storage_path</span><span class="p">)</span><span class="o">.</span><span class="n">stem</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span>
-        <span class="k">return</span> <span class="bp">self</span></div>
+        <span class="k">return</span> <span class="bp">self</span>
 
-
-<div class="viewcode-block" id="AbstractScikitProcessor.fit_reader">
-<a class="viewcode-back" href="../_rst/preprocessing.html#preprocessing.AbstractScikitProcessor.fit_reader">[docs]</a>
     <span class="k">def</span> <span class="nf">fit_reader</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">reader</span><span class="p">,</span> <span class="n">save</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Fit the processor to a dataset read from a reader.</span>
@@ -293,7 +273,6 @@
             <span class="p">)</span>
 
         <span class="k">return</span> <span class="bp">self</span></div>
-</div>
 
 </pre></div>
 

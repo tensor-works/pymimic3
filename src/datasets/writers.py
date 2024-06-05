@@ -103,20 +103,21 @@ class DataSetWriter():
 
         for subject_id in self._get_subject_ids(data):
 
-            self._write_subject(subject_id=subject_id,
-                            data={filename: data[filename][subject_id] for filename in data.keys()},
-                            index=index,
-                            exists_ok=exists_ok,
-                            file_type=file_type)
+            self._write_subject(
+                subject_id=subject_id,
+                data={filename: data[filename][subject_id] for filename in data.keys()},
+                index=index,
+                exists_ok=exists_ok,
+                file_type=file_type)
 
         return
 
     def _write_subject(self,
-                   subject_id: int,
-                   data: dict,
-                   index: bool = True,
-                   exists_ok: bool = False,
-                   file_type: str = "csv"):
+                       subject_id: int,
+                       data: dict,
+                       index: bool = True,
+                       exists_ok: bool = False,
+                       file_type: str = "csv"):
         """
         Write all files for a single subject
         """

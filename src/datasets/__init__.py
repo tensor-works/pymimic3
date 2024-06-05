@@ -93,37 +93,38 @@ def load_data(source_path: str,
 
             processed_storage_path = Path(storage_path, "processed", task)
             preprocessor = MIMICPreprocessor(task=task,
-                                            storage_path=processed_storage_path,
-                                            phenotypes_yaml=phenotypes_yaml,
-                                            label_type="one-hot",
-                                            verbose=True)
-            
-            reader = preprocessor.transform_reader(reader=reader, 
-                                                   subject_ids=subject_ids, 
+                                             storage_path=processed_storage_path,
+                                             phenotypes_yaml=phenotypes_yaml,
+                                             label_type="one-hot",
+                                             verbose=True)
+
+            reader = preprocessor.transform_reader(reader=reader,
+                                                   subject_ids=subject_ids,
                                                    num_subjects=num_subjects)
 
         if engineer:
             engineered_storage_path = Path(storage_path, "engineered", task)
-            engine = MIMICFeatureEngine(config_dict=Path(os.getenv("CONFIG"), "engineering_config.json"),
+            engine = MIMICFeatureEngine(config_dict=Path(os.getenv("CONFIG"),
+                                                         "engineering_config.json"),
                                         storage_path=storage_path,
                                         task=task,
                                         verbose=True)
             reader = engine.transform_reader(reader=reader,
-                                            subject_ids=subject_ids,
-                                            num_subjects=num_subjects)
+                                             subject_ids=subject_ids,
+                                             num_subjects=num_subjects)
         if discretize:
             discretized_storage_path = Path(storage_path, "discretized", task)
             discretizer = MIMICDiscretizer(reader=reader,
-                                        task=task,
-                                        storage_path=discretized_storage_path,
-                                        time_step_size=time_step_size,
-                                        impute_strategy=impute_strategy,
-                                        start_at_zero=start_at_zero,
-                                        mode=mode,
-                                        verbose=False)
+                                           task=task,
+                                           storage_path=discretized_storage_path,
+                                           time_step_size=time_step_size,
+                                           impute_strategy=impute_strategy,
+                                           start_at_zero=start_at_zero,
+                                           mode=mode,
+                                           verbose=False)
             reader = discretizer.transform_reader(reader=reader,
-                                                subject_ids=subject_ids,
-                                                num_subjects=num_subjects)
+                                                  subject_ids=subject_ids,
+                                                  num_subjects=num_subjects)
             '''
             reader = discretizing.iterative_discretization(reader=reader,
                                                            task=task,
@@ -153,14 +154,14 @@ def load_data(source_path: str,
         with Path(source_path, "resources", "hcup_ccs_2015_definitions.yaml").open("r") as file:
             phenotypes_yaml = yaml.full_load(file)
         preprocessor = MIMICPreprocessor(task=task,
-                                            storage_path=processed_storage_path,
-                                            phenotypes_yaml=phenotypes_yaml,
-                                            label_type="one-hot",
-                                            verbose=True)
+                                         storage_path=processed_storage_path,
+                                         phenotypes_yaml=phenotypes_yaml,
+                                         label_type="one-hot",
+                                         verbose=True)
         dataset = preprocessor.transform_dataset(dataset=dataset,
-                                       subject_ids=subject_ids,
-                                       num_subjects=num_subjects,
-                                       source_path=extracted_storage_path)
+                                                 subject_ids=subject_ids,
+                                                 num_subjects=num_subjects,
+                                                 source_path=extracted_storage_path)
         '''
         dataset = preprocessing.compact_processing(dataset=dataset,
                                                    task=task,

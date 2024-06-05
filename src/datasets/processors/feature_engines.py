@@ -155,8 +155,8 @@ class MIMICFeatureEngine(AbstractProcessor):
             A tuple containing the engineered features and tracking information.
         """
         X_processed, y_processed = self._source_reader.read_sample(subject_id,
-                                                            read_ids=True,
-                                                            data_type=pd.DataFrame).values()
+                                                                   read_ids=True,
+                                                                   data_type=pd.DataFrame).values()
         X = {subject_id: X_processed}
         y = {subject_id: y_processed}
         if X is None or y is None:
@@ -172,7 +172,8 @@ class MIMICFeatureEngine(AbstractProcessor):
             tracking_info = self._tracker.subjects[subject_id]
         return (X_engineered, y_engineered), tracking_info
 
-    def transform(self, X_dict: Dict[int, Dict[int, pd.DataFrame]], y_dict: Dict[int, Dict[int, pd.DataFrame]]):
+    def transform(self, X_dict: Dict[int, Dict[int, pd.DataFrame]],
+                  y_dict: Dict[int, Dict[int, pd.DataFrame]]):
         """
         Save the engineered data to the storage path.
 

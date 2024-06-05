@@ -1108,6 +1108,7 @@ class EventReader():
             - frame_lengths: dict of int
                 A dictionary where keys are CSV file names and values are the number of events read in the chunk.        
         """
+
         def read_frame(csv_name):
             # Read a frame
             if self._lo_thread_response is not None:

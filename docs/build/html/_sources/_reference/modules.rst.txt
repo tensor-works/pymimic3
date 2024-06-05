@@ -1,0 +1,18 @@
+Modules
+=======
+
+.. autosummary::
+   :toctree: generated
+   :caption: Modules
+
+   datasets
+   generators
+   managers
+   metrics
+   models
+   pipelines
+   preprocessing
+   settings
+   storable
+   utils
+   visualization

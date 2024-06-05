@@ -62,7 +62,6 @@ The primary output of these functions includes three main components:
             - Diagnoses binaries as columns
 """
 
-
 import pandas as pd
 from utils.IO import *
 from ..mimic_utils import *
@@ -351,9 +350,9 @@ def extract_timeseries_util(subject_events: pd.DataFrame, variables) -> pd.DataF
 
 
 def extract_episode(timeseries_df: pd.DataFrame,
-                 stay_id: int,
-                 intime=None,
-                 outtime=None) -> pd.DataFrame:
+                    stay_id: int,
+                    intime=None,
+                    outtime=None) -> pd.DataFrame:
     """
     Create an episode DataFrame from the time series data.
 
@@ -389,8 +388,8 @@ def extract_episode(timeseries_df: pd.DataFrame,
 
 
 def extract_hour_index(episode_df: pd.DataFrame,
-                    intime,
-                    remove_charttime: bool = True) -> pd.DataFrame:
+                       intime,
+                       remove_charttime: bool = True) -> pd.DataFrame:
     """
     Create an hour-based index for the episode DataFrame.
 

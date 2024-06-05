@@ -38,7 +38,6 @@ Examples
     processor.run()
 """
 
-
 import pandas as pd
 from utils.IO import *
 from settings import *
@@ -131,7 +130,7 @@ class TimeseriesProcessor(object):
         curr_icu_history_pr = {subject_id: subject_icu_history_pr[subject_id]}
 
         episodic_data, timeseries = extract_timeseries(curr_subject_event, curr_subject_diagnoses,
-                                                    curr_icu_history_pr, varmap_df_pr)
+                                                       curr_icu_history_pr, varmap_df_pr)
 
         # Store processed subject events
         name_data_pairs = {

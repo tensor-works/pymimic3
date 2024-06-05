@@ -9,10 +9,7 @@ from utils.IO import *
 from pathlib import Path
 from preprocessing import AbstractScikitProcessor
 
-__all__ = [
-    "AbstractScaler", "StandardScaler", "MinMaxScaler", "MaxAbsScaler",
-    "RobustScaler"
-]
+__all__ = ["AbstractScaler", "StandardScaler", "MinMaxScaler", "MaxAbsScaler", "RobustScaler"]
 
 
 class AbstractScaler(AbstractScikitProcessor):
@@ -32,6 +29,7 @@ class AbstractScaler(AbstractScikitProcessor):
     verbose : bool, optional
         If True, print verbose logs during processing, by default True.
     """
+
     def __init__(self, storage_path=None, imputer=None, verbose=True):
         if storage_path is not None:
             self._storage_path = Path(storage_path, self._storage_name)
@@ -390,6 +388,7 @@ class RobustScaler(_RobustScaler, AbstractScaler):
     verbose : bool, optional
         If True, print verbose logs during processing, by default True.
     """
+
     def __init__(self,
                  storage_path=None,
                  imputer=None,
@@ -401,9 +400,9 @@ class RobustScaler(_RobustScaler, AbstractScaler):
         self._storage_name = "robust_scaler.pkl"
         AbstractScaler.__init__(self, storage_path=storage_path, imputer=imputer, verbose=verbose)
         _RobustScaler().__init__(with_centering=with_centering,
-                         with_scaling=with_scaling,
-                         quantile_range=quantile_range,
-                         copy=copy)
+                                 with_scaling=with_scaling,
+                                 quantile_range=quantile_range,
+                                 copy=copy)
 
     @classmethod
     def _get_param_names(cls):

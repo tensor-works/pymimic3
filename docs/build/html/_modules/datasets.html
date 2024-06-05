@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>datasets &mdash; open-mimic-iii - documentation</title>
-      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=92fd9be5" />
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=80d5e7a1" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=19f00094" />
 
   
@@ -33,22 +33,22 @@
           <a href="../index.html" class="icon icon-home">
             open-mimic-iii
           </a>
-<div role="search">
-  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
-    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
-    <input type="hidden" name="check_keywords" value="yes" />
-    <input type="hidden" name="area" value="default" />
-  </form>
+<div id="searchbox" style="display: none" role="search">
+  <h4>Quick search</h4>
+    <div>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" style="width: inherit;" name="q" />
+      <input type="submit" value="search" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
 </div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="../_rst/datasets.html">datasets package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../_rst/generators.html">generators package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../_rst/metrics.html">metrics package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../_rst/models.html">models package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../_rst/pipelines.html">pipelines package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../_rst/preprocessing.html">preprocessing package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../_reference/api_reference.html">API Reference</a></li>
 </ul>
 
         </div>
@@ -109,7 +109,7 @@
 
 
 <div class="viewcode-block" id="load_data">
-<a class="viewcode-back" href="../_rst/datasets.html#datasets.load_data">[docs]</a>
+<a class="viewcode-back" href="../_reference/generated/datasets.load_data.html#datasets.load_data">[docs]</a>
 <span class="k">def</span> <span class="nf">load_data</span><span class="p">(</span><span class="n">source_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
               <span class="n">storage_path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
               <span class="n">chunksize</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
@@ -173,37 +173,38 @@
 
             <span class="n">processed_storage_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">storage_path</span><span class="p">,</span> <span class="s2">&quot;processed&quot;</span><span class="p">,</span> <span class="n">task</span><span class="p">)</span>
             <span class="n">preprocessor</span> <span class="o">=</span> <span class="n">MIMICPreprocessor</span><span class="p">(</span><span class="n">task</span><span class="o">=</span><span class="n">task</span><span class="p">,</span>
-                                            <span class="n">storage_path</span><span class="o">=</span><span class="n">processed_storage_path</span><span class="p">,</span>
-                                            <span class="n">phenotypes_yaml</span><span class="o">=</span><span class="n">phenotypes_yaml</span><span class="p">,</span>
-                                            <span class="n">label_type</span><span class="o">=</span><span class="s2">&quot;one-hot&quot;</span><span class="p">,</span>
-                                            <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-            
-            <span class="n">reader</span> <span class="o">=</span> <span class="n">preprocessor</span><span class="o">.</span><span class="n">transform_reader</span><span class="p">(</span><span class="n">reader</span><span class="o">=</span><span class="n">reader</span><span class="p">,</span> 
-                                                   <span class="n">subject_ids</span><span class="o">=</span><span class="n">subject_ids</span><span class="p">,</span> 
+                                             <span class="n">storage_path</span><span class="o">=</span><span class="n">processed_storage_path</span><span class="p">,</span>
+                                             <span class="n">phenotypes_yaml</span><span class="o">=</span><span class="n">phenotypes_yaml</span><span class="p">,</span>
+                                             <span class="n">label_type</span><span class="o">=</span><span class="s2">&quot;one-hot&quot;</span><span class="p">,</span>
+                                             <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+            <span class="n">reader</span> <span class="o">=</span> <span class="n">preprocessor</span><span class="o">.</span><span class="n">transform_reader</span><span class="p">(</span><span class="n">reader</span><span class="o">=</span><span class="n">reader</span><span class="p">,</span>
+                                                   <span class="n">subject_ids</span><span class="o">=</span><span class="n">subject_ids</span><span class="p">,</span>
                                                    <span class="n">num_subjects</span><span class="o">=</span><span class="n">num_subjects</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="n">engineer</span><span class="p">:</span>
             <span class="n">engineered_storage_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">storage_path</span><span class="p">,</span> <span class="s2">&quot;engineered&quot;</span><span class="p">,</span> <span class="n">task</span><span class="p">)</span>
-            <span class="n">engine</span> <span class="o">=</span> <span class="n">MIMICFeatureEngine</span><span class="p">(</span><span class="n">config_dict</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;CONFIG&quot;</span><span class="p">),</span> <span class="s2">&quot;engineering_config.json&quot;</span><span class="p">),</span>
+            <span class="n">engine</span> <span class="o">=</span> <span class="n">MIMICFeatureEngine</span><span class="p">(</span><span class="n">config_dict</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;CONFIG&quot;</span><span class="p">),</span>
+                                                         <span class="s2">&quot;engineering_config.json&quot;</span><span class="p">),</span>
                                         <span class="n">storage_path</span><span class="o">=</span><span class="n">storage_path</span><span class="p">,</span>
                                         <span class="n">task</span><span class="o">=</span><span class="n">task</span><span class="p">,</span>
                                         <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
             <span class="n">reader</span> <span class="o">=</span> <span class="n">engine</span><span class="o">.</span><span class="n">transform_reader</span><span class="p">(</span><span class="n">reader</span><span class="o">=</span><span class="n">reader</span><span class="p">,</span>
-                                            <span class="n">subject_ids</span><span class="o">=</span><span class="n">subject_ids</span><span class="p">,</span>
-                                            <span class="n">num_subjects</span><span class="o">=</span><span class="n">num_subjects</span><span class="p">)</span>
+                                             <span class="n">subject_ids</span><span class="o">=</span><span class="n">subject_ids</span><span class="p">,</span>
+                                             <span class="n">num_subjects</span><span class="o">=</span><span class="n">num_subjects</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">discretize</span><span class="p">:</span>
             <span class="n">discretized_storage_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">storage_path</span><span class="p">,</span> <span class="s2">&quot;discretized&quot;</span><span class="p">,</span> <span class="n">task</span><span class="p">)</span>
             <span class="n">discretizer</span> <span class="o">=</span> <span class="n">MIMICDiscretizer</span><span class="p">(</span><span class="n">reader</span><span class="o">=</span><span class="n">reader</span><span class="p">,</span>
-                                        <span class="n">task</span><span class="o">=</span><span class="n">task</span><span class="p">,</span>
-                                        <span class="n">storage_path</span><span class="o">=</span><span class="n">discretized_storage_path</span><span class="p">,</span>
-                                        <span class="n">time_step_size</span><span class="o">=</span><span class="n">time_step_size</span><span class="p">,</span>
-                                        <span class="n">impute_strategy</span><span class="o">=</span><span class="n">impute_strategy</span><span class="p">,</span>
-                                        <span class="n">start_at_zero</span><span class="o">=</span><span class="n">start_at_zero</span><span class="p">,</span>
-                                        <span class="n">mode</span><span class="o">=</span><span class="n">mode</span><span class="p">,</span>
-                                        <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+                                           <span class="n">task</span><span class="o">=</span><span class="n">task</span><span class="p">,</span>
+                                           <span class="n">storage_path</span><span class="o">=</span><span class="n">discretized_storage_path</span><span class="p">,</span>
+                                           <span class="n">time_step_size</span><span class="o">=</span><span class="n">time_step_size</span><span class="p">,</span>
+                                           <span class="n">impute_strategy</span><span class="o">=</span><span class="n">impute_strategy</span><span class="p">,</span>
+                                           <span class="n">start_at_zero</span><span class="o">=</span><span class="n">start_at_zero</span><span class="p">,</span>
+                                           <span class="n">mode</span><span class="o">=</span><span class="n">mode</span><span class="p">,</span>
+                                           <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
             <span class="n">reader</span> <span class="o">=</span> <span class="n">discretizer</span><span class="o">.</span><span class="n">transform_reader</span><span class="p">(</span><span class="n">reader</span><span class="o">=</span><span class="n">reader</span><span class="p">,</span>
-                                                <span class="n">subject_ids</span><span class="o">=</span><span class="n">subject_ids</span><span class="p">,</span>
-                                                <span class="n">num_subjects</span><span class="o">=</span><span class="n">num_subjects</span><span class="p">)</span>
+                                                  <span class="n">subject_ids</span><span class="o">=</span><span class="n">subject_ids</span><span class="p">,</span>
+                                                  <span class="n">num_subjects</span><span class="o">=</span><span class="n">num_subjects</span><span class="p">)</span>
 <span class="w">            </span><span class="sd">&#39;&#39;&#39;</span>
 <span class="sd">            reader = discretizing.iterative_discretization(reader=reader,</span>
 <span class="sd">                                                           task=task,</span>
@@ -233,14 +234,14 @@
         <span class="k">with</span> <span class="n">Path</span><span class="p">(</span><span class="n">source_path</span><span class="p">,</span> <span class="s2">&quot;resources&quot;</span><span class="p">,</span> <span class="s2">&quot;hcup_ccs_2015_definitions.yaml&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span>
             <span class="n">phenotypes_yaml</span> <span class="o">=</span> <span class="n">yaml</span><span class="o">.</span><span class="n">full_load</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
         <span class="n">preprocessor</span> <span class="o">=</span> <span class="n">MIMICPreprocessor</span><span class="p">(</span><span class="n">task</span><span class="o">=</span><span class="n">task</span><span class="p">,</span>
-                                            <span class="n">storage_path</span><span class="o">=</span><span class="n">processed_storage_path</span><span class="p">,</span>
-                                            <span class="n">phenotypes_yaml</span><span class="o">=</span><span class="n">phenotypes_yaml</span><span class="p">,</span>
-                                            <span class="n">label_type</span><span class="o">=</span><span class="s2">&quot;one-hot&quot;</span><span class="p">,</span>
-                                            <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                                         <span class="n">storage_path</span><span class="o">=</span><span class="n">processed_storage_path</span><span class="p">,</span>
+                                         <span class="n">phenotypes_yaml</span><span class="o">=</span><span class="n">phenotypes_yaml</span><span class="p">,</span>
+                                         <span class="n">label_type</span><span class="o">=</span><span class="s2">&quot;one-hot&quot;</span><span class="p">,</span>
+                                         <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
         <span class="n">dataset</span> <span class="o">=</span> <span class="n">preprocessor</span><span class="o">.</span><span class="n">transform_dataset</span><span class="p">(</span><span class="n">dataset</span><span class="o">=</span><span class="n">dataset</span><span class="p">,</span>
-                                       <span class="n">subject_ids</span><span class="o">=</span><span class="n">subject_ids</span><span class="p">,</span>
-                                       <span class="n">num_subjects</span><span class="o">=</span><span class="n">num_subjects</span><span class="p">,</span>
-                                       <span class="n">source_path</span><span class="o">=</span><span class="n">extracted_storage_path</span><span class="p">)</span>
+                                                 <span class="n">subject_ids</span><span class="o">=</span><span class="n">subject_ids</span><span class="p">,</span>
+                                                 <span class="n">num_subjects</span><span class="o">=</span><span class="n">num_subjects</span><span class="p">,</span>
+                                                 <span class="n">source_path</span><span class="o">=</span><span class="n">extracted_storage_path</span><span class="p">)</span>
 <span class="w">        </span><span class="sd">&#39;&#39;&#39;</span>
 <span class="sd">        dataset = preprocessing.compact_processing(dataset=dataset,</span>
 <span class="sd">                                                   task=task,</span>

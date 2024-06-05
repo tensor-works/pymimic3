@@ -1,39 +1,43 @@
 """
+=========================
 Dataset Extraction Module
 =========================
 
 This module provides functions and classes for extracting and processing dataset files.
 It supports both compact and iterative extraction methods to handle different use cases.
 
+Classes
+-------
+.. autosummary::
+   :toctree: 
+
+   EventProducer
+   TimeseriesProcessor
+
 Functions
 ---------
-- compact_extraction(storage_path, source_path, num_subjects, num_samples, subject_ids, task)
-    Performs compact extraction of the dataset.
-- iterative_extraction(source_path, storage_path, chunksize, num_subjects, num_samples, subject_ids, task)
-    Performs iterative extraction of the dataset.
-- read_patients_csv(dataset_folder)
-    Reads the PATIENTS.csv file from the specified dataset folder.
-- read_admission_csv(dataset_folder)
-    Reads the ADMISSIONS.csv file from the specified dataset folder.
-- read_icustays_csv(dataset_folder)
-    Reads the ICUSTAYS.csv file from the specified dataset folder.
-- read_icd9codes_csv(dataset_folder)
-    Reads the D_ICD_DIAGNOSES.csv file from the specified dataset folder.
-- read_events_dictionary(dataset_folder)
-    Reads the D_ITEMS.csv file from the specified dataset folder.
-- merge_patient_history(patients_df, admissions_df, icustays_df, min_nb_stays, max_nb_stays)
-    Merges patient, admission, and ICU stay data to create a patient history DataFrame.
-- make_subject_infos(patients_df, admission_info_df, icustays_df, min_nb_stays, max_nb_stays)
-    Creates a DataFrame containing information about subjects by merging patient, admission, and ICU stay data.
-- make_icu_history(patients_df, admissions_df, icustays_df, min_nb_stays, max_nb_stays)
-    Creates a DataFrame describing each ICU stay with admission data, patient data, and mortality.
-- make_diagnoses(dataset_folder, icd9codes_df, icu_history_df)
-    Creates a DataFrame containing descriptions of diagnoses with direct links to subjects and ICU stays.
-- make_phenotypes(diagnoses_df, definition_map)
-    Creates a binary matrix with diagnoses over ICU stays.
-- get_by_subject(df, sort_by)
-    Groups events by subject ID.
+.. autosummary::
+   :toctree: 
 
+   compact_extraction
+   iterative_extraction
+   read_patients_csv
+   read_admission_csv
+   read_icustays_csv
+   read_icd9codes_csv
+   read_events_dictionary
+   merge_patient_history
+   make_subject_infos
+   make_icu_history
+   make_diagnoses
+   make_phenotypes
+   get_by_subject
+   reduce_by_subjects
+   get_subject_ids
+   get_subjects_by_number
+   get_processable_subjects
+   create_split_info_csv
+   
 Examples
 --------
 >>> from extraction_module import compact_extraction, iterative_extraction
@@ -42,7 +46,6 @@ Examples
 >>> dataset_dict = compact_extraction(storage_path, source_path, num_subjects=100)
 >>> reader = iterative_extraction(source_path, storage_path, chunksize=1000)
 """
-
 
 import pandas as pd
 import yaml
@@ -220,7 +223,7 @@ def compact_extraction(storage_path: Path,
         # Read Dataframes for time series
         varmap_df = read_varmap_csv(resource_folder)
         episodic_data, timeseries = extract_timeseries(subject_events, subject_diagnoses,
-                                                    subject_icu_history, varmap_df)
+                                                       subject_icu_history, varmap_df)
         name_data_pair = {"episodic_data": episodic_data, "timeseries": timeseries}
         dataset_writer.write_bysubject(name_data_pair, exists_ok=True)
 
@@ -455,7 +458,6 @@ def get_subject_ids(task: str,
                     subject_ids: list = None,
                     num_subjects: int = None,
                     existing_subjects: list = None):
-
     """
     Get the subject IDs that can be processed for the given task. Many subjects will need to be
     discarded as they do not fulfill the minimum length of stay requirement of 48H for IHM, 4H for DECOMP and LOS.

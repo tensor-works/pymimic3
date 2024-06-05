@@ -12,6 +12,7 @@ from datasets.readers import ExtractedSetReader, ProcessedSetReader
 from datasets.mimic_utils import copy_subject_info
 from utils.IO import *
 
+
 class AbstractProcessor(ABC):
     """_summary_
     """
@@ -48,10 +49,10 @@ class AbstractProcessor(ABC):
         ...
 
     def transform_dataset(self,
-                           dataset: dict,
-                           subject_ids: list = None,
-                           num_subjects: int = None,
-                           source_path: Path = None) -> Dict[str, Dict[str, pd.DataFrame]]:
+                          dataset: dict,
+                          subject_ids: list = None,
+                          num_subjects: int = None,
+                          source_path: Path = None) -> Dict[str, Dict[str, pd.DataFrame]]:
         """
         _summary_
 
@@ -74,7 +75,9 @@ class AbstractProcessor(ABC):
         copy_subject_info(source_path, self._storage_path)
 
         if self._tracker.is_finished:
-            info_io(f"Compact data processing already finalized in directory:\n{str(self._storage_path)}")
+            info_io(
+                f"Compact data processing already finalized in directory:\n{str(self._storage_path)}"
+            )
             if num_subjects is not None:
                 subject_ids = random.sample(self._tracker.subject_ids, k=num_subjects)
             return ProcessedSetReader(root_path=self._storage_path,
@@ -83,8 +86,8 @@ class AbstractProcessor(ABC):
         info_io(f"Compact Preprocessing: {self._task}", level=0)
 
         subject_ids, excluded_subject_ids = self._get_subject_ids(num_subjects=num_subjects,
-                                                                subject_ids=subject_ids,
-                                                                all_subjects=dataset.keys())
+                                                                  subject_ids=subject_ids,
+                                                                  all_subjects=dataset.keys())
         assert all([len(subject) for subject in dataset.values()])
         missing_subjects = 0
         if num_subjects is not None:
@@ -96,10 +99,10 @@ class AbstractProcessor(ABC):
                 X_subjects.update(X)
                 y_subjects.update(y)
                 it_missing_subjects = set(X.keys()) - set(subject_ids)
-                subject_ids, excluded_subject_ids = self.get_subject_ids(num_subjects=num_subjects -
-                                                                        len(X_subjects),
-                                                                        subject_ids=None,
-                                                                        all_subjects=excluded_subject_ids)
+                subject_ids, excluded_subject_ids = self.get_subject_ids(
+                    num_subjects=num_subjects - len(X_subjects),
+                    subject_ids=None,
+                    all_subjects=excluded_subject_ids)
                 if it_missing_subjects:
                     missing_subjects += len(it_missing_subjects)
                     debug_io(f"Missing subjects are: {*it_missing_subjects,}")
@@ -116,16 +119,18 @@ class AbstractProcessor(ABC):
             (X_subjects, y_subjects) = self.transform(dataset=dataset)
         if self._storage_path is not None:
             self.save_data()
-            info_io(f"Finalized data preprocessing for {self._task} in directory:\n{str(self._storage_path)}")
+            info_io(
+                f"Finalized data preprocessing for {self._task} in directory:\n{str(self._storage_path)}"
+            )
         else:
             info_io(f"Finalized data preprocessing for {self._task}.")
         self._tracker.is_finished = True
         return {"X": X_subjects, "y": y_subjects}
 
     def transform_reader(self,
-                             reader: ExtractedSetReader,
-                             subject_ids: list = None,
-                             num_subjects: int = None) -> ProcessedSetReader:
+                         reader: ExtractedSetReader,
+                         subject_ids: list = None,
+                         num_subjects: int = None) -> ProcessedSetReader:
         """
         _summary_
 
@@ -151,7 +156,9 @@ class AbstractProcessor(ABC):
         copy_subject_info(reader.root_path, self._storage_path)
 
         if self._tracker.is_finished:
-            info_io(f"Data preprocessing for {self._task} is already in directory:\n{str(self._storage_path)}.")
+            info_io(
+                f"Data preprocessing for {self._task} is already in directory:\n{str(self._storage_path)}."
+            )
             if num_subjects is not None:
                 subject_ids = random.sample(self._tracker.subject_ids, k=num_subjects)
             self._verbose = orig_verbose
@@ -180,10 +187,11 @@ class AbstractProcessor(ABC):
             global processor_pr
             processor_pr = preprocessor
 
-        subject_ids, excluded_subject_ids = self._get_subject_ids(num_subjects=num_subjects,
-                                                                subject_ids=subject_ids,
-                                                                all_subjects=reader.subject_ids,
-                                                                processed_subjects=self._tracker.subject_ids)
+        subject_ids, excluded_subject_ids = self._get_subject_ids(
+            num_subjects=num_subjects,
+            subject_ids=subject_ids,
+            all_subjects=reader.subject_ids,
+            processed_subjects=self._tracker.subject_ids)
 
         for ids in subject_ids:
             process_subject(ids)
@@ -211,7 +219,8 @@ class AbstractProcessor(ABC):
                         debug_io(f"Missing subject is: {subject_id}")
                         try:
                             subj = excluded_subject_ids.pop()
-                            res = chain(res, [pool.apply_async(process_subject, args=(subj,)).get()])
+                            res = chain(res,
+                                        [pool.apply_async(process_subject, args=(subj,)).get()])
                         except IndexError:
                             missing_subjects += 1
                             debug_io(
@@ -231,23 +240,23 @@ class AbstractProcessor(ABC):
                         flush_block=(True and not int(os.getenv("DEBUG", 0))))
                 except StopIteration as e:
                     self._tracker.is_finished = True
-                    info_io(f"Finalized for task {self._task} in directory:\n{str(self._storage_path)}")
+                    info_io(
+                        f"Finalized for task {self._task} in directory:\n{str(self._storage_path)}")
                     if num_subjects is not None and missing_subjects:
                         warn_io(
-                            f"The subject target was not reached, missing {missing_subjects} subjects.")
+                            f"The subject target was not reached, missing {missing_subjects} subjects."
+                        )
                     break
         self._verbose = orig_verbose
         if original_subject_ids is not None:
             original_subject_ids = list(set(original_subject_ids) & set(self._tracker.subject_ids))
         return ProcessedSetReader(self._storage_path, subject_ids=original_subject_ids)
 
-
-
-    def _get_subject_ids(self, 
+    def _get_subject_ids(self,
                          num_subjects: int,
-                        subject_ids: list,
-                        all_subjects: list,
-                        processed_subjects: list = list()):
+                         subject_ids: list,
+                         all_subjects: list,
+                         processed_subjects: list = list()):
         remaining_subject_ids = list(set(all_subjects) - set(processed_subjects))
         # Select subjects to process logic
         n_processed_subjects = len(processed_subjects)

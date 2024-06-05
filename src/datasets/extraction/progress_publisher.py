@@ -54,7 +54,6 @@ Classes
         OUTPUTEVENTS:   1000/4500
 """
 
-
 import os
 from utils import count_csv_size
 from utils.IO import *

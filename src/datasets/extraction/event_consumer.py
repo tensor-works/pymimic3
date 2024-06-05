@@ -9,7 +9,7 @@ Classes
     Consumes events from a queue, processes them, and writes to storage.
 
 Examples
---------
+-------- 
 .. code-block:: python
 
     from pathlib import Path

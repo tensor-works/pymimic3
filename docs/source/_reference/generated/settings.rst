@@ -1,0 +1,23 @@
+﻿settings
+========
+
+.. automodule:: settings
+
+   
+
+
+
+   
+
+
+
+   
+
+
+
+   
+   
+   
+
+
+
