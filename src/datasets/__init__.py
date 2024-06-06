@@ -1,16 +1,73 @@
-"""Dataset file
+"""
+===================
+Data Loading Module
+===================
 
-This file allows access to the dataset as specified.
-All function in this file are used by the main interface function load_data.
-Subfunctions used within private functions are located in the datasets.utils module.
+This module is responsible for extracting and processing data from the raw MIMIC-III dataset. The data 
+extraction can be done using the `load_data` function, which supports various tasks for deep learning and 
+machine learning, and can be customized using the different processors. By replicating the data pipeline
+from the load_data() function and modifying the processors through inheritance granular steps, such as
+feature engineering, can be customized. Data can be extracted in a single shot, similar to the original 
+https://github.com/YerevaNN/mimic3-benchmarks github or in a multiprocessed, sped-up manner. The 
+multiprocessed processing is tested against the originial extraction procedure.
+The module also includes a comprehensive data split utility that allows for conventional splits as 
+well as splits by demographic groups to induce concept drift.
 
-TODOS
-- Use a settings.json
-- This is a construction site, see what you can bring in here
-- Provid link to kaggle in load_data doc string
-- Expand function to utils
+CSV Files Used for Extraction
+-----------------------------
+The following CSV files from the MIMIC-III dataset are used in the data extraction and processing:
 
-YerevaNN/mimic3-benchmarks
+- ADMISSIONS.csv 
+- CHARTEVENTS.csv
+- DIAGNOSES_ICD.csv
+- ICUSTAYS.csv 
+- LABEVENTS.csv 
+- OUTPUTS.csv
+- PATIENTS.csv 
+- D_ICD_DIAGNOSES.csv 
+- D_ITEMS.csv
+- DIAGNOSES_ICD.csv
+
+
+Examples
+--------
+Example 1: Basic data loading
+    >>> from data_extraction import load_data
+    ...
+    >>> dataset = load_data(source_path="/path/to/source", 
+    ...                     storage_path="/path/to/storage")
+
+Example 2: Data loading with preprocessing
+    >>> from data_extraction import load_data
+    ...
+    >>> dataset = load_data(source_path="/path/to/source", 
+    ...                     storage_path="/path/to/storage",
+    ...                     preprocess=True, task="DECOMP")
+
+Example 3: Iterative feature engineering with chunk size for river or sklearn algorithms
+    >>> from data_extraction import load_data
+    ...
+    >>> dataset = load_data(source_path="/path/to/source", 
+    ...                     storage_path="/path/to/storage",
+    ...                     chunksize=1000, 
+    ...                     extract=True, 
+    ...                     preprocess=True, e
+    ...                     ngineer=True,
+    ...                     task="PHENO")
+    
+Example 3: Iterative feature engineering with chunk size for deep learning algorithms
+    >>> from data_extraction import load_data
+    ...
+    >>> dataset = load_data(source_path="/path/to/source", 
+    ...                     storage_path="/path/to/storage",
+    ...                     chunksize=1000, 
+    ...                     extract=True, 
+    ...                     preprocess, 
+    ...                     discretize=True,
+    ...                     task="PHENO")
+
+Module Functions
+----------------
 """
 import yaml
 import os
@@ -44,21 +101,59 @@ def load_data(source_path: str,
               engineer: bool = False,
               discretize: bool = False,
               task: str = None) -> Union[ProcessedSetReader, ExtractedSetReader, dict]:
-    """_summary_
+    """
+    Load and process the MIMIC-III dataset for machine learning and deep learning tasks.
 
-    Args:
-        stoarge_path (str, optional): Location where the processed dataset is to be stored. Defaults to None.
-        source_path (str, optional): Location form which the unprocessed dataset is to be loaded. Defaults to None.
-        ehr (str, optional): _description_. Defaults to None.
-        from_storage (bool, optional): _description_. Defaults to True.
-        chunksize (int, optional): _description_. Defaults to None.
-        num_subjects (int, optional): _description_. Defaults to None.
+    Parameters
+    ----------
+    source_path : str
+        The location from which the unprocessed dataset is to be loaded. This should contain all the MIMIC-III
+        CSV files from the physionet.org website and the resources folder which includes hcup_ccs_2015_definitions.yaml 
+        and the itemid_to_variable_map.csv.
+    storage_path : str, optional
+        The location where the processed dataset is to be stored. If unspecifed, not iterative processing is
+        possible and the dataset will be processed in RAM. Defaults to None.
+    chunksize : int, optional
+        The size of data chunks for iterative processing. Requires specified storage_path. Defaults to None.
+    subject_ids : List[int], optional
+        A list of subject IDs to be included in the dataset. If not specified all subject IDs are processed.
+        Defaults to None.
+    num_subjects : int, optional
+        The number of subjects to be included in the dataset. If not specified all subject are processed.
+        Defaults to None.
+    time_step_size : float, optional
+        The size of the time step for discretization. Defaults to 1.0(H).
+    impute_strategy : str, optional
+        The strategy for imputing missing values. Defaults to "previous". Can be either "'normal', 'previous', 'next', or 'zero'.
+    mode : str, optional
+        The mode of discretization. Can be either 'legacy' or 'experimental'. Defaults to "legacy".
+    start_at_zero : bool, optional
+        Whether to start time at zero or at the first timestamp. Defaults to True.
+    extract : bool, optional
+        Whether to perform data extraction. Defaults to True.
+    preprocess : bool, optional
+        Whether to perform data preprocessing. Defaults to False.
+    engineer : bool, optional
+        Whether to perform feature engineering. Defaults to False.
+    discretize : bool, optional
+        Whether to perform data discretization. Defaults to False.
+    task : str, optional
+        The specific task for which to process the data. Possible values are "DECOMP", "LOS", "IHM", "PHENO". Defaults to None.
 
-    Raises:
-        ValueError: _description_
+    Returns
+    -------
+    Union[ProcessedSetReader, ExtractedSetReader, dict]
+        The processed dataset or a reader if chunksize option is set, allowing to access the result dataset.
 
-    Returns:
-        _type_: _description_
+    Raises
+    ------
+    ValueError
+        If invalid parameters are provided.
+
+    Notes
+    -----
+    - Iterative generation is used if a chunksize is specified.
+    - Compact generation is used otherwise.
     """
     storage_path = Path(storage_path)
     source_path = Path(source_path)
@@ -106,7 +201,7 @@ def load_data(source_path: str,
             engineered_storage_path = Path(storage_path, "engineered", task)
             engine = MIMICFeatureEngine(config_dict=Path(os.getenv("CONFIG"),
                                                          "engineering_config.json"),
-                                        storage_path=storage_path,
+                                        storage_path=engineered_storage_path,
                                         task=task,
                                         verbose=True)
             reader = engine.transform_reader(reader=reader,
@@ -125,15 +220,6 @@ def load_data(source_path: str,
             reader = discretizer.transform_reader(reader=reader,
                                                   subject_ids=subject_ids,
                                                   num_subjects=num_subjects)
-            '''
-            reader = discretizing.iterative_discretization(reader=reader,
-                                                           task=task,
-                                                           storage_path=discretized_storage_path,
-                                                           time_step_size=time_step_size,
-                                                           impute_strategy=impute_strategy,
-                                                           start_at_zero=start_at_zero,
-                                                           mode=mode)
-            '''
 
         return reader
 
@@ -162,25 +248,17 @@ def load_data(source_path: str,
                                                  subject_ids=subject_ids,
                                                  num_subjects=num_subjects,
                                                  source_path=extracted_storage_path)
-        '''
-        dataset = preprocessing.compact_processing(dataset=dataset,
-                                                   task=task,
-                                                   subject_ids=subject_ids,
-                                                   num_subjects=num_subjects,
-                                                   storage_path=processed_storage_path,
-                                                   source_path=extracted_storage_path,
-                                                   phenotypes_yaml=phenotypes_yaml)
-        '''
 
     if engineer:
         engineered_storage_path = Path(storage_path, "engineered", task)
-        dataset = feature_engineering.compact_fengineering(dataset["X"],
-                                                           dataset["y"],
-                                                           task=task,
-                                                           storage_path=engineered_storage_path,
-                                                           source_path=processed_storage_path,
-                                                           subject_ids=subject_ids,
-                                                           num_subjects=num_subjects)
+        engine = MIMICFeatureEngine(config_dict=Path(os.getenv("CONFIG"),
+                                                     "engineering_config.json"),
+                                    storage_path=storage_path,
+                                    task=task,
+                                    verbose=True)
+        dataset = engine.transform_dataset(dataset,
+                                           subject_ids=subject_ids,
+                                           num_subjects=num_subjects)
 
     if discretize:
         discretized_storage_path = Path(storage_path, "discretized", task)

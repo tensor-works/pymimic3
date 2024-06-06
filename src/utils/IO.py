@@ -3,10 +3,6 @@
 This file implements functionalities used by other modules and accessible to 
 the user
 
-Todo:
-    - Use a settings.json
-    - fix the progressbar bullshit
-
 """
 
 # Import necessary packages

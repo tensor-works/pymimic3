@@ -1,3 +1,36 @@
+"""
+Tracking Module
+===============
+
+This module provides classes for tracking various stages of the data processing pipeline, including 
+extraction, preprocessing, and data splitting. These classes help in maintaining a persistent state 
+and ensure that the data processing is robust to interruptions, enabling restoration of state in case 
+of crashes.
+
+The following table describes the input and tracking details for each tracker in this module:
+
++------------------------+-------------------+----------------------------------+
+| Tracker                | Input             | Tracking                         |
++========================+===================+==================================+
+| ExtractionTracker      | Raw dataset       | Tracks number of events,         |
+|                        |                   | samples, and extraction status.  |
+|                        |                   | Ensures crash resilience and     |
+|                        |                   | state restoration of the         |
+|                        |                   | extraction process.              |
++------------------------+-------------------+----------------------------------+
+| PreprocessingTracker   | Extracted data    | Tracks subjects, preprocessing   |
+|                        |                   | steps, and status. Ensures crash |
+|                        |                   | resilience and state restoration |
+|                        |                   | of the preprocessing process.    |
++------------------------+-------------------+----------------------------------+
+| DataSplitTracker       | Preprocessed data | Tracks split ratios, demographic |
+|                        |                   | filters, and split status.       |
+|                        |                   | Ensures crash resilience and     |
+|                        |                   | state restoration of the data    |
+|                        |                   | splitting process.               |
++------------------------+-------------------+----------------------------------+
+"""
+
 from typing import List
 from utils.IO import *
 from storable import storable

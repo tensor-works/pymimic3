@@ -3,25 +3,16 @@ Dataset Extraction Module
 =========================
 
 This module provides the EventProducer class for reading and processing subject events from the raw CHARTEVENT, LABEVENTS and OUTPUTEVENTS CSVs and 
-handling their processing into subject events. It supports both compact and iterative extraction methods to handle different use cases. 
+handling their processing into subject events. This class is the head of the event processing chain, spawning event consumers and the progress publisher.
+
+EventProducer -> EventConsumer -> ProgressPublisher
 
 **Subject Events**: A dictionary where each key is a subject ID, and the value is a DataFrame of 
 chart events (e.g., lab results, vital signs) associated with that subject.
-        - **From**: CHARTEVENTS, LABEVENTS, OUTPUTEVENTS
-        - **In**: evenet_consumer.py
-        - **Cols**: 
-            - SUBJECT_ID
-            - HADM_ID
-            - ICUSTAY_ID
-            - CHARTTIME
-            - ITEMID
-            - VALUE
-            - VALUEUOM
 
-Classes
--------
-- EventProducer(source_path, storage_path, num_samples, chunksize, tracker, icu_history_df, subject_ids)
-    Produces events by reading data from source, processing it, and passing it to consumers.
+- From: CHARTEVENTS, LABEVENTS, OUTPUTEVENTS
+- In: evenet_consumer.py
+- Cols: SUBJECT_ID, HADM_ID, ICUSTAY_ID, CHARTTIME, ITEMID, VALUE, VALUEUOM
 
 Examples
 --------

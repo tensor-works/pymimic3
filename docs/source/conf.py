@@ -24,9 +24,7 @@ release = '-'
 extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.napoleon',
-    'sphinx.ext.viewcode',
     'sphinx.ext.autosummary',
-    'sphinx.ext.intersphinx',
 ]
 
 templates_path = ['_templates']
@@ -34,6 +32,9 @@ exclude_patterns = []
 default_role = "autolink"
 exclude_patterns = ["../src/handlers.py"]
 
+html_theme_options = {
+    'navigation_depth': -1,
+}
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 

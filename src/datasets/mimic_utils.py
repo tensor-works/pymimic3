@@ -1,48 +1,11 @@
 """
+MIMIC UTILITIES
+===============
+
 Collection of utility functions for the MIMIC-III dataset extraction process.
+These functions are used to clean and process the MIMIC-III dataset or perform trivial tasks.
 
 YerevaNN/mimic3-benchmarks
-
-Functions
----------
-- copy_subject_info(source_path, storage_path)
-    Copy subject information from source path to storage path.
-- get_samples_per_df(event_frames, num_samples)
-    Get the number of samples per DataFrame based on the specified number of samples.
-- convert_dtype_value(value, dtype)
-    Convert a value to the specified dtype.
-- convert_dtype_dict(dtypes, add_lower=True)
-    Convert a dictionary of column names to dtype strings to a dictionary of column names to dtype objects.
-- clean_chartevents_util(chartevents)
-    Clean the chartevents DataFrame based on the timeseries column.
-- get_static_value(timeseries, variable)
-    Get the first non-null value of a specified variable from the time series data.
-- upper_case_column_names(frame)
-    Convert the column names to upper case for consistency.
-- convert_to_numpy_types(frame)
-    Convert the dtypes to numpy types for consistency.
-- read_varmap_csv(resource_folder)
-    Read the variable map CSV file from the specified resource folder.
-- _clean_height(df)
-    Convert height from inches to centimeters.
-- _clean_systolic_bp(df)
-    Filter out systolic blood pressure only.
-- _clean_diastolic_bp(df)
-    Filter out diastolic blood pressure only.
-- _clean_capilary_rr(df)
-    Categorize capillary refill rate.
-- _clean_fraction_inspired_o2(df)
-    Map fraction of inspired oxygen values to correct scale.
-- _clean_laboratory_values(df)
-    Clean laboratory values by removing non-numeric entries.
-- _clean_o2sat(df)
-    Scale oxygen saturation values to correct range.
-- _clean_temperature(df)
-    Map Fahrenheit temperatures to Celsius.
-- _clean_weight(df)
-    Convert weight values to kilograms.
-- _clean_respiratory_rate(df)
-    Transform respiratory rate values from greater than 60 to 60.
 """
 
 import numpy as np
@@ -217,13 +180,13 @@ def clean_chartevents_util(chartevents: pd.DataFrame):
     function_switch = DATASET_SETTINGS["CHARTEVENTS"]["clean"]
     for variable_name, function_identifier in function_switch.items():
         index = (chartevents.VARIABLE == variable_name)
-        try:
-            chartevents.loc[index, 'VALUE'] = globals()[function_identifier](chartevents.loc[index])
-        except Exception as exp:
-            print("Exception in clean_events function", function_identifier, ": ", exp)
-            print("number of rows:", np.sum(index))
-            print("values:", chartevents.loc[index])
-            raise exp
+        # try:
+        chartevents.loc[index, 'VALUE'] = globals()[function_identifier](chartevents.loc[index])
+        #except Exception as exp:
+        #    print("Exception in clean_events function", function_identifier, ": ", exp)
+        #    print("number of rows:", np.sum(index))
+        #    print("values:", chartevents.loc[index])
+        #    raise exp
 
     return chartevents.loc[chartevents.VALUE.notnull()]
 
@@ -563,7 +526,10 @@ def _clean_respiratory_rate(df: pd.DataFrame) -> pd.Series:
 
 def read_varmap_csv(resource_folder: Path):
     """
-    Read the variable map CSV file from the specified resource folder.
+    Read the variable map CSV file from the specified resource folder. The varaible map relates
+    the ITEMID to the 17 variables of interest defined for the MIMIC-III dataset. These relation is based
+    on the itemid_to_variable_map.csv, which is curled from the original 
+    https://github.com/YerevaNN/mimic3-benchmarks/tree/master during setup.
 
     Parameters
     ----------
@@ -579,6 +545,8 @@ def read_varmap_csv(resource_folder: Path):
     # Load the resource map
     varmap_df = pd.read_csv(Path(resource_folder, "itemid_to_variable_map.csv"),
                             index_col=None,
+                            na_values=[''],
+                            keep_default_na=False,
                             dtype=convert_dtype_dict(csv_settings["dtype"]))
 
     # Impute empty to string

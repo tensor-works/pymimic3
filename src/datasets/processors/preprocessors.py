@@ -70,29 +70,6 @@ class MIMICPreprocessor(AbstractProcessor):
     Preprocesses MIMIC-III dataset for various tasks such as in-hospital mortality,
     decompensation, length of stay, and phenotyping.
 
-    Attributes
-    ----------
-    _label_type : str
-        The type of labels to use ("sparse" or "one-hot").
-    _storage_path : Path
-        The path to store processed data.
-    _task : str
-        The task to perform ("IHM", "DECOMP", "LOS", "PHENO").
-    _writer : DataSetWriter
-        The writer to save processed data.
-    _source_reader : ExtractedSetReader
-        The reader to read source data.
-    _tracker : PreprocessingTracker
-        The tracker to keep track of preprocessing progress.
-    _processed_set_reader : ProcessedSetReader
-        The reader to read processed data.
-    _lock : Manager().Lock
-        A lock for multiprocessing.
-    _phenotypes_yaml : dict
-        The phenotypes YAML configuration.
-    _verbose : bool
-        Flag for verbosity.
-
     Parameters
     ----------
     phenotypes_yaml : dict
@@ -120,6 +97,7 @@ class MIMICPreprocessor(AbstractProcessor):
                  storage_path: Path = None,
                  verbose: bool = False):
 
+        self._operation_name = "preprocessing"  # For printing
         if label_type not in ["sparse", "one-hot"]:
             raise ValueError(f"Type must be one of {*['sparse', 'one-hot'],}")
 
@@ -132,14 +110,15 @@ class MIMICPreprocessor(AbstractProcessor):
         self._task = task
         self._writer = (None if storage_path is None else DataSetWriter(self._storage_path))
         self._source_reader = reader  # the set we are trying to read from
+        self._lock = Manager().Lock()
         if tracker is not None:
             self._tracker = tracker
         else:
-            self._tracker = (None if storage_path is None else PreprocessingTracker(
-                Path(storage_path, "progress")))
+            with self._lock:
+                self._tracker = (None if storage_path is None else PreprocessingTracker(
+                    Path(storage_path, "progress")))
         self._processed_set_reader = (None if storage_path is None else ProcessedSetReader(
             root_path=storage_path))
-        self._lock = Manager().Lock()
         self._phenotypes_yaml = phenotypes_yaml
         self._verbose = verbose
 
@@ -203,8 +182,6 @@ class MIMICPreprocessor(AbstractProcessor):
         start_verbose = True
 
         if self._task in ["LOS"] and self._label_type == "one-hot":
-            info_io(f"Only sparse output_type is available for task {self._task}!"
-                    f" Argument {self._label_type} disregarded")
             self._label_type = "sparse"
 
         for subject, subject_data in dataset.items():
@@ -219,10 +196,11 @@ class MIMICPreprocessor(AbstractProcessor):
             self._y[subject] = dict()
 
             tracking_info = dict()
-
+            with self._lock:
+                is_in_subjects = subject in self._tracker.subjects
             if (self._tracker is not None) and \
-               (subject in self._tracker.subjects) and \
-               (not self._X[subject]):
+            is_in_subjects and \
+            (not self._X[subject]):
                 # Do not reprocess already existing directories
                 self._X[subject], self._y[subject] = self._processed_set_reader.read_sample(
                     str(subject), read_ids=True).values()

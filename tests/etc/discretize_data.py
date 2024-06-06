@@ -38,7 +38,11 @@ start_times = ['zero', 'relative']
 # Discritize the data from processed directory using different discretizer settings
 for task in TASK_NAMES:
     list_file_path = Path(processed_paths[task], "listfile.csv")
-    list_file = pd.read_csv(list_file_path)
+    list_file = pd.read_csv(
+        list_file_path,
+        na_values=[''],
+        keep_default_na=False,
+    )
     if task in ["IHM", "PHENO"]:
         example_indices = list_file.index
     else:

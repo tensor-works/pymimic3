@@ -20,7 +20,9 @@ ground_truth_subject_ids = [
 ground_truth_stay_ids = [
     int(icustay) for subject_dir in Path(TEST_GT_DIR, "extracted").iterdir()
     if subject_dir.name.isnumeric()
-    for icustay in pd.read_csv(Path(subject_dir, "stays.csv")).ICUSTAY_ID.to_numpy().tolist()
+    for icustay in pd.read_csv(Path(subject_dir, "stays.csv"),
+                               na_values=[''],
+                               keep_default_na=False).ICUSTAY_ID.to_numpy().tolist()
 ]
 
 # Consider storing this somewhere else

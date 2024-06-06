@@ -20,7 +20,9 @@ def assert_reader_equals(reader: ProcessedSetReader, test_data_dir: Path):
     stay_count = 0
     tests_io(f"Stays frames compared: {stay_count}\n"
              f"Total subjects checked: {subject_count}")
-    listfile = pd.read_csv(Path(test_data_dir, "listfile.csv"))
+    listfile = pd.read_csv(Path(test_data_dir, "listfile.csv"),
+                           na_values=[''],
+                           keep_default_na=False)
     for subject_id in reader.subject_ids:
         X_stays, y_stays = reader.read_sample(subject_id, read_ids=True).values()
         subject_count += 1
@@ -47,7 +49,9 @@ def assert_dataset_equals(X: dict, y: dict, generated_dir: Path, test_data_dir: 
     stay_count = 0
     tests_io(f"Stays frames compared: {stay_count}\n"
              f"Total subjects checked: {subject_count}")
-    listfile = pd.read_csv(Path(test_data_dir, "listfile.csv"))
+    listfile = pd.read_csv(Path(test_data_dir, "listfile.csv"),
+                           na_values=[''],
+                           keep_default_na=False)
     for subject_id in X:
         X_stays, y_stays = X[subject_id], y[subject_id]
         subject_count += 1
@@ -73,8 +77,10 @@ def assert_subject_data_equals(subject_id: int,
         X = X_stays[stay_id]
         y = y_stays[stay_id]
         try:
-            test_data = pd.read_csv(
-                Path(test_data_dir, f"{subject_id}_episode{stay_id}_timeseries.csv"))
+            test_data = pd.read_csv(Path(test_data_dir,
+                                         f"{subject_id}_episode{stay_id}_timeseries.csv"),
+                                    na_values=[''],
+                                    keep_default_na=False)
         except:
             raise FileNotFoundError(f"Test set is missing {subject_id}"
                                     "_episode{stay_id}_timeseries.csv")

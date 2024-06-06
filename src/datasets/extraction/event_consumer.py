@@ -1,12 +1,17 @@
 """
 This module provides classes for processing subject events from the raw CHARTEVENT, LABEVENTS and OUTPUTEVENTS csv and store it by subject.
-This class is used for multiprocessing and employed by the iterative extraction. The preprocessing is done by
-the datasets.extraction.extraction_functions.extract_subject_events, this class handle the multiprocessing chain.
+This class is used for multiprocessing and employed by the iterative extraction. The preprocessing is done using
+the datasets.extraction.extraction_functions.extract_subject_events, while the class itself is part of the 
+even processing chain.
 
-Classes
--------
-- EventConsumer(storage_path, in_q, out_q, icu_history_df, lock)
-    Consumes events from a queue, processes them, and writes to storage.
+EventProducer -> EventConsumer -> ProgressPublisher
+
+**Subject Events**: A dictionary where each key is a subject ID, and the value is a DataFrame of 
+chart events (e.g., lab results, vital signs) associated with that subject.
+
+- From: CHARTEVENTS, LABEVENTS, OUTPUTEVENTS
+- In: evenet_consumer.py
+- Cols: SUBJECT_ID, HADM_ID, ICUSTAY_ID, CHARTTIME, ITEMID, VALUE, VALUEUOM
 
 Examples
 -------- 

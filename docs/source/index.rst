@@ -2,10 +2,10 @@ Welcome to FASTMIMIC3's documentation!
 ======================================
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: -1
    :caption: Contents:
 
-   _reference/api_reference
+   api_reference
 
 Indices and tables
 ==================

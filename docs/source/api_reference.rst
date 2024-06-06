@@ -1,9 +1,10 @@
-Modules
-=======
+API Reference
+=============
 
 .. autosummary::
-   :toctree: generated
-   :caption: Modules
+   :toctree: _generated/
+   :recursive: 
+   :nosignatures:
 
    datasets
    generators

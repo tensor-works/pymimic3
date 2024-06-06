@@ -6,14 +6,25 @@ This module provides classes and methods for reading and handling dataset files 
 specifically from the MIMIC-III dataset. These classes are designed to facilitate the extraction, processing, 
 and management of large and complex datasets, enabling efficient data manipulation and analysis.
 
-Classes
--------
+The following table describes the input and output for each reader in this module:
 
-- AbstractReader: A base reader class for datasets, providing methods to handle and sample subject directories.
-- ExtractedSetReader: A reader for extracted datasets, providing methods to read various types of data including timeseries, episodic data, events, diagnoses, and ICU history.
-- ProcessedSetReader: A reader for processed datasets, providing methods to read samples and individual subject data.
-- EventReader: A reader for event data from CHARTEVENTS, OUTPUTEVENTS, LABEVENTS, providing methods to read data either in chunks or in a single shot.
-- SplitSetReader: A reader for datasets split into training, validation, and test sets, providing access to each split.
++----------------------+-------------------+----------------------------------+
+| Reader               | Input             | Reads                            |
++======================+===================+==================================+
+| ExtractedSetReader   | Extracted dataset | Timeseries, episodic data,       |
+|                      |                   | subject events, diagnoses, ICU   |
+|                      |                   | history                          |
++----------------------+-------------------+----------------------------------+
+| ProcessedSetReader   | Processed dataset | Samples and individual subject   |
+|                      |                   | data                             |
++----------------------+-------------------+----------------------------------+
+| EventReader          | CHARTEVENTS,      | Event data in chunks or full     |
+|                      | OUTPUTEVENTS,     | dataset                          |
+|                      | LABEVENTS         |                                  |
++----------------------+-------------------+----------------------------------+
+| SplitSetReader       | Dataset split     | Training, validation, and test   |
+|                      | information       | sets                             |
++----------------------+-------------------+----------------------------------+
 
 References
 ----------
@@ -269,7 +280,11 @@ class ExtractedSetReader(AbstractReader):
             warn_io(f"File path {str(file_path)} does not exist!")
             return pd.DataFrame()
         try:
-            df = pd.read_csv(file_path, dtype=dtypes, low_memory=False)
+            df = pd.read_csv(file_path,
+                             dtype=dtypes,
+                             na_values=[''],
+                             keep_default_na=False,
+                             low_memory=False)
         except TypeError as error:
             error_io(f"Can't fit the integer range into requested dtype. Pandas error: {error}",
                      TypeError)
@@ -621,6 +636,8 @@ class ExtractedSetReader(AbstractReader):
         file_df = pd.read_csv(Path(dir_path, f"{filename}.csv"),
                               dtype=self._dtypes[filename],
                               index_col=self._index_name_mapping[filename],
+                              na_values=[''],
+                              keep_default_na=False,
                               low_memory=False)
 
         if filename in self._convert_datetime:
@@ -651,10 +668,15 @@ class ExtractedSetReader(AbstractReader):
             if file.replace(stay_id, "") == "timeseries_.csv":
                 if read_ids:
                     timeseries[int(stay_id)] = pd.read_csv(
-                        Path(dir_path, file), dtype=self._dtypes["timeseries"]).set_index('hours')
+                        Path(dir_path, file),
+                        na_values=[''],
+                        keep_default_na=False,
+                        dtype=self._dtypes["timeseries"]).set_index('hours')
                 else:
                     timeseries.append(
                         pd.read_csv(Path(dir_path, file),
+                                    na_values=[''],
+                                    keep_default_na=False,
                                     dtype=self._dtypes["timeseries"]).set_index('hours'))
 
         return timeseries
@@ -699,7 +721,7 @@ class ProcessedSetReader(AbstractReader):
         Whether to set the index for the dataframes. Defaults to True.
     """
 
-    def __init__(self, root_path: Path, subject_ids: list = None, set_index: bool = True) -> None:
+    def __init__(self, root_path: Path, subject_ids: list = None) -> None:
         """_summary_
 
         Args:
@@ -717,7 +739,7 @@ class ProcessedSetReader(AbstractReader):
                 "t": np.load
             },
             "h5": {
-                "X": pd.read_hdf,
+                "X": self._read_hdf,
                 "y": pd.read_hdf
             }
         }
@@ -728,11 +750,24 @@ class ProcessedSetReader(AbstractReader):
 
     @staticmethod
     def _read_csv(path: Path, dtypes: tuple = None) -> pd.DataFrame:
-        df = pd.read_csv(path, dtype=dtypes)
+        df = pd.read_csv(path, na_values=[''], keep_default_na=False, dtype=dtypes)
         if 'hours' in df.columns:
             df = df.set_index('hours')
         if 'Timestamp' in df.columns:
             df = df.set_index('Timestamp')
+        if 'bins' in df.columns:
+            df = df.set_index('bins')
+        return df
+
+    @staticmethod
+    def _read_hdf(path: Path, dtypes: tuple = None) -> pd.DataFrame:
+        df = pd.read_hdf(path)
+        if 'hours' in df.columns:
+            df = df.set_index('hours')
+        if 'Timestamp' in df.columns:
+            df = df.set_index('Timestamp')
+        if 'bins' in df.columns:
+            df = df.set_index('bins')
         return df
 
     def read_samples(self,
@@ -982,13 +1017,7 @@ class EventReader():
                  subject_ids: list = None,
                  chunksize: int = None,
                  tracker: ExtractionTracker = None) -> None:
-        """_summary_
 
-        Args:
-            dataset_folder (Path): _description_
-            chunksize (int, optional): _description_. Defaults to None.
-            tracker (object, optional): _description_. Defaults to None.
-        """
         self.dataset_folder = dataset_folder
         self._done = False
 
@@ -1049,6 +1078,8 @@ class EventReader():
                 file_handle = Path(dataset_folder, csv_name).open("rb")
                 self._csv_reader[csv_name] = pd.read_csv(file_handle,
                                                          iterator=True,
+                                                         na_values=[''],
+                                                         keep_default_na=False,
                                                          chunksize=chunksize,
                                                          low_memory=False,
                                                          **kwargs)
@@ -1200,6 +1231,8 @@ class EventReader():
         for csv in event_csv:
             events_df = pd.read_csv(Path(self.dataset_folder, csv),
                                     low_memory=False,
+                                    na_values=[''],
+                                    keep_default_na=False,
                                     **self._event_csv_kwargs[csv])
             events_df = upper_case_column_names(events_df)
 

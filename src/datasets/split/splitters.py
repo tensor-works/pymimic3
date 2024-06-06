@@ -1,19 +1,9 @@
 """
-Data Splitting Module
-=====================
-
 This module provides classes for splitting datasets into training, validation, and test sets.
 The splits can be performed based on predefined ratios or by demographic groups.
 This feature is useful for creating willfully biased datasets or inducing concept drift.
 
-Classes
--------
-- AbstractSplitter(max_iter, tolerance)
-    Provides abstract methods for splitting datasets.
-- ReaderSplitter(max_iter, tolerance)
-    Splits datasets loaded by a reader based on specified criteria.
-- CompactSplitter(max_iter, tolerance)
-    Splits dictionaries containing data based on specified criteria.
+
 """
 import random
 import numpy as np

@@ -1,50 +1,46 @@
 """
-=========================
 Dataset Extraction Module
-=========================
+==========================
 
-This module provides functions and classes for extracting and processing dataset files.
-It supports both compact and iterative extraction methods to handle different use cases.
+This module provides functions and classes for extracting and processing dataset files from the MIMIC-III 
+database. It supports both, the legacy compact approach and the sped-up iterative extraction methods to 
+increase and customize extraction speed.
 
-Classes
--------
-.. autosummary::
-   :toctree: 
+The extraction functions create task-agnostic datasets necessary for downstream processing and analysis. 
+These include creating files such as:
 
-   EventProducer
-   TimeseriesProcessor
++-------------------------+------------------------------------------------------------+
+| File Name               | Description                                                |
++=========================+============================================================+
+| subject_diagnoses.csv   | Phenotypes diagnosed per ICU stay                          |
++-------------------------+------------------------------------------------------------+
+| episodic_data.csv       | Patient information (AGE,                                  |
+|                         | Length-of-stay, Gender,                                    |
+|                         | Ethnicity, etc., and diagnoses)                            |
++-------------------------+------------------------------------------------------------+
+| subject_events.csv      | Events extracted from CHARTEVENTS,                         |
+|                         | LABEVENTS, and OUTPUTEVENTS per ICU stay                   |
++-------------------------+------------------------------------------------------------+
+| subject_icu_history.csv | Immutable information about the subject per ICU stay       |
+|                         | such as admission times and mortality                      |
++-------------------------+------------------------------------------------------------+
+| timeseries.csv          | Timeseries with the 17 medical variables                   |
+|                         | for further processing                                     |
++-------------------------+------------------------------------------------------------+
 
-Functions
----------
-.. autosummary::
-   :toctree: 
-
-   compact_extraction
-   iterative_extraction
-   read_patients_csv
-   read_admission_csv
-   read_icustays_csv
-   read_icd9codes_csv
-   read_events_dictionary
-   merge_patient_history
-   make_subject_infos
-   make_icu_history
-   make_diagnoses
-   make_phenotypes
-   get_by_subject
-   reduce_by_subjects
-   get_subject_ids
-   get_subjects_by_number
-   get_processable_subjects
-   create_split_info_csv
-   
 Examples
 --------
->>> from extraction_module import compact_extraction, iterative_extraction
->>> storage_path = Path("/path/to/storage")
->>> source_path = Path("/path/to/source")
->>> dataset_dict = compact_extraction(storage_path, source_path, num_subjects=100)
->>> reader = iterative_extraction(source_path, storage_path, chunksize=1000)
+Example 1: Compact data extraction 
+    >>> from extraction_module import compact_extraction
+    >>> storage_path = Path("/path/to/storage")
+    >>> source_path = Path("/path/to/source")
+    >>> dataset_dict = compact_extraction(storage_path, source_path, num_subjects=100)
+
+Example 2: Iterative data extraction with chunk size
+    >>> from extraction_module import iterative_extraction
+    >>> storage_path = Path("/path/to/storage")
+    >>> source_path = Path("/path/to/source")
+    >>> reader = iterative_extraction(source_path, storage_path, chunksize=1000)
 """
 
 import pandas as pd
@@ -59,13 +55,13 @@ from pathlib import Path
 from typing import List
 from utils.IO import *
 from settings import *
-from .extraction_functions import extract_subject_events, extract_timeseries
-from .event_producer import EventProducer
-from .timeseries_processor import TimeseriesProcessor
-from ..trackers import ExtractionTracker
-from ..mimic_utils import *
-from ..readers import ExtractedSetReader, EventReader
-from ..writers import DataSetWriter
+from datasets.extraction.extraction_functions import extract_subject_events, extract_timeseries
+from datasets.extraction.event_producer import EventProducer
+from datasets.extraction.timeseries_processor import TimeseriesProcessor
+from datasets.trackers import ExtractionTracker
+from datasets.mimic_utils import *
+from datasets.readers import ExtractedSetReader, EventReader
+from datasets.writers import DataSetWriter
 
 
 def compact_extraction(storage_path: Path,
@@ -96,12 +92,6 @@ def compact_extraction(storage_path: Path,
     -------
     dict
         A dictionary containing the extracted data.
-
-    Examples
-    --------
-    >>> storage_path = Path("/path/to/storage")
-    >>> source_path = Path("/path/to/source")
-    >>> dataset = compact_extraction(storage_path, source_path, num_subjects=100)
     """
     original_subject_ids = deepcopy(subject_ids)
     resource_folder = Path(source_path, "resources")
@@ -248,7 +238,8 @@ def iterative_extraction(source_path: Path,
                          subject_ids: list = None,
                          task: str = None) -> ExtractedSetReader:
     """
-    Perform iterative extraction of the dataset, with specified chunk size. This will require less RAM and run on multiple processes.
+    Perform iterative extraction of the dataset, with specified chunk size. This will require less 
+    RAM and run on multiple processes.
 
     Parameters
     ----------
@@ -271,12 +262,6 @@ def iterative_extraction(source_path: Path,
     -------
     ExtractedSetReader
         The extracted set reader to access the dataset.
-
-    Examples
-    --------
-    >>> source_path = Path("/path/to/source")
-    >>> storage_path = Path("/path/to/storage")
-    >>> reader = iterative_extraction(source_path, storage_path, chunksize=1000, num_subjects=100)
     """
     # Not sure
     original_subject_ids = deepcopy(subject_ids)
@@ -424,6 +409,460 @@ def iterative_extraction(source_path: Path,
     return ExtractedSetReader(storage_path, subject_ids=original_subject_ids)
 
 
+def read_patients_csv(dataset_folder: Path):
+    """
+    Reads the PATIENTS.csv file from the specified dataset folder with correct dtypes and columns.
+    
+    Columns: SUBJECT_ID, GENDER, DOB, DOD
+
+    Parameters
+    ----------
+    dataset_folder : Path
+        Path to the dataset folder. Defaults to 'data/mimic-iii-demo/'.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame containing patient data including birth, death, gender, and ethnicity.
+
+    Notes
+    -----
+    - Column names are converted to uppercase.
+    - Columns specified in the configuration are selected.
+    - Date columns are converted to datetime.
+    """
+    csv_settings = DATASET_SETTINGS["PATIENTS"]
+    patients_df = pd.read_csv(Path(dataset_folder, "PATIENTS.csv"),
+                              na_values=[''],
+                              keep_default_na=False,
+                              dtype=convert_dtype_dict(csv_settings["dtype"]))
+
+    patients_df = upper_case_column_names(patients_df)
+    patients_df = patients_df[csv_settings["columns"]].copy()
+
+    for column in csv_settings["convert_datetime"]:
+        patients_df[column] = pd.to_datetime(patients_df[column])
+
+    return patients_df
+
+
+def read_admission_csv(dataset_folder: Path):
+    """
+    Reads the ADMISSIONS.csv file from the specified dataset folder with correct dtypes and columns.
+    
+    Columns (admissions):  SUBJECT_ID, HADM_ID, ADMITTIME, DISCHTIME, DEATHTIME, ETHNICITY, DIAGNOSIS
+
+    Parameters
+    ----------
+    dataset_folder : Path
+        Path to the dataset folder. Defaults to 'data/mimic-iii-demo/'.
+
+    Returns
+    -------
+    tuple of pd.DataFrame
+        A tuple containing:
+            - admissions_df: DataFrame with hospital admissions data including admission, discharge, type, and location.
+            - admissions_info_df: DataFrame with additional admission information.
+
+    Notes
+    -----
+    - Column names are converted to uppercase.
+    - Columns specified in the configuration are selected.
+    - Date columns are converted to datetime.
+    """
+    csv_settings = DATASET_SETTINGS["ADMISSIONS"]
+
+    admissions_df = pd.read_csv(Path(dataset_folder, "ADMISSIONS.csv"),
+                                na_values=[''],
+                                keep_default_na=False,
+                                dtype=convert_dtype_dict(csv_settings["dtype"]))
+    admissions_df = upper_case_column_names(admissions_df)
+    for column in csv_settings["convert_datetime"]:
+        admissions_df[column] = pd.to_datetime(admissions_df[column])
+
+    admissions_info_df = admissions_df[csv_settings["info_columns"]]
+    admissions_df = admissions_df[csv_settings["columns"]].copy()
+
+    return admissions_df, admissions_info_df
+
+
+def read_icustays_csv(dataset_folder: Path):
+    """
+    Reads the ICUSTAYS.csv file from the specified dataset folder with correct dtypes and columns.
+
+    Columns: ROW_ID, SUBJECT_ID, HADM_ID, ICUSTAY_ID, DBSOURCE, FIRST_CAREUNIT, LAST_CAREUNIT,
+    FIRST_WARDID, LAST_WARDID, INTIME, OUTTIME, LOS
+    
+    Parameters
+    ----------
+    dataset_folder : Path
+        Path to the dataset folder. Defaults to 'data/mimic-iii-demo/'.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with ICU admission data including first & last care unit, ward ID, etc.
+
+    Notes
+    -----
+    - Column names are converted to uppercase.
+    - Columns specified in the configuration are selected.
+    - Date columns are converted to datetime.
+    """
+    csv_settings = DATASET_SETTINGS["ICUSTAYS"]
+
+    icustays_df = pd.read_csv(Path(dataset_folder, "ICUSTAYS.csv"),
+                              na_values=[''],
+                              keep_default_na=False,
+                              dtype=convert_dtype_dict(csv_settings["dtype"]))
+    icustays_df = upper_case_column_names(icustays_df)
+    for column in csv_settings["convert_datetime"]:
+        icustays_df[column] = pd.to_datetime(icustays_df[column])
+
+    return icustays_df
+
+
+def read_icd9codes_csv(dataset_folder: Path):
+    """
+    Reads the D_ICD_DIAGNOSES.csv file from the specified dataset folder.
+
+    Columns: ICD9_CODE, SHORT_TITLE, LONG_TITLE
+    
+    Parameters
+    ----------
+    dataset_folder : Path
+        Path to the dataset folder. Defaults to 'data/mimic-iii-demo/'.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with dictionaries describing the ICD9 codes.
+
+    Notes
+    -----
+    - Column names are converted to uppercase.
+    - Columns specified in the configuration are selected.
+    -  International Classification of Diseases, Ninth Revision, are alphanumeric codes used by healthcare providers to classify and code all diagnoses, symptoms, and procedures recorded in conjunction with hospital care in the United States
+    """
+    csv_settings = DATASET_SETTINGS["ICD9CODES"]
+
+    icd9codes_df = pd.read_csv(Path(dataset_folder, 'D_ICD_DIAGNOSES.csv'),
+                               na_values=[''],
+                               keep_default_na=False,
+                               dtype=convert_dtype_dict(csv_settings["dtype"]))
+    icd9codes_df = upper_case_column_names(icd9codes_df)
+    icd9codes_df = icd9codes_df[csv_settings["columns"]]
+
+    return icd9codes_df
+
+
+def read_events_dictionary(dataset_folder: Path):
+    """
+    Reads the D_ITEMS.csv file from the specified dataset folder.
+
+    Parameters
+    ----------
+    dataset_folder : Path
+        Path to the dataset folder. Defaults to 'data/mimic-iii-demo/'.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame containing the items dictionary with ITEMID and DBSOURCE columns.
+
+    Notes
+    -----
+    - Column names are converted to uppercase.
+    - Only the ITEMID and DBSOURCE columns are selected.
+    """
+    csv_settings = DATASET_SETTINGS["D_ITEMS"]
+    dictionary_df = pd.read_csv(Path(dataset_folder, "D_ITEMS.csv"),
+                                na_values=[''],
+                                keep_default_na=False,
+                                dtype=convert_dtype_dict(csv_settings["dtype"]))
+    dictionary_df = upper_case_column_names(dictionary_df)
+    dictionary_df = dictionary_df[["ITEMID", "DBSOURCE"]]
+
+    return dictionary_df
+
+
+def merge_patient_history(patients_df, admissions_df, icustays_df, min_nb_stays,
+                          max_nb_stays) -> pd.DataFrame:
+    """
+    Merges patient, admission, and ICU stay data to create a patient history DataFrame of ICU stays, like admission time and mortality.
+
+    Columns: ROW_ID, SUBJECT_ID, HADM_ID, ICUSTAY_ID, DBSOURCE, FIRST_CAREUNIT, LAST_CAREUNIT,
+    FIRST_WARDID, LAST_WARDID, INTIME, OUTTIME, LOS, ADMISSION_TYPE, ADMISSION_LOCATION,
+    DISCHARGE_LOCATION, INSURANCE, LANGUAGE, ETHNICITY, GENDER, DOB, DOD, AGE.
+    
+    Parameters
+    ----------
+    patients_df : pd.DataFrame
+        DataFrame containing patient data.
+    admissions_df : pd.DataFrame
+        DataFrame containing admission data.
+    icustays_df : pd.DataFrame
+        DataFrame containing ICU stay data.
+    min_nb_stays : int
+        Minimum number of ICU stays to include a patient.
+    max_nb_stays : int
+        Maximum number of ICU stays to include a patient.
+
+    Returns
+    -------
+    pd.DataFrame
+        Merged DataFrame with patient history.
+
+    Notes
+    -----
+    - Only ICU stays where the first and last care unit and ward ID match are included.
+    - Filters patients based on the number of ICU stays between min_nb_stays and max_nb_stays.
+    - Calculates patient age and filters out children (age < 18).
+    """
+    icustays_df = icustays_df[icustays_df["FIRST_CAREUNIT"] == icustays_df["LAST_CAREUNIT"]]
+    icustays_df = icustays_df[icustays_df["FIRST_WARDID"] == \
+                                    icustays_df["LAST_WARDID"]]
+
+    patient_history_df = icustays_df.merge(admissions_df,
+                                           how='inner',
+                                           left_on=['SUBJECT_ID', 'HADM_ID'],
+                                           right_on=['SUBJECT_ID', 'HADM_ID'])
+    patient_history_df = patient_history_df.merge(patients_df,
+                                                  how='inner',
+                                                  left_on=['SUBJECT_ID'],
+                                                  right_on=['SUBJECT_ID'])
+
+    filter = patient_history_df.groupby('HADM_ID').count()[['ICUSTAY_ID']].reset_index()
+    filter = filter.loc[(filter.ICUSTAY_ID >= min_nb_stays)
+                        & (filter.ICUSTAY_ID <= max_nb_stays)][['HADM_ID']]
+    patient_history_df = patient_history_df.merge(filter,
+                                                  how='inner',
+                                                  left_on='HADM_ID',
+                                                  right_on='HADM_ID')
+
+    patient_history_df['AGE'] = (patient_history_df.INTIME.dt.year - patient_history_df.DOB.dt.year)
+    patient_history_df.loc[patient_history_df.AGE < 0, 'AGE'] = 90
+    # Filter out children
+    # patient_history_df = patient_history_df[patient_history_df.AGE > 18]
+
+    return patient_history_df
+
+
+def make_subject_infos(patients_df,
+                       admission_info_df,
+                       icustays_df,
+                       min_nb_stays=1,
+                       max_nb_stays=1) -> pd.DataFrame:
+    """
+    Creates a DataFrame containing information about subjects by merging patient, admission, and ICU stay data, like gender and insurance.
+
+    Columns: SUBJECT_ID, ICUSTAY_ID, DBSOURCE, CAREUNIT, WARDID, ADMISSION_TYPE, ADMISSION_LOCATION,
+    DISCHARGE_LOCATION, INSURANCE, LANGUAGE, ETHNICITY, GENDER, AGE
+
+
+    Parameters
+    ----------
+    patients_df : pd.DataFrame
+        DataFrame containing patient data.
+    admission_info_df : pd.DataFrame
+        DataFrame containing additional admission information.
+    icustays_df : pd.DataFrame
+        DataFrame containing ICU stay data.
+    min_nb_stays : int, optional
+        Minimum number of ICU stays to include a patient, by default 1.
+    max_nb_stays : int, optional
+        Maximum number of ICU stays to include a patient, by default 1.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame containing subject information with specified columns.
+
+    Notes
+    -----
+    - Merges patient history data.
+    - Selects and renames columns according to the configuration.
+    """
+    csv_settings = DATASET_SETTINGS["subject_info"]
+    subject_info_df = merge_patient_history(patients_df, admission_info_df, icustays_df,
+                                            min_nb_stays, max_nb_stays)
+    subject_info_df = subject_info_df[csv_settings["columns"]]
+    subject_info_df = subject_info_df.rename(columns={
+        "FIRST_WARDID": "WARDID",
+        "FIRST_CAREUNIT": "CAREUNIT"
+    })
+
+    return subject_info_df
+
+
+def make_icu_history(patients_df,
+                     admissions_df,
+                     icustays_df,
+                     min_nb_stays=1,
+                     max_nb_stays=1) -> pd.DataFrame:
+    """
+    Creates a DataFrame describing each ICU stay with admission data, patient data, and mortality.
+
+    Columns: SUBJECT_ID, HADM_ID, ICUSTAY_ID, LAST_CAREUNIT, DBSOURCE, INTIME, OUTTIME, LOS, ADMITTIME,
+    DISCHTIME, DEATHTIME, ETHNICITY, DIAGNOSIS, GENDER, DOB, DOD, AGE, MORTALITY_INUNIT, MORTALITY,
+    MORTALITY_INHOSPITAL
+
+    Parameters
+    ----------
+    patients_df : pd.DataFrame
+        DataFrame containing patient data.
+    admissions_df : pd.DataFrame
+        DataFrame containing hospital admissions data.
+    icustays_df : pd.DataFrame
+        DataFrame containing ICU stay data.
+    min_nb_stays : int, optional
+        Minimum number of ICU stays to include a patient, by default 1.
+    max_nb_stays : int, optional
+        Maximum number of ICU stays to include a patient, by default 1.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame describing each ICU stay with admission data, patient data, and mortality.
+    """
+    csv_settings = DATASET_SETTINGS["icu_history"]
+    icu_history_df = merge_patient_history(patients_df, admissions_df, icustays_df, min_nb_stays,
+                                           max_nb_stays)
+
+    # Inunit mortality
+    mortality = icu_history_df.DOD.notnull() & ((icu_history_df.INTIME <= icu_history_df.DOD) &
+                                                (icu_history_df.OUTTIME >= icu_history_df.DOD))
+
+    mortality = mortality | (icu_history_df.DEATHTIME.notnull() &
+                             ((icu_history_df.INTIME <= icu_history_df.DEATHTIME) &
+                              (icu_history_df.OUTTIME >= icu_history_df.DEATHTIME)))
+    icu_history_df['MORTALITY_INUNIT'] = mortality.astype(int)
+
+    # Inhospital mortality
+    mortality = icu_history_df.DOD.notnull() & ((icu_history_df.ADMITTIME <= icu_history_df.DOD) &
+                                                (icu_history_df.DISCHTIME >= icu_history_df.DOD))
+    mortality = mortality | (icu_history_df.DEATHTIME.notnull() &
+                             ((icu_history_df.ADMITTIME <= icu_history_df.DEATHTIME) &
+                              (icu_history_df.DISCHTIME >= icu_history_df.DEATHTIME)))
+    icu_history_df['MORTALITY'] = mortality.astype(int)
+    icu_history_df['MORTALITY_INHOSPITAL'] = mortality.astype(int)
+
+    icu_history_df = icu_history_df[csv_settings["columns"]]
+    icu_history_df = icu_history_df[icu_history_df.AGE >= 18]
+
+    return icu_history_df
+
+
+def make_diagnoses(dataset_folder, icd9codes_df, icu_history_df):
+    """
+    Creates a DataFrame containing descriptions of diagnoses with direct links to subjects and ICU stays.
+
+    Parameters
+    ----------
+    dataset_folder : str
+        Path to the dataset folder. Defaults to 'data/mimic-iii-demo/'.
+    icd9codes_df : pd.DataFrame
+        DataFrame containing ICD-9 code definitions.
+    icu_history_df : pd.DataFrame
+        DataFrame containing ICU stay descriptions.
+
+    Returns
+    -------
+    tuple of pd.DataFrame and dict
+        - diagnoses_df: DataFrame containing descriptions of diagnoses with links to subjects and ICU stays.
+        - definition_map: Dictionary mapping ICD-9 codes to phenotypes and benchmark usage.
+    """
+    csv_settings = DATASET_SETTINGS["DIAGNOSES_ICD"]
+    diagnoses_df = pd.read_csv(Path(dataset_folder, 'DIAGNOSES_ICD.csv'),
+                               na_values=[''],
+                               keep_default_na=False,
+                               dtype=convert_dtype_dict(csv_settings["dtype"]))
+    diagnoses_df = upper_case_column_names(diagnoses_df)
+    diagnoses_df = diagnoses_df.merge(icd9codes_df,
+                                      how='inner',
+                                      left_on='ICD9_CODE',
+                                      right_on='ICD9_CODE')
+    diagnoses_df = diagnoses_df.merge(icu_history_df[['SUBJECT_ID', 'HADM_ID',
+                                                      'ICUSTAY_ID']].drop_duplicates(),
+                                      how='inner',
+                                      left_on=['SUBJECT_ID', 'HADM_ID'],
+                                      right_on=['SUBJECT_ID', 'HADM_ID'])
+
+    diagnoses_df[['SUBJECT_ID', 'HADM_ID',
+                  'SEQ_NUM']] = diagnoses_df[['SUBJECT_ID', 'HADM_ID', 'SEQ_NUM']].astype(int)
+
+    # Clinical Classifications Software CSS defintions of phenotypes
+    with Path(dataset_folder, "resources", "hcup_ccs_2015_definitions.yaml").open("r") as file:
+        phenotypes_yaml = yaml.full_load(file)
+
+    # Create definition map
+    definition_map = dict()
+
+    for phenotype in phenotypes_yaml:
+        for code in phenotypes_yaml[phenotype]['codes']:
+            definition_map[code] = (phenotype, phenotypes_yaml[phenotype]['use_in_benchmark'])
+
+    diagnoses_df['HCUP_CCS_2015'] = diagnoses_df.ICD9_CODE.apply(lambda c: definition_map[c][0]
+                                                                 if c in definition_map else None)
+    diagnoses_df['USE_IN_BENCHMARK'] = diagnoses_df.ICD9_CODE.apply(
+        lambda c: int(definition_map[c][1]) if c in definition_map else None)
+
+    return diagnoses_df, definition_map
+
+
+def make_phenotypes(diagnoses_df, definition_map):
+    """
+    Creates a binary matrix with diagnoses over ICU stays.
+
+    Parameters
+    ----------
+    diagnoses_df : pd.DataFrame
+        DataFrame containing diagnoses descriptions with ICU stay information.
+    definition_map : dict
+        Dictionary mapping ICD-9 codes to phenotypes and benchmark usage.
+
+    Returns
+    -------
+    pd.DataFrame
+        Binary matrix with diagnoses over ICU stays.
+    """
+    # Merge definitions to diagnoses
+    phenotype_dictionary_df = pd.DataFrame(definition_map).T.reset_index().rename(columns={
+        'index': 'ICD9_CODE',
+        0: 'HCUP_CCS_2015',
+        1: 'USE_IN_BENCHMARK'
+    })
+    phenotype_dictionary_df['use_in_benchmark'] = phenotype_dictionary_df[
+        'use_in_benchmark'].astype(int)
+
+    phenotypes_df = diagnoses_df.merge(phenotype_dictionary_df,
+                                       how='inner',
+                                       left_on='ICD9_CODE',
+                                       right_on='ICD9_CODE')
+
+    # Extract phenotypes from diagnoses
+    phenotypes_df = phenotypes_df[['ICUSTAY_ID', 'HCUP_CCS_2015'
+                                  ]][phenotypes_df.use_in_benchmark > 0].drop_duplicates()
+    phenotypes_df['VALUE'] = 1
+
+    # Definitions again icu stays
+    phenotypes_df = phenotypes_df.pivot(index='icuystay_id',
+                                        columns='HCUP_CCS_2015',
+                                        values='VALUE')
+
+    # Impute values and sort axes
+    phenotypes_df = phenotypes_df.fillna(0).astype(int).sort_index(axis=0).sort_index(axis=1)
+
+    return phenotypes_df
+
+
+def get_by_subject(df, sort_by):
+    """
+    Groups events by subject ID.
+    """
+    return {id: x for id, x in df.sort_values(by=sort_by).groupby('SUBJECT_ID')}
+
+
 def reduce_by_subjects(dataframe: pd.DataFrame, subject_ids: list):
     """
     Reduce the dataframe to only include the specified subject IDs.
@@ -551,427 +990,6 @@ def create_split_info_csv(episodic_info_df: pd.DataFrame, subject_info_df: pd.Da
     episodic_info_df.to_csv("split_info.csv")
 
     return
-
-
-def read_patients_csv(dataset_folder: Path):
-    """
-    Reads the PATIENTS.csv file from the specified dataset folder with correct dtypes and columns.
-
-    Parameters
-    ----------
-    dataset_folder : Path
-        Path to the dataset folder. Defaults to 'data/mimic-iii-demo/'.
-
-    Returns
-    -------
-    pd.DataFrame
-        DataFrame containing patient data including birth, death, gender, and ethnicity.
-
-    Notes
-    -----
-    - Column names are converted to uppercase.
-    - Columns specified in the configuration are selected.
-    - Date columns are converted to datetime.
-    """
-    csv_settings = DATASET_SETTINGS["PATIENTS"]
-    patients_df = pd.read_csv(Path(dataset_folder, "PATIENTS.csv"),
-                              dtype=convert_dtype_dict(csv_settings["dtype"]))
-
-    patients_df = upper_case_column_names(patients_df)
-    patients_df = patients_df[csv_settings["columns"]].copy()
-
-    for column in csv_settings["convert_datetime"]:
-        patients_df[column] = pd.to_datetime(patients_df[column])
-
-    return patients_df
-
-
-def read_admission_csv(dataset_folder: Path):
-    """
-    Reads the ADMISSIONS.csv file from the specified dataset folder with correct dtypes and columns.
-
-    Parameters
-    ----------
-    dataset_folder : Path
-        Path to the dataset folder. Defaults to 'data/mimic-iii-demo/'.
-
-    Returns
-    -------
-    tuple of pd.DataFrame
-        A tuple containing:
-            - admissions_df: DataFrame with hospital admissions data including admission, discharge, type, and location.
-            - admissions_info_df: DataFrame with additional admission information.
-
-    Notes
-    -----
-    - Column names are converted to uppercase.
-    - Columns specified in the configuration are selected.
-    - Date columns are converted to datetime.
-    """
-    csv_settings = DATASET_SETTINGS["ADMISSIONS"]
-
-    admissions_df = pd.read_csv(Path(dataset_folder, "ADMISSIONS.csv"),
-                                dtype=convert_dtype_dict(csv_settings["dtype"]))
-    admissions_df = upper_case_column_names(admissions_df)
-    for column in csv_settings["convert_datetime"]:
-        admissions_df[column] = pd.to_datetime(admissions_df[column])
-
-    admissions_info_df = admissions_df[csv_settings["info_columns"]]
-    admissions_df = admissions_df[csv_settings["columns"]].copy()
-
-    return admissions_df, admissions_info_df
-
-
-def read_icustays_csv(dataset_folder: Path):
-    """
-    Reads the ICUSTAYS.csv file from the specified dataset folder with correct dtypes and columns.
-
-    Parameters
-    ----------
-    dataset_folder : Path
-        Path to the dataset folder. Defaults to 'data/mimic-iii-demo/'.
-
-    Returns
-    -------
-    pd.DataFrame
-        DataFrame with ICU admission data including first & last care unit, ward ID, etc.
-
-    Notes
-    -----
-    - Column names are converted to uppercase.
-    - Columns specified in the configuration are selected.
-    - Date columns are converted to datetime.
-    """
-    csv_settings = DATASET_SETTINGS["ICUSTAYS"]
-
-    icustays_df = pd.read_csv(Path(dataset_folder, "ICUSTAYS.csv"),
-                              dtype=convert_dtype_dict(csv_settings["dtype"]))
-    icustays_df = upper_case_column_names(icustays_df)
-    for column in csv_settings["convert_datetime"]:
-        icustays_df[column] = pd.to_datetime(icustays_df[column])
-
-    return icustays_df
-
-
-def read_icd9codes_csv(dataset_folder: Path):
-    """
-    Reads the D_ICD_DIAGNOSES.csv file from the specified dataset folder.
-
-    Parameters
-    ----------
-    dataset_folder : Path
-        Path to the dataset folder. Defaults to 'data/mimic-iii-demo/'.
-
-    Returns
-    -------
-    pd.DataFrame
-        DataFrame with dictionaries describing the ICD9 codes.
-
-    Notes
-    -----
-    - Column names are converted to uppercase.
-    - Columns specified in the configuration are selected.
-    -  International Classification of Diseases, Ninth Revision, are alphanumeric codes used by healthcare providers to classify and code all diagnoses, symptoms, and procedures recorded in conjunction with hospital care in the United States
-    """
-    csv_settings = DATASET_SETTINGS["ICD9CODES"]
-
-    icd9codes_df = pd.read_csv(Path(dataset_folder, 'D_ICD_DIAGNOSES.csv'),
-                               dtype=convert_dtype_dict(csv_settings["dtype"]))
-    icd9codes_df = upper_case_column_names(icd9codes_df)
-    icd9codes_df = icd9codes_df[csv_settings["columns"]]
-
-    return icd9codes_df
-
-
-def read_events_dictionary(dataset_folder: Path):
-    """
-    Reads the D_ITEMS.csv file from the specified dataset folder.
-
-    Parameters
-    ----------
-    dataset_folder : Path
-        Path to the dataset folder. Defaults to 'data/mimic-iii-demo/'.
-
-    Returns
-    -------
-    pd.DataFrame
-        DataFrame containing the items dictionary with ITEMID and DBSOURCE columns.
-
-    Notes
-    -----
-    - Column names are converted to uppercase.
-    - Only the ITEMID and DBSOURCE columns are selected.
-    """
-    csv_settings = DATASET_SETTINGS["D_ITEMS"]
-    dictionary_df = pd.read_csv(Path(dataset_folder, "D_ITEMS.csv"),
-                                dtype=convert_dtype_dict(csv_settings["dtype"]))
-    dictionary_df = upper_case_column_names(dictionary_df)
-    dictionary_df = dictionary_df[["ITEMID", "DBSOURCE"]]
-
-    return dictionary_df
-
-
-def merge_patient_history(patients_df, admissions_df, icustays_df, min_nb_stays,
-                          max_nb_stays) -> pd.DataFrame:
-    """
-    Merges patient, admission, and ICU stay data to create a patient history DataFrame of ICU stays, like admission time and mortality.
-
-    Parameters
-    ----------
-    patients_df : pd.DataFrame
-        DataFrame containing patient data.
-    admissions_df : pd.DataFrame
-        DataFrame containing admission data.
-    icustays_df : pd.DataFrame
-        DataFrame containing ICU stay data.
-    min_nb_stays : int
-        Minimum number of ICU stays to include a patient.
-    max_nb_stays : int
-        Maximum number of ICU stays to include a patient.
-
-    Returns
-    -------
-    pd.DataFrame
-        Merged DataFrame with patient history.
-
-    Notes
-    -----
-    - Only ICU stays where the first and last care unit and ward ID match are included.
-    - Filters patients based on the number of ICU stays between min_nb_stays and max_nb_stays.
-    - Calculates patient age and filters out children (age < 18).
-    """
-    icustays_df = icustays_df[icustays_df["FIRST_CAREUNIT"] == icustays_df["LAST_CAREUNIT"]]
-    icustays_df = icustays_df[icustays_df["FIRST_WARDID"] == \
-                                    icustays_df["LAST_WARDID"]]
-
-    patient_history_df = icustays_df.merge(admissions_df,
-                                           how='inner',
-                                           left_on=['SUBJECT_ID', 'HADM_ID'],
-                                           right_on=['SUBJECT_ID', 'HADM_ID'])
-    patient_history_df = patient_history_df.merge(patients_df,
-                                                  how='inner',
-                                                  left_on=['SUBJECT_ID'],
-                                                  right_on=['SUBJECT_ID'])
-
-    filter = patient_history_df.groupby('HADM_ID').count()[['ICUSTAY_ID']].reset_index()
-    filter = filter.loc[(filter.ICUSTAY_ID >= min_nb_stays)
-                        & (filter.ICUSTAY_ID <= max_nb_stays)][['HADM_ID']]
-    patient_history_df = patient_history_df.merge(filter,
-                                                  how='inner',
-                                                  left_on='HADM_ID',
-                                                  right_on='HADM_ID')
-
-    patient_history_df['AGE'] = (patient_history_df.INTIME.dt.year - patient_history_df.DOB.dt.year)
-    patient_history_df.loc[patient_history_df.AGE < 0, 'AGE'] = 90
-    # Filter out children
-    # patient_history_df = patient_history_df[patient_history_df.AGE > 18]
-
-    return patient_history_df
-
-
-def make_subject_infos(patients_df,
-                       admission_info_df,
-                       icustays_df,
-                       min_nb_stays=1,
-                       max_nb_stays=1) -> pd.DataFrame:
-    """
-    Creates a DataFrame containing information about subjects by merging patient, admission, and ICU stay data, like gender and insurance.
-
-    Parameters
-    ----------
-    patients_df : pd.DataFrame
-        DataFrame containing patient data.
-    admission_info_df : pd.DataFrame
-        DataFrame containing additional admission information.
-    icustays_df : pd.DataFrame
-        DataFrame containing ICU stay data.
-    min_nb_stays : int, optional
-        Minimum number of ICU stays to include a patient, by default 1.
-    max_nb_stays : int, optional
-        Maximum number of ICU stays to include a patient, by default 1.
-
-    Returns
-    -------
-    pd.DataFrame
-        DataFrame containing subject information with specified columns.
-
-    Notes
-    -----
-    - Merges patient history data.
-    - Selects and renames columns according to the configuration.
-    """
-    csv_settings = DATASET_SETTINGS["subject_info"]
-    subject_info_df = merge_patient_history(patients_df, admission_info_df, icustays_df,
-                                            min_nb_stays, max_nb_stays)
-    subject_info_df = subject_info_df[csv_settings["columns"]]
-    subject_info_df = subject_info_df.rename(columns={
-        "FIRST_WARDID": "WARDID",
-        "FIRST_CAREUNIT": "CAREUNIT"
-    })
-
-    return subject_info_df
-
-
-def make_icu_history(patients_df,
-                     admissions_df,
-                     icustays_df,
-                     min_nb_stays=1,
-                     max_nb_stays=1) -> pd.DataFrame:
-    """
-    Creates a DataFrame describing each ICU stay with admission data, patient data, and mortality.
-
-    Parameters
-    ----------
-    patients_df : pd.DataFrame
-        DataFrame containing patient data.
-    admissions_df : pd.DataFrame
-        DataFrame containing hospital admissions data.
-    icustays_df : pd.DataFrame
-        DataFrame containing ICU stay data.
-    min_nb_stays : int, optional
-        Minimum number of ICU stays to include a patient, by default 1.
-    max_nb_stays : int, optional
-        Maximum number of ICU stays to include a patient, by default 1.
-
-    Returns
-    -------
-    pd.DataFrame
-        DataFrame describing each ICU stay with admission data, patient data, and mortality.
-    """
-    csv_settings = DATASET_SETTINGS["icu_history"]
-    icu_history_df = merge_patient_history(patients_df, admissions_df, icustays_df, min_nb_stays,
-                                           max_nb_stays)
-
-    # Inunit mortality
-    mortality = icu_history_df.DOD.notnull() & ((icu_history_df.INTIME <= icu_history_df.DOD) &
-                                                (icu_history_df.OUTTIME >= icu_history_df.DOD))
-
-    mortality = mortality | (icu_history_df.DEATHTIME.notnull() &
-                             ((icu_history_df.INTIME <= icu_history_df.DEATHTIME) &
-                              (icu_history_df.OUTTIME >= icu_history_df.DEATHTIME)))
-    icu_history_df['MORTALITY_INUNIT'] = mortality.astype(int)
-
-    # Inhospital mortality
-    mortality = icu_history_df.DOD.notnull() & ((icu_history_df.ADMITTIME <= icu_history_df.DOD) &
-                                                (icu_history_df.DISCHTIME >= icu_history_df.DOD))
-    mortality = mortality | (icu_history_df.DEATHTIME.notnull() &
-                             ((icu_history_df.ADMITTIME <= icu_history_df.DEATHTIME) &
-                              (icu_history_df.DISCHTIME >= icu_history_df.DEATHTIME)))
-    icu_history_df['MORTALITY'] = mortality.astype(int)
-    icu_history_df['MORTALITY_INHOSPITAL'] = mortality.astype(int)
-
-    icu_history_df = icu_history_df[csv_settings["columns"]]
-    icu_history_df = icu_history_df[icu_history_df.AGE >= 18]
-
-    return icu_history_df
-
-
-def make_diagnoses(dataset_folder, icd9codes_df, icu_history_df):
-    """
-    Creates a DataFrame containing descriptions of diagnoses with direct links to subjects and ICU stays.
-
-    Parameters
-    ----------
-    dataset_folder : str
-        Path to the dataset folder. Defaults to 'data/mimic-iii-demo/'.
-    icd9codes_df : pd.DataFrame
-        DataFrame containing ICD-9 code definitions.
-    icu_history_df : pd.DataFrame
-        DataFrame containing ICU stay descriptions.
-
-    Returns
-    -------
-    tuple of pd.DataFrame and dict
-        - diagnoses_df: DataFrame containing descriptions of diagnoses with links to subjects and ICU stays.
-        - definition_map: Dictionary mapping ICD-9 codes to phenotypes and benchmark usage.
-    """
-    csv_settings = DATASET_SETTINGS["DIAGNOSES_ICD"]
-    diagnoses_df = pd.read_csv(Path(dataset_folder, 'DIAGNOSES_ICD.csv'),
-                               dtype=convert_dtype_dict(csv_settings["dtype"]))
-    diagnoses_df = upper_case_column_names(diagnoses_df)
-    diagnoses_df = diagnoses_df.merge(icd9codes_df,
-                                      how='inner',
-                                      left_on='ICD9_CODE',
-                                      right_on='ICD9_CODE')
-    diagnoses_df = diagnoses_df.merge(icu_history_df[['SUBJECT_ID', 'HADM_ID',
-                                                      'ICUSTAY_ID']].drop_duplicates(),
-                                      how='inner',
-                                      left_on=['SUBJECT_ID', 'HADM_ID'],
-                                      right_on=['SUBJECT_ID', 'HADM_ID'])
-
-    diagnoses_df[['SUBJECT_ID', 'HADM_ID',
-                  'SEQ_NUM']] = diagnoses_df[['SUBJECT_ID', 'HADM_ID', 'SEQ_NUM']].astype(int)
-
-    # Clinical Classifications Software CSS defintions of phenotypes
-    with Path(dataset_folder, "resources", "hcup_ccs_2015_definitions.yaml").open("r") as file:
-        phenotypes_yaml = yaml.full_load(file)
-
-    # Create definition map
-    definition_map = dict()
-
-    for phenotype in phenotypes_yaml:
-        for code in phenotypes_yaml[phenotype]['codes']:
-            definition_map[code] = (phenotype, phenotypes_yaml[phenotype]['use_in_benchmark'])
-
-    diagnoses_df['HCUP_CCS_2015'] = diagnoses_df.ICD9_CODE.apply(lambda c: definition_map[c][0]
-                                                                 if c in definition_map else None)
-    diagnoses_df['USE_IN_BENCHMARK'] = diagnoses_df.ICD9_CODE.apply(
-        lambda c: int(definition_map[c][1]) if c in definition_map else None)
-
-    return diagnoses_df, definition_map
-
-
-def make_phenotypes(diagnoses_df, definition_map):
-    """
-    Creates a binary matrix with diagnoses over ICU stays.
-
-    Parameters
-    ----------
-    diagnoses_df : pd.DataFrame
-        DataFrame containing diagnoses descriptions with ICU stay information.
-    definition_map : dict
-        Dictionary mapping ICD-9 codes to phenotypes and benchmark usage.
-
-    Returns
-    -------
-    pd.DataFrame
-        Binary matrix with diagnoses over ICU stays.
-    """
-    # Merge definitions to diagnoses
-    phenotype_dictionary_df = pd.DataFrame(definition_map).T.reset_index().rename(columns={
-        'index': 'ICD9_CODE',
-        0: 'HCUP_CCS_2015',
-        1: 'USE_IN_BENCHMARK'
-    })
-    phenotype_dictionary_df['use_in_benchmark'] = phenotype_dictionary_df[
-        'use_in_benchmark'].astype(int)
-
-    phenotypes_df = diagnoses_df.merge(phenotype_dictionary_df,
-                                       how='inner',
-                                       left_on='ICD9_CODE',
-                                       right_on='ICD9_CODE')
-
-    # Extract phenotypes from diagnoses
-    phenotypes_df = phenotypes_df[['ICUSTAY_ID', 'HCUP_CCS_2015'
-                                  ]][phenotypes_df.use_in_benchmark > 0].drop_duplicates()
-    phenotypes_df['VALUE'] = 1
-
-    # Definitions again icu stays
-    phenotypes_df = phenotypes_df.pivot(index='icuystay_id',
-                                        columns='HCUP_CCS_2015',
-                                        values='VALUE')
-
-    # Impute values and sort axes
-    phenotypes_df = phenotypes_df.fillna(0).astype(int).sort_index(axis=0).sort_index(axis=1)
-
-    return phenotypes_df
-
-
-def get_by_subject(df, sort_by):
-    """
-    Groups events by subject ID.
-    """
-    return {id: x for id, x in df.sort_values(by=sort_by).groupby('SUBJECT_ID')}
 
 
 if __name__ == "__main__":

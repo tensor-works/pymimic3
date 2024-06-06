@@ -2,13 +2,12 @@
 Dataset Writers
 ===============
 
-This module provides classes and methods for writing dataset files, and creating the subject directories named with the respecitve subject ID. The main class `DataSetWriter`
+This module provides classes and methods for writing dataset files, and creating the subject 
+directories named with the respecitve subject ID. The main class `DataSetWriter`
 is used to write the subject data either as .npy, .csv, or .hdf5 files. 
 and ICU history.
 
-Classes
--------
-- DataSetWriter: A writer class for datasets, providing methods to write data to files.
+
 
 References
 ----------

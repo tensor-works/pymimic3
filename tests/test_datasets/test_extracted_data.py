@@ -1,3 +1,6 @@
+"""_summary_
+"""
+
 import datasets
 import shutil
 import pandas as pd
@@ -9,6 +12,13 @@ from tests.settings import *
 from tests.pytest_utils.general import assert_dataframe_equals
 
 top_level_files = ["diagnoses.csv", "icu_history.csv"]
+sort_columns_by = {
+    "diagnoses.csv": ["SUBJECT_ID", "ICUSTAY_ID", "HADM_ID", "SEQ_NUM", "ICD9_CODE"],
+    "icu_history.csv": [
+        'SUBJECT_ID', 'HADM_ID', 'ICUSTAY_ID', 'LOS', 'AGE', 'MORTALITY_INUNIT', 'MORTALITY',
+        'MORTALITY_INHOSPITAL'
+    ]
+}
 
 
 @repeat(2)
@@ -43,14 +53,23 @@ def test_compact_extraction():
 
 def compare_diagnoses_and_history(test_data_dir: Path):
     # Compare files to ground truth
+
     for file_name in top_level_files:
         file_settings = TEST_SETTINGS[file_name]
         test_file_name = file_settings["name_mapping"]
         tests_io(f"Test {file_name}")
-        generated_df = pd.read_csv(Path(TEMP_DIR, "extracted", file_name))
-        test_df = pd.read_csv(Path(test_data_dir, test_file_name))
+        generated_df = pd.read_csv(Path(TEMP_DIR, "extracted", file_name),
+                                   na_values=[''],
+                                   keep_default_na=False)
+        test_df = pd.read_csv(Path(test_data_dir, test_file_name),
+                              na_values=[''],
+                              keep_default_na=False)
         if "columns" in file_settings:
             generated_df = generated_df[file_settings["columns"]]
+        generated_df = generated_df.sort_values(by=sort_columns_by[file_name]).reset_index(
+            drop=True)
+        test_df = test_df.sort_values(by=sort_columns_by[file_name]).reset_index(drop=True)
+
         assert_dataframe_equals(generated_df, test_df, normalize_by="groundtruth")
 
 
@@ -110,7 +129,9 @@ def compare_subject_directories(test_data_dir: Path, dataset: dict):
                         "_stay_id", "")][stay_id].reset_index()
 
                     # Read the test df
-                    test_df = pd.read_csv(Path(test_data_dir, directory.name, test_stay_file_name))
+                    test_df = pd.read_csv(Path(test_data_dir, directory.name, test_stay_file_name),
+                                          na_values=[''],
+                                          keep_default_na=False)
                     assert_dataframe_equals(generated_df, test_df, rename=file_settings["rename"])
 
                 if file_name == "timeseries_stay_id.csv":
@@ -129,8 +150,13 @@ def compare_subject_directories(test_data_dir: Path, dataset: dict):
                 generated_df = dataset[int(directory.name)][str(Path(file_name).stem)]
                 if file_name == "subject_events.csv":
                     stay_ids = generated_df["ICUSTAY_ID"].unique()
+                    # The None values of Glascoma Scale eye opening in the original implementation are
+                    # actually a type error so we have to replace them with pd.NA for the subject_events.csv
+                    generated_df["VALUE"] = generated_df.VALUE.replace("None", pd.NA)
 
-                test_df = pd.read_csv(Path(test_data_dir, directory.name, test_file_name))
+                test_df = pd.read_csv(Path(test_data_dir, directory.name, test_file_name),
+                                      na_values=[''],
+                                      keep_default_na=False)
                 assert_dataframe_equals(generated_df, test_df, rename=file_settings["rename"])
                 counts[file_name] += 1
                 tests_io(

@@ -93,7 +93,9 @@ def assert_dataframe_equals(generated_df: pd.DataFrame,
             display_diff_df.index = gen_col.index
             display_diff_df.columns = ["Generated", "Groundtruth"]
             display_diff_df = display_diff_df[column_diff]
-            tests_io(f"For column {column_name}:\n" f"-------------------\n" f"{display_diff_df}")
+            tests_io(f"For column {column_name}:\n"
+                     f"-------------------\n"
+                     f"{display_diff_df}")
     elif compare_mode == "multiline":
         # For every subject and stay id
         stay_count = 0

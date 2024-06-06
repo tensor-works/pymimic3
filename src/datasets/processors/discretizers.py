@@ -1,3 +1,54 @@
+"""
+This module provides the MIMICDiscretizer class to discretize time series data from the MIMIC-III dataset, 
+applying various imputation strategies, binning the data into specified time steps, and one-hot encoding 
+categorical data.
+
+Usage Examples
+--------------
+.. code-block:: python
+
+    from pathlib import Path
+    from datasets.readers import ProcessedSetReader
+    from datasets.trackers import PreprocessingTracker
+    from datasets.processors import MIMICDiscretizer
+
+    # Define the path to the dataset, storage, and configuration file
+    dataset_path = Path("/path/to/processed/dataset")
+    storage_path = Path("/path/to/store/discretized/data")
+
+    # Initialize the reader and tracker
+    reader = ProcessedSetReader(dataset_path)
+    tracker = PreprocessingTracker(storage_path)
+
+    # Initialize the MIMICDiscretizer for the IHM (In-Hospital Mortality) task
+    # Tasks are IHM, DECOMP, LOS, PHENO
+    discretizer = MIMICDiscretizer(
+        task="IHM",
+        reader=reader,
+        storage_path=storage_path,
+        tracker=tracker,
+        time_step_size=1.0,
+        start_at_zero=True,
+        impute_strategy="previous",
+        mode="legacy",
+        verbose=True
+    )
+
+    # Transform a subject
+    subject_id = 12345
+    X, y = discretizer.transform_subject(subject_id)
+
+    # Transform the entire dataset
+    dataset = reader.read_samples(read_ids=True)
+    X = discretizer.transform(dataset, None)
+
+    # Transform the reader directly
+    reader = discretizer.transform_reader(reader)
+
+    # Save the transformed data
+    discretizer.save_data()
+"""
+
 import pandas as pd
 import numpy as np
 import os
@@ -65,6 +116,8 @@ class MIMICDiscretizer(AbstractProcessor):
                  mode: str = "legacy",
                  eps: float = 1e-6,
                  verbose: bool = False):
+
+        self._operation_name = "discretizing"  # For printing
         self._storage_path = storage_path
         self._writer = (None if storage_path is None else DataSetWriter(self._storage_path))
         self._source_reader = reader

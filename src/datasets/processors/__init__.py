@@ -1,67 +1,145 @@
+"""
+Processors Module
+=================
+
+This package provides classes for data preprocessing the MIMIC-III dataset. The processors transform
+the data from the extracted format to a format suitable for different machine learning algorithms.
+The data creation can be configured and the processors are created modularly easy modification.
+
+Input and Output Description
+----------------------------
++-------------------+-------------------+------------------------------------------+
+| Processor         | Input             | Output                                   |
++===================+===================+==========================================+
+| Preprocessor      | Extracted dataset | Task-specific processed data             |
+|                   |                   | (output of data extraction)              |
++-------------------+-------------------+------------------------------------------+
+| Discretizer       | Processed data    | Binned, one-hot encoded, and imputed     |
+|                   |                   | data for use with neural networks        |
+|                   |                   |                                          |
++-------------------+-------------------+------------------------------------------+
+| Feature Engine    | Processed data    | Subsampled data engineered into a        |
+|                   |                   | 714-length vector for classical machine  |
+|                   |                   | learning algorithms                      |
++-------------------+-------------------+------------------------------------------+
+
+
+"""
+
 import random
 import os
 import pandas as pd
 from copy import deepcopy
 from itertools import chain
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Union
 from utils import dict_subset
 from pathlib import Path
 from abc import ABC, abstractmethod
 from pathos.multiprocessing import cpu_count, Pool
 from datasets.readers import ExtractedSetReader, ProcessedSetReader
 from datasets.mimic_utils import copy_subject_info
+from datasets.trackers import PreprocessingTracker
 from utils.IO import *
 
 
 class AbstractProcessor(ABC):
-    """_summary_
+    """
+    Abstract base class for data preprocessing in the MIMIC-III dataset.
+
+    This class provides an interface for the processors, which transform datasets, transform individual 
+    subjects and allow to save them to specified location. It ensures consistent structure 
+    and processing steps for different preprocessing implementations in the MIMIC-III pipeline.
     """
 
     @abstractmethod
     def __init__(self) -> None:
-        """_summary_
-
-        Raises:
-            NotImplementedError: _description_
-        """
-        ...
+        self._storage_path: Path = ...
+        self._tracker: PreprocessingTracker = ...
+        self._operation_name: str = ...
+        self._task: str = ...
+        self._verbose: bool = ...
+        self._source_reader: Union[ExtractedSetReader, ProcessedSetReader] = ...
 
     @property
     @abstractmethod
     def subjects(self) -> List[int]:
-        ...
+        """
+        Returns a list of subject IDs.
 
-    @abstractmethod
-    def transform(self, *args, **kwargs):
-        """_summary_
+        Returns
+        -------
+        List[int]
+            List of subject IDs.
 
-        Raises:
-            NotImplementedError: _description_
+        Raises
+        ------
+        NotImplementedError
+            If the method is not implemented in a subclass.
         """
         ...
 
     @abstractmethod
+    def transform(self, *args, **kwargs):
+        ...
+
+    @abstractmethod
     def transform_subject(self, subject_id: int) -> Tuple[dict, dict, dict]:
+        """
+        Transforms data for a single subject, when a reader was passed at initialization.
+
+        Parameters
+        ----------
+        subject_id : int
+            ID of the subject to transform.
+
+        Returns
+        -------
+        Tuple[dict, dict, dict]
+            Transformed data for the subject.
+
+        Raises
+        ------
+        NotImplementedError
+            If the method is not implemented in a subclass.
+        """
         ...
 
     @abstractmethod
     def save_data(self, subject_ids: list = None) -> None:
+        """
+        Saves the processed data, either for all subjects if subject_ids = None, or for specified subjects.
+
+        Parameters
+        ----------
+        subject_ids : list, optional
+            List of subject IDs whose data should be saved. Defaults to None.
+
+        Raises
+        ------
+        NotImplementedError
+            If the method is not implemented in a subclass.
+        """
         ...
 
     def transform_dataset(self,
                           dataset: dict,
                           subject_ids: list = None,
                           num_subjects: int = None,
-                          source_path: Path = None) -> Dict[str, Dict[str, pd.DataFrame]]:
+                          source_path: Path = None,
+                          storage_path: Path = None) -> Dict[str, Dict[str, pd.DataFrame]]:
         """
-        _summary_
+        Transforms and processes the dataset.
+
+        This method processes the entire dataset, transforming the data for each subject, and then 
+        saving the processed data to the specified location. It handles subject selection and ensures 
+        the processed data is correctly stored.
 
         Parameters
         ----------
         dataset : dict
             The dataset to process.
         subject_ids : list, optional
-            List of subject IDs. Defaults to None.
+            List of subject IDs to process. Defaults to None.
         num_subjects : int, optional
             Number of subjects to process. Defaults to None.
         source_path : Path, optional
@@ -70,20 +148,22 @@ class AbstractProcessor(ABC):
         Returns
         -------
         Dict[str, Dict[str, pd.DataFrame]]
-            Processed data.
+            Processed data with keys 'X' for features and 'y' for labels.
         """
+        if storage_path is not None:
+            self._storage_path = storage_path
         copy_subject_info(source_path, self._storage_path)
 
         if self._tracker.is_finished:
             info_io(
-                f"Compact data processing already finalized in directory:\n{str(self._storage_path)}"
+                f"Compact {self._operation_name} already finalized in directory:\n{str(self._storage_path)}"
             )
             if num_subjects is not None:
                 subject_ids = random.sample(self._tracker.subject_ids, k=num_subjects)
             return ProcessedSetReader(root_path=self._storage_path,
                                       subject_ids=subject_ids).read_samples(read_ids=True)
 
-        info_io(f"Compact Preprocessing: {self._task}", level=0)
+        info_io(f"Compact {self._operation_name}: {self._task}", level=0)
 
         subject_ids, excluded_subject_ids = self._get_subject_ids(num_subjects=num_subjects,
                                                                   subject_ids=subject_ids,
@@ -120,26 +200,30 @@ class AbstractProcessor(ABC):
         if self._storage_path is not None:
             self.save_data()
             info_io(
-                f"Finalized data preprocessing for {self._task} in directory:\n{str(self._storage_path)}"
+                f"Finalized {self._operation_name} for {self._task} in directory:\n{str(self._storage_path)}"
             )
         else:
-            info_io(f"Finalized data preprocessing for {self._task}.")
+            info_io(f"Finalized {self._operation_name} for {self._task}.")
         self._tracker.is_finished = True
         return {"X": X_subjects, "y": y_subjects}
 
     def transform_reader(self,
-                         reader: ExtractedSetReader,
+                         reader: Union[ExtractedSetReader, ProcessedSetReader],
                          subject_ids: list = None,
                          num_subjects: int = None) -> ProcessedSetReader:
         """
-        _summary_
+        Transforms data using an extracted set reader.
+
+        This method processes the data read by an ExtractedSetReader, transforming it for each subject,
+        and then saving the processed data. It handles subject selection and ensures the processed data 
+        is correctly stored.
 
         Parameters
         ----------
         reader : ExtractedSetReader
             Reader for the extracted set.
         subject_ids : list, optional
-            List of subject IDs. Defaults to None.
+            List of subject IDs to process. Defaults to None.
         num_subjects : int, optional
             Number of subjects to process. Defaults to None.
 
@@ -157,15 +241,15 @@ class AbstractProcessor(ABC):
 
         if self._tracker.is_finished:
             info_io(
-                f"Data preprocessing for {self._task} is already in directory:\n{str(self._storage_path)}."
+                f"{self._operation_name.capitalize()} for {self._task} is already in directory:\n{str(self._storage_path)}."
             )
             if num_subjects is not None:
                 subject_ids = random.sample(self._tracker.subject_ids, k=num_subjects)
             self._verbose = orig_verbose
             return ProcessedSetReader(self._storage_path, subject_ids=subject_ids)
 
-        info_io(f"Iterative Preprocessing: {self._task}", level=0)
-        info_io(f"Preprocessing data for task {self._task}.")
+        info_io(f"Iterative {self._operation_name}: {self._task}", level=0)
+        info_io(f"{self._operation_name.capitalize()} data for task {self._task}.")
 
         # Tracking info
         n_processed_subjects = len(self._tracker.subject_ids)
@@ -193,18 +277,16 @@ class AbstractProcessor(ABC):
             all_subjects=reader.subject_ids,
             processed_subjects=self._tracker.subject_ids)
 
-        for ids in subject_ids:
-            process_subject(ids)
-
-        info_io(f"Processing timeseries data:\n"
+        info_io(f"{self._operation_name.capitalize()} timeseries data:\n"
                 f"Processed subjects: {n_processed_subjects}\n"
                 f"Processed stays: {n_processed_stays}\n"
                 f"Processed samples: {n_processed_samples}\n"
                 f"Skipped subjects: {0}")
 
         # Start the run
+        chunksize = max(len(subject_ids) // (cpu_count() - 1), 1)
         with Pool(cpu_count() - 1, initializer=init, initargs=(self,)) as pool:
-            res = pool.imap_unordered(process_subject, subject_ids, chunksize=500)
+            res = pool.imap_unordered(process_subject, subject_ids, chunksize=chunksize)
 
             empty_subjects = 0
             missing_subjects = 0
@@ -232,7 +314,7 @@ class AbstractProcessor(ABC):
                         n_processed_samples += tracker_data["total"]
 
                     info_io(
-                        f"Processing timeseries data:\n"
+                        f"{self._operation_name.capitalize()} timeseries data:\n"
                         f"Processed subjects: {n_processed_subjects}\n"
                         f"Processed stays: {n_processed_stays}\n"
                         f"Processed samples: {n_processed_samples}\n"

@@ -3,10 +3,6 @@
 This file implements functionalities used by other modules and accessible to 
 the user
 
-Todo:
-    - Use a settings.json
-    - fix the progressbar bullshit
-
 """
 
 import re
@@ -33,7 +29,7 @@ def is_numerical(df: pd.DataFrame) -> bool:
     -------
     bool
         True if the DataFrame is numerical, False otherwise.
-    """    
+    """
     # This is the worst implementation but what works works
     try:
         df.astype(float)

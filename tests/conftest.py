@@ -100,7 +100,9 @@ def discretizer_listfiles() -> None:
         # Path to discretizer sets
         test_data_dir = Path(TEST_GT_DIR, "discretized", TASK_NAME_MAPPING[task_name])
         # Listfile with truth values
-        listfile = pd.read_csv(Path(test_data_dir, "listfile.csv")).set_index("stay")
+        listfile = pd.read_csv(Path(test_data_dir, "listfile.csv"),
+                               na_values=[''],
+                               keep_default_na=False).set_index("stay")
         stay_name_regex = r"(\d+)_episode(\d+)_timeseries\.csv"
 
         listfile = listfile.reset_index()

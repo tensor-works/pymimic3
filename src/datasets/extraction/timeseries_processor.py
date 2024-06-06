@@ -4,11 +4,12 @@ It reads and processes subject event data, diagnoses, and ICU history to generat
 The timeseries and episodic data are stored in the subject ID labeled directories, while the episodic info is 
 condensed into a single CSV file.
 
+The extraction of timeseries data is done based on the subject event data. This data contains ITEMIDs for 
+each charted entry, as well as the value (VALUE) and its metirc (VALUEUOM). Using the varmap_df, which is created
+based on the itemid_to_variable_map.csv for the original https://github.com/YerevaNN/mimic3-benchmarks/, the 
+ITEMIDs are then mapped to one of the 17 variables of interest.
 
-Classes
--------
-- TimeseriesProcessor(storage_path, source_path, tracker, subject_ids, diagnoses_df, icu_history_df, varmap_df, num_samples)
-    Processes time series data for given subjects and stores the results.
+
 
 Examples
 --------
@@ -50,6 +51,28 @@ from ..readers import ExtractedSetReader
 
 
 class TimeseriesProcessor(object):
+    """
+    Processes time series data for given subjects and stores the results.
+
+    Parameters
+    ----------
+    storage_path : Path
+        Path to the storage directory where the processed data will be saved.
+    source_path : Path
+        Path to the source directory containing the raw data files.
+    tracker : ExtractionTracker
+        Tracker to keep track of extraction progress.
+    subject_ids : list of int
+        List of subject IDs to process.
+    diagnoses_df : pd.DataFrame
+        DataFrame containing diagnoses information.
+    icu_history_df : pd.DataFrame
+        DataFrame containing ICU history information.
+    varmap_df : pd.DataFrame
+        DataFrame containing variable mappings.
+    num_samples : int, optional
+        Number of samples to process. Default is None.
+    """
 
     def __init__(self,
                  storage_path: Path,
@@ -60,28 +83,6 @@ class TimeseriesProcessor(object):
                  icu_history_df: pd.DataFrame,
                  varmap_df: pd.DataFrame,
                  num_samples: int = None):
-        """
-        Processes time series data for given subjects and stores the results.
-
-        Parameters
-        ----------
-        storage_path : Path
-            Path to the storage directory where the processed data will be saved.
-        source_path : Path
-            Path to the source directory containing the raw data files.
-        tracker : ExtractionTracker
-            Tracker to keep track of extraction progress.
-        subject_ids : list of int
-            List of subject IDs to process.
-        diagnoses_df : pd.DataFrame
-            DataFrame containing diagnoses information.
-        icu_history_df : pd.DataFrame
-            DataFrame containing ICU history information.
-        varmap_df : pd.DataFrame
-            DataFrame containing variable mappings.
-        num_samples : int, optional
-            Number of samples to process. Default is None.
-        """
         self._storage_path = storage_path
         self._tracker = tracker
         self._dataset_reader = ExtractedSetReader(source_path)

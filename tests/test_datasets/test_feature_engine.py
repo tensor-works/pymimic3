@@ -26,7 +26,7 @@ def test_iterative_engineer_task(task_name: str):
 
     tests_io(f"Test case iterative engineering for task {task_name}", level=0)
 
-    generated_path = Path(TEMP_DIR, "engineered", task_name)  # Outpath for task generation
+    generated_path = Path(TEMP_DIR, "engineered", task_name)  # Outpath for task genergeneraation
     test_data_dir = Path(TEST_GT_DIR, "engineered",
                          TASK_NAME_MAPPING[task_name])  # Ground truth data dir
 
@@ -45,14 +45,25 @@ def test_iterative_engineer_task(task_name: str):
     generated_df = concatenate_dataset(generated_samples["X"])
 
     # Load test data and extract ids
-    test_df = pd.read_csv(Path(test_data_dir, "X.csv"))
+    test_df = pd.read_csv(Path(test_data_dir, "X.csv"),
+                          na_values=[''],
+                          keep_default_na=False,
+                          low_memory=False)
     test_df = extract_test_ids(test_df)
 
     # Align unstructured frames
+    columns = list(reversed(generated_df.columns.to_list()))
+    generated_df = generated_df[columns]
+    generated_df = generated_df.round(10)
     generated_df = generated_df.sort_values(by=generated_df.columns.to_list())
     generated_df = generated_df.reset_index(drop=True)
-    test_df = test_df.sort_values(by=generated_df.columns.to_list())
+
+    test_df = test_df[columns]
+    test_df = test_df.astype(generated_df.dtypes)
+    test_df = test_df.round(10)
+    test_df = test_df.sort_values(by=columns)
     test_df = test_df.reset_index(drop=True)
+
     assert_dataframe_equals(generated_df,
                             test_df,
                             rename={"hours": "Hours"},
@@ -97,14 +108,19 @@ def test_compact_engineer_task(task_name: str):
     generated_df = concatenate_dataset(dataset["X"])
 
     # Load test data and extract ids
-    test_df = pd.read_csv(Path(test_data_dir, "X.csv"))
+    test_df = pd.read_csv(Path(test_data_dir, "X.csv"), na_values=[''], keep_default_na=False)
     test_df = extract_test_ids(test_df)
 
     # Align unstructured frames
+    generated_df = generated_df.round(10)
     generated_df = generated_df.sort_values(by=generated_df.columns.to_list())
     generated_df = generated_df.reset_index(drop=True)
+
+    test_df = test_df.astype(generated_df.dtypes)
+    test_df = test_df.round(10)
     test_df = test_df.sort_values(by=generated_df.columns.to_list())
     test_df = test_df.reset_index(drop=True)
+
     assert_dataframe_equals(generated_df,
                             test_df,
                             rename={"hours": "Hours"},
@@ -124,15 +140,14 @@ if __name__ == "__main__":
     if TEMP_DIR.is_dir():
         shutil.rmtree(str(TEMP_DIR))
     for task in TASK_NAMES:
-        _ = datasets.load_data(
-            chunksize=75835,
-            task=task,
-            preprocess=True,
-            source_path=TEST_DATA_DEMO,
-            storage_path=SEMITEMP_DIR)
+        _ = datasets.load_data(chunksize=75835,
+                               task=task,
+                               preprocess=True,
+                               source_path=TEST_DATA_DEMO,
+                               storage_path=SEMITEMP_DIR)
         if TEMP_DIR.is_dir():
             shutil.rmtree(str(TEMP_DIR))
-        # test_compact_engineer_task(task)
+        test_compact_engineer_task(task)
         if TEMP_DIR.is_dir():
             shutil.rmtree(str(TEMP_DIR))
         test_iterative_engineer_task(task)

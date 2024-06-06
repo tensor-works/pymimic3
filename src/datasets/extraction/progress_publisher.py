@@ -1,57 +1,53 @@
 """
-Dataset Extraction Module
-=========================
-
-This module provides a class for publishing the progress of the event processing.
+This module provides a class for publishing the progress of the event processing chain.
 This class is used for multiprocessing and employed by the iterative extraction.
 
-Classes
--------
-- ProgressPublisher(n_consumers, source_path, in_q, tracker)
-    Publishes the progress of the event processing.
+EventProducer -> EventConsumer -> ProgressPublisher
 
-    Examples
-    --------
-    .. code-block:: python
-    
-        from pathlib import Path
-        from multiprocess import JoinableQueue, Lock
-        from ..trackers import ExtractionTracker
 
-        # Initialize parameters
-        source_path = Path('/path/to/source')
-        storage_path = Path('/path/to/storage')
-        in_q = JoinableQueue()
-        out_q = JoinableQueue()
-        icu_history_df = pd.read_csv('/path/to/icu_history.csv')
-        lock = Lock()
-        tracker = ExtractionTracker(storage_path)
 
-        # Create and start the progress publisher
-        progress_publisher = ProgressPublisher(n_consumers=4,
-                                               source_path=source_path,
-                                               in_q=out_q,
-                                               tracker=tracker)
-        progress_publisher.start() 
+Examples
+--------
+.. code-block:: python
 
-        # Create and start the event consumer
-        consumer = EventConsumer(storage_path=storage_path,
-                                 in_q=in_q,
-                                 out_q=out_q,
-                                 icu_history_df=icu_history_df,
-                                 lock=lock)
-        consumer.start()
+    from pathlib import Path
+    from multiprocess import JoinableQueue, Lock
+    from ..trackers import ExtractionTracker
 
-        # Read and process events
-        event_reader = EventReader(dataset_folder='/path/to/data', chunksize=1000)
-        event_frames, frame_lengths = event_reader.get_chunk()
-        events_df = pd.concat(event_frames.values(), ignore_index=True)
-        in_q.put((events_df, frame_lengths))
+    # Initialize parameters
+    source_path = Path('/path/to/source')
+    storage_path = Path('/path/to/storage')
+    in_q = JoinableQueue()
+    out_q = JoinableQueue()
+    icu_history_df = pd.read_csv('/path/to/icu_history.csv')
+    lock = Lock()
+    tracker = ExtractionTracker(storage_path)
 
-        Processed event rows:
-        CHARTEVENTS:    1000/5000
-        LABEVENTS:      1000/6000
-        OUTPUTEVENTS:   1000/4500
+    # Create and start the progress publisher
+    progress_publisher = ProgressPublisher(n_consumers=4,
+                                            source_path=source_path,
+                                            in_q=out_q,
+                                            tracker=tracker)
+    progress_publisher.start() 
+
+    # Create and start the event consumer
+    consumer = EventConsumer(storage_path=storage_path,
+                                in_q=in_q,
+                                out_q=out_q,
+                                icu_history_df=icu_history_df,
+                                lock=lock)
+    consumer.start()
+
+    # Read and process events
+    event_reader = EventReader(dataset_folder='/path/to/data', chunksize=1000)
+    event_frames, frame_lengths = event_reader.get_chunk()
+    events_df = pd.concat(event_frames.values(), ignore_index=True)
+    in_q.put((events_df, frame_lengths))
+
+    Processed event rows:
+    CHARTEVENTS:    1000/5000
+    LABEVENTS:      1000/6000
+    OUTPUTEVENTS:   1000/4500
 """
 
 import os

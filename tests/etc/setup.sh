@@ -101,7 +101,6 @@ fi
 
 if [ ! -d "$engineeredDir/in-hospital-mortality" ] || [ ! -d "$engineeredDir/decompensation" ] || [ ! -d "$engineeredDir/length-of-stay" ] || [ ! -d "$engineeredDir/phenotyping" ]; then
     echo "Engineering task data using the original MIMIC-III github"
-    sudo mkdir -p $engineeredDir
     engineScriptTarget="$generatedDir/engineer_data.py"
     cp $engineScript $engineScriptTarget
     python $engineScriptTarget
@@ -109,7 +108,6 @@ fi
 
 if [ ! -d "$discretizedDir/in-hospital-mortality" ] || [ ! -d "$discretizedDir/decompensation" ] || [ ! -d "$discretizedDir/length-of-stay" ] || [ ! -d "$discretizedDir/phenotyping" ]; then
     echo "Discretizing task data using the original MIMIC-III github"
-    sudo mkdir -p $discretizedDir
     discretizerScriptTarget="$generatedDir/discretize_data.py"
     cp $discretizerScript $discretizerScriptTarget
     sudo -E env PATH=$PATH PYTHONPATH=$PYTHONPATH python $discretizerScriptTarget

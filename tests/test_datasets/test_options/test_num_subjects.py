@@ -106,7 +106,7 @@ def test_num_subjects_engineer_only(task_name: str, extraction_style: str):
                          TASK_NAME_MAPPING[task_name])  # Ground truth data dir
 
     # Load test data and extract ids
-    test_df = pd.read_csv(Path(test_data_dir, "X.csv"))
+    test_df = pd.read_csv(Path(test_data_dir, "X.csv"), na_values=[''], keep_default_na=False)
     test_df = extract_test_ids(test_df)
 
     # Align unstructured frames
@@ -192,7 +192,7 @@ def test_num_subjects_engineer(task_name: str, extraction_style: str):
                          TASK_NAME_MAPPING[task_name])  # Ground truth data dir
 
     # Load test data and extract ids
-    test_df = pd.read_csv(Path(test_data_dir, "X.csv"))
+    test_df = pd.read_csv(Path(test_data_dir, "X.csv"), na_values=[''], keep_default_na=False)
     test_df = extract_test_ids(test_df)
 
     # Align unstructured frames

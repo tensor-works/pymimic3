@@ -144,7 +144,7 @@ def test_subject_ids_engineer_only(task_name: str, subject_ids: list, extraction
                          TASK_NAME_MAPPING[task_name])  # Ground truth data dir
 
     # Load test data and extract ids
-    test_df = pd.read_csv(Path(test_data_dir, "X.csv"))
+    test_df = pd.read_csv(Path(test_data_dir, "X.csv"), na_values=[''], keep_default_na=False)
     test_df = extract_test_ids(test_df)
 
     copy_dataset("extracted")
@@ -266,7 +266,7 @@ def test_subject_ids_engineer(task_name: str, subject_ids: list, extraction_styl
                          TASK_NAME_MAPPING[task_name])  # Ground truth data dir
 
     # Load test data and extract ids
-    test_df = pd.read_csv(Path(test_data_dir, "X.csv"))
+    test_df = pd.read_csv(Path(test_data_dir, "X.csv"), na_values=[''], keep_default_na=False)
     test_df = extract_test_ids(test_df)
 
     # Align unstructured frames
@@ -360,7 +360,9 @@ def process_and_compare(subject_ids: list, task_name: str, extraction_style: str
         preprocess=True,
         task=task_name)
 
-    listfile_df = pd.read_csv(Path(test_data_dir, "listfile.csv"))
+    listfile_df = pd.read_csv(Path(test_data_dir, "listfile.csv"),
+                              na_values=[''],
+                              keep_default_na=False)
     regex = r"(\d+)_episode(\d+)_timeseries\.csv"
     test_subject_ids = listfile_df.apply(lambda x: re.search(regex, x["stay"]).group(1), axis=1)
     test_subject_ids = test_subject_ids.astype(int)

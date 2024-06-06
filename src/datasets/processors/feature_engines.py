@@ -96,6 +96,7 @@ class MIMICFeatureEngine(AbstractProcessor):
                  tracker: PreprocessingTracker = None,
                  verbose=False) -> None:
 
+        self._operation_name = "feature engieneering"  # For printing
         self._storage_path = storage_path
         self._writer = (DataSetWriter(storage_path) if storage_path is not None else None)
         self._source_reader = reader
@@ -408,7 +409,7 @@ class MIMICFeatureEngine(AbstractProcessor):
                 fn(data) if fn is not skew or
                 (len(data) > 1 and not all(i == data[0]
                                            for i in data) or fn is len) else
-                0  #TODO! This will fail and be NaN in Windows
+                np.nan  #TODO! This will fail and be 0 in Windows
                 for fn in functions
             ]
             engineered_data = np.array(engineered_data, dtype=np.float32)

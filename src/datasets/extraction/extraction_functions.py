@@ -8,58 +8,25 @@ them from the __init__.py, while iterative calls them from the event_producer.py
 
 The primary output of these functions includes three main components:
 
-1. **Subject Events**: A dictionary where each key is a subject ID, and the value is a DataFrame of 
-   chart events (e.g., lab results, vital signs) associated with that subject.
-        - **From**: CHARTEVENTS, LABEVENTS, OUTPUTEVENTS
-        - **In**: evenet_consumer.py
-        - **Cols**: 
-            - SUBJECT_ID
-            - HADM_ID
-            - ICUSTAY_ID
-            - CHARTTIME
-            - ITEMID
-            - VALUE
-            - VALUEUOM
+Certainly! Here is the revised version:
 
-2. **Timeseries Data**: A dictionary where each key is a subject ID, and the value is another dictionary. 
-   The inner dictionary maps each ICU stay ID to a DataFrame of time series data, containing recorded 
-   events for specified variables (e.g., heart rate, blood pressure) indexed by time.
-    - **From**: icu history, subject events, varmap
-    - **In**: timeseries_processor.py
-    - **Cols**: 
-            - Capillary refill rate
-            - Diastolic blood pressure
-            - Fraction inspired oxygen
-            - Glascow coma scale eye opening
-            - Glascow coma scale motor response
-            - Glascow coma scale total
-            - Glascow coma scale verbal response
-            - Glucose
-            - Heart Rate
-            - Height
-            - Mean blood pressure
-            - Oxygen saturation
-            - pH
-            - Respiratory rate
-            - Systolic blood pressure
-            - Temperature
-            - Weight
+1. **Subject Events**: A dictionary where each key is a subject ID, and the value is a DataFrame of chart events (e.g., lab results, vital signs) associated with that subject.
+   
+   - From: CHARTEVENTS, LABEVENTS, OUTPUTEVENTS
+   - In: event_consumer.py
+   - Cols: SUBJECT_ID, HADM_ID, ICUSTAY_ID, CHARTTIME, ITEMID, VALUE, VALUEUOM
 
-3. **Episodic Data**: A dictionary where each key is a subject ID, and the value is a DataFrame of 
-   episodic data, summarizing each ICU stay with patient-specific and stay-specific information 
-   (e.g., age, length of stay, mortality, gender, ethnicity, height, weight, and diagnoses).
-        - **From**: icu history, subject events, diagnoses
-        - **In**: timeseries_processor.py
-        - **Cols**:
-            - ICU Stay ID
-            - Age
-            - Length of Stay (LOS)
-            - Mortality
-            - Gender
-            - Ethnicity
-            - Height
-            - Weight
-            - Diagnoses binaries as columns
+2. **Timeseries Data**: A dictionary where each key is a subject ID, and the value is another dictionary. The inner dictionary maps each ICU stay ID to a DataFrame of time series data, containing recorded events for specified variables (e.g., heart rate, blood pressure) indexed by time.
+   
+   - From: icu history, subject events, varmap
+   - In: timeseries_processor.py
+   - Cols: Capillary refill rate, Diastolic blood pressure, Fraction inspired oxygen, Glascow coma scale eye opening, Glascow coma scale motor response, Glascow coma scale total, Glascow coma scale verbal response, Glucose, Heart Rate, Height, Mean blood pressure, Oxygen saturation, pH, Respiratory rate, Systolic blood pressure, Temperature, Weight
+
+3. **Episodic Data**: A dictionary where each key is a subject ID, and the value is a DataFrame of episodic data, summarizing each ICU stay with patient-specific and stay-specific information (e.g., age, length of stay, mortality, gender, ethnicity, height, weight, and diagnoses).
+   
+   - From: icu history, subject events, diagnoses
+   - In: timeseries_processor.py
+   - Cols: ICU Stay ID, Age, Length of Stay (LOS), Mortality, Gender, Ethnicity, Height, Weight, Diagnoses binaries as columns
 """
 
 import pandas as pd
@@ -105,6 +72,7 @@ def extract_subject_events(chartevents_df: pd.DataFrame, icu_history_df: pd.Data
     recovered_df = recovered_df[[
         'SUBJECT_ID', 'HADM_ID', 'ICUSTAY_ID', 'CHARTTIME', 'ITEMID', 'VALUE', 'VALUEUOM'
     ]]
+    recovered_df['VALUE'] = recovered_df['VALUE'].replace('None', np.nan)
 
     return {id: x for id, x in recovered_df.groupby('SUBJECT_ID') if not x.empty}
 
@@ -120,36 +88,6 @@ def extract_timeseries(subject_events, subject_diagnoses, subject_icu_history, v
     extracts time series data for each variable of interest, per episode. It extracts hourly indexed time 
     series data and retrieves static values such as weight and height for each ICU stay. Finally, the episodic and timeseries
     data are stored in the subject directory. 
-
-    **Episodic data** includes the following information for each ICU stay:
-        - ICU Stay ID
-        - Age
-        - Length of Stay (LOS)
-        - Mortality
-        - Gender
-        - Ethnicity
-        - Height
-        - Weight
-        - Diagnoses binaries as columns
-    
-    **Time series** variables of interest are: 
-        - Capillary refill rate
-        - Diastolic blood pressure
-        - Fraction inspired oxygen
-        - Glascow coma scale eye opening
-        - Glascow coma scale motor response
-        - Glascow coma scale total
-        - Glascow coma scale verbal response
-        - Glucose
-        - Heart Rate
-        - Height
-        - Mean blood pressure
-        - Oxygen saturation
-        - pH
-        - Respiratory rate
-        - Systolic blood pressure
-        - Temperature
-        - Weight
 
     Parameters
     ----------
@@ -184,6 +122,10 @@ def extract_timeseries(subject_events, subject_diagnoses, subject_icu_history, v
 
         # Adjust current events
         current_events_df = current_events_df.merge(varmap_df, left_on='ITEMID', right_index=True)
+        # The None values for this variable are actually created through a type error so we have
+        # to use this work around
+        # current_events_df.loc[current_events_df['VARIABLE'] == 'Glascow coma scale eye opening',
+        #                       'VALUE'] = current_events_df['VALUE'].fillna('None')
         current_events_df = current_events_df.loc[current_events_df.VALUE.notnull()]
         current_events_df.loc[:, 'VALUEUOM'] = current_events_df['VALUEUOM'].fillna('').astype(str)
 
@@ -231,15 +173,6 @@ def extract_episodic_data(subject_icu_history: pd.DataFrame) -> pd.DataFrame:
     Create episodic data from subject ICU history.
 
     This method processes the ICU history of subjects to create a DataFrame containing episodic data for each ICU stay.
-    The episodic data includes per ICU stay:
-    - ID
-    - age
-    - length of stay
-    - mortality
-    - gender
-    - ethnicity
-    - height
-    - weight
 
     Gender and ethnicity are imputed using predefined mappings if they are missing.
 
@@ -290,6 +223,8 @@ def extract_diagnoses_util(diagnoses: pd.DataFrame) -> pd.DataFrame:
     This method processes the diagnoses DataFrame to create a binary matrix indicating the presence of each diagnosis 
     present in the diagnoses.csv, as code over ICU stay. The resulting DataFrame has ICU stay IDs as rows and diagnosis codes as columns, with 
     binary values indicating whether each diagnosis code is present.
+    
+    - Cols: List of ICD9Codes
 
     Parameters
     ----------
@@ -343,7 +278,6 @@ def extract_timeseries_util(subject_events: pd.DataFrame, variables) -> pd.DataF
     timeseries_df = timeseries_df.pivot(index='CHARTTIME', columns='VARIABLE', values='VALUE')
     timeseries_df = timeseries_df.merge(metadata, left_index=True, right_index=True)
     timeseries_df = timeseries_df.sort_index(axis=0).reset_index()
-
     timeseries_df = timeseries_df.reindex(columns=np.append(variables, ['ICUSTAY_ID', 'CHARTTIME']))
 
     return timeseries_df
@@ -355,6 +289,8 @@ def extract_episode(timeseries_df: pd.DataFrame,
                     outtime=None) -> pd.DataFrame:
     """
     Create an episode DataFrame from the time series data.
+    
+    Cols: 17 variables of interest and CHARTTIME
 
     Parameters
     ----------
@@ -418,5 +354,9 @@ def extract_hour_index(episode_df: pd.DataFrame,
 
     if remove_charttime:
         del episode_df['CHARTTIME']
+
+    # nan_columns = list(set(episode_df.columns) - set(["Glascow coma scale eye opening"]))
+    # episode_df = episode_df[episode_df[nan_columns].notna().any(axis=1)
+    #                         | (episode_df["Glascow coma scale eye opening"] != "None")]
 
     return episode_df

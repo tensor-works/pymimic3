@@ -104,7 +104,9 @@ def test_demographic_filter(
                 _: SplitSetReader = datasets.train_test_split(reader,
                                                               demographic_filter=demographic_filter)
 
-    subject_info_df = pd.read_csv(Path(reader.root_path, "subject_info.csv"))
+    subject_info_df = pd.read_csv(Path(reader.root_path, "subject_info.csv"),
+                                  na_values=[''],
+                                  keep_default_na=False)
     subject_info_df = subject_info_df[subject_info_df["SUBJECT_ID"].isin(reader.subject_ids)]
     curr_iter = 0
     all_filters = list()
@@ -165,7 +167,9 @@ def test_demo_split(
     else:
         reader = engineered_readers[task_name]
 
-    subject_info_df = pd.read_csv(Path(reader.root_path, "subject_info.csv"))
+    subject_info_df = pd.read_csv(Path(reader.root_path, "subject_info.csv"),
+                                  na_values=[''],
+                                  keep_default_na=False)
     subject_info_df = subject_info_df[subject_info_df["SUBJECT_ID"].isin(reader.subject_ids)]
     curr_iter = 0
 
@@ -224,7 +228,9 @@ def test_demo_and_ratio_split(
     else:
         reader = engineered_readers[task_name]
 
-    subject_info_df = pd.read_csv(Path(reader.root_path, "subject_info.csv"))
+    subject_info_df = pd.read_csv(Path(reader.root_path, "subject_info.csv"),
+                                  na_values=[''],
+                                  keep_default_na=False)
     subject_info_df = subject_info_df[subject_info_df["SUBJECT_ID"].isin(reader.subject_ids)]
     attribute = random.choice(["WARDID", "AGE"])
     attribute_data = subject_info_df[attribute]
@@ -346,7 +352,9 @@ def test_train_size(task_name, preprocessing_style, discretized_readers: Dict[st
 
     # Train size with demographic split
     tests_io("Specific train size with demographic split")
-    subject_info_df = pd.read_csv(Path(reader.root_path, "subject_info.csv"))
+    subject_info_df = pd.read_csv(Path(reader.root_path, "subject_info.csv"),
+                                  na_values=[''],
+                                  keep_default_na=False)
     subject_info_df = subject_info_df[subject_info_df["SUBJECT_ID"].isin(reader.subject_ids)]
     attribute = random.choice(["WARDID", "AGE"])
     attribute_data = subject_info_df[attribute]

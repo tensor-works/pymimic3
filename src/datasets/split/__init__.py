@@ -1,17 +1,8 @@
 """
-Data Splitting Module
-=====================
-
 This module provides functionality to split datasets into training, validation, and test sets.
 Splits can be performed based on predefined ratios or demographic filters, and the module
 supports both dictionary-based and reader-based dataset structures.
 
-Functions
----------
-- train_test_split(X_subjects, y_subjects, test_size, val_size, train_size, demographic_split, demographic_filter, source_path)
-    Splits the dictionary-based dataset into training, validation, and test sets.
-- train_test_split(reader, test_size, val_size, train_size, demographic_split, demographic_filter, storage_path)
-    Splits the reader-based dataset into training, validation, and test sets.
 
 Examples
 --------
@@ -98,8 +89,6 @@ from utils.IO import *
 from settings import *
 from .splitters import ReaderSplitter, CompactSplitter
 from ..readers import ProcessedSetReader, SplitSetReader
-
-__all__ = ['train_test_split']
 
 
 @dispatch(dict,
