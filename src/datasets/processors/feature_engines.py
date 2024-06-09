@@ -386,8 +386,8 @@ class MIMICFeatureEngine(AbstractProcessor):
             if 'values' in self._impute_config[channel].keys():
                 replace_dict.update(self._impute_config[channel]['values'])
 
-        with pd.option_context('future.no_silent_downcasting', True):
-            X = X.replace(replace_dict).astype(float)
+        # with pd.option_context('future.no_silent_downcasting', True):
+        X = X.replace(replace_dict).astype(float)
         return X
 
     def _make_engineered_features(self, data):

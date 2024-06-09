@@ -17,15 +17,16 @@ class TorchGenerator(DataLoader):
                  num_workers: int = 1,
                  drop_last: bool = False,
                  bining: str = "none"):
-        super().__init__(dataset=TorchDataset(reader=reader,
-                                              scaler=scaler,
-                                              batch_size=1,
-                                              shuffle=shuffle,
-                                              bining=bining),
+        self._dataset = TorchDataset(reader=reader,
+                                     scaler=scaler,
+                                     batch_size=1,
+                                     shuffle=shuffle,
+                                     bining=bining)
+        super().__init__(dataset=self._dataset,
                          batch_size=batch_size,
                          shuffle=shuffle,
                          drop_last=drop_last,
-                         num_workers=num_workers,
+                         num_workers=0,
                          collate_fn=self.collate_fn)
 
     def collate_fn(self, batch):
@@ -68,6 +69,9 @@ class TorchGenerator(DataLoader):
         # Stack all padded tensors into a single tensor
         return padded_data
 
+    def __del__(self):
+        self._dataset.__del__()
+
 
 class TorchDataset(AbstractGenerator, Dataset):
 
@@ -86,4 +90,7 @@ class TorchDataset(AbstractGenerator, Dataset):
     def __getitem__(self, index=None):
         X, y = super().__getitem__(index)
         X = X.squeeze()
-        return torch.from_numpy(X).to(torch.float32), torch.from_numpy(y).to(torch.int8)
+        return torch.from_numpy(X).to(torch.float32), torch.from_numpy(y).to(torch.float32)
+
+    def __del__(self):
+        AbstractGenerator.__del__(self)

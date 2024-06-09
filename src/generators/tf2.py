@@ -20,4 +20,5 @@ class TFGenerator(AbstractGenerator, Sequence):
                                           bining=bining)
 
     def __getitem__(self, index=None):
-        return super().__getitem__(index)
+        X, y = super().__getitem__(index)
+        return X, y.reshape(-1, 1)
