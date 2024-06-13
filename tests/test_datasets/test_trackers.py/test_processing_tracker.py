@@ -5,15 +5,13 @@ from datasets.trackers import PreprocessingTracker
 from utils.IO import *
 from tests.settings import *
 
-tracker_state = {"subjects": {}, "finished": False, "num_subjects": None}
+tracker_state = {"subjects": {}, "is_finished": False, "num_subjects": None}
 
 
 def test_processing_tracker_basics():
     tests_io("Test case basic capabilities of PreprocessingTracker.", level=0)
     # Create an instance of PreprocessingTracker
-    tracker = PreprocessingTracker(storage_path=Path(TEMP_DIR, "progress"),
-                                   num_subjects=None,
-                                   subject_ids=None)
+    tracker = PreprocessingTracker(storage_path=Path(TEMP_DIR, "progress"))
 
     # Test correct initialization
     for attribute, value in tracker_state.items():
@@ -68,9 +66,7 @@ def test_processing_tracker_basics():
 
     # Test correct restoration after assignment
     del tracker
-    tracker = PreprocessingTracker(storage_path=Path(TEMP_DIR, "progress"),
-                                   num_subjects=None,
-                                   subject_ids=None)
+    tracker = PreprocessingTracker(storage_path=Path(TEMP_DIR, "progress"))
     for attribute, value in tracker_state.items():
         assert attribute in tracker._progress
 
@@ -173,9 +169,7 @@ def test_processing_tracker_basics():
     assert not set(["subject_1", "subject_2", "subject_3"]) - set(tracker.subject_ids)
 
     del tracker
-    tracker = PreprocessingTracker(storage_path=Path(TEMP_DIR, "progress"),
-                                   num_subjects=None,
-                                   subject_ids=None)
+    tracker = PreprocessingTracker(storage_path=Path(TEMP_DIR, "progress"))
     for attribute, value in tracker_state.items():
         assert attribute in tracker._progress
     assert tracker.subjects == {
@@ -205,9 +199,7 @@ def test_processing_tracker_basics():
 def test_finishing_mechanism():
     tests_io("Test case finishing mechanism of PreprocessingTracker.", level=0)
     # Create an instance of PreprocessingTracker
-    tracker = PreprocessingTracker(storage_path=Path(TEMP_DIR, "progress"),
-                                   num_subjects=None,
-                                   subject_ids=None)
+    tracker = PreprocessingTracker(storage_path=Path(TEMP_DIR, "progress"))
 
     # Test correct initialization
     for attribute, value in tracker_state.items():
@@ -256,9 +248,7 @@ def test_finishing_mechanism():
 
     # Test correct restoration after finishing
     del tracker
-    tracker = PreprocessingTracker(storage_path=Path(TEMP_DIR, "progress"),
-                                   num_subjects=None,
-                                   subject_ids=None)
+    tracker = PreprocessingTracker(storage_path=Path(TEMP_DIR, "progress"))
     assert tracker.is_finished == True
     for key, stays in tracker.subjects.items():
         if key == "total":
@@ -271,9 +261,8 @@ def test_finishing_mechanism():
 def test_num_subject_option():
     tests_io("Test case num_subjects option of PreprocessingTracker.", level=0)
     # Create an instance of PreprocessingTracker
-    tracker = PreprocessingTracker(storage_path=Path(TEMP_DIR, "progress"),
-                                   num_subjects=2,
-                                   subject_ids=None)
+    tracker = PreprocessingTracker(storage_path=Path(TEMP_DIR, "progress"))
+    tracker.set_num_subjects(2)
 
     # Test correct initialization
     for attribute, value in tracker_state.items():
@@ -300,9 +289,8 @@ def test_num_subject_option():
 
     # Test decrease of num_subjects
     del tracker
-    tracker = PreprocessingTracker(storage_path=Path(TEMP_DIR, "progress"),
-                                   num_subjects=1,
-                                   subject_ids=None)
+    tracker = PreprocessingTracker(storage_path=Path(TEMP_DIR, "progress"))
+    tracker.set_num_subjects(1)
     for attribute, value in tracker_state.items():
         assert attribute in tracker._progress
 
@@ -318,9 +306,8 @@ def test_num_subject_option():
 
     # Test increase to original num_subjects
     del tracker
-    tracker = PreprocessingTracker(storage_path=Path(TEMP_DIR, "progress"),
-                                   num_subjects=2,
-                                   subject_ids=None)
+    tracker = PreprocessingTracker(storage_path=Path(TEMP_DIR, "progress"))
+    tracker.set_num_subjects(2)
     for attribute, value in tracker_state.items():
         assert attribute in tracker._progress
 
@@ -336,9 +323,8 @@ def test_num_subject_option():
 
     # Test increase above original num_subjects
     del tracker
-    tracker = PreprocessingTracker(storage_path=Path(TEMP_DIR, "progress"),
-                                   num_subjects=3,
-                                   subject_ids=None)
+    tracker = PreprocessingTracker(storage_path=Path(TEMP_DIR, "progress"))
+    tracker.set_num_subjects(3)
     for attribute, value in tracker_state.items():
         assert attribute in tracker._progress
 
@@ -364,15 +350,14 @@ def test_num_subject_option():
     assert not set(["subject_1", "subject_2", "subject_3"]) - set(tracker.subject_ids)
     # Test switch to None
     del tracker
-    tracker = PreprocessingTracker(storage_path=Path(TEMP_DIR, "progress"),
-                                   num_subjects=None,
-                                   subject_ids=None)
+    tracker = PreprocessingTracker(storage_path=Path(TEMP_DIR, "progress"))
+    tracker.set_num_subjects(None)
     for attribute, value in tracker_state.items():
         assert attribute in tracker._progress
 
     # Make sure state is restored and finished is set to False
     assert tracker.num_subjects == None
-    assert tracker.finished == False
+    assert tracker.is_finished == False
     assert len(tracker.subjects) - 1 == 3
     assert tracker.subjects["total"] == 18
     assert not set(tracker.subject_ids) - set(["subject_1", "subject_2", "subject_3"])
@@ -383,9 +368,7 @@ def test_num_subject_option():
 def test_subject_ids_option():
     tests_io("Test case subject_ids option of PreprocessingTracker.", level=0)
     # Create an instance of PreprocessingTracker
-    tracker = PreprocessingTracker(storage_path=Path(TEMP_DIR, "progress"),
-                                   num_subjects=None,
-                                   subject_ids=None)
+    tracker = PreprocessingTracker(storage_path=Path(TEMP_DIR, "progress"))
     # Test correct initialization
     for attribute, value in tracker_state.items():
         assert attribute in tracker._progress
@@ -409,9 +392,8 @@ def test_subject_ids_option():
 
     # Test truthy subject_ids
     del tracker
-    tracker = PreprocessingTracker(storage_path=Path(TEMP_DIR, "progress"),
-                                   num_subjects=None,
-                                   subject_ids=["subject_1", "subject_2"])
+    tracker = PreprocessingTracker(storage_path=Path(TEMP_DIR, "progress"))
+    tracker.set_subject_ids(["subject_1", "subject_2"])
 
     for attribute, value in tracker_state.items():
         assert attribute in tracker._progress
@@ -423,9 +405,9 @@ def test_subject_ids_option():
 
     # Test decrease of num_subjects
     del tracker
-    tracker = PreprocessingTracker(storage_path=Path(TEMP_DIR, "progress"),
-                                   num_subjects=None,
-                                   subject_ids=["subject_1"])
+    tracker = PreprocessingTracker(storage_path=Path(TEMP_DIR, "progress"))
+    tracker.set_subject_ids(["subject_1"])
+
     for attribute, value in tracker_state.items():
         assert attribute in tracker._progress
     assert not set(tracker.subject_ids) - set(["subject_1", "subject_2"])
@@ -435,9 +417,8 @@ def test_subject_ids_option():
 
     # Test falsey subject_ids
     del tracker
-    tracker = PreprocessingTracker(storage_path=Path(TEMP_DIR, "progress"),
-                                   num_subjects=None,
-                                   subject_ids=["subject_1", "subject_2", "subject_3"])
+    tracker = PreprocessingTracker(storage_path=Path(TEMP_DIR, "progress"))
+    tracker.set_subject_ids(["subject_1", "subject_2", "subject_3"])
     for attribute, value in tracker_state.items():
         assert attribute in tracker._progress
 

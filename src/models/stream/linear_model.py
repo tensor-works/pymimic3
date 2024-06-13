@@ -47,7 +47,7 @@ if __name__ == '__main__':
     from metrics.stream import MacroROCAUC, MicroROCAUC, PRAUC
     from river.metrics import ROCAUC
     from generators.stream import RiverGenerator
-    from preprocessing.scalers import MIMICMinMaxScaler
+    from preprocessing.scalers import MinMaxScaler
     from preprocessing.imputers import PartialImputer
 
     ### Try LOS ###
@@ -58,7 +58,7 @@ if __name__ == '__main__':
                                 task="LOS")
 
     imputer = PartialImputer().fit_reader(reader)
-    scaler = MIMICMinMaxScaler(imputer=imputer).fit_reader(reader)
+    scaler = MinMaxScaler(imputer=imputer).fit_reader(reader)
     # reader = datasets.train_test_split(reader, test_size=0.2, val_size=0.1)
     model = LinearRegression(metrics=["cohen_kappa", "mae"], optimizer=optim.SGD(0.00005))
     generator = RiverGenerator(reader, scaler=scaler)
@@ -71,7 +71,7 @@ if __name__ == '__main__':
                                 task="IHM")
 
     imputer = PartialImputer().fit_reader(reader)
-    scaler = MIMICMinMaxScaler(imputer=imputer).fit_reader(reader)
+    scaler = MinMaxScaler(imputer=imputer).fit_reader(reader)
     # reader = datasets.train_test_split(reader, test_size=0.2, val_size=0.1)
     model = LogisticRegression(metrics=[PRAUC, ROCAUC])
     generator = RiverGenerator(reader, scaler=scaler)
@@ -85,7 +85,7 @@ if __name__ == '__main__':
                                 task="PHENO")
 
     imputer = PartialImputer().fit_reader(reader)
-    scaler = MIMICMinMaxScaler(imputer=imputer).fit_reader(reader)
+    scaler = MinMaxScaler(imputer=imputer).fit_reader(reader)
     # reader = datasets.train_test_split(reader, test_size=0.2, val_size=0.1)
     model = MultiOutputLogisticRegression(metrics=[MacroROCAUC, MicroROCAUC])
     generator = RiverGenerator(reader, scaler=scaler)

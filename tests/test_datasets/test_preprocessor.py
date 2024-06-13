@@ -119,7 +119,9 @@ def assert_file_creation(root_path: Path,
         stay_id = int(match.group(2))
         # Files that are not longer than the minimum that needs to be elapsed before label creation are removed
         test_data = pd.read_csv(Path(test_data_dir,
-                                     f"{subject_id}_episode{stay_id}_timeseries.csv"))
+                                     f"{subject_id}_episode{stay_id}_timeseries.csv"),
+                                na_values=[''],
+                                keep_default_na=False)
         # Increment for logging
         count += 1
         subject_ids_checked.append(subject_id)
@@ -134,9 +136,10 @@ def assert_file_creation(root_path: Path,
                 continue
 
         if minimum_length_of_stay is not None:
-            test_episode_data = pd.read_csv(
-                Path(test_data_dir.parent.parent, "extracted", str(subject_id),
-                     f"episode{stay_id}.csv"))
+            test_episode_data = pd.read_csv(Path(test_data_dir.parent.parent, "extracted",
+                                                 str(subject_id), f"episode{stay_id}.csv"),
+                                            na_values=[''],
+                                            keep_default_na=False)
             if test_episode_data["Length of Stay"][0] > minimum_length_of_stay:
                 assert not Path(root_path, str(subject_id), f"X_{stay_id}.csv").is_file(
                 ), f"Sample file X_{stay_id}.csv for subject {subject_id} should be deleted due to minimum length of stay."
@@ -158,6 +161,7 @@ def assert_file_creation(root_path: Path,
 
 if __name__ == "__main__":
     import shutil
+    _ = datasets.load_data(chunksize=75835, source_path=TEST_DATA_DEMO, storage_path=SEMITEMP_DIR)
     for task in TASK_NAMES:
         if Path(TEMP_DIR).is_dir():
             shutil.rmtree(str(Path(TEMP_DIR)))

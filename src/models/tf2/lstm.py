@@ -86,3 +86,38 @@ class LSTMNetwork(Model):
         x = layers.Dense(num_classes[task], activation=final_activation[task])(x)
 
         super(LSTMNetwork, self).__init__(inputs=[input], outputs=[x])
+
+
+if __name__ == "__main__":
+    import datasets
+    from pathlib import Path
+    from tests.settings import *
+    from preprocessing.scalers import MinMaxScaler
+    from generators.tf2 import TFGenerator
+    reader = datasets.load_data(chunksize=75836,
+                                source_path=TEST_DATA_DEMO,
+                                storage_path=SEMITEMP_DIR,
+                                discretize=True,
+                                time_step_size=1.0,
+                                start_at_zero=True,
+                                impute_strategy='previous',
+                                task="IHM")
+
+    reader = datasets.train_test_split(reader, test_size=0.2, val_size=0.1)
+
+    scaler = MinMaxScaler().fit_reader(reader.train)
+    train_generator = TFGenerator(reader=reader.train, scaler=scaler, batch_size=2, shuffle=True)
+    val_generator = TFGenerator(reader=reader.val, scaler=scaler, batch_size=2, shuffle=True)
+
+    import torch
+    import torch.nn as nn
+    import torch.optim as optim
+
+    model_path = Path(TEMP_DIR, "tf_lstm")
+    model_path.mkdir(parents=True, exist_ok=True)
+    model = LSTMNetwork(10, 0.2, 59, recurrent_dropout=0., output_dim=1, depth=2)
+
+    model.compile(optimizer="adam", loss="mse")
+    # Example training loop
+    history = model.fit(train_generator, validation_data=val_generator, epochs=40)
+    print(history)

@@ -1,3 +1,55 @@
+"""
+This module provides a class for publishing the progress of the event processing chain.
+This class is used for multiprocessing and employed by the iterative extraction.
+
+EventProducer -> EventConsumer -> ProgressPublisher
+
+
+
+Examples
+--------
+.. code-block:: python
+
+    from pathlib import Path
+    from multiprocess import JoinableQueue, Lock
+    from ..trackers import ExtractionTracker
+
+    # Initialize parameters
+    source_path = Path('/path/to/source')
+    storage_path = Path('/path/to/storage')
+    in_q = JoinableQueue()
+    out_q = JoinableQueue()
+    icu_history_df = pd.read_csv('/path/to/icu_history.csv')
+    lock = Lock()
+    tracker = ExtractionTracker(storage_path)
+
+    # Create and start the progress publisher
+    progress_publisher = ProgressPublisher(n_consumers=4,
+                                            source_path=source_path,
+                                            in_q=out_q,
+                                            tracker=tracker)
+    progress_publisher.start() 
+
+    # Create and start the event consumer
+    consumer = EventConsumer(storage_path=storage_path,
+                                in_q=in_q,
+                                out_q=out_q,
+                                icu_history_df=icu_history_df,
+                                lock=lock)
+    consumer.start()
+
+    # Read and process events
+    event_reader = EventReader(dataset_folder='/path/to/data', chunksize=1000)
+    event_frames, frame_lengths = event_reader.get_chunk()
+    events_df = pd.concat(event_frames.values(), ignore_index=True)
+    in_q.put((events_df, frame_lengths))
+
+    Processed event rows:
+    CHARTEVENTS:    1000/5000
+    LABEVENTS:      1000/6000
+    OUTPUTEVENTS:   1000/4500
+"""
+
 import os
 from utils import count_csv_size
 from utils.IO import *
@@ -7,6 +59,29 @@ from ..trackers import ExtractionTracker
 
 
 class ProgressPublisher(Process):
+    """
+    Publishes the progress of the event processing to the command line.
+
+    Parameters
+    ----------
+    n_consumers : int
+        Number of consumer processes.
+    source_path : Path
+        Path to the source directory containing the raw data files.
+    in_q : JoinableQueue
+        Queue from which to read the progress updates.
+    tracker : ExtractionTracker
+        Tracker to keep track of extraction progress.
+
+    Methods
+    -------
+    run()
+        Runs the progress publisher, updating and printing the progress.
+    start()
+        Starts the progress publisher process.
+    join()
+        Joins the progress publisher process.
+    """
 
     def __init__(self, n_consumers: int, source_path: Path, in_q: JoinableQueue,
                  tracker: ExtractionTracker):

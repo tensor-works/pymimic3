@@ -1,12 +1,13 @@
-"""Dataset file
+"""
+MIMIC UTILITIES
+===============
 
-This file allows access to the dataset as specified.
-
-Todo:
-
+Collection of utility functions for the MIMIC-III dataset extraction process.
+These functions are used to clean and process the MIMIC-III dataset or perform trivial tasks.
 
 YerevaNN/mimic3-benchmarks
 """
+
 import numpy as np
 import pandas as pd
 import os
@@ -20,7 +21,14 @@ from settings import *
 
 def copy_subject_info(source_path: Path, storage_path: Path):
     """
-    Copy subject information from source path to storage path
+    Copy subject information from source path to storage path.
+
+    Parameters
+    ----------
+    source_path : Path
+        The path to the source directory containing the subject information file.
+    storage_path : Path
+        The path to the target directory where the subject information file will be copied.
     """
     if source_path is None:
         if storage_path is not None:
@@ -34,11 +42,24 @@ def copy_subject_info(source_path: Path, storage_path: Path):
 
 
 def get_samples_per_df(event_frames: Dict[str, pd.DataFrame], num_samples: int):
-    """_summary_
+    """
+    Get the number of samples per DataFrame based on the specified number of samples.
 
-    Args:
-        event_frames (Dict[str, pd.DataFrame]): _description_
-        num_samples (int): _description_
+    Parameters
+    ----------
+    event_frames : Dict[str, pd.DataFrame]
+        A dictionary where the keys are event types and the values are DataFrames containing event data.
+    num_samples : int
+        The total number of samples to distribute across the DataFrames.
+
+    Returns
+    -------
+    sampled_dfs : Dict[str, pd.DataFrame]
+        A dictionary with the same keys as `event_frames`, where each value is a sampled DataFrame.
+    subject_events_per_df : Dict[str, int]
+        A dictionary with the number of events per DataFrame.
+    samples_per_df : Dict[str, int]
+        A dictionary with the number of samples allocated to each DataFrame.
     """
     total_length = sum(len(df) for df in event_frames.values())
     samples_per_df = {
@@ -55,9 +76,10 @@ def get_samples_per_df(event_frames: Dict[str, pd.DataFrame], num_samples: int):
         samples_adjusted -= 1
 
     sampled_dfs = {
-        event_types: event_frames[event_types][event_frames[event_types]["CHARTTIME"].isin(
-            event_frames[event_types]["CHARTTIME"].unique()[:samples])]
-        if len(event_frames[event_types]) >= samples else event_frames[event_types]
+        event_types:
+            event_frames[event_types][event_frames[event_types]["CHARTTIME"].isin(
+                event_frames[event_types]["CHARTTIME"].unique()[:samples])]
+            if len(event_frames[event_types]) >= samples else event_frames[event_types]
         for event_types, samples in samples_per_df.items()
     }
 
@@ -74,6 +96,21 @@ def get_samples_per_df(event_frames: Dict[str, pd.DataFrame], num_samples: int):
 
 
 def convert_dtype_value(value, dtype: str):
+    """
+    Convert a value to the specified dtype.
+
+    Parameters
+    ----------
+    value : any
+        The value to be converted.
+    dtype : str
+        The target data type. Dtype can be one of "Int8", "Int16", "Int32", "Int64", "str", "float".
+
+    Returns
+    -------
+    any
+        The value converted to the specified data type.
+    """
     dtype_mapping = {
         "Int8": np.int8,
         "Int16": np.int16,
@@ -89,13 +126,20 @@ def convert_dtype_value(value, dtype: str):
 
 
 def convert_dtype_dict(dtypes: dict, add_lower=True) -> dict:
-    """_summary_
+    """
+    Convert a dictionary of column names to dtype strings to a dictionary of column names to dtype objects.
 
-    Args:
-        dtypes (Dict[str, str]): column name to dtype maping. Dtype can be one of Int8, Int16, Int32, Int64, str, float" 
+    Parameters
+    ----------
+    dtypes : dict
+        Column name to dtype mapping. Dtype can be one of "Int8", "Int16", "Int32", "Int64", "str", "float".
+    add_lower : bool, optional
+        Whether to add lower case column names as well, by default True.
 
-    Returns:
-        dict: Returns dictionary with column name to dtype object mapping.
+    Returns
+    -------
+    dict
+        A dictionary with column name to dtype object mapping.
     """
     dtype_mapping = {
         "Int8": pd.Int8Dtype(),
@@ -119,175 +163,51 @@ def convert_dtype_dict(dtypes: dict, add_lower=True) -> dict:
     return dtype_dict
 
 
-def make_writeboolean(storage_path: Path) -> bool:
-    """_summary_
-
-    Args:
-        storage_path (Path): _description_
-
-    Returns:
-        bool: _description_
-    """
-    # TODO this is because i am unable to store and load a list within a dataframe
-    # solve this
-    if storage_path == None:
-        return True
-
-    if storage_path.name == "PHENO":
-        return True
-
-    if not storage_path.is_dir():
-        os.mkdir(storage_path)
-        return True
-    subject_dirs = os.listdir(storage_path)
-    if not subject_dirs:
-        return True
-    if not "episodic_data.csv" in os.listdir(Path(storage_path, subject_dirs.pop())):
-        return True
-    return False
-
-
-def make_episodic_data(subject_icu_history: pd.DataFrame) -> pd.DataFrame:
-    """_summary_
-
-    Args:
-        subject_icu_history (pd.DataFrame): _description_
-
-    Returns:
-        pd.DataFrame: _description_
-    """
-    # Episodic data contains: Icustay, Age, Length of Stay, Mortality, Gender, Ethnicity, Height and Weight
-    episodic_data = subject_icu_history[["ICUSTAY_ID", "AGE", "LOS",
-                                         "MORTALITY"]].rename(columns={"ICUSTAY_ID": "Icustay"})
-
-    def imputeby_map(string, map):
-        """
-        """
-        if string in map:
-            return map[string]
-        return map['OTHER']
-
-    # Impute gender
-    episodic_data['GENDER'] = subject_icu_history.GENDER.fillna('').apply(
-        imputeby_map, args=([DATASET_SETTINGS["gender_map"]]))
-
-    # Impute ethnicity
-    ethnicity_series = subject_icu_history.ETHNICITY.apply(
-        lambda x: x.replace(' OR ', '/').split(' - ')[0].split('/')[0])
-    episodic_data['ETHNICITY'] = ethnicity_series.fillna('').apply(
-        imputeby_map, args=([DATASET_SETTINGS["ethnicity_map"]]))
-
-    # Empty values
-    episodic_data['Height'] = np.nan
-    episodic_data['Weight'] = np.nan
-
-    episodic_data = episodic_data.set_index('Icustay')
-
-    return episodic_data
-
-
-def make_diagnoses_util(diagnoses: pd.DataFrame) -> pd.DataFrame:
-    """_summary_
-
-    Args:
-        diagnoses (pd.DataFrame): _description_
-
-    Returns:
-        pd.DataFrame: _description_
-    """
-    # Diagnoese from each ICU stay with diagnose code in the column and stay ID as index
-    diagnoses['VALUE'] = 1
-    diagnoses = diagnoses[['ICUSTAY_ID', 'ICD9_CODE', 'VALUE']].drop_duplicates()
-    labels = diagnoses.pivot(index='ICUSTAY_ID', columns='ICD9_CODE', values='VALUE')
-    labels = labels.fillna(0).astype(int)
-    labels = labels.reindex(columns=DATASET_SETTINGS["diagnosis_labels"])
-    labels = labels.fillna(0).astype(int)
-
-    return labels
-
-
-def make_timeseries_util(chartevents: pd.DataFrame, variables) -> pd.DataFrame:
-    """
-    """
-    # Lets create the time series
-    metadata = chartevents[['CHARTTIME', 'ICUSTAY_ID']]
-    metadata = metadata.sort_values(by=['CHARTTIME', 'ICUSTAY_ID'])
-    metadata = metadata.drop_duplicates(keep='first').set_index('CHARTTIME')
-
-    # Timeseries contains only the following. Subject_id and personal information in episodic data
-    timeseries_df = chartevents[['CHARTTIME', 'VARIABLE', 'VALUE']]
-    timeseries_df = timeseries_df.sort_values(by=['CHARTTIME', 'VARIABLE', 'VALUE'], axis=0)
-    timeseries_df = timeseries_df.drop_duplicates(subset=['CHARTTIME', 'VARIABLE'], keep='last')
-    timeseries_df = timeseries_df.pivot(index='CHARTTIME', columns='VARIABLE', values='VALUE')
-    timeseries_df = timeseries_df.merge(metadata, left_index=True, right_index=True)
-    timeseries_df = timeseries_df.sort_index(axis=0).reset_index()
-
-    timeseries_df = timeseries_df.reindex(columns=np.append(variables, ['ICUSTAY_ID', 'CHARTTIME']))
-
-    return timeseries_df
-
-
-def make_episode(timeseries_df: pd.DataFrame,
-                 stay_id: int,
-                 intime=None,
-                 outtime=None) -> pd.DataFrame:
-    """
-    """
-    # All events with ID
-    indices = (timeseries_df.ICUSTAY_ID == stay_id)
-
-    # Plus all events int time frame
-    if intime is not None and outtime is not None:
-        indices = indices | ((timeseries_df.CHARTTIME >= intime) &
-                             (timeseries_df.CHARTTIME <= outtime))
-
-    # Filter out and remove ID (ID already in episodic data)
-    timeseries_df = timeseries_df.loc[indices]
-    del timeseries_df['ICUSTAY_ID']
-
-    return timeseries_df
-
-
-def make_hour_index(episode_df: pd.DataFrame,
-                    intime,
-                    remove_charttime: bool = True) -> pd.DataFrame:
-    """
-    """
-    # Get difference and convert to hours
-    episode_df = episode_df.copy()
-    episode_df['hours'] = (episode_df.CHARTTIME -
-                           intime).apply(lambda s: s / np.timedelta64(1, 's'))
-    episode_df['hours'] = episode_df.hours / 60. / 60
-
-    # Set index
-    episode_df = episode_df.set_index('hours').sort_index(axis=0)
-
-    if remove_charttime:
-        del episode_df['CHARTTIME']
-
-    return episode_df
-
-
 def clean_chartevents_util(chartevents: pd.DataFrame):
     """
+    Clean the chartevents DataFrame based on the timeseries column.
+
+    Parameters
+    ----------
+    chartevents : pd.DataFrame
+        DataFrame containing chart events.
+
+    Returns
+    -------
+    pd.DataFrame
+        Cleaned DataFrame.
     """
     function_switch = DATASET_SETTINGS["CHARTEVENTS"]["clean"]
     for variable_name, function_identifier in function_switch.items():
         index = (chartevents.VARIABLE == variable_name)
-        try:
-            chartevents.loc[index, 'VALUE'] = globals()[function_identifier](chartevents.loc[index])
-        except Exception as exp:
-            print("Exception in clean_events function", function_identifier, ": ", exp)
-            print("number of rows:", np.sum(index))
-            print("values:", chartevents.loc[index])
-            raise exp
+        # try:
+        chartevents.loc[index, 'VALUE'] = globals()[function_identifier](chartevents.loc[index])
+        #except Exception as exp:
+        #    print("Exception in clean_events function", function_identifier, ": ", exp)
+        #    print("number of rows:", np.sum(index))
+        #    print("values:", chartevents.loc[index])
+        #    raise exp
 
     return chartevents.loc[chartevents.VALUE.notnull()]
 
 
 def get_static_value(timeseries: pd.DataFrame, variable: str):
     """
+    Get the first non-null value of a specified variable from the time series data.
+
+    Parameters
+    ----------
+    timeseries : pd.DataFrame
+        DataFrame containing the time series data.
+    variable : str
+        The variable to get the static value for.
+
+    Returns
+    -------
+    any
+        The first non-null value of the specified variable.
     """
+
     index = timeseries[variable].notnull()
 
     if index.any():
@@ -298,13 +218,18 @@ def get_static_value(timeseries: pd.DataFrame, variable: str):
 
 
 def upper_case_column_names(frame: pd.DataFrame) -> pd.DataFrame:
-    """Converts the column names to upper case for consistency.
+    """
+    Convert the column names to upper case for consistency.
 
-    Args:
-        frame (pd.DataFrame): Target dataframe.
+    Parameters
+    ----------
+    frame : pd.DataFrame
+        Target DataFrame.
 
-    Returns:
-        pd.DataFrame: output dataframe.
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with upper-cased column names.
     """
     frame.columns = frame.columns.str.upper()
 
@@ -312,13 +237,18 @@ def upper_case_column_names(frame: pd.DataFrame) -> pd.DataFrame:
 
 
 def convert_to_numpy_types(frame: pd.DataFrame) -> pd.DataFrame:
-    """Converts the dtypes to numpy types for consistency.
+    """
+    Convert the dtypes to numpy types for consistency.
 
-    Args:
-        frame (pd.DataFrame): Target dataframe.
+    Parameters
+    ----------
+    frame : pd.DataFrame
+        Target DataFrame.
 
-    Returns:
-        pd.DataFrame: output dataframe.
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with numpy dtypes.
     """
     for col in frame.columns:
         # Convert pandas "Int64" (or similar) types to "int64"
@@ -338,7 +268,17 @@ def convert_to_numpy_types(frame: pd.DataFrame) -> pd.DataFrame:
 
 def _clean_height(df: pd.DataFrame) -> pd.Series:
     """
-    Convert inch to centimeter
+    Convert height from inches to centimeters.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        DataFrame containing height values.
+
+    Returns
+    -------
+    pd.Series
+        Series with converted height values.
     """
     value = df.VALUE.astype(float).copy()
 
@@ -355,7 +295,17 @@ def _clean_height(df: pd.DataFrame) -> pd.Series:
 
 def _clean_systolic_bp(df: pd.DataFrame) -> pd.Series:
     """
-    Filter out systolic blood preasure only. 
+    Filter out systolic blood pressure only.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        DataFrame containing blood pressure values.
+
+    Returns
+    -------
+    pd.Series
+        Series with systolic blood pressure values.
     """
     value = df.VALUE.astype(str).copy()
     index = value.apply(lambda string: '/' in string)
@@ -365,7 +315,17 @@ def _clean_systolic_bp(df: pd.DataFrame) -> pd.Series:
 
 def _clean_diastolic_bp(df: pd.DataFrame) -> pd.Series:
     """
-    Filter out diastolic blood preasure only. 
+    Filter out diastolic blood pressure only.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        DataFrame containing blood pressure values.
+
+    Returns
+    -------
+    pd.Series
+        Series with diastolic blood pressure values.
     """
     value = df.VALUE.astype(str).copy()
     index = value.apply(lambda string: '/' in string)
@@ -375,8 +335,17 @@ def _clean_diastolic_bp(df: pd.DataFrame) -> pd.Series:
 
 def _clean_capilary_rr(df: pd.DataFrame) -> pd.Series:
     """
-    Categorize: Normal or Brisk: 0
-                Abnormal or Delayed: 1
+    Categorize capillary refill rate.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        DataFrame containing capillary refill rate values.
+
+    Returns
+    -------
+    pd.Series
+        Series with categorized capillary refill rate values.
     """
     df = df.copy()
     value = pd.Series(np.zeros(df.shape[0]), index=df.index).copy()
@@ -391,7 +360,17 @@ def _clean_capilary_rr(df: pd.DataFrame) -> pd.Series:
 
 def _clean_fraction_inspired_o2(df: pd.DataFrame) -> pd.Series:
     """
-    many 0s, mapping 1<x<20 to 0<x<0.2 
+    Map fraction of inspired oxygen values to correct scale.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        DataFrame containing fraction of inspired oxygen values.
+
+    Returns
+    -------
+    pd.Series
+        Series with mapped fraction of inspired oxygen values.
     """
     value = df.VALUE.astype(float).copy()
 
@@ -413,7 +392,17 @@ def _clean_fraction_inspired_o2(df: pd.DataFrame) -> pd.Series:
 
 def _clean_laboratory_values(df: pd.DataFrame) -> pd.Series:
     """
-    GLUCOSE, PH: sometimes have ERROR as value
+    Clean laboratory values by removing non-numeric entries.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        DataFrame containing laboratory values.
+
+    Returns
+    -------
+    pd.Series
+        Series with cleaned laboratory values.
     """
     value = df.VALUE.copy()
     index = value.apply(
@@ -424,7 +413,17 @@ def _clean_laboratory_values(df: pd.DataFrame) -> pd.Series:
 
 def _clean_o2sat(df: pd.DataFrame) -> pd.Series:
     """
-    small number of 0<x<=1 that should be mapped to 0-100 scale
+    Scale oxygen saturation values to correct range.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        DataFrame containing oxygen saturation values.
+
+    Returns
+    -------
+    pd.Series
+        Series with scaled oxygen saturation values.
     """
     # change "ERROR" to NaN
     value = df.VALUE.copy()
@@ -441,7 +440,17 @@ def _clean_o2sat(df: pd.DataFrame) -> pd.Series:
 
 def _clean_temperature(df: pd.DataFrame) -> pd.Series:
     """
-    map Farenheit to Celsius, some ambiguous 50<x<80
+    Map Fahrenheit temperatures to Celsius.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        DataFrame containing temperature values.
+
+    Returns
+    -------
+    pd.Series
+        Series with converted temperature values.
     """
     value = df.VALUE.astype(float).copy()
 
@@ -458,8 +467,17 @@ def _clean_temperature(df: pd.DataFrame) -> pd.Series:
 
 def _clean_weight(df: pd.DataFrame) -> pd.Series:
     """
-    Weight: some really light/heavy adults: <50 lb, >450 lb, ambiguous oz/lb
-    Children are tough for height, weight
+    Convert weight values to kilograms.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        DataFrame containing weight values.
+
+    Returns
+    -------
+    pd.Series
+        Series with converted weight values.
     """
     value = df.VALUE.astype(float).copy()
 
@@ -486,13 +504,18 @@ def _clean_weight(df: pd.DataFrame) -> pd.Series:
 
 
 def _clean_respiratory_rate(df: pd.DataFrame) -> pd.Series:
-    """_summary_
+    """
+    Transform respiratory rate values from greater than 60 to 60.
 
-    Args:
-        df (_type_): _description_
+    Parameters
+    ----------
+    df : pd.DataFrame
+        DataFrame containing respiratory rate values.
 
-    Returns:
-        _type_: _description_
+    Returns
+    -------
+    pd.Series
+        Series with cleaned respiratory rate values.
     """
     value = df.VALUE
     value = value.replace('>60/min retracts', 60)
@@ -503,16 +526,27 @@ def _clean_respiratory_rate(df: pd.DataFrame) -> pd.Series:
 
 def read_varmap_csv(resource_folder: Path):
     """
-    Parameters:
-        resource_folder:    If not default dataset path at data/mimic-iii-demo/resources/
+    Read the variable map CSV file from the specified resource folder. The varaible map relates
+    the ITEMID to the 17 variables of interest defined for the MIMIC-III dataset. These relation is based
+    on the itemid_to_variable_map.csv, which is curled from the original 
+    https://github.com/YerevaNN/mimic3-benchmarks/tree/master during setup.
 
-    Returns:
-        varmap_df:          Variable map containing relevant feature variables as provided by the benchmark code
+    Parameters
+    ----------
+    resource_folder : Path
+        The path to the resource folder containing the CSV file.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame containing the variable map.
     """
     csv_settings = DATASET_SETTINGS["varmap"]
     # Load the resource map
     varmap_df = pd.read_csv(Path(resource_folder, "itemid_to_variable_map.csv"),
                             index_col=None,
+                            na_values=[''],
+                            keep_default_na=False,
                             dtype=convert_dtype_dict(csv_settings["dtype"]))
 
     # Impute empty to string

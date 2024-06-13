@@ -22,11 +22,35 @@ class PartialImputer(SimpleImputer, AbstractImputer):
                  add_indicator=False,
                  keep_empty_features=True,
                  storage_path=None):
-        """_summary_
+        """
+        An imputer for handling missing values in a dataset with the capability of partial fitting.
 
-        Args:
-            storage_path (_type_, optional): _description_. Defaults to None.
-            verbose (int, optional): _description_. Defaults to 1.
+        This class extends SimpleImputer from sklearn and AbstractScikitProcessor to handle missing
+        values using various strategies and allows for incremental fitting.
+
+        Parameters
+        ----------
+        missing_values : any, optional
+            The placeholder for the missing values. All occurrences of `missing_values` will be
+            imputed. Default is np.nan.
+        strategy : str, optional
+            The imputation strategy. Default is 'mean'.
+        verbose : int, optional
+            The verbosity level. Default is 1.
+        copy : bool, optional
+            If True, a copy of X will be created. If False, imputation will be done in-place whenever possible.
+            Default is True.
+        fill_value : any, optional
+            When strategy="constant", `fill_value` is used to replace all occurrences of missing_values.
+            Default is 0.
+        add_indicator : bool, optional
+            If True, a MissingIndicator transform will stack onto the output of the imputer’s transform.
+            Default is False.
+        keep_empty_features : bool, optional
+            If True, features that are all-NaN will be kept in the resulting dataset.
+            Default is True.
+        storage_path : Path or str, optional
+            The path where the imputer's state will be stored. Default is None.
         """
         self._verbose = verbose
         self.statistics_ = None
@@ -46,10 +70,21 @@ class PartialImputer(SimpleImputer, AbstractImputer):
                          keep_empty_features=keep_empty_features)
 
     def partial_fit(self, X):
-        """_summary_
+        """
+        Incrementally fit the imputer on a batch of data.
 
-        Args:
-            X (_type_): _description_
+        This method allows the imputer to be fitted in increments, which is useful for large datasets
+        that do not fit into memory.
+
+        Parameters
+        ----------
+        X : array-like, shape (n_samples, n_features)
+            The input data to fit.
+
+        Returns
+        -------
+        self : object
+            Returns self.
         """
         warnings.filterwarnings("ignore")
         n = len(X)
@@ -69,4 +104,6 @@ class PartialImputer(SimpleImputer, AbstractImputer):
 
     @classmethod
     def _get_param_names(cls):
+        """Necessary for parent class.
+        """
         return []

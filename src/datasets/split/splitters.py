@@ -1,3 +1,10 @@
+"""
+This module provides classes for splitting datasets into training, validation, and test sets.
+The splits can be performed based on predefined ratios or by demographic groups.
+This feature is useful for creating willfully biased datasets or inducing concept drift.
+
+
+"""
 import random
 import numpy as np
 import pandas as pd
@@ -12,9 +19,20 @@ from pathos.multiprocessing import Pool, cpu_count
 from utils import dict_subset
 from collections import OrderedDict
 from itertools import chain
+from abc import ABC, abstractmethod
 
 
-class AbstractSplitter(object):
+class AbstractSplitter(ABC):
+    """
+    Abstract base class for data splitting. Implements methods used for reader and dictionary splitting.
+    
+    Parameters
+    ----------
+    max_iter : int, optional
+        Maximum number of iterations for ratio-based splitting. Default is 100.
+    tolerance : float, optional
+        Tolerance level for ratio deviations. Default is 0.005.
+    """
 
     def __init__(self, max_iter: int = 100, tolerance: float = 0.005) -> None:
         self._max_iter = max_iter
@@ -22,6 +40,25 @@ class AbstractSplitter(object):
 
     @staticmethod
     def _print_ratio(prefix: str, ratio: dict):
+        """
+        Prints the ratio of the splits.
+
+        Parameters
+        ----------
+        prefix : str
+            Prefix for the printed message.
+        ratio : dict
+            Dictionary containing the ratios for each split.
+
+        Examples
+        --------
+        >>> ratio = {"train": 0.7, "val": 0.15, "test": 0.15}
+        >>> AbstractSplitter._print_ratio("Target", ratio)
+        Target:
+         train size:  0.700
+         val size:    0.150
+         test size:   0.150
+        """
         message = [prefix + ":"]
         set_names = ["test", "val", "train"]
         for set_name in set_names:
@@ -34,7 +71,26 @@ class AbstractSplitter(object):
                          subjects: Dict[str, List[int]],
                          sample_counts: dict,
                          test_size: float = 0.0,
-                         val_size: float = 0.0):
+                         val_size: float = 0.0) -> tuple:
+        """
+        Reduces the number of subjects based in the datasplit to enforce specified ratios.
+        
+        Parameters
+        ----------
+        subjects : dict
+            Dictionary containing lists of subjects for each split.
+        sample_counts : dict
+            Dictionary containing sample counts for each subject.
+        test_size : float, optional
+            Ratio of the test set. Default is 0.0.
+        val_size : float, optional
+            Ratio of the validation set. Default is 0.0.
+        
+        Returns
+        -------
+        tuple
+            Updated subjects and their real ratios.
+        """
         # If val_size is specified but no val subjects are present raise an error
         if val_size and (not "val" in subjects or not subjects["val"]):
             raise ValueError(f"'val_size' parameter specified but no val subjects "
@@ -94,15 +150,13 @@ class AbstractSplitter(object):
             set_name: ratio_df[ratio_df["participant"].isin(split_subject)]["ratio"].sum()
             for set_name, split_subject in subjects.items()
         }
+
         return subjects, real_ratios
 
     def _check_settings(self, settings, parent_key='', set_name=None):
         """
         Recursively checks if any setting in a nested dictionary is empty.
         Raises ValueError if an empty setting is found.
-
-        :param settings: dict, the settings dictionary to check
-        :param parent_key: str, used for recursive tracking of keys
         """
         for key, value in settings.items():
             # Construct the full key path for better error messages
@@ -122,6 +176,9 @@ class AbstractSplitter(object):
 
     def _split_by_demographics(self, subject_ids: List[int], source_path: Path,
                                demographic_split: dict):
+        """
+        Splits subjects based on demographic settings.
+        """
         return_ratios = dict()
         return_subjects = dict()
 
@@ -148,6 +205,9 @@ class AbstractSplitter(object):
         return return_subjects, return_ratios
 
     def _create_ratio_df(self, subject_ids: List[int], sample_counts: dict):
+        """
+        Creates a DataFrame with the ratio of subject samples to total samples for each subject.
+        """
         subject_ratios = [
             (subject_id, sample_counts[subject_id]["total"]) for subject_id in subject_ids
         ]
@@ -162,6 +222,9 @@ class AbstractSplitter(object):
                         sample_counts: dict,
                         test_size: float = 0.0,
                         val_size: float = 0.0):
+        """
+        Splits subjects based on specified ratios.
+        """
         if test_size < 0 or test_size > 1:
             raise ValueError("Invalid test size")
         if val_size < 0 or val_size > 1:
@@ -207,6 +270,9 @@ class AbstractSplitter(object):
                           subject_ids: list,
                           settings: dict,
                           invert=False):
+        """
+        Filters subjects based on demographic group.
+        """
         if source_path is None or settings is None:
             return subject_ids
         self._check_settings(settings)
@@ -330,14 +396,8 @@ class AbstractSplitter(object):
         return subject_info_df["SUBJECT_ID"].unique().tolist()
 
     def _subjects_for_ratio(self, ratio_df: pd.DataFrame, target_size: float):
-        """_summary_
-
-        Args:
-            ratio_df (pd.DataFrame): _description_
-            target_size (float): _description_
-
-        Returns:
-            _type_: _description_
+        """
+        Selects subjects to match the target ratio.
         """
         assert "participant" in ratio_df.columns
         assert "ratio" in ratio_df.columns
@@ -393,11 +453,16 @@ class AbstractSplitter(object):
                 iter += 1
                 if diff < best_diff:
                     best_subjects, best_size, best_diff = subjects, current_size, diff
+            pool.close()
+            pool.join()
 
         return best_subjects, best_size
 
     def _split_val_from_train(self, val_size: float, split_dictionary: dict, ratios: dict,
                               split_tracker: DataSplitTracker):
+        """
+        Splits validation set from training set.
+        """
         adj_val_size = val_size / (val_size + ratios["train"])
         sub_split_dictionary, sub_ratios = self._split_by_ratio(
             subject_ids=split_dictionary["train"],
@@ -411,6 +476,9 @@ class AbstractSplitter(object):
 
 
 class ReaderSplitter(AbstractSplitter):
+    """
+    Splits datasets reader based either by set ratios or demgoraphic groups.
+    """
 
     def split_reader(self,
                      reader: ProcessedSetReader,
@@ -420,12 +488,30 @@ class ReaderSplitter(AbstractSplitter):
                      demographic_split: dict = None,
                      demographic_filter: dict = None,
                      storage_path: Path = None):
-        """_summary_
+        """
+        Splits the dataset into training, validation, and test sets. The attribute can be found in the split_info_df.csv file.
 
-        Args:
-            reader (ProcessedSetReader): _description_
-            test_size (float): _description_
-            val_size (float): _description_
+        Parameters
+        ----------
+        reader : ProcessedSetReader
+            Reader object to load the dataset.
+        test_size : float, optional
+            Proportion of the dataset to include in the test split. Default is 0.0.
+        val_size : float, optional
+            Proportion of the dataset to include in the validation split. Default is 0.0.
+        train_size : int, optional
+            Number of samples to include in the training split. If specified, overrides the proportion-based split for training set. Default is None.
+        demographic_split : dict, optional
+            Dictionary specifying demographic criteria for splitting the dataset. Default is None.
+        demographic_filter : dict, optional
+            Dictionary specifying demographic criteria for filtering the dataset before splitting. Default is None.
+        storage_path : Path, optional
+            Path to the directory where the split information will be saved. Default is None, which uses the reader's root path.
+
+        Returns
+        -------
+        SplitSetReader
+            Reader object for the split dataset.
         """
         info_io(f"Splitting reader", level=0)
         self._print_ratio("Target", {
@@ -478,10 +564,11 @@ class ReaderSplitter(AbstractSplitter):
             if train_size is not None and val_size and not "val" in split_dictionary:
                 # In this case we split the val set from the train set
                 split_dictionary, ratios = self._split_val_from_train(
-                    val_size=val_size,
+                    val_size=val_size / (1 - test_size),
                     split_dictionary=split_dictionary,
                     ratios=ratios,
                     split_tracker=split_tracker)
+                ratios["val"] = ratios["val"] * (1 - test_size)
 
             # Update tracker
             split_tracker.split = split_dictionary
@@ -524,12 +611,7 @@ class CompactSplitter(AbstractSplitter):
                    demographic_split: dict = None,
                    demographic_filter: dict = None,
                    source_path: Path = None):
-        """_summary_
-
-        Args:
-            reader (ProcessedSetReader): _description_
-            test_size (float): _description_
-            val_size (float): _description_
+        """Not yet implemented
         """
         info_io(f"Splitting reader", level=0)
 
@@ -551,7 +633,8 @@ class CompactSplitter(AbstractSplitter):
             subject_ids = list(X_subjects.keys())
 
         if source_path:
-            tracker = PreprocessingTracker(Path(source_path, "progress"), subject_ids=subject_ids)
+            tracker = PreprocessingTracker(Path(source_path, "progress"))
+            tracker.set_subject_ids(subject_ids)
             split_tracker = DataSplitTracker(Path(source_path, "split"), tracker, test_size,
                                              val_size)
             if split_tracker.is_finished:

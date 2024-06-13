@@ -1,7 +1,5 @@
 import json
 import os
-import bisect
-import numpy as np
 from pathlib import Path
 from dotenv import load_dotenv
 from utils.IO import *
@@ -10,7 +8,7 @@ load_dotenv(verbose=False)
 
 __all__ = [
     'TASK_NAMES', 'DATASET_SETTINGS', 'DECOMP_SETTINGS', 'LOS_SETTINGS', 'PHENOT_SETTINGS',
-    'IHM_SETTINGS', 'TEXT_METRICS', 'LOS_BINS', 'LOS_MEANS'
+    'IHM_SETTINGS', 'TEXT_METRICS'
 ]
 
 TASK_NAMES = ["DECOMP", "LOS", "PHENO", "IHM"]

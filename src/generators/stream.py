@@ -5,7 +5,6 @@ from typing import List
 from preprocessing.scalers import AbstractScaler
 from datasets.readers import ProcessedSetReader
 from torch.utils.data import Dataset
-from tests.settings import *
 from utils.IO import *
 from torch.utils.data import DataLoader
 from . import AbstractGenerator
@@ -17,12 +16,15 @@ class RiverGenerator(AbstractGenerator, Dataset):
                  reader: ProcessedSetReader,
                  scaler: AbstractScaler,
                  shuffle: bool = True,
+                 num_cpu: int = None,
                  bining: str = "none"):
-        super(RiverGenerator, self).__init__(reader=reader,
-                                             scaler=scaler,
-                                             batch_size=1,
-                                             shuffle=shuffle,
-                                             bining=bining)
+        AbstractGenerator.__init__(self,
+                                   reader=reader,
+                                   scaler=scaler,
+                                   batch_size=1,
+                                   num_cpus=num_cpu,
+                                   shuffle=shuffle,
+                                   bining=bining)
         self._names: List[str] = None
         self._labels: List[str] = None
         self._index = 0
@@ -33,7 +35,7 @@ class RiverGenerator(AbstractGenerator, Dataset):
         return self
 
     def __next__(self, *args, **kwargs):
-        if self._index >= self.steps:
+        if self._index >= len(self):
             raise StopIteration
         X, y = super().__getitem__()
         X = np.squeeze(X)

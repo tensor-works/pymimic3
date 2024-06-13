@@ -1,14 +1,58 @@
-"""Dataset file
-
-This file allows access to the dataset as specified.
-
-Todo:
-
-YerevaNN/mimic3-benchmarks
 """
+This module provides the MIMICFeatureEngine class to process time series data from the MIMIC-III dataset, applying various feature engineering techniques and storing the processed data for downstream tasks.
+
+Usage Examples
+--------------
+.. code-block:: python
+
+    from pathlib import Path
+    import json
+    from datasets.readers import ProcessedSetReader
+    from datasets.trackers import PreprocessingTracker
+    from datasets.processors import MIMICFeatureEngine
+
+    # Define the path to the dataset, storage, and configuration file
+    dataset_path = Path("/path/to/extracted/dataset")
+    storage_path = Path("/path/to/store/processed/data")
+
+    # example file located at etc/engineering_config.json
+    config_path = Path("/path/to/config.json")
+
+    # Initialize the reader and tracker
+    reader = ProcessedSetReader(dataset_path)
+    tracker = PreprocessingTracker(storage_path)
+
+    # Initialize the MIMICFeatureEngine for the LOS (length-of-stay) task
+    # Tasks are IHM, DECOMP, LOS, PHENO
+    feature_engine = MIMICFeatureEngine(
+        config_dict=config_path,
+        task="LOS",
+        reader=reader,
+        storage_path=storage_path,
+        tracker=tracker,
+        verbose=True
+    )
+
+    # Transform a subject
+    subject_id = 12345
+    X, y = feature_engine.transform_subject(subject_id)
+    
+    # Transform the entire dataset
+    dataset = reader.read_samples(read_ids=True)
+    X, y, t = feature_engine.transform_dataset(dataset)
+
+    # Or transfrom the reader directly
+    reader = feature_engine.transform_reader(reader)
+
+    # Save the transformed data
+    feature_engine.save_data()
+
+"""
+
 import numpy as np
 import pandas as pd
 import json
+from typing import Dict, List, Tuple
 from scipy.stats import skew
 from numpy import random
 from multiprocess import Manager
@@ -18,11 +62,30 @@ from utils import dict_subset
 from utils.IO import *
 from pathlib import Path
 from datasets.trackers import PreprocessingTracker
-from . import AbstractProcessor
+from datasets.processors import AbstractProcessor
 
 
 class MIMICFeatureEngine(AbstractProcessor):
-    """_summary_
+    """
+    This class processes time series data from the MIMIC-III dataset, applying various feature 
+    engineering techniques and storing the processed data for downstream tasks.
+    The feature engineering is sped up using multiprocessing.
+    The features are engineered using min, max, mean, std, skew and len.
+
+    Parameters
+    ----------
+    config_dict : Path
+        The path to the configuration dictionary for feature engineering.
+    task : str
+        The task name, used to determine specific processing steps.
+    reader : ProcessedSetReader, optional
+        The reader object for reading batch data, by default None.
+    storage_path : Path, optional
+        The path where the processed data will be stored, by default None.
+    tracker : PreprocessingTracker, optional
+        The tracker object for keeping track of preprocessing steps, by default None.
+    verbose : bool, optional
+        If True, print verbose logs during processing, by default False.
     """
 
     def __init__(self,
@@ -32,19 +95,12 @@ class MIMICFeatureEngine(AbstractProcessor):
                  storage_path: Path = None,
                  tracker: PreprocessingTracker = None,
                  verbose=False) -> None:
-        """_summary_
 
-        Args:
-            config_dict (Path): _description_
-            task (str): _description_
-            storage_path (Path, optional): _description_. Defaults to None.
-            source_path (Path, optional): _description_. Defaults to None.
-            tracking (bool, optional): _description_. Defaults to True.
-            save_as_sample (bool, optional): _description_. Defaults to True.
-        """
+        self._operation_name = "feature engieneering"  # For printing
+        self._operation_adjective = "engineered"
         self._storage_path = storage_path
         self._writer = (DataSetWriter(storage_path) if storage_path is not None else None)
-        self._reader = reader
+        self._source_reader = reader
         if tracker is not None:
             self._tracker = tracker
         else:
@@ -71,25 +127,50 @@ class MIMICFeatureEngine(AbstractProcessor):
             self._impute_config = config_dict["channels"]
             self._channel_names = config_dict["channel_names"]
 
+        # Tracking variables
+        self._init_tracking_variables()
+
+        self._X = dict()
+        self._y = dict()
+
     @property
     def subjects(self) -> list:
-        """_summary_
-
-        Returns:
-            list: _description_
         """
-        return self._reader.subject_ids
+        Get the list of subject IDs available in the reader.
+
+        Returns
+        -------
+        list
+            A list of subject IDs.
+        """
+        return self._source_reader.subject_ids
 
     def transform_subject(self, subject_id: int):
-        X_processed, y_processed = self._reader.read_sample(subject_id,
-                                                            read_ids=True,
-                                                            data_type=pd.DataFrame).values()
+        """
+        Transform the data for a specific subject.
+
+        This method reads the data for a specific subject, processes it, and returns
+        the engineered features along with tracking information.
+
+        Parameters
+        ----------
+        subject_id : int
+            The ID of the subject to transform data for.
+
+        Returns
+        -------
+        tuple
+            A tuple containing the engineered features and tracking information.
+        """
+        X_processed, y_processed = self._source_reader.read_sample(subject_id,
+                                                                   read_ids=True,
+                                                                   data_type=pd.DataFrame).values()
         X = {subject_id: X_processed}
         y = {subject_id: y_processed}
         if X is None or y is None:
             return None, None
 
-        X_engineered, y_engineered, _ = self.transform(X, y)
+        X_engineered, y_engineered = self._transform((X, y))
         if X_engineered is None or y_engineered is None:
             return None, None
         if self._tracker is None:
@@ -99,38 +180,40 @@ class MIMICFeatureEngine(AbstractProcessor):
             tracking_info = self._tracker.subjects[subject_id]
         return (X_engineered, y_engineered), tracking_info
 
-    def transform(self, X_dict: dict, y_dict: dict):
-        """_summary_
-
-        Args:
-            X_dict (dict): _description_
-            y_dict (dict): _description_
-
-        Returns:
-            _type_: _description_
+    def _transform(self,
+                   dataset: Tuple[Dict[int, Dict[int, pd.DataFrame]]],
+                   return_timestamp=False):
         """
-        n_subjects = 0
-        n_stays = 0
-        n_samples = 0
+        Save the engineered data to the storage path.
+
+        If no subject IDs are specified, all the engineered data will be saved.
+
+        Parameters
+        ----------
+        subject_ids : list, optional
+            A list of subject IDs to save data for. If None, all data is saved. Default is None.
+        """
+        X_dict, y_dict = dataset
 
         if self._verbose:
             info_io(f"Engineering processed data:\n"
-                    f"Engineered subjects: {0}\n"
-                    f"Engineered stays: {0}\n"
-                    f"Engineered samples: {0}")
+                    f"Engineered subjects: {self._n_subjects}\n"
+                    f"Engineered stays: {self._n_stays}\n"
+                    f"Engineered samples: {self._n_samples}\n"
+                    f"Skipped subjects: {self._n_skip}")
 
         self._samples_processed = 0
 
-        self._X_processed = dict()
-        self._y_processed = dict()
-        self._t_processed = dict()
+        self._X = dict()
+        self._y = dict()
+        self._t = dict()
 
         for subject_id in X_dict.keys():
             X_subject = X_dict[subject_id]
             y_subject = y_dict[subject_id]
-            self._X_processed[subject_id] = dict()
-            self._y_processed[subject_id] = dict()
-            self._t_processed[subject_id] = dict()
+            self._X[subject_id] = dict()
+            self._y[subject_id] = dict()
+            self._t[subject_id] = dict()
             tracking_info = dict()
 
             for stay_id in X_subject:
@@ -139,22 +222,23 @@ class MIMICFeatureEngine(AbstractProcessor):
 
                 X_ss, ys, ts = self._engineer_stay(X_df, y_df)
                 X_ss, ys, ts = self._convert_feature_dtype(X_ss, ys, ts)
-                self._X_processed[subject_id][stay_id] = X_ss
-                self._y_processed[subject_id][stay_id] = np.atleast_2d(ys)
-                self._t_processed[subject_id][stay_id] = ts
+                self._X[subject_id][stay_id] = X_ss
+                self._y[subject_id][stay_id] = np.atleast_2d(ys)
+                self._t[subject_id][stay_id] = ts
                 tracking_info[stay_id] = len(ys)
-                n_samples += len(ys)
-                n_stays += 1
+                self._n_samples += len(ys)
+                self._n_stays += 1
 
                 if self._verbose:
                     info_io(
                         f"Engineering processed data:\n"
-                        f"Engineered subjects: {n_subjects}\n"
-                        f"Engineered stays: {n_stays}\n"
-                        f"Engineered samples: {n_samples}",
+                        f"Engineered subjects: {self._n_subjects}\n"
+                        f"Engineered stays: {self._n_stays}\n"
+                        f"Engineered samples: {self._n_samples}\n"
+                        f"Skipped subjects: {self._n_skip}",
                         flush_block=True)
 
-            n_subjects += 1
+            self._n_subjects += 1
             if self._tracker is not None:
                 with self._lock:
                     self._tracker.subjects.update({subject_id: tracking_info})
@@ -162,15 +246,34 @@ class MIMICFeatureEngine(AbstractProcessor):
         if self._verbose:
             info_io(
                 f"Engineering processed data:\n"
-                f"Engineered subjects: {n_subjects}\n"
-                f"Engineered stays: {n_stays}\n"
-                f"Engineered samples: {n_samples}",
+                f"Engineered subjects: {self._n_subjects}\n"
+                f"Engineered stays: {self._n_stays}\n"
+                f"Engineered samples: {self._n_samples}\n"
+                f"Skipped subjects: {self._n_skip}",
                 flush_block=True)
+        if return_timestamp:
+            return self._X, self._y, self._t
+        return self._X, self._y
 
-        return self._X_processed, self._y_processed, self._t_processed
+    def _engineer_stay(self, X_df: pd.DataFrame, y_df: pd.DataFrame):
+        """
+        Engineer features for a single ICU stay.
 
-    def _engineer_stay(self, X_df, y_df):
-        X_df = self._make_categorical_data(X_df)
+        This method applies feature engineering techniques to the data from a single ICU stay.
+
+        Parameters
+        ----------
+        X_df : pd.DataFrame
+            DataFrame containing the input data for the ICU stay.
+        y_df : pd.DataFrame
+            DataFrame containing the output data for the ICU stay.
+
+        Returns
+        -------
+        tuple
+            A tuple containing the engineered features, output data, and timestamps.
+        """
+        X_df = self._impute_categorical_data(X_df)
         Xs, ys, ts = self._read_timeseries_windows(X_df, y_df)
 
         (Xs, ys, ts) = self._shuffle([Xs, ys, ts])
@@ -201,33 +304,24 @@ class MIMICFeatureEngine(AbstractProcessor):
         return X_ss, ys, ts
 
     def _convert_feature_dtype(self, X, y, t):
-        """_summary_
-
-        Args:
-            X (_type_): _description_
-            y (_type_): _description_
-            t (_type_): _description_
+        """Does nothing, need because of inheritance.
         """
         return X, y, t
 
     def save_data(self, subject_ids: list = None) -> None:
-        """_summary_
+        """
+        Saves the engineered feature data.
 
-        Args:
-            storage_path (Path, optional): _description_. Defaults to None.
-            task (str, optional): _description_. Defaults to None.
+        This method saves the engineered feature data to the specified storage path. If no subject IDs are provided, all 
+        engineered data will be saved. The data is saved in HDF5 format and optionally concatenated into CSV format for PHENO and IHM.
         """
         if subject_ids is None:
-            name_data_pairs = {
-                "X": self._X_processed,
-                "y": self._y_processed,
-                "t": self._t_processed
-            }
+            name_data_pairs = {"X": self._X, "y": self._y, "t": self._t}
         else:
             name_data_pairs = {
-                "X": dict_subset(self._X_processed, subject_ids),
-                "y": dict_subset(self._y_processed, subject_ids),
-                "t": dict_subset(self._t_processed, subject_ids)
+                "X": dict_subset(self._X, subject_ids),
+                "y": dict_subset(self._y, subject_ids),
+                "t": dict_subset(self._t, subject_ids)
             }
         with self._lock:
             self._writer.write_bysubject(name_data_pairs, file_type="hdf5")
@@ -269,18 +363,13 @@ class MIMICFeatureEngine(AbstractProcessor):
 
         if self._save_as_samples:
             with self._lock:
-                append_data(self._X_processed, self._y_processed)
+                append_data(self._X, self._y)
 
         return
 
-    def _shuffle(self, data) -> None:
-        """_summary_
-
-        Args:
-            data (_type_): _description_
-
-        Returns:
-            _type_: _description_
+    def _shuffle(self, data: List[tuple]) -> None:
+        """
+        Shuffle the data.
         """
         assert len(data) >= 2
 
@@ -290,14 +379,12 @@ class MIMICFeatureEngine(AbstractProcessor):
 
         return data
 
-    def _make_categorical_data(self, X):
-        """_summary_
+    def _impute_categorical_data(self, X):
+        """
+        Imputes specified columns to categorical data.
 
-        Args:
-            X (_type_): _description_
-
-        Returns:
-            _type_: _description_
+        This method replaces specified values in the input DataFrame with their categorical equivalents based on
+        the impute configuration. It ensures that the specified columns are treated as categorical data types.
         """
         replace_dict = {'nan': np.nan}
 
@@ -305,18 +392,16 @@ class MIMICFeatureEngine(AbstractProcessor):
             if 'values' in self._impute_config[channel].keys():
                 replace_dict.update(self._impute_config[channel]['values'])
 
-        with pd.option_context('future.no_silent_downcasting', True):
-            X = X.replace(replace_dict).astype(float)
+        # with pd.option_context('future.no_silent_downcasting', True):
+        X = X.replace(replace_dict).astype(float)
         return X
 
     def _make_engineered_features(self, data):
-        """_summary_
+        """
+        Generate engineered features.
 
-        Args:
-            data (_type_): _description_
-
-        Returns:
-            _type_: _description_
+        This method generates engineered features from the input data using statistical functions such as min, max,
+        mean, standard deviation, skewness, and length.
         """
         functions = [min, max, np.mean, np.std, skew, len]
         import warnings
@@ -330,7 +415,7 @@ class MIMICFeatureEngine(AbstractProcessor):
                 fn(data) if fn is not skew or
                 (len(data) > 1 and not all(i == data[0]
                                            for i in data) or fn is len) else
-                0  #TODO! This will fail and be NaN in Windows
+                np.nan  #TODO! This will fail and be 0 in Windows
                 for fn in functions
             ]
             engineered_data = np.array(engineered_data, dtype=np.float32)
@@ -338,15 +423,12 @@ class MIMICFeatureEngine(AbstractProcessor):
         return engineered_data
 
     def _channel_subsampler(self, Sr: pd.Series, sampler_function, percentage):
-        """_summary_
+        """
+        Subsample a time series channel.
 
-        Args:
-            Sr (pd.Series): _description_
-            sampler_function (_type_): _description_
-            percentage (_type_): _description_
-
-        Returns:
-            _type_: _description_
+        This method subsamples a time series channel based on specified time window percentage.
+        For example this could mean first 25% or last 50% of the time series.
+        It returns the subsampled series within the calculated time window.
         """
         Sr = Sr.dropna()
 
@@ -362,15 +444,12 @@ class MIMICFeatureEngine(AbstractProcessor):
         return Sr[(Sr.index < sampled_end_t + 1e-6) & (Sr.index > sampled_start_t - 1e-6)]
 
     def _timeseries_subsampler(self, X: pd.DataFrame, sampler_function, percentage):
-        """_summary_
+        """
+        Subsample a time series DataFrame.
 
-        Args:
-            X (pd.DataFrame): _description_
-            sampler_function (_type_): _description_
-            percentage (_type_): _description_
-
-        Returns:
-            _type_: _description_
+        This method subsamples the input DataFrame based on specified time window percentage.
+        For example this could mean first 25% or last 50% of the time series.
+        It returns a list of subsampled columns.
         """
         if len(X) == 0:
             data = np.full((6), np.nan)
@@ -390,17 +469,11 @@ class MIMICFeatureEngine(AbstractProcessor):
         return [data[channel] for channel in data]
 
     def _read_timeseries_windows(self, X_df: pd.DataFrame, y_df: pd.DataFrame) -> 'tuple[list]':
-        """_summary_
+        """
+        Read time series windows.
 
-        Args:
-            X_df (pd.DataFrame): _description_
-            y_df (pd.DataFrame): _description_
-
-        Raises:
-            ValueError: _description_
-
-        Returns:
-            tuple: _description_
+        This method reads the time series data to create windows for feature engineering, reaching from the
+        start time-stamp to the current timestamp. The window is paired with the current label. 
         """
         Xs = list()
         ys = list()
@@ -424,12 +497,10 @@ class MIMICFeatureEngine(AbstractProcessor):
         return Xs, ys, ts
 
     def _convert_feature_dtype(self, X, y, t):
-        """_summary_
+        """
+        Convert feature data types.
 
-        Args:
-            X (_type_): _description_
-            y (_type_): _description_
-            t (_type_): _description_
+        This method converts the data types of the input features, target values, and timestamps to numpy arrays.
         """
         X = np.stack(X)
         return np.array(X), np.array(y), np.array(t)

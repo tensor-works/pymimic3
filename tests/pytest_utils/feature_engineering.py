@@ -15,6 +15,8 @@ def concatenate_dataset(data) -> pd.DataFrame:
     data_stack = list()
     for subject_id, subject_stays in data.items():
         for stay_id, frame in subject_stays.items():
+            if not isinstance(frame, np.ndarray):
+                frame = frame.to_numpy()
             if len(np.squeeze(frame).shape) == 1:
                 data_stack.append(np.squeeze(frame).tolist() + [subject_id, stay_id])
             else:

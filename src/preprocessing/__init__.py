@@ -2,49 +2,23 @@ import os
 import numpy as np
 import pickle
 from utils.IO import *
-from tensorflow.keras.utils import Progbar
 from pathlib import Path
-from typing import List, Tuple
 from abc import ABC, abstractmethod
-
-
-class AbstractProcessor(ABC):
-    """_summary_
-    """
-
-    @abstractmethod
-    def __init__(self) -> None:
-        """_summary_
-
-        Raises:
-            NotImplementedError: _description_
-        """
-        ...
-
-    @property
-    @abstractmethod
-    def subjects(self) -> List[int]:
-        ...
-
-    @abstractmethod
-    def transform(self, *args, **kwargs):
-        """_summary_
-
-        Raises:
-            NotImplementedError: _description_
-        """
-        ...
-
-    @abstractmethod
-    def transform_subject(self, subject_id: int) -> Tuple[dict, dict, dict]:
-        ...
-
-    @abstractmethod
-    def save_data(self, subject_ids: list = None) -> None:
-        ...
+from tqdm import tqdm  # Importing tqdm for progress bars
 
 
 class AbstractScikitProcessor(ABC):
+    """
+    Abstract base class for scikit-learn style processors.
+
+    This class provides a template for processors that need to implement `transform`, `fit`, and `partial_fit`
+    methods. It also includes methods for saving and loading the processor's state.
+
+    Parameters
+    ----------
+    storage_path : Path
+        The path where the processor's state will be stored.
+    """
 
     @abstractmethod
     def __init__(self, storage_path: Path):
@@ -57,18 +31,58 @@ class AbstractScikitProcessor(ABC):
 
     @abstractmethod
     def transform(self, X: np.ndarray):
+        """
+        Transform the input data once the preprocessor has been fitted.
+
+        Parameters
+        ----------
+        X : np.ndarray
+            The input data to transform.
+
+        Returns
+        -------
+        np.ndarray
+            The transformed data.
+        """
         ...
 
     @abstractmethod
     def fit(self, X: np.ndarray):
+        """
+        Fit the processor to the input data.
+
+        Parameters
+        ----------
+        X : np.ndarray
+            The input data to fit.
+        """
         ...
 
     @abstractmethod
     def partial_fit(self, X: np.ndarray):
+        """
+        Partially fit the processor to the input data.
+
+        Parameters
+        ----------
+        X : np.ndarray
+            The input data to partially fit.
+        """
         ...
 
     def save(self, storage_path=None):
-        """_summary_
+        """
+        Save the processor's state to the storage path.
+
+        Parameters
+        ----------
+        storage_path : Path, optional
+            The path where the processor's state will be saved. If None, the existing storage path is used.
+
+        Raises
+        ------
+        ValueError
+            If no storage path is provided.
         """
         if storage_path is not None:
             self._storage_path = Path(storage_path, self._storage_name)
@@ -78,10 +92,13 @@ class AbstractScikitProcessor(ABC):
             pickle.dump(obj=self.__dict__, file=save_file, protocol=2)
 
     def load(self):
-        """_summary_
+        """
+        Load the processor's state from the storage path.
 
-        Returns:
-            _type_: _description_
+        Returns
+        -------
+        int
+            1 if the state was successfully loaded, 0 otherwise.
         """
         if self._storage_path is not None:
             if self._storage_path.is_file():
@@ -96,24 +113,32 @@ class AbstractScikitProcessor(ABC):
         return 0
 
     def fit_dataset(self, X):
-        """_summary_
+        """
+        Fit the processor to an entire dataset.
 
-        Args:
-            discretizer (_type_): _description_
-            X (_type_): _description_
+        Parameters
+        ----------
+        X : iterable
+            The dataset to fit.
+
+        Returns
+        -------
+        self
+            The fitted processor.
         """
         if self._verbose:
             info_io(f"Fitting scaler to dataset of size {len(X)}")
-            progbar = Progbar(len(X), unit_name='step')
         n_fitted = 0
 
-        for frame in X:
-            if hasattr(self, "_imputer") and self._imputer is not None:
-                frame = self._imputer.transform(frame)
-            self.partial_fit(frame)
-            n_fitted += 1
-            if self._verbose:
-                progbar.update(n_fitted)
+        with tqdm(total=len(X), unit='step', ascii=' >=', ncols=120,
+                  disable=self._verbose) as progbar:
+            for frame in X:
+                if hasattr(self, "_imputer") and self._imputer is not None:
+                    frame = self._imputer.transform(frame)
+                self.partial_fit(frame)
+                n_fitted += 1
+                if self._verbose:
+                    progbar.update(1)
 
         self.save()
 
@@ -122,11 +147,20 @@ class AbstractScikitProcessor(ABC):
         return self
 
     def fit_reader(self, reader, save=False):
-        """_summary_
+        """
+        Fit the processor to a dataset read from a reader.
 
-        Args:
-            discretizer (_type_): _description_
-            reader (_type_): _description_
+        Parameters
+        ----------
+        reader : ProcessedSetReader
+            The reader to read the dataset from.
+        save : bool, optional
+            Whether to save the processor's state after fitting, by default False.
+
+        Returns
+        -------
+        self
+            The fitted processor.
         """
         if self._storage_path is None:
             self._storage_path = Path(reader.root_path, self._storage_name)
@@ -137,19 +171,23 @@ class AbstractScikitProcessor(ABC):
             info_io(
                 f"Fitting {Path(self._storage_path).stem} to reader of size {len(reader.subject_ids)}"
             )
-            progbar = Progbar(len(reader.subject_ids), unit_name='step')
 
-        n_fitted = 0
+        with tqdm(total=len(reader.subject_ids),
+                  unit='step',
+                  ascii=' >=',
+                  ncols=120,
+                  disable=self._verbose) as progbar:
+            n_fitted = 0
 
-        for subject_id in reader.subject_ids:
-            X_subjects, _ = reader.read_sample(subject_id).values()
-            for frame in X_subjects:
-                if hasattr(self, "_imputer") and self._imputer is not None:
-                    frame = self._imputer.transform(frame)
-                self.partial_fit(frame)
-            n_fitted += 1
-            if self._verbose:
-                progbar.update(n_fitted)
+            for subject_id in reader.subject_ids:
+                X_subjects, _ = reader.read_sample(subject_id).values()
+                for frame in X_subjects:
+                    if hasattr(self, "_imputer") and self._imputer is not None:
+                        frame = self._imputer.transform(frame)
+                    self.partial_fit(frame)
+                n_fitted += 1
+                if self._verbose:
+                    progbar.update(1)
 
         self.save()
 

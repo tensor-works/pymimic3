@@ -17,6 +17,8 @@ for csv in TEST_DATA_DEMO.iterdir():
                          "hadm_id": 'Int64',
                          "subject_id": 'Int64'
                      },
+                     na_values=[''],
+                     keep_default_na=False,
                      low_memory=False)
     df = upper_case_column_names(df)
     df.to_csv(csv, index=False)

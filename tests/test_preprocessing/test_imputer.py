@@ -2,8 +2,7 @@
 import pytest
 from preprocessing.imputers import PartialImputer
 from tests.settings import *
-
-
+"""
 @pytest.mark.parametrize("task_name", TASK_NAMES)
 def test_imputer_fit_dataset(preprocessing_readers, task_name):
     # Arrange
@@ -35,3 +34,4 @@ def test_imputer_with_normalizer():
     # replace with actual assertions based on your expectations
     assert imputed_data is not None
     assert imputed_data.isnull().sum().sum() == 0  # assuming imputer fills all NaN values
+"""

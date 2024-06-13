@@ -1,3 +1,40 @@
+"""
+Dataset Extraction Module
+=========================
+
+This module provides the EventProducer class for reading and processing subject events from the raw CHARTEVENT, LABEVENTS and OUTPUTEVENTS CSVs and 
+handling their processing into subject events. This class is the head of the event processing chain, spawning event consumers and the progress publisher.
+
+EventProducer -> EventConsumer -> ProgressPublisher
+
+**Subject Events**: A dictionary where each key is a subject ID, and the value is a DataFrame of 
+chart events (e.g., lab results, vital signs) associated with that subject.
+
+- From: CHARTEVENTS, LABEVENTS, OUTPUTEVENTS
+- In: evenet_consumer.py
+- Cols: SUBJECT_ID, HADM_ID, ICUSTAY_ID, CHARTTIME, ITEMID, VALUE, VALUEUOM
+
+Examples
+--------
+.. code-block:: python
+
+    from pathlib import Path
+    import pandas as pd
+    from some_module import EventProducer, ExtractionTracker
+
+    # Initialize parameters
+    source_path = Path('/path/to/source')
+    storage_path = Path('/path/to/storage')
+    chunksize = 100000
+    icu_history_df = pd.read_csv('/path/to/icu_history.csv')
+    tracker = ExtractionTracker(storage_path)
+    subject_ids = [1234, 1235, 1236, 1237, 1238]
+
+    # Create and run the producer
+    producer = EventProducer(source_path, storage_path, chunksize, tracker, icu_history_df, subject_ids)
+    producer.run()
+"""
+
 import pandas as pd
 import pathos, multiprocess
 from pathlib import Path
@@ -13,6 +50,39 @@ from ..readers import EventReader
 
 
 class EventProducer(object):
+    """
+    Produces events by reading data from the source, processing it, and passing it to consumers.
+    The class handles the processing chain, that is the producer spawn event consumers and the progress publisher.
+    It reads the events from the LABOUTPUTS, CHARTEVENTS and OUTPUTEVENTS CSV's and passes them via
+    queues to the event consumer, which passes its progress to the progress publisher. Once dones,
+    the producer joins all other processes.     
+
+    Parameters
+    ----------
+    source_path : Path
+        Path to the source directory containing the raw data files.
+    storage_path : Path
+        Path to the storage directory where the processed data will be saved.
+    num_samples : int
+        Number of samples to process.
+    chunksize : int
+        Size of chunks to read at a time.
+    tracker : ExtractionTracker
+        Tracker to keep track of extraction progress.
+    icu_history_df : pd.DataFrame
+        DataFrame containing ICU history information.
+    subject_ids : list of int, optional
+        List of subject IDs to process. If None, all subjects are processed. Default is None.
+
+    Methods
+    -------
+    run()
+        Starts the event production process, reading data, processing it, and passing it to consumers.
+    _count_timeseries_sample(varmap_df, frame)
+        Counts the number of unique time series samples in a DataFrame.
+    _update_total_lengths(ts_lengths)
+        Updates the total lengths of time series samples.
+    """
 
     def __init__(self,
                  source_path: Path,
@@ -22,17 +92,6 @@ class EventProducer(object):
                  tracker: ExtractionTracker,
                  icu_history_df: pd.DataFrame,
                  subject_ids: list = None):
-        """_summary_
-
-        Args:
-            source_path (Path): _description_
-            storage_path (Path): _description_
-            num_samples (int): _description_
-            chunksize (int): _description_
-            tracker (MIMICExtractionTracker): _description_
-            icu_history_df (pd.DataFrame): _description_
-            subject_ids (list, optional): _description_. Defaults to None.
-        """
         super().__init__()
         self._source_path = source_path
         self._storage_path = storage_path
@@ -63,8 +122,6 @@ class EventProducer(object):
         debug_io(f"Using {self._cpus+2} CPUs!")
 
     def run(self):
-        """_summary_
-        """
         # Start event consumers (processing and storing)
         consumers = [
             EventConsumer(storage_path=self._storage_path,
@@ -169,15 +226,6 @@ class EventProducer(object):
         return
 
     def _count_timeseries_sample(self, varmap_df: pd.DataFrame, frame: pd.DataFrame):
-        """_summary_
-
-        Args:
-            varmap_df (pd.DataFrame): _description_
-            frame (pd.DataFrame): _description_
-
-        Returns:
-            _type_: _description_
-        """
         frame = deepcopy(frame)
         if frame.empty:
             return 0
@@ -193,14 +241,9 @@ class EventProducer(object):
         frame = frame.dropna(subset=['ICUSTAY_ID'])
         frame = frame[frame['ICUSTAY_ID'] == frame['ICUSTAY_ID_r']]
 
-        return int(frame[["CHARTTIME"]].nunique())
+        return int(frame[["CHARTTIME"]].nunique().values.squeeze())
 
     def _update_total_lengths(self, ts_lengths: dict):
-        """_summary_
-
-        Args:
-            ts_lengths (dict): _description_
-        """
         for csv_name, value in ts_lengths.items():
             self._ts_total_lengths[csv_name] += value
         return

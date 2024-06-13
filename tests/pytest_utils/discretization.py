@@ -8,7 +8,7 @@ import numpy as np
 from pathlib import Path
 from datasets.readers import ProcessedSetReader
 from datasets.writers import DataSetWriter
-from preprocessing.discretizers import MIMICDiscretizer
+from datasets.processors.discretizers import MIMICDiscretizer
 from tests.pytest_utils.general import assert_dataframe_equals
 from utils.IO import *
 from tests.settings import *
@@ -47,9 +47,8 @@ def assert_strategy_equals(X_strategy: dict, test_data_dir: Path):
              f"Stays tested: {stay_count}")
 
     for test_file_path in test_data_dir.iterdir():
-        test_df = pd.read_csv(test_file_path)
+        test_df = pd.read_csv(test_file_path, na_values=[''], keep_default_na=False)
         test_df.index.name = "bins"
-        test_df = test_df.reset_index()
 
         # Extract subject id and stay id
         match = re.search(r"(\d+)_episode(\d+)_timeseries\.csv", test_file_path.name)

@@ -14,7 +14,7 @@ from utils import to_snake_case
 from torch.optim import Optimizer
 from utils.IO import *
 from settings import *
-from .mappings import *
+from models.pytorch.mappings import *
 
 
 class LSTMNetwork(nn.Module):
@@ -166,7 +166,7 @@ class LSTMNetwork(nn.Module):
     def _get_metrics(self, metrics: Dict[str, Metric]):
         keys = list([metric for metric in metrics.keys() if self._allowed_key(metric)])
         values = [metrics[key].get() for key in keys]
-        return tuple(zip(keys, values))
+        return list(zip(keys, values))
 
     def _init_metrics(self, metrics, prefix: str = None) -> Dict[str, Metric]:
         settings = {"task": self._task, "num_classes": self._num_classes}
@@ -213,6 +213,11 @@ class LSTMNetwork(nn.Module):
             self._train_metrics = self._init_metrics(metrics)
             self._test_metrics = self._init_metrics(metrics, prefix="test")
             self._val_metrics = self._init_metrics(metrics, prefix="val")
+        else:
+            self._metrics = dict()
+            self._train_metrics = dict()
+            self._test_metrics = dict()
+            self._val_metrics = dict()
 
         self._device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.to(self._device)
@@ -380,7 +385,7 @@ class LSTMNetwork(nn.Module):
 if __name__ == "__main__":
     from tests.settings import *
     import datasets
-    from preprocessing.scalers import MIMICMinMaxScaler
+    from preprocessing.scalers import MinMaxScaler
     from generators.pytorch import TorchGenerator
     reader = datasets.load_data(chunksize=75836,
                                 source_path=TEST_DATA_DEMO,
@@ -393,9 +398,7 @@ if __name__ == "__main__":
 
     reader = datasets.train_test_split(reader, test_size=0.2, val_size=0.1)
 
-    from models.tf2.lstm import LSTMNetwork
-    from tests.settings import *
-    scaler = MIMICMinMaxScaler().fit_reader(reader.train)
+    scaler = MinMaxScaler().fit_reader(reader.train)
     train_generator = TorchGenerator(reader=reader.train, scaler=scaler, batch_size=2, shuffle=True)
     val_generator = TorchGenerator(reader=reader.val, scaler=scaler, batch_size=2, shuffle=True)
 
@@ -403,19 +406,9 @@ if __name__ == "__main__":
     import torch.nn as nn
     import torch.optim as optim
 
-    from models.pytorch.lstm import LSTM
     model_path = Path(TEMP_DIR, "torch_lstm")
     model_path.mkdir(parents=True, exist_ok=True)
-    model = LSTMNetwork(10,
-                        0.2,
-                        59,
-                        bidirectional=False,
-                        recurrent_dropout=0.,
-                        task=None,
-                        target_repl=False,
-                        output_dim=1,
-                        depth=2)  #,
-    #model_path=model_path)
+    model = LSTMNetwork(10, 0.2, 59, recurrent_dropout=0., output_dim=1, depth=2)
 
     criterion = nn.BCEWithLogitsLoss()
     optimizer = optim.Adam(model.parameters(), lr=0.001)

@@ -28,7 +28,9 @@ for path in result_paths:
                 else:
                     target_path = Path(subject_entity.parents[1], subject_entity.name)
                     if subject_entity.name == "listfile.csv" and target_path.exists():
-                        listfile_df = pd.read_csv(subject_entity)
+                        listfile_df = pd.read_csv(subject_entity,
+                                                  na_values=[''],
+                                                  keep_default_na=False)
                         listfile_df.to_csv(target_path, mode='a', index=False, header=False)
                         subject_entity.unlink()
                     else:

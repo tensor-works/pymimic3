@@ -1,17 +1,9 @@
-"""Preprocessing file
-
-This file provides the implemented preprocessing functionalities.
-
-Todo:
-    - Use a settings.json
-    - implement optional history obj to keept track of the preprocessing history
-    - does the interpolate function need to be able to correct time series with no value?
-    - Fix categorical data abuse
-"""
-
 import numpy as np
 import pandas as pd
 import random
+import ray
+import os
+import logging
 
 from copy import deepcopy
 from pathlib import Path
@@ -19,19 +11,19 @@ from utils.IO import *
 from preprocessing.scalers import AbstractScaler
 from datasets.trackers import PreprocessingTracker
 from datasets.readers import ProcessedSetReader
-from tests.settings import *
 from metrics import CustomBins, LogBins
+from pathos import multiprocessing as mp
 
 
-class AbstractGenerator(object):
+class AbstractGenerator:
 
     def __init__(self,
                  reader: ProcessedSetReader,
                  scaler: AbstractScaler,
+                 num_cpus: int = None,
                  batch_size: int = 8,
                  shuffle: bool = True,
                  bining: str = "none"):
-        super().__init__()
         self._batch_size = batch_size
         self._shuffle = shuffle
         self._reader = reader
@@ -40,31 +32,62 @@ class AbstractGenerator(object):
         self._steps = self._count_batches()
         self._subject_ids = reader.subject_ids
         self._scaler = scaler
-        self._remaining_ids = deepcopy(self._reader.subject_ids)
+        self._random_ids = deepcopy(self._reader.subject_ids)
+        random.shuffle(self._random_ids)
         self.generator = self._generator()
         self._row_only = False
-
+        if num_cpus is None:
+            self._cpu_count = max(1, len(self._subject_ids) // (mp.cpu_count() - 2))
+        else:
+            self._cpu_count = min(num_cpus, mp.cpu_count())
+        self._workers = list()
         if bining not in ["none", "log", "custom"]:
             raise ValueError("Bining must be one of ['none', 'log', 'custom']")
         self._bining = bining
+        self._counter = 0
+        self._remainder_X = np.array([])
+        self._remainder_y = np.array([])
 
-    @property
-    def steps(self):
-        return self._steps
+        if not ray.is_initialized():
+            ray.init(ignore_reinit_error=True, num_cpus=self._cpu_count)
+            log_dir = os.path.join(ray._private.utils.get_user_temp_dir(),
+                                   "ray/session_latest/logs")
+            print(f"Ray logs can be found in: {log_dir}")
 
     def __getitem__(self, index=None):
-        X_batch, y_batch = list(), list()
-        for _ in range(self._batch_size):
-            X, y = next(self.generator)
-            X_batch.append(X)
-            y_batch.append(y)
-        X_batch = self._zeropad_samples(X_batch)
-        y_batch = np.array(y_batch)
-        return X_batch.astype(np.float32), y_batch.astype(np.float32)
+        if not self._workers:
+            self._create_workers()
+            self._start_epoch()
+
+        # Start with any remainder from the previous batch
+        X, y = next(self.generator)
+        # Fetch new data until we have at least the required batch size
+        while X.shape[0] < self._batch_size:
+            X_res = self._remainder_X
+            y_res = self._remainder_y
+            X = self._stack_batches((X, X_res)) if X_res.size else X
+            y = np.concatenate((y, y_res), axis=0, dtype=np.float32) if y_res.size else y
+            if X.shape[0] < self._batch_size:
+                self._remainder_X, self._remainder_y = next(self.generator)
+
+            # If the accumulated batch is larger than required, split it
+            if X.shape[0] > self._batch_size:
+                self._remainder_X = X[self._batch_size:, :, :]
+                self._remainder_y = y[self._batch_size:]
+                X = X[:self._batch_size]
+                y = y[:self._batch_size]
+                break
+
+        self._counter += 1
+        if self._counter >= self._steps:
+            self._close()
+            self._counter = 0
+            self._remainder_X = np.array([])
+            self._remainder_y = np.array([])
+
+        return X, y
 
     def _count_batches(self):
-        """
-        """
         return int(
             np.floor(
                 sum([
@@ -76,114 +99,151 @@ class AbstractGenerator(object):
         'Denotes the number of batches per epoch'
         return self._steps
 
-    def on_epoch_end(self):
-        ...
+    def __del__(self):
+        self._close()
+
+    def _create_workers(self):
+        self._workers = [
+            RayWorker.remote(self._reader, self._scaler, self._row_only, self._bining,
+                             self._columns) for _ in range(self._cpu_count)
+        ]
+
+    def _start_epoch(self):
+        random.shuffle(self._random_ids)
+        ids = self.split_ids(self._random_ids, len(self._workers))
+        self.results = [
+            worker.process_subject.options(num_returns="dynamic").remote(
+                (subject_ids, self._batch_size)) for worker, subject_ids in zip(self._workers, ids)
+        ]
 
     def _generator(self):
-
         while True:
-            data, subjects = self._reader.random_samples(return_ids=True)
-            X_subject, y_subject = data.values()
-            for X_stay, y_stay in zip(X_subject, y_subject):
-                if self._columns is None:
-                    self._columns = X_stay.columns
-                X_stay[self._columns] = self._scaler.transform(X_stay[self._columns])
+            ready_ids, _ = ray.wait(self.results, num_returns=1)
+            dynamci_result = ray.get(ready_ids[0])
+            # self.results.remove(ready_ids[0])
+            for object_result in dynamci_result:
+                X, y, t = ray.get(object_result)
+                yield X, y
 
-                Xs, ys, ts = self.read_timeseries(X_df=X_stay,
-                                                  y_df=y_stay,
-                                                  row_only=self._row_only,
-                                                  bining=self._bining)
+    @staticmethod
+    def split_ids(input_list, cpu_count):
+        chunk_size = len(input_list) // cpu_count
+        remainder = len(input_list) % cpu_count
 
-                (Xs, ys, ts) = self._shuffled_data([Xs, ys, ts])
+        chunks = []
+        start = 0
+        for i in range(int(cpu_count)):
+            end = int(start + chunk_size + (1 if i < remainder else 0))
+            chunks.append(input_list[start:end])
+            start = end
 
-                index = 0
-                while index < len(ys):
-                    yield Xs[index], ys[index]
-                    index += 1
+        return chunks
 
     @staticmethod
     def read_timeseries(X_df: pd.DataFrame, y_df: pd.DataFrame, row_only=False, bining="none"):
-        """
-        """
-        Xs = list()
-        ys = list()
-        ts = list()
+        if bining == "log":
+            y = y_df.applymap(LogBins.get_bin_log)
+        elif bining == "custom":
+            y = y_df.applymap(CustomBins.get_bin_custom)
+        else:
+            y = y_df
 
-        for timestamp in y_df.index:
+        if row_only:
+            Xs = [X_df.loc[timestamp].values for timestamp in y_df.index]
+        else:
+            Xs = [X_df.loc[:timestamp].values for timestamp in y_df.index]
 
-            y = np.squeeze(y_df.loc[timestamp].values)
-            if not y.shape:
-                y = float(y)
-                if bining == "log":
-                    LogBins.get_bin_log(y)
-                elif bining == "custom":
-                    CustomBins.get_bin_custom(y)
-
-            if row_only:
-                X = X_df.loc[timestamp].values
-            else:
-                X = X_df.loc[:timestamp].values
-
-            Xs.append(X)
-            ys.append(y)
-            ts.append(timestamp)
+        indices = np.random.permutation(len(Xs))
+        ys = y.squeeze(axis=1).values.tolist()
+        ts = y_df.index.tolist()
 
         return Xs, ys, ts
 
-    def _shuffled_data(self, data):
-        """_summary_
+    @staticmethod
+    def _shuffled_data(Xs, ys, ts):
+        indices = list(range(len(Xs)))
+        random.shuffle(indices)
+        Xs = [Xs[i] for i in indices]
+        ys = [ys[i] for i in indices]
+        ts = [ts[i] for i in indices]
+        return Xs, ys, ts
 
-        Args:
-            data (_type_): _description_
-
-        Returns:
-            _type_: _description_
-        """
-        assert len(data) >= 2
-
-        if type(data[0][0]) == pd.DataFrame:
-            data[0] = [x.values for x in data[0]]
-
-        data = list(zip(*data))
-
-        if self._shuffle:
-            random.shuffle(data)
-
-        residual_length = len(data) % self._batch_size
-        head = data[:len(data) - residual_length]
-        residual = data[len(data) - residual_length:]
-
-        head.sort(key=(lambda x: x[0].shape[0]))
-
-        batches = [head[i:i + self._batch_size] for i in range(0, len(head), self._batch_size)]
-
-        if self._shuffle:
-            random.shuffle(batches)
-
-        data = list()
-
-        for batch in batches:
-            data += batch
-
-        data += residual
-        data = list(zip(*data))
-
-        return data
+    def _close(self):
+        for worker in self._workers:
+            ray.kill(worker)
+        self._workers.clear()
 
     @staticmethod
     def _zeropad_samples(data):
-        """_summary_
-
-        Args:
-            data (_type_): _description_
-
-        Returns:
-            _type_: _description_
-        """
         dtype = data[0].dtype
         max_len = max([x.shape[0] for x in data])
         ret = [
-            np.concatenate([x, np.zeros((max_len - x.shape[0],) + x.shape[1:], dtype=dtype)],
-                           axis=0) for x in data
+            np.concatenate([x, np.zeros((max_len - x.shape[0],) + x.shape[1:])],
+                           axis=0,
+                           dtype=np.float32) for x in data
         ]
-        return np.array(ret)
+        return np.atleast_3d(np.array(ret, dtype=np.float32))
+
+    @staticmethod
+    def _stack_batches(data):
+        max_len = max([x.shape[1] for x in data])
+        data = [
+            np.concatenate([x, np.zeros([x.shape[0], max_len - x.shape[1], x.shape[2]])],
+                           axis=1,
+                           dtype=np.float32) if max_len - x.shape[1] else x for x in data
+        ]
+        return np.concatenate(data, axis=0, dtype=np.float32)
+
+
+@ray.remote
+class RayWorker:
+
+    def __init__(self, reader, scaler, row_only, bining, columns):
+        self.reader = reader
+        self.scaler = scaler
+        self.row_only = row_only
+        self.bining = bining
+        self.columns = columns
+
+    def process_subject(self, args):
+        subject_ids, batch_size = args
+        # Store the current logging level
+        previous_logging_level = logging.getLogger().level
+
+        # Set logging level to CRITICAL to suppress logging
+        logging.getLogger().setLevel(logging.CRITICAL)
+        try:
+            X_batch, y_batch, t_batch = list(), list(), list()
+            for subject_id in subject_ids:
+                X_subject, y_subject = self.reader.read_sample(subject_id).values()
+                for X_stay, y_stay in zip(X_subject, y_subject):
+                    X_stay[X_stay.columns] = self.scaler.transform(X_stay)
+                    Xs, ys, ts = AbstractGenerator.read_timeseries(X_df=X_stay,
+                                                                   y_df=y_stay,
+                                                                   row_only=self.row_only,
+                                                                   bining=self.bining)
+                    Xs, ys, ts = AbstractGenerator._shuffled_data(Xs, ys, ts)
+                    for X, y, t in zip(Xs, ys, ts):
+                        X_batch.append(X)
+                        y_batch.append(y)
+                        t_batch.append(t)
+                        if len(X_batch) == batch_size:
+                            X = AbstractGenerator._zeropad_samples(X_batch)
+                            y = np.array(y_batch, dtype=np.float32)
+                            t = np.array(t_batch, dtype=np.float32)
+                            X_batch.clear()
+                            y_batch.clear()
+                            t_batch.clear()
+                            yield X, y, t
+            if X_batch:
+                X = AbstractGenerator._zeropad_samples(X_batch)
+                y = np.array(y_batch, dtype=np.float32)
+                t = np.array(t_batch, dtype=np.float32)
+                X_batch.clear()
+                y_batch.clear()
+                t_batch.clear()
+                yield X, y, t
+        finally:
+            # Restore the previous logging level
+            logging.getLogger().setLevel(previous_logging_level)
+        return

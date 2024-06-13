@@ -3,7 +3,7 @@ import pytest
 from generators.tf2 import TFGenerator
 from generators.pytorch import TorchGenerator
 from generators.stream import RiverGenerator
-from preprocessing.scalers import MIMICMinMaxScaler
+from preprocessing.scalers import MinMaxScaler
 import numpy as np
 from utils.IO import *
 from datasets.readers import ProcessedSetReader
@@ -17,7 +17,7 @@ def test_tf_generator(task_name, discretized_readers):
 
     # Prepare generator inputs
     reader = discretized_readers[task_name]
-    scaler = MIMICMinMaxScaler().fit_reader(reader)
+    scaler = MinMaxScaler().fit_reader(reader)
 
     # Bining types for LOS
     for bining in ["none", "log", "custom"]:
@@ -50,7 +50,7 @@ def test_torch_generator(task_name, discretized_readers):
 
     # Prepare generator inputs
     reader = discretized_readers[task_name]
-    scaler = MIMICMinMaxScaler().fit_reader(reader)
+    scaler = MinMaxScaler().fit_reader(reader)
 
     # Bining types for LOS
     for bining in ["none", "log", "custom"]:
@@ -66,15 +66,22 @@ def test_torch_generator(task_name, discretized_readers):
                                        drop_last=True,
                                        shuffle=True)
             assert len(generator)
+            import time
+            start = time.time()
             for batch, (X, y) in enumerate(generator):
                 # Get batch
                 X = X.numpy()
                 y = y.numpy()
                 # Check batch
                 assert_batch_sanity(X, y, batch_size, bining)
-
                 tests_io(f"Successfully tested {batch + 1} batches", flush=True)
             tests_io(f"Successfully tested {batch + 1} batches")
+            end = time.time()
+            elapsed_time = end - start
+            minutes = int(elapsed_time // 60)
+            seconds = elapsed_time % 60
+
+            tests_io(f"Time enrolling the generator was: {minutes} min, {seconds:.2f} sec")
         if task_name != "LOS":
             break
 
@@ -86,10 +93,10 @@ def test_river_generator(task_name, engineered_readers):
     # Prepare generator inputs
     reader = engineered_readers[task_name]
     imputer = PartialImputer().fit_reader(reader)
-    scaler = MIMICMinMaxScaler(imputer=imputer).fit_reader(reader)
+    scaler = MinMaxScaler(imputer=imputer).fit_reader(reader)
 
     # Bining types for LOS
-    for bining in ["log", "custom"]:  # ["none", "log", "custom"]:
+    for bining in ["none", "log", "custom"]:
         # No Batch sizes this is a stream
         generator = RiverGenerator(reader=reader, scaler=scaler, shuffle=True, bining=bining)
         if task_name == "LOS":
@@ -98,23 +105,28 @@ def test_river_generator(task_name, engineered_readers):
         for batch, (X, y) in enumerate(generator):
             # Get batch
             X = np.fromiter(X.values(), dtype=float)
-            if task_name == "PHENO" or (task_name == "LOS" and bining != "none"):
+            # No trace of one-hot encoding these in the original code base
+            if task_name == "PHENO":  # or (task_name == "LOS" and bining != "none"):
                 y = np.fromiter(y.values(), dtype=float)
             assert_sample_sanity(X, y, bining)
-            tests_io(f"Successfully tested {batch + 1} batches", flush=True)
+            tests_io(f"Successfully tested {batch + 1} samples", flush=True)
         tests_io(f"Successfully tested {batch + 1} batches")
         if task_name != "LOS":
             break
 
 
-def assert_batch_sanity(X: np.ndarray, y: np.ndarray, batch_size: int, bining: str):
+def assert_batch_sanity(X: np.ndarray,
+                        y: np.ndarray,
+                        batch_size: int,
+                        bining: str,
+                        one_hot: bool = False):
     # The batch might be sane but I am not
     assert not np.isnan(X).any()
     assert not np.isnan(y).any()
     assert X.shape[0] == batch_size
     assert X.shape[2] == 59
     assert X.dtype == np.float32
-    assert y.dtype == np.int8
+    assert y.dtype == np.float32
     assert y.shape[0] == batch_size
     if task_name in ["PHENO"]:
         assert y.shape[1] == 25
@@ -124,17 +136,17 @@ def assert_batch_sanity(X: np.ndarray, y: np.ndarray, batch_size: int, bining: s
         # Depending on the binning this changes
         if bining == "none":
             assert y.shape[1] == 1
-        elif bining in ["log", "custom"]:
+        elif bining in ["log", "custom"] and one_hot:
             assert y.shape[1] == 10
 
 
-def assert_sample_sanity(X: np.ndarray, y: np.ndarray, bining: str):
+def assert_sample_sanity(X: np.ndarray, y: np.ndarray, bining: str, one_hot: bool = False):
     assert not np.isnan(X).any()
     assert not np.isnan(y).any()
     assert len(X) == 714
     if task_name == "PHENO":
         assert len(y) == 25
-    elif task_name == "LOS":
+    elif task_name == "LOS" and one_hot:
         if bining == "none":
             assert len(y) == 1
         elif bining in ["log", "custom"]:
@@ -145,8 +157,7 @@ def assert_sample_sanity(X: np.ndarray, y: np.ndarray, bining: str):
 
 if __name__ == "__main__":
     # for task_name in TASK_NAMES:
-    for task_name in ["LOS"]:
-        """
+    for task_name in ["PHENO"]:
         reader = datasets.load_data(chunksize=75836,
                                     source_path=TEST_DATA_DEMO,
                                     storage_path=SEMITEMP_DIR,
@@ -155,9 +166,8 @@ if __name__ == "__main__":
                                     start_at_zero=True,
                                     impute_strategy='previous',
                                     task=task_name)
-        # test_tf_generator(task_name, {task_name: reader})
         test_torch_generator(task_name, {task_name: reader})
-        """
+        test_tf_generator(task_name, {task_name: reader})
         reader = datasets.load_data(chunksize=75836,
                                     source_path=TEST_DATA_DEMO,
                                     storage_path=SEMITEMP_DIR,

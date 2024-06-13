@@ -23,12 +23,18 @@ def print_split_info(reader: ProcessedSetReader, split_set: Dict[str, List[str]]
 
 def benchmark_split_subjects() -> Tuple[List[int], List[int]]:
     print("Test and validation sets found...")
-    test_subjects = pd.read_csv(Path(YERVA_SPLIT, "testset.csv"), header=None)
+    test_subjects = pd.read_csv(Path(YERVA_SPLIT, "testset.csv"),
+                                na_values=[''],
+                                keep_default_na=False,
+                                header=None)
     test_subjects.columns = ["subjects", "affiliation"]
     test_subjects = test_subjects[test_subjects["affiliation"] == 1]["subjects"].astype(
         int).tolist()
 
-    val_subjects = pd.read_csv(Path(YERVA_SPLIT, "valset.csv"), header=None)
+    val_subjects = pd.read_csv(Path(YERVA_SPLIT, "valset.csv"),
+                               na_values=[''],
+                               keep_default_na=False,
+                               header=None)
     val_subjects.columns = ["subjects", "affiliation"]
     val_subjects = val_subjects[val_subjects["affiliation"] == 1]["subjects"].astype(int).tolist()
     return test_subjects, val_subjects

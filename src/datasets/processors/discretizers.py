@@ -1,13 +1,54 @@
-"""Preprocessing file
-
-This file provides the implemented preprocessing functionalities.
-
-Todo:
-    - Use a settings.json
-    - implement optional history obj to keept track of the preprocessing history
-    - does the interpolate function need to be able to correct time series with no value?
-    - Fix categorical data abuse
 """
+This module provides the MIMICDiscretizer class to discretize time series data from the MIMIC-III dataset, 
+applying various imputation strategies, binning the data into specified time steps, and one-hot encoding 
+categorical data.
+
+Usage Examples
+--------------
+.. code-block:: python
+
+    from pathlib import Path
+    from datasets.readers import ProcessedSetReader
+    from datasets.trackers import PreprocessingTracker
+    from datasets.processors import MIMICDiscretizer
+
+    # Define the path to the dataset, storage, and configuration file
+    dataset_path = Path("/path/to/processed/dataset")
+    storage_path = Path("/path/to/store/discretized/data")
+
+    # Initialize the reader and tracker
+    reader = ProcessedSetReader(dataset_path)
+    tracker = PreprocessingTracker(storage_path)
+
+    # Initialize the MIMICDiscretizer for the IHM (In-Hospital Mortality) task
+    # Tasks are IHM, DECOMP, LOS, PHENO
+    discretizer = MIMICDiscretizer(
+        task="IHM",
+        reader=reader,
+        storage_path=storage_path,
+        tracker=tracker,
+        time_step_size=1.0,
+        start_at_zero=True,
+        impute_strategy="previous",
+        mode="legacy",
+        verbose=True
+    )
+
+    # Transform a subject
+    subject_id = 12345
+    X, y = discretizer.transform_subject(subject_id)
+
+    # Transform the entire dataset
+    dataset = reader.read_samples(read_ids=True)
+    X = discretizer.transform(dataset, None)
+
+    # Transform the reader directly
+    reader = discretizer.transform_reader(reader)
+
+    # Save the transformed data
+    discretizer.save_data()
+"""
+
 import pandas as pd
 import numpy as np
 import os
@@ -15,6 +56,7 @@ import json
 import datetime
 from multiprocess import Manager
 from pathlib import Path
+from typing import Dict, Tuple
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import OneHotEncoder
 from pandas.api.types import is_datetime64_any_dtype as is_datetime
@@ -26,29 +68,62 @@ from datasets.readers import ProcessedSetReader
 from datasets.writers import DataSetWriter
 from datasets.mimic_utils import convert_dtype_value
 from datasets.trackers import PreprocessingTracker
-from . import AbstractProcessor
+from datasets.processors import AbstractProcessor
 
 
 class MIMICDiscretizer(AbstractProcessor):
-    """ Discretize batch data provided by reader.
+    """
+    Discretize batch data provided by the reader.
+
+    This class is responsible for discretizing time series data for a specific task,
+    provided by a `ProcessedSetReader`, and saving the processed data to a specified
+    storage path. The discretizer can handle various imputation strategies and modes
+    for processing, bins the data into specified time step intervals and on-hot encodes 
+    categorical data.
+
+    Parameters
+    ----------
+    task : str
+        The name of the task. Must be one of the predefined `TASK_NAMES`.
+    reader : ProcessedSetReader
+        The reader object used to read the batch data.
+    tracker : PreprocessingTracker
+        The tracker object used to track preprocessing steps.
+    storage_path : Path
+        The path where the discretized data will be stored.
+    time_step_size : float, optional
+        The size of each time step for discretization, by default None.
+    start_at_zero : bool, optional
+        Whether to start the time index at zero, by default True.
+    impute_strategy : str, optional
+        The strategy for imputing missing values. Can be one of 'normal', 'previous', 'next', or 'zero'.
+        Default is 'previous'.
+    mode : str, optional
+        The mode of discretization. Can be either 'legacy' or 'experimental'. Default is 'legacy'.
+    eps : float, optional
+        A small value to avoid division by zero errors, by default 1e-6.
+    verbose : bool, optional
+        If True, print verbose logs during processing. Default is False.
     """
 
     def __init__(self,
                  task: str,
-                 reader: ProcessedSetReader,
-                 tracker: PreprocessingTracker,
-                 storage_path: Path,
+                 reader: ProcessedSetReader = None,
+                 storage_path: Path = None,
+                 tracker: PreprocessingTracker = None,
                  time_step_size: float = None,
                  start_at_zero: bool = True,
                  impute_strategy: str = "previous",
                  mode: str = "legacy",
                  eps: float = 1e-6,
                  verbose: bool = False):
-        """
-        """
+
+        self._operation_name = "discretizing"  # For printing
+        self._operation_adjective = "discretized"
+        self._save_file_type = "hdf5"
         self._storage_path = storage_path
         self._writer = (None if storage_path is None else DataSetWriter(self._storage_path))
-        self._reader = reader
+        self._source_reader = reader
         if tracker is not None:
             self._tracker = tracker
         else:
@@ -74,7 +149,7 @@ class MIMICDiscretizer(AbstractProcessor):
         self._mode = mode
         if not task in TASK_NAMES:
             raise ValueError(f"Task name must be one of {TASK_NAMES}. Task name is {task}")
-        self._task_name = task
+        self._task = task
 
         with open(Path(os.getenv("CONFIG"), "datasets.json")) as file:
             config_dictionary = json.load(file)
@@ -85,50 +160,66 @@ class MIMICDiscretizer(AbstractProcessor):
             self._is_categorical = config_dictionary['is_categorical_channel']
             self._impute_values = config_dictionary['normal_values']
 
+        # Tracking variables
+        self._init_tracking_variables()
+
+        self._X = dict()
+        self._y = dict()
+
     @property
     def tracker(self) -> PreprocessingTracker:
+        """
+        Get the preprocessing tracker object.
+
+        This tracker keeps a record of the preprocessing steps applied to the data.
+
+        Returns
+        -------
+        PreprocessingTracker
+            The preprocessing tracker.
+        """
         return self._tracker
 
     @property
     def subjects(self) -> list:
-        """_summary_
-
-        Returns:
-            list: _description_
         """
-        if self._reader is None:
+        Get the list of subject IDs available in the reader.
+
+        This property retrieves the subject IDs from the reader object.
+
+        Returns
+        -------
+        list
+            A list of subject IDs.
+        """
+        if self._source_reader is None:
             return []
-        return self._reader.subject_ids
-
-    def save_data(self, subjects: list = None) -> None:
-        """_summary_
-
-        Args:
-            task_path (_type_, optional): _description_. Defaults to None.
-        """
-        if self._writer is None:
-            info_io("No storage path provided. Data will not be saved.")
-            return
-        with self._lock:
-            if subjects is None:
-                self._writer.write_bysubject({"X": self._X_discretized}, file_type="hdf5")
-                self._writer.write_bysubject({"y": self._y_discretized}, file_type="hdf5")
-            else:
-                self._writer.write_bysubject({"X": dict_subset(self._X_discretized, subjects)},
-                                             file_type="hdf5")
-                self._writer.write_bysubject({"y": dict_subset(self._y_discretized, subjects)},
-                                             file_type="hdf5")
-
-        return
+        return self._source_reader.subject_ids
 
     def transform_subject(self, subject_id: int):
-        X_processed, y_processed = self._reader.read_sample(subject_id,
-                                                            read_ids=True,
-                                                            data_type=pd.DataFrame).values()
+        """
+        Transform the data for a specific subject.
+
+        This method reads the data for a specific subject, processes it, and returns
+        the discretized data along with tracking information.
+
+        Parameters
+        ----------
+        subject_id : int
+            The ID of the subject to transform data for.
+
+        Returns
+        -------
+        tuple
+            A tuple containing the discretized data and the tracking information.
+        """
+        X_processed, y_processed = self._source_reader.read_sample(subject_id,
+                                                                   read_ids=True,
+                                                                   data_type=pd.DataFrame).values()
         X = {subject_id: X_processed}
         y = {subject_id: y_processed}
 
-        X_discretized = self.transform(X, y)
+        X_discretized, _ = self._transform((X, y))
         if X_discretized is None:
             return None, None
         if self._tracker is None:
@@ -138,30 +229,39 @@ class MIMICDiscretizer(AbstractProcessor):
             tracking_info = self._tracker.subjects[subject_id]
         return (X_discretized, y), tracking_info
 
-    def transform(self, X_dict, y_dict):
+    def _transform(self, dataset: Tuple[Dict[int, Dict[int, pd.DataFrame]]]):
         """
-        """
-        n_subjects = 0
-        n_stays = 0
-        n_samples = 0
-        n_skip = 0
+        Transform the entire dataset when passed as dictionary pair.
 
+        This method processes the entire dataset by discretizing the time series data
+        and applying the specified imputation strategy.
+
+        Parameters
+        ----------
+        X_dict : dict
+            A dictionary containing the input data, with subject IDs as keys.
+        y_dict : dict
+            A dictionary containing the output data, with subject IDs as keys.
+
+        Returns
+        -------
+        dict
+            A dictionary containing the discretized data, with subject IDs as keys.
+        """
+        X_dict, y_dict = dataset
         if self._verbose:
             info_io(f"Discretizing processed data:\n"
-                    f"Discretized subjects: {0}\n"
-                    f"Discretized stays: {0}\n"
-                    f"Discretized samples: {0}\n"
-                    f"Skipped subjects: {0}")
+                    f"Discretized subjects: {self._n_subjects}\n"
+                    f"Discretized stays: {self._n_stays}\n"
+                    f"Discretized samples: {self._n_samples}\n"
+                    f"Skipped subjects: {self._n_skip}")
 
         self._samples_processed = 0
 
-        self._X_discretized = dict()
-        self._y_discretized = dict()
-
         for subject_id in X_dict.keys():
             X_subject = X_dict[subject_id]
-            self._X_discretized[subject_id] = dict()
-            self._y_discretized[subject_id] = dict()
+            self._X[subject_id] = dict()
+            self._y[subject_id] = dict()
             tracking_info = dict()
 
             for stay_id in X_subject:
@@ -174,45 +274,48 @@ class MIMICDiscretizer(AbstractProcessor):
                     X_df = self._categorize_data(X_df)
                     X_df = self._bin_data(X_df)
                     X_df = self._impute_data(X_df)
-                self._X_discretized[subject_id][stay_id] = X_df
-                self._y_discretized[subject_id][stay_id] = y_dict[subject_id][stay_id]
+                self._X[subject_id][stay_id] = X_df
+                self._y[subject_id][stay_id] = y_dict[subject_id][stay_id]
 
                 tracking_info[stay_id] = len(y_dict[subject_id][stay_id])
 
                 if self._verbose:
                     info_io(
                         f"Discretizing processed data:\n"
-                        f"Discretized subjects: {n_subjects}\n"
-                        f"Discretized stays: {n_stays}\n"
-                        f"Discretized samples: {n_samples}"
-                        f"Skipped subjects: {n_skip}",
+                        f"Discretized subjects: {self._n_subjects}\n"
+                        f"Discretized stays: {self._n_stays}\n"
+                        f"Discretized samples: {self._n_samples}"
+                        f"Skipped subjects: {self._n_skip}",
                         flush_block=True)
 
-            n_subjects += 1
+            self._n_subjects += 1
             if self._tracker is not None:
                 with self._lock:
                     self._tracker.subjects.update({subject_id: tracking_info})
 
-            if not len(self._y_discretized[subject_id]) or not len(self._X_discretized[subject_id]):
-                del self._y_discretized[subject_id]
-                del self._X_discretized[subject_id]
-                n_skip += 1
+            if not len(self._y[subject_id]) or not len(self._X[subject_id]):
+                del self._y[subject_id]
+                del self._X[subject_id]
+                self._n_skip += 1
             else:
-                n_subjects += 1
+                self._n_subjects += 1
 
         if self._verbose:
             info_io(
                 f"Discretizing processed data:\n"
-                f"Discretized subjects: {n_subjects}\n"
-                f"Discretized stays: {n_stays}\n"
-                f"Discretized samples: {n_samples}"
-                f"Skipped subjects: {n_skip}",
+                f"Discretized subjects: {self._n_subjects}\n"
+                f"Discretized stays: {self._n_stays}\n"
+                f"Discretized samples: {self._n_samples}"
+                f"Skipped subjects: {self._n_skip}",
                 flush_block=True)
 
-        return self._X_discretized
+        self._y = y_dict
+
+        return self._X, self._y
 
     def _bin_data(self, X):
         """
+        Bin the time series data into discrete time steps.
         """
 
         if self._time_step_size is not None:
@@ -242,6 +345,8 @@ class MIMICDiscretizer(AbstractProcessor):
 
     def _impute_data(self, X):
         """
+        Impute missing values in the time series data using the specified
+        imputation strategy.
         """
         if self._start_at_zero:
             tsid_to_bins = list(map(lambda x: int(x / self._time_step_size - self._eps), X.index))
@@ -278,17 +383,20 @@ class MIMICDiscretizer(AbstractProcessor):
             X = X.fillna(0)
         return X
 
-    def _impute(self, train_data, imp_strategy='mean'):
-        """
-        """
-        imputer = SimpleImputer(missing_values=np.nan, strategy=imp_strategy)
-        imputer.fit(train_data)
-        train_data = imputer.transform(train_data)
-
-        return train_data
-
     def _categorize_data(self, X):
         """
+        This method transforms categorical variables in the data into a format suitable
+        for machine learning models by applying one-hot encoding.
+
+        Parameters
+        ----------
+        X : pd.DataFrame
+            The input data with categorical variables.
+
+        Returns
+        -------
+        pd.DataFrame
+            The data with categorical variables transformed into one-hot encoded format.
         """
         categorized_data = X
 

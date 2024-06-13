@@ -1,15 +1,78 @@
+"""
+This module provides the TimeseriesProcessor class for processing time series data from ICU records. 
+It reads and processes subject event data, diagnoses, and ICU history to generate time series and episodic data.
+The timeseries and episodic data are stored in the subject ID labeled directories, while the episodic info is 
+condensed into a single CSV file.
+
+The extraction of timeseries data is done based on the subject event data. This data contains ITEMIDs for 
+each charted entry, as well as the value (VALUE) and its metirc (VALUEUOM). Using the varmap_df, which is created
+based on the itemid_to_variable_map.csv for the original https://github.com/YerevaNN/mimic3-benchmarks/, the 
+ITEMIDs are then mapped to one of the 17 variables of interest.
+
+
+
+Examples
+--------
+.. code-block:: python
+
+    from pathlib import Path
+    from ..trackers import ExtractionTracker
+    from datasets.extraction import get_by_subject
+    import pandas as pd
+
+    # Initialize parameters
+    storage_path = Path('/path/to/storage')
+    source_path = Path('/path/to/source')
+    tracker = ExtractionTracker(storage_path)
+    subject_ids = [123, 456, 789]
+    diagnoses_df = pd.read_csv('/path/to/diagnoses.csv')
+    icu_history_df = pd.read_csv('/path/to/icu_history.csv')
+    varmap_df = pd.read_csv('/path/to/varmap.csv')
+    num_samples = 100
+
+    # Prepare subject-specific data
+    subject_diagnoses = get_by_subject(diagnoses_df)
+    subject_icu_history = get_by_subject(icu_history_df)
+
+    # Create and run the processor
+    processor = TimeseriesProcessor(storage_path, source_path, tracker, subject_ids, diagnoses_df, icu_history_df, varmap_df, num_samples)
+    processor.run()
+"""
+
 import pandas as pd
 from utils.IO import *
 from settings import *
 from pathlib import Path
 from pathos.multiprocessing import cpu_count, Pool
-from .extraction_functions import make_timeseries
+from .extraction_functions import extract_timeseries
 from ..trackers import ExtractionTracker
 from ..writers import DataSetWriter
 from ..readers import ExtractedSetReader
 
 
 class TimeseriesProcessor(object):
+    """
+    Processes time series data for given subjects and stores the results.
+
+    Parameters
+    ----------
+    storage_path : Path
+        Path to the storage directory where the processed data will be saved.
+    source_path : Path
+        Path to the source directory containing the raw data files.
+    tracker : ExtractionTracker
+        Tracker to keep track of extraction progress.
+    subject_ids : list of int
+        List of subject IDs to process.
+    diagnoses_df : pd.DataFrame
+        DataFrame containing diagnoses information.
+    icu_history_df : pd.DataFrame
+        DataFrame containing ICU history information.
+    varmap_df : pd.DataFrame
+        DataFrame containing variable mappings.
+    num_samples : int, optional
+        Number of samples to process. Default is None.
+    """
 
     def __init__(self,
                  storage_path: Path,
@@ -20,18 +83,6 @@ class TimeseriesProcessor(object):
                  icu_history_df: pd.DataFrame,
                  varmap_df: pd.DataFrame,
                  num_samples: int = None):
-        """_summary_
-
-        Args:
-            storage_path (Path): _description_
-            source_path (Path): _description_
-            tracker (ExtractionTracker): _description_
-            subject_ids (list): _description_
-            diagnoses_df (pd.DataFrame): _description_
-            icu_history_df (pd.DataFrame): _description_
-            varmap_df (pd.DataFrame): _description_
-            num_samples (int, optional): _description_. Defaults to None.
-        """
         self._storage_path = storage_path
         self._tracker = tracker
         self._dataset_reader = ExtractedSetReader(source_path)
@@ -51,10 +102,7 @@ class TimeseriesProcessor(object):
         self._varmap_df = varmap_df
 
     def _store_df_chunk(self, episodic_info_df):
-        """_summary_
-
-        Args:
-            episodic_info_df (_type_): _description_
+        """Stores a chunk of episodic information DataFrame to a CSV file.
         """
         file_path = Path(self._storage_path, "episodic_info_df.csv")
         if not file_path.is_file():
@@ -64,13 +112,7 @@ class TimeseriesProcessor(object):
 
     @staticmethod
     def _process_subject(subject_id):
-        """_summary_
-
-        Args:
-            subject_id (_type_): _description_
-
-        Returns:
-            _type_: _description_
+        """Processes data for a single subject to generate episodic and time series data.
         """
         subject_event_df_path = Path(storage_path_pr, str(subject_id), "subject_events.csv")
         subject_event_df = dataset_reader_pr.read_csv(
@@ -88,8 +130,8 @@ class TimeseriesProcessor(object):
         curr_subject_diagnoses = {subject_id: subject_diagnoses_pr[subject_id]}
         curr_icu_history_pr = {subject_id: subject_icu_history_pr[subject_id]}
 
-        episodic_data, timeseries = make_timeseries(curr_subject_event, curr_subject_diagnoses,
-                                                    curr_icu_history_pr, varmap_df_pr)
+        episodic_data, timeseries = extract_timeseries(curr_subject_event, curr_subject_diagnoses,
+                                                       curr_icu_history_pr, varmap_df_pr)
 
         # Store processed subject events
         name_data_pairs = {
@@ -115,16 +157,7 @@ class TimeseriesProcessor(object):
     def _init(storage_path: Path, subject_ids: list, diagnoses: dict, icu_history: dict,
               varmap: pd.DataFrame, dataset_reader: ExtractedSetReader,
               dataset_writer: DataSetWriter):
-        """_summary_
-
-        Args:
-            storage_path (Path): _description_
-            subject_ids (list): _description_
-            diagnoses (dict): _description_
-            icu_history (dict): _description_
-            varmap (pd.DataFrame): _description_
-            dataset_reader (ExtractedSetReader): _description_
-            dataset_writer (DataSetWriter): _description_
+        """Initializes global variables for multiprocessing pool.
         """
         global storage_path_pr
         global subject_ids_pr
@@ -142,7 +175,15 @@ class TimeseriesProcessor(object):
         dataset_writer_pr = dataset_writer
 
     def run(self):
-        """_summary_
+        """Runs the time series processing using multiprocessing.
+
+        This method initializes a multiprocessing pool to process subjects in parallel,
+        generating episodic and time series data for each subject and storing the results.
+
+        Examples
+        --------
+        >>> processor = TimeseriesProcessor(storage_path, source_path, tracker, subject_ids, diagnoses_df, icu_history_df, varmap_df, num_samples)
+        >>> processor.run()
         """
         with Pool(cpu_count() - 1,
                   initializer=self._init,
@@ -172,4 +213,6 @@ class TimeseriesProcessor(object):
 
             self._tracker.has_episodic_data = True
             self._tracker.has_timeseries = True
+            pool.close()
+            pool.join()
         return
