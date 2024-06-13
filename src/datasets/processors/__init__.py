@@ -29,6 +29,7 @@ Input and Output Description
 import random
 import os
 import pandas as pd
+import logging
 from copy import deepcopy
 from itertools import chain
 from typing import Dict, List, Tuple, Union
@@ -39,7 +40,10 @@ from pathos.multiprocessing import cpu_count, Pool
 from datasets.readers import ExtractedSetReader, ProcessedSetReader
 from datasets.mimic_utils import copy_subject_info
 from datasets.trackers import PreprocessingTracker
+from datasets.writers import DataSetWriter
 from utils.IO import *
+from pathos.helpers import mp
+from multiprocess import Manager
 
 
 class AbstractProcessor(ABC):
@@ -59,6 +63,10 @@ class AbstractProcessor(ABC):
         self._task: str = ...
         self._verbose: bool = ...
         self._source_reader: Union[ExtractedSetReader, ProcessedSetReader] = ...
+        self._writer: DataSetWriter = ...
+        self._save_file_type: str = ...
+        self._operation_adjective: str = ...
+        self._lock: Manager.Lock = ...
 
     @property
     @abstractmethod
@@ -79,7 +87,7 @@ class AbstractProcessor(ABC):
         ...
 
     @abstractmethod
-    def transform(self, *args, **kwargs):
+    def _transform(self, *args, **kwargs):
         ...
 
     @abstractmethod
@@ -104,59 +112,101 @@ class AbstractProcessor(ABC):
         """
         ...
 
-    @abstractmethod
-    def save_data(self, subject_ids: list = None) -> None:
+    def _init_tracking_variables(self, subject_ids: list = None):
+        if subject_ids is None:
+            # Tracking variables
+            self._n_subjects = len(self._tracker.subject_ids)
+            self._n_stays = len(self._tracker.stay_ids)
+            self._n_samples = self._tracker.samples
+            self._n_skip = 0
+        else:
+            proc_subjects = set(subject_ids) & set(self._tracker.subject_ids)
+            self._n_subjects = len(proc_subjects)
+            self._n_stays = sum([
+                1 for subject_id in proc_subjects for stay_id in self._tracker.subjects[subject_id]
+                if stay_id != "total"
+            ])
+            self._n_samples = sum(
+                [self._tracker.subjects[subject_id]["total"] for subject_id in proc_subjects])
+            self._n_skip = 0
+
+    def save_data(self, subjects: list = None) -> None:
         """
-        Saves the processed data, either for all subjects if subject_ids = None, or for specified subjects.
+        Save the discretized data to the storage path.
+
+        If no subjects are specified, all the discretized data will be saved.
 
         Parameters
         ----------
-        subject_ids : list, optional
-            List of subject IDs whose data should be saved. Defaults to None.
-
-        Raises
-        ------
-        NotImplementedError
-            If the method is not implemented in a subclass.
+        subjects : list, optional
+            A list of subject IDs to save data for. If None, all data is saved. Default is None.
         """
-        ...
+        if self._writer is None:
+            info_io("No storage path provided. Data will not be saved.")
+            return
+        with self._lock:
+            if subjects is None:
+                self._writer.write_bysubject({"X": self._X}, file_type=self._save_file_type)
+                self._writer.write_bysubject({"y": self._y}, file_type=self._save_file_type)
+                self._X = dict()
+                self._y = dict()
+            else:
+                self._writer.write_bysubject({"X": dict_subset(self._X, subjects)},
+                                             file_type=self._save_file_type)
+                self._writer.write_bysubject({"y": dict_subset(self._y, subjects)},
+                                             file_type=self._save_file_type)
+                for subject in subjects:
+                    del self._X[subject]
+                    del self._y[subject]
+
+        return
 
     def transform_dataset(self,
-                          dataset: dict,
-                          subject_ids: list = None,
-                          num_subjects: int = None,
-                          source_path: Path = None,
-                          storage_path: Path = None) -> Dict[str, Dict[str, pd.DataFrame]]:
+                          dataset: Dict[str, Dict[str, Dict[str, pd.DataFrame]]],
+                          storage_path=None,
+                          source_path=None,
+                          subject_ids=None,
+                          num_subjects=None) -> Dict[str, Dict[str, pd.DataFrame]]:
         """
-        Transforms and processes the dataset.
+        Transforms the dataset provided by the previous processing stage directly.
 
-        This method processes the entire dataset, transforming the data for each subject, and then 
-        saving the processed data to the specified location. It handles subject selection and ensures 
+        This method processes the provided data, transforming it for each subject, and then saving 
+        the processed data if a storage path is provided. It handles subject selection and ensures 
         the processed data is correctly stored.
 
         Parameters
         ----------
-        dataset : dict
-            The dataset to process.
+        dataset : Dict[str, Dict[str, Dict[str, pd.DataFrame]]]
+            Processed dataset.
         subject_ids : list, optional
             List of subject IDs to process. Defaults to None.
         num_subjects : int, optional
             Number of subjects to process. Defaults to None.
-        source_path : Path, optional
-            Source path of the data. Defaults to None.
 
         Returns
         -------
-        Dict[str, Dict[str, pd.DataFrame]]
-            Processed data with keys 'X' for features and 'y' for labels.
+        ProcessedSetReader
+            Reader for the processed set.
         """
+        # TODO! This also needs to work with no storage path provided
+        X_subjects, y_subjects = list(dataset.values())
+        orig_subject_ids = deepcopy(subject_ids)
+        self._init_tracking_variables(subject_ids)
         if storage_path is not None:
-            self._storage_path = storage_path
-        copy_subject_info(source_path, self._storage_path)
+            self._storage_path = Path(storage_path)
+            self._tracker = PreprocessingTracker(storage_path=Path(storage_path, "progress"))
+            self._tracker.set_subject_ids(subject_ids)
+            self._tracker.set_num_subjects(num_subjects)
+        elif self._storage_path is not None and (num_subjects is not None or
+                                                 subject_ids is not None):
+            self._tracker.set_subject_ids(subject_ids)
+            self._tracker.set_num_subjects(num_subjects)
+
+        copy_subject_info(source_path, storage_path)
 
         if self._tracker.is_finished:
             info_io(
-                f"Compact {self._operation_name} already finalized in directory:\n{str(self._storage_path)}"
+                f"Compact {self._operation_name}  already finalized in directory:\n{str(self._storage_path)}"
             )
             if num_subjects is not None:
                 subject_ids = random.sample(self._tracker.subject_ids, k=num_subjects)
@@ -165,47 +215,46 @@ class AbstractProcessor(ABC):
 
         info_io(f"Compact {self._operation_name}: {self._task}", level=0)
 
-        subject_ids, excluded_subject_ids = self._get_subject_ids(num_subjects=num_subjects,
-                                                                  subject_ids=subject_ids,
-                                                                  all_subjects=dataset.keys())
-        assert all([len(subject) for subject in dataset.values()])
-        missing_subjects = 0
-        if num_subjects is not None:
-            X_subjects = dict()
-            y_subjects = dict()
-            while not len(X_subjects) == num_subjects:
-                curr_dataset = dict_subset(dataset, subject_ids)
-                X, y = self.transform(dataset=curr_dataset)
-                X_subjects.update(X)
-                y_subjects.update(y)
-                it_missing_subjects = set(X.keys()) - set(subject_ids)
-                subject_ids, excluded_subject_ids = self.get_subject_ids(
-                    num_subjects=num_subjects - len(X_subjects),
-                    subject_ids=None,
-                    all_subjects=excluded_subject_ids)
-                if it_missing_subjects:
-                    missing_subjects += len(it_missing_subjects)
-                    debug_io(f"Missing subjects are: {*it_missing_subjects,}")
-                if not subject_ids:
-                    break
-                if len(X_subjects) == num_subjects:
-                    debug_io(f"Missing {len(X_subjects) - num_subjects} subjects.")
-                    debug_io(f"Unprocessable subjects are: {*it_missing_subjects,}")
+        subject_ids, exclud_subj, unkonwn_subj = self._get_subject_ids(
+            num_subjects=num_subjects,
+            subject_ids=subject_ids,
+            processed_subjects=self._tracker.subject_ids,
+            all_subjects=X_subjects.keys())
 
-        else:
-            assert all([len(subject) for subject in dataset.values()])
-            dataset = dict_subset(dataset, subject_ids)
-            assert all([len(subject) for subject in dataset.values()])
-            (X_subjects, y_subjects) = self.transform(dataset=dataset)
-        if self._storage_path is not None:
+        if not subject_ids:
+            self._tracker.is_finished = True
+            info_io(f"Finalized for task {self._task} in directory:\n{str(self._storage_path)}")
+            if num_subjects and not self._n_subjects == num_subjects:
+                warn_io(
+                    f"The subject target was not reached, missing {self._n_subjects - num_subjects} subjects."
+                )
+            if orig_subject_ids is not None:
+                orig_subject_ids = list(set(orig_subject_ids) & set(self._tracker.subject_ids))
+            return ProcessedSetReader(self._storage_path,
+                                      subject_ids=orig_subject_ids).read_samples(read_ids=True)
+
+        self._n_skip = len(unkonwn_subj)
+
+        X_subjects = dict_subset(X_subjects, subject_ids)
+        y_subjects = dict_subset(y_subjects, subject_ids)
+
+
+        _, \
+        _ = self._transform((X_subjects, y_subjects)) # Omitting timestamps
+
+        if storage_path or self._storage_path:
             self.save_data()
             info_io(
-                f"Finalized {self._operation_name} for {self._task} in directory:\n{str(self._storage_path)}"
+                f"{self._operation_name.capitalize()} engineering for {self._task} in directory:\n{str(self._storage_path)}"
             )
         else:
             info_io(f"Finalized {self._operation_name} for {self._task}.")
         self._tracker.is_finished = True
-        return {"X": X_subjects, "y": y_subjects}
+        # TODO! inefficient
+        if orig_subject_ids is not None:
+            orig_subject_ids = list(set(orig_subject_ids) & set(self._tracker.subject_ids))
+        return ProcessedSetReader(root_path=self._storage_path,
+                                  subject_ids=orig_subject_ids).read_samples(read_ids=True)
 
     def transform_reader(self,
                          reader: Union[ExtractedSetReader, ProcessedSetReader],
@@ -236,6 +285,11 @@ class AbstractProcessor(ABC):
         self._verbose = False
         self._source_reader = reader
         original_subject_ids = deepcopy(subject_ids)
+        self._init_tracking_variables(subject_ids)
+        if subject_ids is not None or num_subjects is not None:
+            # Reinit the tracker to check if reprocessing is necessary
+            self._tracker.set_subject_ids(subject_ids)
+            self._tracker.set_num_subjects(num_subjects)
 
         copy_subject_info(reader.root_path, self._storage_path)
 
@@ -250,11 +304,6 @@ class AbstractProcessor(ABC):
 
         info_io(f"Iterative {self._operation_name}: {self._task}", level=0)
         info_io(f"{self._operation_name.capitalize()} data for task {self._task}.")
-
-        # Tracking info
-        n_processed_subjects = len(self._tracker.subject_ids)
-        n_processed_stays = len(self._tracker.stay_ids)
-        n_processed_samples = self._tracker.samples
 
         # Parallel processing logic
         def process_subject(subject_id: str):
@@ -271,54 +320,66 @@ class AbstractProcessor(ABC):
             global processor_pr
             processor_pr = preprocessor
 
-        subject_ids, excluded_subject_ids = self._get_subject_ids(
+        subject_ids, exclud_subj, unknown_subj = self._get_subject_ids(
             num_subjects=num_subjects,
             subject_ids=subject_ids,
             all_subjects=reader.subject_ids,
             processed_subjects=self._tracker.subject_ids)
 
+        if not subject_ids:
+            self._verbose = orig_verbose
+            self._tracker.is_finished = True
+            info_io(f"Finalized for task {self._task} in directory:\n{str(self._storage_path)}")
+            if num_subjects and not self._n_subjects == num_subjects:
+                warn_io(
+                    f"The subject target was not reached, missing {self._n_subjects - num_subjects} subjects."
+                )
+            if original_subject_ids is not None:
+                original_subject_ids = list(
+                    set(original_subject_ids) & set(self._tracker.subject_ids))
+            return ProcessedSetReader(self._storage_path, subject_ids=original_subject_ids)
+
+        missing_subjects = len(unknown_subj)
         info_io(f"{self._operation_name.capitalize()} timeseries data:\n"
-                f"Processed subjects: {n_processed_subjects}\n"
-                f"Processed stays: {n_processed_stays}\n"
-                f"Processed samples: {n_processed_samples}\n"
-                f"Skipped subjects: {0}")
+                f"{self._operation_adjective.capitalize()} subjects: {self._n_subjects}\n"
+                f"{self._operation_adjective.capitalize()} stays: {self._n_stays}\n"
+                f"{self._operation_adjective.capitalize()} samples: {self._n_samples}\n"
+                f"Skipped subjects: {len(unknown_subj)}")
 
         # Start the run
         chunksize = max(len(subject_ids) // (cpu_count() - 1), 1)
         with Pool(cpu_count() - 1, initializer=init, initargs=(self,)) as pool:
             res = pool.imap_unordered(process_subject, subject_ids, chunksize=chunksize)
 
-            empty_subjects = 0
-            missing_subjects = 0
             while True:
                 try:
                     subject_id, tracker_data = next(res)
                     if tracker_data is None:
-                        empty_subjects += 1
                         # Add new samples if to meet the num subjects target
                         if num_subjects is None:
+                            missing_subjects += 1
                             continue
                         debug_io(f"Missing subject is: {subject_id}")
                         try:
-                            subj = excluded_subject_ids.pop()
+                            subj = exclud_subj.pop()
                             res = chain(res,
                                         [pool.apply_async(process_subject, args=(subj,)).get()])
                         except IndexError:
                             missing_subjects += 1
                             debug_io(
-                                f"Could not replace missing subject. Excluded subjects is: {excluded_subject_ids}"
+                                f"Could not replace missing subject. Excluded subjects is: {exclud_subj}"
                             )
                     else:
-                        n_processed_subjects += 1
-                        n_processed_stays += len(tracker_data) - 1
-                        n_processed_samples += tracker_data["total"]
+                        self._n_subjects += 1
+                        self._n_stays += len(tracker_data) - 1
+                        self._n_samples += tracker_data["total"]
 
                     info_io(
                         f"{self._operation_name.capitalize()} timeseries data:\n"
-                        f"Processed subjects: {n_processed_subjects}\n"
-                        f"Processed stays: {n_processed_stays}\n"
-                        f"Processed samples: {n_processed_samples}\n"
-                        f"Skipped subjects: {empty_subjects}",
+                        f"{self._operation_adjective.capitalize()} subjects: {self._n_subjects}\n"
+                        f"{self._operation_adjective.capitalize()} stays: {self._n_stays}\n"
+                        f"{self._operation_adjective.capitalize()} samples: {self._n_samples}\n"
+                        f"Skipped subjects: {missing_subjects}",
                         flush_block=(True and not int(os.getenv("DEBUG", 0))))
                 except StopIteration as e:
                     self._tracker.is_finished = True
@@ -328,6 +389,8 @@ class AbstractProcessor(ABC):
                         warn_io(
                             f"The subject target was not reached, missing {missing_subjects} subjects."
                         )
+                    pool.close()
+                    pool.join()
                     break
         self._verbose = orig_verbose
         if original_subject_ids is not None:
@@ -347,12 +410,14 @@ class AbstractProcessor(ABC):
             selected_subjects_ids = random.sample(remaining_subject_ids, k=num_subjects)
             remaining_subject_ids = list(set(remaining_subject_ids) - set(selected_subjects_ids))
             random.shuffle(remaining_subject_ids)
+            unknown_subjects = list()
         elif subject_ids is not None:
             unknown_subjects = set(subject_ids) - set(all_subjects)
             if unknown_subjects:
                 warn_io(f"Unknown subjects: {*unknown_subjects,}")
-            selected_subjects_ids = list(set(subject_ids) & set(all_subjects))
+            selected_subjects_ids = list((set(subject_ids) & set(remaining_subject_ids)))
             remaining_subject_ids = list(set(remaining_subject_ids) - set(selected_subjects_ids))
         else:
             selected_subjects_ids = remaining_subject_ids
-        return selected_subjects_ids, remaining_subject_ids
+            unknown_subjects = list()
+        return selected_subjects_ids, remaining_subject_ids, unknown_subjects

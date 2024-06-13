@@ -158,21 +158,9 @@ class PreprocessingTracker():
     #: str: Discretization only. Legacy or experimental mode.
     mode: str = None
 
-    def __init__(self, num_subjects: int = None, subject_ids: list = None, **kwargs):
+    def __init__(self, **kwargs):
+        # Do nothing on init since subject_ids and num_subjects are not yet available
         self._lock = None
-        # Continue processing if num subjects is not reached
-        if num_subjects is not None and len(self.subjects) - 1 < num_subjects:
-            self.is_finished = False
-            self.num_subjects = num_subjects
-        # Continue processing if num subjects switche to None
-        elif self.num_subjects is not None and num_subjects is None:
-            self.is_finished = False
-            self.num_subjects = num_subjects
-
-        if subject_ids is not None:
-            unprocessed_subjects = set(subject_ids) - set(self.subjects.keys())
-            if unprocessed_subjects:
-                self.is_finished = False
 
         # The impute startegies of the discretizer might change
         # In this case we rediscretize the data
@@ -183,6 +171,34 @@ class PreprocessingTracker():
                             self, attribute) != kwargs[attribute]:
                         self.reset()
                     setattr(self, attribute, kwargs[attribute])
+
+    def set_subject_ids(self, subject_ids: List[int]):
+        """Set the subjects to be processed to see if reprocessing is necessary.
+
+        Args
+        ----
+            subject_ids (List[int]): to be processed IDs
+        """
+        if subject_ids is not None:
+            unprocessed_subjects = set(subject_ids) - set(self.subjects.keys())
+            if unprocessed_subjects:
+                self.is_finished = False
+
+    def set_num_subjects(self, num_subjects: int):
+        """Set the number of target processed subjects to see if reprocessing is necessary.
+
+        Args
+        ----
+            num_subjects (int): number of to be processed subjects.
+        """
+        # Continue processing if num subjects is not reached
+        if num_subjects is not None and len(self.subjects) - 1 < num_subjects:
+            self.is_finished = False
+            self.num_subjects = num_subjects
+        # Continue processing if num subjects switche to None
+        elif self.num_subjects is not None and num_subjects is None:
+            self.is_finished = False
+            self.num_subjects = num_subjects
 
     @property
     def subject_ids(self) -> List[int]:

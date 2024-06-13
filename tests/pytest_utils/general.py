@@ -66,7 +66,13 @@ def assert_dataframe_equals(generated_df: pd.DataFrame,
     # Check performed column wise
     if compare_mode == "single_entry":
         difference = 0
-        frame_diff = (generated_df.fillna("NaN") != test_df.fillna("NaN"))
+        for col in generated_df.select_dtypes(include=['category']).columns:
+            if not "NoValue" in generated_df[col].cat.categories:
+                generated_df[col] = generated_df[col].cat.add_categories('NoValue')
+        for col in test_df.select_dtypes(include=['category']).columns:
+            if not "NoValue" in test_df[col].cat.categories:
+                test_df[col] = test_df[col].cat.add_categories('NoValue')
+        frame_diff = (generated_df.fillna("NoValue") != test_df.fillna("NoValue"))
         for column_name in frame_diff:
             if not frame_diff[column_name].any():
                 continue
@@ -81,8 +87,8 @@ def assert_dataframe_equals(generated_df: pd.DataFrame,
                 column_diff = np.squeeze(
                     ~np.isclose(gen_col.astype(float), test_col.astype(float), equal_nan=True))
             else:
-                column_diff = np.squeeze((gen_col.fillna("Na") != \
-                                          test_col.fillna("Na")).values)
+                column_diff = np.squeeze((gen_col.fillna("NoValue") != \
+                                          test_col.fillna("NoValue")).values)
             if column_diff.shape == ():
                 column_diff = column_diff.reshape(1)
             # If all identical continue
@@ -176,8 +182,9 @@ def compare_homogenous_multiline_df(generated_df: pd.DataFrame,
         num_match = np.isclose(test_num_df.astype(float).values,
                                gen_num_row.astype(float).values,
                                equal_nan=True).all(axis=1)
-        non_num_match = (gen_non_num_row.fillna("NaN") == test_non_num_df.fillna("NaN")).all(
-            axis=1).values
+        non_num_match = (
+            gen_non_num_row.fillna("NoValue") == test_non_num_df.fillna("NoValue")).all(
+                axis=1).values
         found = (num_match & non_num_match).any()
         if not found:
             # I don't remember why I did this, its been over a month

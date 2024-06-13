@@ -2,10 +2,9 @@ import os
 import numpy as np
 import pickle
 from utils.IO import *
-from tensorflow.keras.utils import Progbar
 from pathlib import Path
 from abc import ABC, abstractmethod
-
+from tqdm import tqdm  # Importing tqdm for progress bars
 
 
 class AbstractScikitProcessor(ABC):
@@ -129,16 +128,17 @@ class AbstractScikitProcessor(ABC):
         """
         if self._verbose:
             info_io(f"Fitting scaler to dataset of size {len(X)}")
-            progbar = Progbar(len(X), unit_name='step')
         n_fitted = 0
 
-        for frame in X:
-            if hasattr(self, "_imputer") and self._imputer is not None:
-                frame = self._imputer.transform(frame)
-            self.partial_fit(frame)
-            n_fitted += 1
-            if self._verbose:
-                progbar.update(n_fitted)
+        with tqdm(total=len(X), unit='step', ascii=' >=', ncols=120,
+                  disable=self._verbose) as progbar:
+            for frame in X:
+                if hasattr(self, "_imputer") and self._imputer is not None:
+                    frame = self._imputer.transform(frame)
+                self.partial_fit(frame)
+                n_fitted += 1
+                if self._verbose:
+                    progbar.update(1)
 
         self.save()
 
@@ -171,19 +171,23 @@ class AbstractScikitProcessor(ABC):
             info_io(
                 f"Fitting {Path(self._storage_path).stem} to reader of size {len(reader.subject_ids)}"
             )
-            progbar = Progbar(len(reader.subject_ids), unit_name='step')
 
-        n_fitted = 0
+        with tqdm(total=len(reader.subject_ids),
+                  unit='step',
+                  ascii=' >=',
+                  ncols=120,
+                  disable=self._verbose) as progbar:
+            n_fitted = 0
 
-        for subject_id in reader.subject_ids:
-            X_subjects, _ = reader.read_sample(subject_id).values()
-            for frame in X_subjects:
-                if hasattr(self, "_imputer") and self._imputer is not None:
-                    frame = self._imputer.transform(frame)
-                self.partial_fit(frame)
-            n_fitted += 1
-            if self._verbose:
-                progbar.update(n_fitted)
+            for subject_id in reader.subject_ids:
+                X_subjects, _ = reader.read_sample(subject_id).values()
+                for frame in X_subjects:
+                    if hasattr(self, "_imputer") and self._imputer is not None:
+                        frame = self._imputer.transform(frame)
+                    self.partial_fit(frame)
+                n_fitted += 1
+                if self._verbose:
+                    progbar.update(1)
 
         self.save()
 

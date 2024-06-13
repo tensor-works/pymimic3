@@ -1237,7 +1237,8 @@ class EventReader():
             events_df = upper_case_column_names(events_df)
 
             if not 'ICUSTAY_ID' in events_df:
-                events_df['ICUSTAY_ID'] = pd.NA
+                events_df['ICUSTAY_ID'] = np.nan
+                events_df['ICUSTAY_ID'] = events_df['ICUSTAY_ID'].astype(pd.Int32Dtype())
 
             # Drop specified columns and NAN rows, merge onto varmap for variable definitions
             drop_cols = set(events_df.columns) - set(self._csv_settings["columns"])

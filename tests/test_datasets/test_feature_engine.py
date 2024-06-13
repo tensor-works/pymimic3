@@ -45,10 +45,7 @@ def test_iterative_engineer_task(task_name: str):
     generated_df = concatenate_dataset(generated_samples["X"])
 
     # Load test data and extract ids
-    test_df = pd.read_csv(Path(test_data_dir, "X.csv"),
-                          na_values=[''],
-                          keep_default_na=False,
-                          low_memory=False)
+    test_df = pd.read_csv(Path(test_data_dir, "X.csv"), low_memory=False)
     test_df = extract_test_ids(test_df)
 
     # Align unstructured frames
@@ -108,7 +105,7 @@ def test_compact_engineer_task(task_name: str):
     generated_df = concatenate_dataset(dataset["X"])
 
     # Load test data and extract ids
-    test_df = pd.read_csv(Path(test_data_dir, "X.csv"), na_values=[''], keep_default_na=False)
+    test_df = pd.read_csv(Path(test_data_dir, "X.csv"))
     test_df = extract_test_ids(test_df)
 
     # Align unstructured frames

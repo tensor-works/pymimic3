@@ -150,6 +150,7 @@ class AbstractSplitter(ABC):
             set_name: ratio_df[ratio_df["participant"].isin(split_subject)]["ratio"].sum()
             for set_name, split_subject in subjects.items()
         }
+
         return subjects, real_ratios
 
     def _check_settings(self, settings, parent_key='', set_name=None):
@@ -452,6 +453,8 @@ class AbstractSplitter(ABC):
                 iter += 1
                 if diff < best_diff:
                     best_subjects, best_size, best_diff = subjects, current_size, diff
+            pool.close()
+            pool.join()
 
         return best_subjects, best_size
 
@@ -561,10 +564,11 @@ class ReaderSplitter(AbstractSplitter):
             if train_size is not None and val_size and not "val" in split_dictionary:
                 # In this case we split the val set from the train set
                 split_dictionary, ratios = self._split_val_from_train(
-                    val_size=val_size,
+                    val_size=val_size / (1 - test_size),
                     split_dictionary=split_dictionary,
                     ratios=ratios,
                     split_tracker=split_tracker)
+                ratios["val"] = ratios["val"] * (1 - test_size)
 
             # Update tracker
             split_tracker.split = split_dictionary
@@ -629,7 +633,8 @@ class CompactSplitter(AbstractSplitter):
             subject_ids = list(X_subjects.keys())
 
         if source_path:
-            tracker = PreprocessingTracker(Path(source_path, "progress"), subject_ids=subject_ids)
+            tracker = PreprocessingTracker(Path(source_path, "progress"))
+            tracker.set_subject_ids(subject_ids)
             split_tracker = DataSplitTracker(Path(source_path, "split"), tracker, test_size,
                                              val_size)
             if split_tracker.is_finished:
