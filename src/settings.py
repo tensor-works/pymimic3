@@ -1,7 +1,5 @@
 import json
 import os
-import bisect
-import numpy as np
 from pathlib import Path
 from dotenv import load_dotenv
 from utils.IO import *

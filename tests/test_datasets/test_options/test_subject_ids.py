@@ -27,14 +27,16 @@ def test_subject_ids_extraction(extracted_reader: ExtractedSetReader, subject_id
     subjects = deepcopy(subject_ids)
     curr_subjects = list()
     # Sample subjects and test result by extending the subject id list
-    for num_subjects in [1, 10, 10]:
+    for num_subjects in [1, 10]:
         # Extend the subject id list
-        curr_subjects.extend(random.sample(subjects, num_subjects - len(curr_subjects)))
+        curr_subjects.extend(random.sample(subjects, num_subjects))
         subjects = list(set(subjects) - set(curr_subjects))
 
         # Compare the extracted data with the test data
-        tests_io(f"-> Testing extract-only with {len(curr_subjects)} subjects on empty directory.\n"
-                 f"Subject IDs: {*curr_subjects,}")
+        tests_io("-" * 100)
+        tests_io(
+            f"-> Testing extract-only with {len(curr_subjects)} subjects on existing directory.\n"
+            f"Subject IDs: {*curr_subjects,}")
 
         extract_and_compare(subject_ids=curr_subjects,
                             test_subject_ids=extracted_reader.subject_ids,
@@ -45,7 +47,7 @@ def test_subject_ids_extraction(extracted_reader: ExtractedSetReader, subject_id
 
     # Sample subject from scratch and extract into empty dir
     extracted_dir = Path(TEMP_DIR, "extracted")
-    for num_subjects in [11, 21]:
+    for num_subjects in [10, 16]:
         # Remove the extracted directory
         if extracted_dir.is_dir():
             shutil.rmtree(str(extracted_dir))
@@ -53,8 +55,11 @@ def test_subject_ids_extraction(extracted_reader: ExtractedSetReader, subject_id
         curr_subjects = random.sample(subjects, num_subjects)
         subjects = list(set(subjects) - set(curr_subjects))
         # Compare the extracted data with the test data
-        tests_io(f"-> Testing extract-only with {len(curr_subjects)} subjects on empty directory.\n"
-                 f"Subject IDs: {*curr_subjects,}")
+        tests_io("-" * 100)
+        tests_io(
+            f"-> Testing extract-only with {len(curr_subjects)} subjects on empty directory.\n"
+            f"Subject IDs: {*curr_subjects,}\n" \
+            f"# Subjects: {len(curr_subjects)}")
         extract_and_compare(subject_ids=curr_subjects,
                             test_subject_ids=extracted_reader.subject_ids,
                             extraction_style=extraction_style,
@@ -64,6 +69,11 @@ def test_subject_ids_extraction(extracted_reader: ExtractedSetReader, subject_id
 
     # Test reducing subject count to a single subject
     curr_subjects = random.sample(subjects, 1)
+    tests_io("-" * 100)
+    tests_io(
+        f"-> Testing extract-only with {len(curr_subjects)} subjects on exiting directory.\n"
+        f"Subject IDs: {*curr_subjects,}\n" \
+        f"# Subjects: {len(curr_subjects)}")
     extract_and_compare(subject_ids=curr_subjects,
                         test_subject_ids=extracted_reader.subject_ids,
                         extraction_style=extraction_style,
@@ -88,13 +98,15 @@ def test_subject_ids_preprocessing_only(task_name: str, subject_ids: list, extra
     subjects = deepcopy(subject_ids)
 
     # Sample subjects and test result by extending the subject id list
-    for num_subjects in [1, 10, 10]:
+    for num_subjects in [1, 10]:
         # Extend the subject id list
-        curr_subjects.extend(random.sample(subjects, num_subjects - len(curr_subjects)))
+        curr_subjects.extend(random.sample(subjects, num_subjects))
         subjects = list(set(subjects) - set(curr_subjects))
         # Compare generated results
-        tests_io(f"-> Testing preprocessing-only with {len(curr_subjects)}"
-                 " subjects on existing directory.")
+        tests_io("-" * 100)
+        tests_io(
+            f"-> Testing preprocess-only with {len(curr_subjects)} subjects on existing directory.\n"
+            f"Subject IDs: {*curr_subjects,}")
         process_and_compare(subject_ids=curr_subjects,
                             task_name=task_name,
                             extraction_style=extraction_style,
@@ -105,7 +117,7 @@ def test_subject_ids_preprocessing_only(task_name: str, subject_ids: list, extra
     # Sample subject from scratch and extract into empty dir
     processed_dir = Path(TEMP_DIR, "processed")
 
-    for num_subjects in [11, 21]:
+    for num_subjects in [10, 16]:
         # Remove the processed directory
         if processed_dir.is_dir():
             shutil.rmtree(str(processed_dir))
@@ -113,8 +125,10 @@ def test_subject_ids_preprocessing_only(task_name: str, subject_ids: list, extra
         curr_subjects = random.sample(subjects, num_subjects)
         subjects = list(set(subjects) - set(curr_subjects))
         # Compare the processed data
-        tests_io(f"-> Testing preprocessing-only with {len(curr_subjects)}"
-                 " subjects on empty directory.")
+        tests_io("-" * 100)
+        tests_io(
+            f"-> Testing preprocess-only with {len(curr_subjects)} subjects on empty directory.\n"
+            f"Subject IDs: {*curr_subjects,}")
         process_and_compare(subject_ids=curr_subjects,
                             task_name=task_name,
                             extraction_style=extraction_style,
@@ -123,6 +137,10 @@ def test_subject_ids_preprocessing_only(task_name: str, subject_ids: list, extra
     tests_io(f"-> Succeeded in testing on empty directory.")
     # Test reducing subject count
     curr_subjects = random.sample(subjects, 1)
+    tests_io("-" * 100)
+    tests_io(
+        f"-> Testing preprocess-only with {len(curr_subjects)} subjects on existing directory.\n"
+        f"Subject IDs: {*curr_subjects,}")
     process_and_compare(subject_ids=curr_subjects,
                         task_name=task_name,
                         extraction_style=extraction_style,
@@ -144,7 +162,7 @@ def test_subject_ids_engineer_only(task_name: str, subject_ids: list, extraction
                          TASK_NAME_MAPPING[task_name])  # Ground truth data dir
 
     # Load test data and extract ids
-    test_df = pd.read_csv(Path(test_data_dir, "X.csv"), na_values=[''], keep_default_na=False)
+    test_df = pd.read_csv(Path(test_data_dir, "X.csv"))
     test_df = extract_test_ids(test_df)
 
     copy_dataset("extracted")
@@ -158,13 +176,15 @@ def test_subject_ids_engineer_only(task_name: str, subject_ids: list, extraction
     test_df = test_df.reset_index(drop=True)
 
     # Test on existing directory
-    for num_subjects in [1, 10, 10]:
+    for num_subjects in [1, 10]:
         # Extend the subject id list
-        curr_subjects.extend(random.sample(subjects, num_subjects - len(curr_subjects)))
+        curr_subjects.extend(random.sample(subjects, num_subjects))
         subjects = list(set(subjects) - set(curr_subjects))
         # Compare generated results
+        tests_io("-" * 100)
         tests_io(
-            f"-> Testing engineer-only with {len(curr_subjects)} subjects on existing directory.")
+            f"-> Testing engineer-only with {len(curr_subjects)} subjects on existing directory.\n"
+            f"Subject IDs: {*curr_subjects,}")
         engineer_and_compare(subject_ids=curr_subjects,
                              task_name=task_name,
                              extraction_style=extraction_style,
@@ -174,14 +194,17 @@ def test_subject_ids_engineer_only(task_name: str, subject_ids: list, extraction
 
     # Test on empty directory
     engineered_dir = Path(TEMP_DIR, "engineered")
-    for num_subjects in [11, 16]:
+    for num_subjects in [10, 16]:
         if TEMP_DIR.is_dir():
             shutil.rmtree(engineered_dir)
         # Sample subject ids
         curr_subjects = random.sample(subjects, num_subjects)
         subjects = list(set(subjects) - set(curr_subjects))
         # Compare the processed data
-        tests_io(f"-> Testing engineer-only with {len(curr_subjects)} subjects on empty directory.")
+        tests_io("-" * 100)
+        tests_io(
+            f"-> Testing engineer-only with {len(curr_subjects)} subjects on empty directory.\n"
+            f"Subject IDs: {*curr_subjects,}")
         engineer_and_compare(subject_ids=curr_subjects,
                              task_name=task_name,
                              extraction_style=extraction_style,
@@ -191,6 +214,9 @@ def test_subject_ids_engineer_only(task_name: str, subject_ids: list, extraction
 
     # Test reducing subject count
     curr_subjects = random.sample(subjects, 1)
+    tests_io("-" * 100)
+    tests_io(f"-> Testing engineer-only with {len(curr_subjects)} subjects on existing directory.\n"
+             f"Subject IDs: {*curr_subjects,}")
     engineer_and_compare(subject_ids=curr_subjects,
                          task_name=task_name,
                          extraction_style=extraction_style,
@@ -214,13 +240,15 @@ def test_subject_ids_preprocessing(task_name: str, subject_ids: list, extraction
     subjects = deepcopy(subject_ids)
 
     # Sample subjects and test result by extending the subject id list
-    for num_subjects in [1, 10, 10]:
+    for num_subjects in [1, 10]:
         # Extend the subject id list
-        curr_subjects.extend(random.sample(subjects, num_subjects - len(curr_subjects)))
+        curr_subjects.extend(random.sample(subjects, num_subjects))
         subjects = list(set(subjects) - set(curr_subjects))
         # Compare generated results
-        tests_io(f"-> Testing preprocessing-only with {len(curr_subjects)}"
-                 " subjects on existing directory.")
+        tests_io("-" * 100)
+        tests_io(
+            f"-> Testing preprocess from scratch with {len(curr_subjects)} subjects on existing directory.\n"
+            f"Subject IDs: {*curr_subjects,}")
         process_and_compare(subject_ids=curr_subjects,
                             task_name=task_name,
                             extraction_style=extraction_style,
@@ -231,7 +259,7 @@ def test_subject_ids_preprocessing(task_name: str, subject_ids: list, extraction
     # Sample subject from scratch and extract into empty dir
     processed_dir = Path(TEMP_DIR, "processed")
 
-    for num_subjects in [11, 21]:
+    for num_subjects in [10, 16]:
         # Remove the processed directory
         if processed_dir.is_dir():
             shutil.rmtree(str(processed_dir))
@@ -239,8 +267,10 @@ def test_subject_ids_preprocessing(task_name: str, subject_ids: list, extraction
         curr_subjects = random.sample(subjects, num_subjects)
         subjects = list(set(subjects) - set(curr_subjects))
         # Compare the processed data
-        tests_io(f"-> Testing preprocessing-only with {len(curr_subjects)}"
-                 " subjects on empty directory.")
+        tests_io("-" * 100)
+        tests_io(
+            f"-> Testing preprocess from scratch with {len(curr_subjects)} subjects on empty directory.\n"
+            f"Subject IDs: {*curr_subjects,}")
         process_and_compare(subject_ids=curr_subjects,
                             task_name=task_name,
                             extraction_style=extraction_style,
@@ -249,6 +279,10 @@ def test_subject_ids_preprocessing(task_name: str, subject_ids: list, extraction
     tests_io(f"-> Succeeded in testing on empty directory.")
     # Test reducing subject count
     curr_subjects = random.sample(subjects, 1)
+    tests_io("-" * 100)
+    tests_io(
+        f"-> Testing preprocess from scratch with {len(curr_subjects)} subjects on existing directory.\n"
+        f"Subject IDs: {*curr_subjects,}")
     process_and_compare(subject_ids=curr_subjects,
                         task_name=task_name,
                         extraction_style=extraction_style,
@@ -266,7 +300,7 @@ def test_subject_ids_engineer(task_name: str, subject_ids: list, extraction_styl
                          TASK_NAME_MAPPING[task_name])  # Ground truth data dir
 
     # Load test data and extract ids
-    test_df = pd.read_csv(Path(test_data_dir, "X.csv"), na_values=[''], keep_default_na=False)
+    test_df = pd.read_csv(Path(test_data_dir, "X.csv"))
     test_df = extract_test_ids(test_df)
 
     # Align unstructured frames
@@ -278,13 +312,14 @@ def test_subject_ids_engineer(task_name: str, subject_ids: list, extraction_styl
     subjects = deepcopy(subject_ids)
 
     # Test on existing directory
-    for num_subjects in [1, 10, 10]:
+    for num_subjects in [1, 10]:
         # Extend the subject id list
-        curr_subjects.extend(random.sample(subjects, num_subjects - len(curr_subjects)))
+        curr_subjects.extend(random.sample(subjects, num_subjects))
         subjects = list(set(subjects) - set(curr_subjects))
-        # Compare generated results
+        tests_io("-" * 100)
         tests_io(
-            f"-> Testing engineer-only with {len(curr_subjects)} subjects on existing directory.")
+            f"-> Testing preprocess  from scratch with {len(curr_subjects)} subjects on existing directory.\n"
+            f"Subject IDs: {*curr_subjects,}")
         engineer_and_compare(subject_ids=curr_subjects,
                              task_name=task_name,
                              extraction_style=extraction_style,
@@ -294,14 +329,17 @@ def test_subject_ids_engineer(task_name: str, subject_ids: list, extraction_styl
 
     # Test on empty directory
     engineered_dir = Path(TEMP_DIR, "engineered")
-    for num_subjects in [11, 16]:
+    for num_subjects in [10, 16]:
         if TEMP_DIR.is_dir():
             shutil.rmtree(engineered_dir)
         # Sample subject ids
         curr_subjects = random.sample(subjects, num_subjects)
         subjects = list(set(subjects) - set(curr_subjects))
         # Compare the processed data
-        tests_io(f"-> Testing engineer-only with {len(curr_subjects)} subjects on empty directory.")
+        tests_io("-" * 100)
+        tests_io(
+            f"-> Testing preprocess from scratch with {len(curr_subjects)} subjects on empty directory.\n"
+            f"Subject IDs: {*curr_subjects,}")
         engineer_and_compare(subject_ids=curr_subjects,
                              task_name=task_name,
                              extraction_style=extraction_style,
@@ -310,6 +348,10 @@ def test_subject_ids_engineer(task_name: str, subject_ids: list, extraction_styl
     tests_io(f"-> Succeeded in testing on empty directory.")
     # Test reducing subject count
     curr_subjects = random.sample(subjects, 1)
+    tests_io("-" * 100)
+    tests_io(
+        f"-> Testing preprocess from scratch with {len(curr_subjects)} subjects on empty directory.\n"
+        f"Subject IDs: {*curr_subjects,}")
     engineer_and_compare(subject_ids=curr_subjects,
                          task_name=task_name,
                          extraction_style=extraction_style,
@@ -449,9 +491,9 @@ if __name__ == "__main__":
     extraction_reader = datasets.load_data(chunksize=75835,
                                            source_path=TEST_DATA_DEMO,
                                            storage_path=SEMITEMP_DIR)
-    icu_history = extraction_reader._read_csv("icu_history.csv")
+    icu_history = pd.read_csv(Path(extraction_reader.root_path, "icu_history.csv"))
     subjects = icu_history["SUBJECT_ID"].astype(int).unique().tolist()
-    for extraction_style in ["iterative"]:  #"compact", "iterative"]:
+    for extraction_style in ["compact", "iterative"]:
         if TEMP_DIR.is_dir():
             shutil.rmtree(str(TEMP_DIR))
         test_subject_ids_extraction(extraction_reader, subjects, extraction_style)

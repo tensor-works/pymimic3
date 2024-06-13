@@ -74,16 +74,14 @@ def test_torch_generator(task_name, discretized_readers):
                 y = y.numpy()
                 # Check batch
                 assert_batch_sanity(X, y, batch_size, bining)
-
                 tests_io(f"Successfully tested {batch + 1} batches", flush=True)
+            tests_io(f"Successfully tested {batch + 1} batches")
             end = time.time()
             elapsed_time = end - start
             minutes = int(elapsed_time // 60)
             seconds = elapsed_time % 60
 
             tests_io(f"Time enrolling the generator was: {minutes} min, {seconds:.2f} sec")
-            tests_io(f"Successfully tested {batch + 1} batches")
-            del generator
         if task_name != "LOS":
             break
 
@@ -158,7 +156,8 @@ def assert_sample_sanity(X: np.ndarray, y: np.ndarray, bining: str, one_hot: boo
 
 
 if __name__ == "__main__":
-    for task_name in TASK_NAMES:
+    # for task_name in TASK_NAMES:
+    for task_name in ["PHENO"]:
         reader = datasets.load_data(chunksize=75836,
                                     source_path=TEST_DATA_DEMO,
                                     storage_path=SEMITEMP_DIR,

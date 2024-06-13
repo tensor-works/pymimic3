@@ -137,7 +137,7 @@ def test_compare_dataframes():
                                         " the same amount of rows. Generated: 3, Ground truth: 2.")
 
         wide_frame = deepcopy(base_frame_df)
-        wide_frame["col_3"] = generate_random_series(pd.Series([long_frame.dtypes[0]] * 3))
+        wide_frame["col_3"] = generate_random_series(pd.Series([long_frame.dtypes.iloc[0]] * 3))
         assert wide_frame.shape == (3, 4)
         with pytest.raises(AssertionError) as error:
             assert_dataframe_equals(base_frame_df,
@@ -219,7 +219,7 @@ def test_compare_dataframes():
                                         " the same amount of rows. Generated: 9, Ground truth: 8.")
 
         wide_frame = deepcopy(base_frame_df)
-        wide_frame["col_3"] = generate_random_series(pd.Series([long_frame.dtypes[0]] * 3))
+        wide_frame["col_3"] = generate_random_series(pd.Series([long_frame.dtypes.iloc[0]] * 3))
         assert wide_frame.shape == (9, 4)
         with pytest.raises(AssertionError) as error:
             assert_dataframe_equals(base_frame_df,

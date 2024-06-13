@@ -253,7 +253,7 @@ def load_data(source_path: str,
         engineered_storage_path = Path(storage_path, "engineered", task)
         engine = MIMICFeatureEngine(config_dict=Path(os.getenv("CONFIG"),
                                                      "engineering_config.json"),
-                                    storage_path=storage_path,
+                                    storage_path=engineered_storage_path,
                                     task=task,
                                     verbose=True)
         dataset = engine.transform_dataset(dataset,
@@ -262,15 +262,16 @@ def load_data(source_path: str,
 
     if discretize:
         discretized_storage_path = Path(storage_path, "discretized", task)
-        dataset = discretizing.compact_discretization(dataset["X"],
-                                                      dataset["y"],
-                                                      task=task,
-                                                      storage_path=discretized_storage_path,
-                                                      source_path=processed_storage_path,
-                                                      time_step_size=time_step_size,
-                                                      impute_strategy=impute_strategy,
-                                                      start_at_zero=start_at_zero,
-                                                      mode=mode)
+        discretizer = MIMICDiscretizer(task=task,
+                                       storage_path=discretized_storage_path,
+                                       time_step_size=time_step_size,
+                                       impute_strategy=impute_strategy,
+                                       start_at_zero=start_at_zero,
+                                       mode=mode,
+                                       verbose=False)
+        dataset = discretizer.transform_dataset(dataset=dataset,
+                                                subject_ids=subject_ids,
+                                                num_subjects=num_subjects)
 
     # TODO: make dependent from return reader (can also return reader)
     # TODO: write some tests for comparct generation

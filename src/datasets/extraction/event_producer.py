@@ -241,7 +241,7 @@ class EventProducer(object):
         frame = frame.dropna(subset=['ICUSTAY_ID'])
         frame = frame[frame['ICUSTAY_ID'] == frame['ICUSTAY_ID_r']]
 
-        return int(frame[["CHARTTIME"]].nunique())
+        return int(frame[["CHARTTIME"]].nunique().values.squeeze())
 
     def _update_total_lengths(self, ts_lengths: dict):
         for csv_name, value in ts_lengths.items():

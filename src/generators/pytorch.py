@@ -1,4 +1,5 @@
 import torch
+from torch.utils.data.dataloader import _BaseDataLoaderIter
 from preprocessing.scalers import AbstractScaler
 from datasets.readers import ProcessedSetReader
 from torch.utils.data import Dataset
@@ -19,11 +20,11 @@ class TorchGenerator(DataLoader):
                  bining: str = "none"):
         self._dataset = TorchDataset(reader=reader,
                                      scaler=scaler,
-                                     batch_size=1,
+                                     batch_size=batch_size,
                                      shuffle=shuffle,
                                      bining=bining)
         super().__init__(dataset=self._dataset,
-                         batch_size=batch_size,
+                         batch_size=1,
                          shuffle=shuffle,
                          drop_last=drop_last,
                          num_workers=0,
@@ -31,45 +32,18 @@ class TorchGenerator(DataLoader):
 
     def collate_fn(self, batch):
         samples, labels = zip(*batch)
-        samples = torch.stack(self._zeropad_samples(samples))
-        labels = torch.cat(labels)
+        samples, labels = samples[0], labels[0]
         if labels.dim() == 1:
-            return samples, labels.unsqueeze(1)
+            labels = labels.unsqueeze(1)
         return samples, labels
 
-    @staticmethod
-    def _zeropad_samples(data):
-        """_summary_
+    def __iter__(self) -> _BaseDataLoaderIter:
+        return super().__iter__()
 
-        Args:
-            data (_type_): _description_
+    def __next__(self):
+        return super().__next__()
 
-        Returns:
-            _type_: _description_
-        """
-        # Ensure data is a list of PyTorch tensors
-        if not all(isinstance(x, torch.Tensor) for x in data):
-            raise ValueError("All items in the data list must be PyTorch tensors")
-
-        # Determine the dtype and device from the first tensor
-        dtype = data[0].dtype
-        device = data[0].device
-
-        # Find the maximum length along the first dimension
-        max_len = max(x.shape[0] for x in data)
-
-        # Pad each tensor to the maximum length
-        padded_data = [
-            torch.cat(
-                [x,
-                 torch.zeros((max_len - x.shape[0],) + x.shape[1:], dtype=dtype, device=device)],
-                dim=0) for x in data
-        ]
-
-        # Stack all padded tensors into a single tensor
-        return padded_data
-
-    def __del__(self):
+    def close(self):
         self._dataset.__del__()
 
 
@@ -81,16 +55,21 @@ class TorchDataset(AbstractGenerator, Dataset):
                  batch_size: int = 8,
                  shuffle: bool = True,
                  bining: str = "none"):
-        super(TorchDataset, self).__init__(reader=reader,
-                                           scaler=scaler,
-                                           batch_size=batch_size,
-                                           shuffle=shuffle,
-                                           bining=bining)
+        AbstractGenerator.__init__(self,
+                                   reader=reader,
+                                   scaler=scaler,
+                                   batch_size=batch_size,
+                                   shuffle=shuffle,
+                                   bining=bining)
 
     def __getitem__(self, index=None):
         X, y = super().__getitem__(index)
-        X = X.squeeze()
+        if not X.flags.writeable:
+            X = X.copy()
+
+        if not y.flags.writeable:
+            y = y.copy()
         return torch.from_numpy(X).to(torch.float32), torch.from_numpy(y).to(torch.float32)
 
-    def __del__(self):
+    def close(self):
         AbstractGenerator.__del__(self)

@@ -56,6 +56,7 @@ import json
 import datetime
 from multiprocess import Manager
 from pathlib import Path
+from typing import Dict, Tuple
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import OneHotEncoder
 from pandas.api.types import is_datetime64_any_dtype as is_datetime
@@ -118,6 +119,8 @@ class MIMICDiscretizer(AbstractProcessor):
                  verbose: bool = False):
 
         self._operation_name = "discretizing"  # For printing
+        self._operation_adjective = "discretized"
+        self._save_file_type = "hdf5"
         self._storage_path = storage_path
         self._writer = (None if storage_path is None else DataSetWriter(self._storage_path))
         self._source_reader = reader
@@ -157,6 +160,12 @@ class MIMICDiscretizer(AbstractProcessor):
             self._is_categorical = config_dictionary['is_categorical_channel']
             self._impute_values = config_dictionary['normal_values']
 
+        # Tracking variables
+        self._init_tracking_variables()
+
+        self._X = dict()
+        self._y = dict()
+
     @property
     def tracker(self) -> PreprocessingTracker:
         """
@@ -187,32 +196,6 @@ class MIMICDiscretizer(AbstractProcessor):
             return []
         return self._source_reader.subject_ids
 
-    def save_data(self, subjects: list = None) -> None:
-        """
-        Save the discretized data to the storage path.
-
-        If no subjects are specified, all the discretized data will be saved.
-
-        Parameters
-        ----------
-        subjects : list, optional
-            A list of subject IDs to save data for. If None, all data is saved. Default is None.
-        """
-        if self._writer is None:
-            info_io("No storage path provided. Data will not be saved.")
-            return
-        with self._lock:
-            if subjects is None:
-                self._writer.write_bysubject({"X": self._X_discretized}, file_type="hdf5")
-                self._writer.write_bysubject({"y": self._y_discretized}, file_type="hdf5")
-            else:
-                self._writer.write_bysubject({"X": dict_subset(self._X_discretized, subjects)},
-                                             file_type="hdf5")
-                self._writer.write_bysubject({"y": dict_subset(self._y_discretized, subjects)},
-                                             file_type="hdf5")
-
-        return
-
     def transform_subject(self, subject_id: int):
         """
         Transform the data for a specific subject.
@@ -236,7 +219,7 @@ class MIMICDiscretizer(AbstractProcessor):
         X = {subject_id: X_processed}
         y = {subject_id: y_processed}
 
-        X_discretized = self.transform(X, y)
+        X_discretized, _ = self._transform((X, y))
         if X_discretized is None:
             return None, None
         if self._tracker is None:
@@ -246,7 +229,7 @@ class MIMICDiscretizer(AbstractProcessor):
             tracking_info = self._tracker.subjects[subject_id]
         return (X_discretized, y), tracking_info
 
-    def transform(self, X_dict, y_dict):
+    def _transform(self, dataset: Tuple[Dict[int, Dict[int, pd.DataFrame]]]):
         """
         Transform the entire dataset when passed as dictionary pair.
 
@@ -265,27 +248,20 @@ class MIMICDiscretizer(AbstractProcessor):
         dict
             A dictionary containing the discretized data, with subject IDs as keys.
         """
-        n_subjects = 0
-        n_stays = 0
-        n_samples = 0
-        n_skip = 0
-
+        X_dict, y_dict = dataset
         if self._verbose:
             info_io(f"Discretizing processed data:\n"
-                    f"Discretized subjects: {0}\n"
-                    f"Discretized stays: {0}\n"
-                    f"Discretized samples: {0}\n"
-                    f"Skipped subjects: {0}")
+                    f"Discretized subjects: {self._n_subjects}\n"
+                    f"Discretized stays: {self._n_stays}\n"
+                    f"Discretized samples: {self._n_samples}\n"
+                    f"Skipped subjects: {self._n_skip}")
 
         self._samples_processed = 0
 
-        self._X_discretized = dict()
-        self._y_discretized = dict()
-
         for subject_id in X_dict.keys():
             X_subject = X_dict[subject_id]
-            self._X_discretized[subject_id] = dict()
-            self._y_discretized[subject_id] = dict()
+            self._X[subject_id] = dict()
+            self._y[subject_id] = dict()
             tracking_info = dict()
 
             for stay_id in X_subject:
@@ -298,42 +274,44 @@ class MIMICDiscretizer(AbstractProcessor):
                     X_df = self._categorize_data(X_df)
                     X_df = self._bin_data(X_df)
                     X_df = self._impute_data(X_df)
-                self._X_discretized[subject_id][stay_id] = X_df
-                self._y_discretized[subject_id][stay_id] = y_dict[subject_id][stay_id]
+                self._X[subject_id][stay_id] = X_df
+                self._y[subject_id][stay_id] = y_dict[subject_id][stay_id]
 
                 tracking_info[stay_id] = len(y_dict[subject_id][stay_id])
 
                 if self._verbose:
                     info_io(
                         f"Discretizing processed data:\n"
-                        f"Discretized subjects: {n_subjects}\n"
-                        f"Discretized stays: {n_stays}\n"
-                        f"Discretized samples: {n_samples}"
-                        f"Skipped subjects: {n_skip}",
+                        f"Discretized subjects: {self._n_subjects}\n"
+                        f"Discretized stays: {self._n_stays}\n"
+                        f"Discretized samples: {self._n_samples}"
+                        f"Skipped subjects: {self._n_skip}",
                         flush_block=True)
 
-            n_subjects += 1
+            self._n_subjects += 1
             if self._tracker is not None:
                 with self._lock:
                     self._tracker.subjects.update({subject_id: tracking_info})
 
-            if not len(self._y_discretized[subject_id]) or not len(self._X_discretized[subject_id]):
-                del self._y_discretized[subject_id]
-                del self._X_discretized[subject_id]
-                n_skip += 1
+            if not len(self._y[subject_id]) or not len(self._X[subject_id]):
+                del self._y[subject_id]
+                del self._X[subject_id]
+                self._n_skip += 1
             else:
-                n_subjects += 1
+                self._n_subjects += 1
 
         if self._verbose:
             info_io(
                 f"Discretizing processed data:\n"
-                f"Discretized subjects: {n_subjects}\n"
-                f"Discretized stays: {n_stays}\n"
-                f"Discretized samples: {n_samples}"
-                f"Skipped subjects: {n_skip}",
+                f"Discretized subjects: {self._n_subjects}\n"
+                f"Discretized stays: {self._n_stays}\n"
+                f"Discretized samples: {self._n_samples}"
+                f"Skipped subjects: {self._n_skip}",
                 flush_block=True)
 
-        return self._X_discretized
+        self._y = y_dict
+
+        return self._X, self._y
 
     def _bin_data(self, X):
         """

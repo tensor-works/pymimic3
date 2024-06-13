@@ -97,6 +97,7 @@ class MIMICFeatureEngine(AbstractProcessor):
                  verbose=False) -> None:
 
         self._operation_name = "feature engieneering"  # For printing
+        self._operation_adjective = "engineered"
         self._storage_path = storage_path
         self._writer = (DataSetWriter(storage_path) if storage_path is not None else None)
         self._source_reader = reader
@@ -125,6 +126,12 @@ class MIMICFeatureEngine(AbstractProcessor):
             self._sampler_combinations = config_dict["sampler_combinations"]
             self._impute_config = config_dict["channels"]
             self._channel_names = config_dict["channel_names"]
+
+        # Tracking variables
+        self._init_tracking_variables()
+
+        self._X = dict()
+        self._y = dict()
 
     @property
     def subjects(self) -> list:
@@ -163,7 +170,7 @@ class MIMICFeatureEngine(AbstractProcessor):
         if X is None or y is None:
             return None, None
 
-        X_engineered, y_engineered, _ = self.transform(X, y)
+        X_engineered, y_engineered = self._transform((X, y))
         if X_engineered is None or y_engineered is None:
             return None, None
         if self._tracker is None:
@@ -173,8 +180,9 @@ class MIMICFeatureEngine(AbstractProcessor):
             tracking_info = self._tracker.subjects[subject_id]
         return (X_engineered, y_engineered), tracking_info
 
-    def transform(self, X_dict: Dict[int, Dict[int, pd.DataFrame]],
-                  y_dict: Dict[int, Dict[int, pd.DataFrame]]):
+    def _transform(self,
+                   dataset: Tuple[Dict[int, Dict[int, pd.DataFrame]]],
+                   return_timestamp=False):
         """
         Save the engineered data to the storage path.
 
@@ -185,28 +193,27 @@ class MIMICFeatureEngine(AbstractProcessor):
         subject_ids : list, optional
             A list of subject IDs to save data for. If None, all data is saved. Default is None.
         """
-        n_subjects = 0
-        n_stays = 0
-        n_samples = 0
+        X_dict, y_dict = dataset
 
         if self._verbose:
             info_io(f"Engineering processed data:\n"
-                    f"Engineered subjects: {0}\n"
-                    f"Engineered stays: {0}\n"
-                    f"Engineered samples: {0}")
+                    f"Engineered subjects: {self._n_subjects}\n"
+                    f"Engineered stays: {self._n_stays}\n"
+                    f"Engineered samples: {self._n_samples}\n"
+                    f"Skipped subjects: {self._n_skip}")
 
         self._samples_processed = 0
 
-        self._X_processed = dict()
-        self._y_processed = dict()
-        self._t_processed = dict()
+        self._X = dict()
+        self._y = dict()
+        self._t = dict()
 
         for subject_id in X_dict.keys():
             X_subject = X_dict[subject_id]
             y_subject = y_dict[subject_id]
-            self._X_processed[subject_id] = dict()
-            self._y_processed[subject_id] = dict()
-            self._t_processed[subject_id] = dict()
+            self._X[subject_id] = dict()
+            self._y[subject_id] = dict()
+            self._t[subject_id] = dict()
             tracking_info = dict()
 
             for stay_id in X_subject:
@@ -215,22 +222,23 @@ class MIMICFeatureEngine(AbstractProcessor):
 
                 X_ss, ys, ts = self._engineer_stay(X_df, y_df)
                 X_ss, ys, ts = self._convert_feature_dtype(X_ss, ys, ts)
-                self._X_processed[subject_id][stay_id] = X_ss
-                self._y_processed[subject_id][stay_id] = np.atleast_2d(ys)
-                self._t_processed[subject_id][stay_id] = ts
+                self._X[subject_id][stay_id] = X_ss
+                self._y[subject_id][stay_id] = np.atleast_2d(ys)
+                self._t[subject_id][stay_id] = ts
                 tracking_info[stay_id] = len(ys)
-                n_samples += len(ys)
-                n_stays += 1
+                self._n_samples += len(ys)
+                self._n_stays += 1
 
                 if self._verbose:
                     info_io(
                         f"Engineering processed data:\n"
-                        f"Engineered subjects: {n_subjects}\n"
-                        f"Engineered stays: {n_stays}\n"
-                        f"Engineered samples: {n_samples}",
+                        f"Engineered subjects: {self._n_subjects}\n"
+                        f"Engineered stays: {self._n_stays}\n"
+                        f"Engineered samples: {self._n_samples}\n"
+                        f"Skipped subjects: {self._n_skip}",
                         flush_block=True)
 
-            n_subjects += 1
+            self._n_subjects += 1
             if self._tracker is not None:
                 with self._lock:
                     self._tracker.subjects.update({subject_id: tracking_info})
@@ -238,12 +246,14 @@ class MIMICFeatureEngine(AbstractProcessor):
         if self._verbose:
             info_io(
                 f"Engineering processed data:\n"
-                f"Engineered subjects: {n_subjects}\n"
-                f"Engineered stays: {n_stays}\n"
-                f"Engineered samples: {n_samples}",
+                f"Engineered subjects: {self._n_subjects}\n"
+                f"Engineered stays: {self._n_stays}\n"
+                f"Engineered samples: {self._n_samples}\n"
+                f"Skipped subjects: {self._n_skip}",
                 flush_block=True)
-
-        return self._X_processed, self._y_processed, self._t_processed
+        if return_timestamp:
+            return self._X, self._y, self._t
+        return self._X, self._y
 
     def _engineer_stay(self, X_df: pd.DataFrame, y_df: pd.DataFrame):
         """
@@ -306,16 +316,12 @@ class MIMICFeatureEngine(AbstractProcessor):
         engineered data will be saved. The data is saved in HDF5 format and optionally concatenated into CSV format for PHENO and IHM.
         """
         if subject_ids is None:
-            name_data_pairs = {
-                "X": self._X_processed,
-                "y": self._y_processed,
-                "t": self._t_processed
-            }
+            name_data_pairs = {"X": self._X, "y": self._y, "t": self._t}
         else:
             name_data_pairs = {
-                "X": dict_subset(self._X_processed, subject_ids),
-                "y": dict_subset(self._y_processed, subject_ids),
-                "t": dict_subset(self._t_processed, subject_ids)
+                "X": dict_subset(self._X, subject_ids),
+                "y": dict_subset(self._y, subject_ids),
+                "t": dict_subset(self._t, subject_ids)
             }
         with self._lock:
             self._writer.write_bysubject(name_data_pairs, file_type="hdf5")
@@ -357,7 +363,7 @@ class MIMICFeatureEngine(AbstractProcessor):
 
         if self._save_as_samples:
             with self._lock:
-                append_data(self._X_processed, self._y_processed)
+                append_data(self._X, self._y)
 
         return
 

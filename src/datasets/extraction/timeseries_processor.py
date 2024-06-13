@@ -213,4 +213,6 @@ class TimeseriesProcessor(object):
 
             self._tracker.has_episodic_data = True
             self._tracker.has_timeseries = True
+            pool.close()
+            pool.join()
         return

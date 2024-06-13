@@ -51,15 +51,19 @@ Usage Example
     # Save the transformed data
     preprocessor.save_data()
 """
+import random
 import numpy as np
 import dateutil
 import pandas as pd
+from typing import Dict
+from copy import deepcopy
 from pathlib import Path
 from multiprocess import Manager
 from datasets.writers import DataSetWriter
 from datasets.readers import ExtractedSetReader, ProcessedSetReader
 from datasets.trackers import PreprocessingTracker
 from datasets.processors import AbstractProcessor
+from datasets.mimic_utils import copy_subject_info
 from utils import dict_subset
 from utils.IO import *
 from settings import *
@@ -98,6 +102,8 @@ class MIMICPreprocessor(AbstractProcessor):
                  verbose: bool = False):
 
         self._operation_name = "preprocessing"  # For printing
+        self._operation_adjective = "preprocessed"
+        self._save_file_type = "csv"
         if label_type not in ["sparse", "one-hot"]:
             raise ValueError(f"Type must be one of {*['sparse', 'one-hot'],}")
 
@@ -122,6 +128,12 @@ class MIMICPreprocessor(AbstractProcessor):
         self._phenotypes_yaml = phenotypes_yaml
         self._verbose = verbose
 
+        # Tracking variables
+        self._init_tracking_variables()
+
+        self._X = dict()
+        self._y = dict()
+
     @property
     def subjects(self) -> list:
         """
@@ -135,6 +147,123 @@ class MIMICPreprocessor(AbstractProcessor):
         if self._source_reader is None:
             return []
         return self._source_reader.subject_ids
+
+    def transform_dataset(self,
+                          dataset: dict,
+                          subject_ids: list = None,
+                          num_subjects: int = None,
+                          source_path: Path = None,
+                          storage_path: Path = None) -> Dict[str, Dict[str, pd.DataFrame]]:
+        """
+        Transforms and processes the dataset.
+
+        This method processes the entire dataset, transforming the data for each subject, and then 
+        saving the processed data to the specified location. It handles subject selection and ensures 
+        the processed data is correctly stored.
+
+        Parameters
+        ----------
+        dataset : dict
+            The dataset to process.
+        subject_ids : list, optional
+            List of subject IDs to process. Defaults to None.
+        num_subjects : int, optional
+            Number of subjects to process. Defaults to None.
+        source_path : Path, optional
+            Source path of the data. Defaults to None.
+
+        Returns
+        -------
+        Dict[str, Dict[str, pd.DataFrame]]
+            Processed data with keys 'X' for features and 'y' for labels.
+        """
+        # TODO! This also needs to work with no storage path provided
+        self._init_tracking_variables()
+        orig_subject_ids = deepcopy(subject_ids)
+        if storage_path is not None:
+            self._storage_path = storage_path
+            self._tracker = PreprocessingTracker(Path(storage_path, "progress"))
+        elif self._storage_path is not None and (num_subjects is not None or
+                                                 subject_ids is not None):
+            # Reinit to see if reprocessing is necessary,
+            self._tracker.set_subject_ids(subject_ids)
+            self._tracker.set_num_subjects(num_subjects)
+        copy_subject_info(source_path, self._storage_path)
+
+        if self._tracker.is_finished:
+            info_io(
+                f"Compact {self._operation_name} already finalized in directory:\n{str(self._storage_path)}"
+            )
+            if num_subjects is not None:
+                subject_ids = random.sample(self._tracker.subject_ids, k=num_subjects)
+            return ProcessedSetReader(root_path=self._storage_path,
+                                      subject_ids=subject_ids).read_samples(read_ids=True)
+
+        info_io(f"Compact {self._operation_name}: {self._task}", level=0)
+
+        subject_ids, exclud_subj, unknown_subj = self._get_subject_ids(
+            num_subjects=num_subjects,
+            subject_ids=subject_ids,
+            processed_subjects=self._tracker.subject_ids,
+            all_subjects=dataset.keys())
+        assert all([len(subject) for subject in dataset.values()])
+
+        if not subject_ids:
+            self._tracker.is_finished = True
+            info_io(f"Finalized for task {self._task} in directory:\n{str(self._storage_path)}")
+            if num_subjects and not self._n_subjects == num_subjects:
+                warn_io(
+                    f"The subject target was not reached, missing {self._n_subjects - num_subjects} subjects."
+                )
+            if orig_subject_ids is not None:
+                orig_subject_ids = list(set(orig_subject_ids) & set(self._tracker.subject_ids))
+            return ProcessedSetReader(self._storage_path,
+                                      subject_ids=orig_subject_ids).read_samples(read_ids=True)
+
+        self._n_skip = len(unknown_subj)
+
+        if num_subjects is not None:
+            X_subjects = dict()
+            y_subjects = dict()
+            while not len(X_subjects) == num_subjects:
+                curr_dataset = dict_subset(dataset, subject_ids)
+                X, y = self._transform(dataset=curr_dataset)
+                X_subjects.update(X)
+                y_subjects.update(y)
+                it_missing_subjects = set(X.keys()) - set(subject_ids)
+                subject_ids, exclud_subj, _ = self._get_subject_ids(
+                    num_subjects=num_subjects - len(self._tracker.subject_ids),  # len(X_subjects),
+                    subject_ids=None,
+                    processed_subjects=self._tracker.subject_ids,
+                    all_subjects=exclud_subj)
+                if it_missing_subjects:
+                    self._n_skip += len(it_missing_subjects)
+                    debug_io(f"Missing subjects are: {*it_missing_subjects,}")
+                if not subject_ids:
+                    break
+                if len(X_subjects) == num_subjects:
+                    debug_io(
+                        f"Missing { len(self._tracker.subject_ids) - num_subjects} subjects."  #len(X_subjects) - num_subjects} subjects."
+                    )
+                    debug_io(f"Unprocessable subjects are: {*it_missing_subjects,}")
+
+        else:
+            assert all([len(subject) for subject in dataset.values()])
+            dataset = dict_subset(dataset, subject_ids)
+            assert all([len(subject) for subject in dataset.values()])
+            (X_subjects, y_subjects) = self._transform(dataset=dataset)
+        if self._storage_path is not None:
+            self.save_data()
+            info_io(
+                f"Finalized {self._operation_name} for {self._task} in directory:\n{str(self._storage_path)}"
+            )
+        else:
+            info_io(f"Finalized {self._operation_name} for {self._task}.")
+        self._tracker.is_finished = True
+        if orig_subject_ids is not None:
+            orig_subject_ids = list(set(orig_subject_ids) & set(self._tracker.subject_ids))
+        return ProcessedSetReader(root_path=self._storage_path,
+                                  subject_ids=orig_subject_ids).read_samples(read_ids=True)
 
     def transform_subject(self, subject_id: int) -> None:
         """
@@ -154,7 +283,7 @@ class MIMICPreprocessor(AbstractProcessor):
         if not subject_data:
             return None, None
         del subject_data["subject_events"]
-        X, y = self.transform({subject_id: subject_data})
+        X, y = self._transform({subject_id: subject_data})
         if not X or not y:
             return None, None
         if self._tracker is None:
@@ -163,22 +292,13 @@ class MIMICPreprocessor(AbstractProcessor):
             tracking_info = self._tracker.subjects[subject_id]
         return (X, y), tracking_info
 
-    def transform(self, dataset: dict):
+    def _transform(self, dataset: dict):
         """
         Transforms the extracted dataset.
 
         This processes the provided extracted dataset according to the specified task, and returns the 
         processed tasks and labels along with tracking information if available.
         """
-        self._X = dict()
-        self._y = dict()
-
-        # Tracking variables
-        n_subjects = 0
-        n_stays = 0
-        n_skip = 0
-        n_samples = 0
-
         start_verbose = True
 
         if self._task in ["LOS"] and self._label_type == "one-hot":
@@ -208,11 +328,13 @@ class MIMICPreprocessor(AbstractProcessor):
                 continue
             elif start_verbose:
                 if self._verbose:
-                    info_io(f"Processing timeseries data:\n"
-                            f"Processed subjects: {0}\n"
-                            f"Processed stays: {0}\n"
-                            f"Processed samples: {0}\n"
-                            f"Skipped subjects: {0}")
+                    info_io(
+                        f"Processing timeseries data:\n"
+                        f"Processed subjects: {self._n_subjects}\n"
+                        f"Processed stays: {self._n_stays}\n"
+                        f"Processed samples: {self._n_samples}\n"
+                        f"Skipped subjects: {self._n_skip}",
+                        flush_block=True)
                     start_verbose = False
 
             for icustay in subject_timeseries:
@@ -256,15 +378,15 @@ class MIMICPreprocessor(AbstractProcessor):
                     continue
                 else:
                     tracking_info[icustay] = len(self._y[subject][icustay])
-                    n_stays += 1
-                    n_samples += len(self._y[subject][icustay])
+                    self._n_stays += 1
+                    self._n_samples += len(self._y[subject][icustay])
                     if self._verbose:
                         info_io(
                             f"Processing timeseries data:\n"
-                            f"Processed subjects: {n_subjects}\n"
-                            f"Processed stays: {n_stays}\n"
-                            f"Processed samples: {n_samples}\n"
-                            f"Skipped subjects: {n_skip}",
+                            f"Processed subjects: {self._n_subjects}\n"
+                            f"Processed stays: {self._n_stays}\n"
+                            f"Processed samples: {self._n_samples}\n"
+                            f"Skipped subjects: {self._n_skip}",
                             flush_block=True)
 
             if skip_subject:
@@ -277,38 +399,20 @@ class MIMICPreprocessor(AbstractProcessor):
             if not len(self._y[subject]) or not len(self._X[subject]):
                 del self._y[subject]
                 del self._X[subject]
-                n_skip += 1
+                self._n_skip += 1
             else:
-                n_subjects += 1
+                self._n_subjects += 1
+                # print(subject, self._n_subjects)
         if self._verbose:
             info_io(
                 f"Processing timeseries data:\n"
-                f"Processed subjects: {n_subjects}\n"
-                f"Processed stays: {n_stays}\n"
-                f"Processed samples: {n_samples}\n"
-                f"Skipped subjects: {n_skip}",
+                f"Processed subjects: {self._n_subjects}\n"
+                f"Processed stays: {self._n_stays}\n"
+                f"Processed samples: {self._n_samples}\n"
+                f"Skipped subjects: {self._n_skip}",
                 flush_block=True)
 
         return self._X, self._y
-
-    def save_data(self, subjects: list = None) -> None:
-        """
-        Saves the preprocessed data to the specified storage path.
-
-        If no subject IDs are provided, all preprocessed data will be saved. The data is saved using the DataSetWriter.
-        """
-        if self._writer is None:
-            info_io("No storage path provided. Data will not be saved.")
-            return
-        with self._lock:
-            if subjects is None:
-                self._writer.write_bysubject({"X": self._X})
-                self._writer.write_bysubject({"y": self._y})
-            else:
-                self._writer.write_bysubject({"X": dict_subset(self._X, subjects)})
-                self._writer.write_bysubject({"y": dict_subset(self._y, subjects)})
-
-        return
 
     def make_inhospital_mortality_data(self, timeseries_df: pd.DataFrame,
                                        episodic_data_df: pd.DataFrame, mortality: int):

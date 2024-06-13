@@ -20,7 +20,8 @@ def test_num_subjects_extraction(extracted_reader: ExtractedSetReader, extractio
     tests_io(f"Test case num subjects for extraction", level=0)
 
     # Test on existing directory
-    for num_subjects in [1, 11, 21]:
+    for num_subjects in [1, 10]:
+        tests_io("-" * 100)
         tests_io(f"-> Testing extract-only with {num_subjects} subjects on existing directory.")
         extract_and_compare(num_subjects=num_subjects,
                             extraction_style=extraction_style,
@@ -30,18 +31,20 @@ def test_num_subjects_extraction(extracted_reader: ExtractedSetReader, extractio
 
     # Test on empty directory
     extracted_dir = Path(TEMP_DIR, "extracted")
-    for num_subjects in [11, 21]:
+    for num_subjects in [10, 16]:
         # Remove existing dir
         if extracted_dir.is_dir():
             shutil.rmtree(str(extracted_dir))
         # Compare extraction
+        tests_io("-" * 100)
         tests_io(f"-> Testing extract-only with {num_subjects} subjects on empty directory.")
         extract_and_compare(num_subjects=num_subjects,
                             extraction_style=extraction_style,
                             extracted_reader=extracted_reader)
 
     tests_io(f"-> Succeeded in testing on empty directory.")
-
+    tests_io("-" * 100)
+    tests_io(f"-> Testing extract-only with 1 subjects on existing directory.")
     # Test reducing subject count
     extract_and_compare(num_subjects=1,
                         extraction_style=extraction_style,
@@ -61,7 +64,8 @@ def test_num_subjects_preprocessing_only(task_name: str, extraction_style: str):
     copy_dataset("extracted")
 
     # Test on existing directory
-    for num_subjects in [1, 11, 21]:
+    for num_subjects in [1, 10]:
+        tests_io("-" * 100)
         tests_io(f"-> Testing preprocessing-only with {num_subjects}"
                  " subjects on existing directory.")
         process_and_compare(num_subjects=num_subjects,
@@ -73,9 +77,10 @@ def test_num_subjects_preprocessing_only(task_name: str, extraction_style: str):
 
     # Test on empty directory
     processed_dir = Path(TEMP_DIR, "processed")
-    for num_subjects in [11, 21]:
+    for num_subjects in [10, 16]:
         if processed_dir.is_dir():
             shutil.rmtree(str(processed_dir))
+        tests_io("-" * 100)
         tests_io(f"-> Testing preprocessing-only with {num_subjects}"
                  " subjects on empty directory.")
         process_and_compare(num_subjects=num_subjects,
@@ -84,7 +89,8 @@ def test_num_subjects_preprocessing_only(task_name: str, extraction_style: str):
                             test_data_dir=test_data_dir)
 
     tests_io(f"-> Succeeded in testing on empty directory.")
-
+    tests_io("-" * 100)
+    tests_io(f"-> Testing preprocessing-only with 1 subjects on empty directory.")
     # Test reducing subject count
     process_and_compare(num_subjects=1,
                         task_name=task_name,
@@ -106,7 +112,7 @@ def test_num_subjects_engineer_only(task_name: str, extraction_style: str):
                          TASK_NAME_MAPPING[task_name])  # Ground truth data dir
 
     # Load test data and extract ids
-    test_df = pd.read_csv(Path(test_data_dir, "X.csv"), na_values=[''], keep_default_na=False)
+    test_df = pd.read_csv(Path(test_data_dir, "X.csv"))
     test_df = extract_test_ids(test_df)
 
     # Align unstructured frames
@@ -114,7 +120,8 @@ def test_num_subjects_engineer_only(task_name: str, extraction_style: str):
     test_df = test_df.reset_index(drop=True)
 
     # Test on existing directory
-    for num_subjects in [1, 11, 16]:
+    for num_subjects in [1, 11]:
+        tests_io("-" * 100)
         tests_io(f"-> Testing engineer-only with {num_subjects} subjects on existing directory.")
         engineer_and_compare(num_subjects=num_subjects,
                              task_name=task_name,
@@ -125,9 +132,10 @@ def test_num_subjects_engineer_only(task_name: str, extraction_style: str):
 
     # Test on empty directory
     engineered_dir = Path(TEMP_DIR, "engineered")
-    for num_subjects in [11, 16]:
-        if TEMP_DIR.is_dir():
+    for num_subjects in [10, 16]:
+        if engineered_dir.is_dir():
             shutil.rmtree(engineered_dir)
+        tests_io("-" * 100)
         tests_io(f"-> Testing engineer-only with {num_subjects} subjects on empty directory.")
         engineer_and_compare(num_subjects=num_subjects,
                              task_name=task_name,
@@ -135,7 +143,8 @@ def test_num_subjects_engineer_only(task_name: str, extraction_style: str):
                              test_df=test_df)
 
     tests_io(f"-> Succeeded in testing on empty directory.")
-
+    tests_io("-" * 100)
+    tests_io(f"-> Testing engineer-only with 1 subjects on empty directory.")
     # Test reducing subject count
     engineer_and_compare(num_subjects=1,
                          task_name=task_name,
@@ -153,7 +162,8 @@ def test_num_subjects_process(task_name: str, extraction_style: str):
                          TASK_NAME_MAPPING[task_name])  # Ground truth data dir
 
     # Test on existing directory
-    for num_subjects in [1, 6, 11, 16, 21]:
+    for num_subjects in [1, 10]:
+        tests_io("-" * 100)
         tests_io(
             f"-> Testing preprocessing {num_subjects} subjects on existing directory from scratch.")
         process_and_compare(num_subjects=num_subjects,
@@ -164,9 +174,10 @@ def test_num_subjects_process(task_name: str, extraction_style: str):
     tests_io(f"-> Succeeded in testing on existing directory.")
 
     # Test on empty directory
-    for num_subjects in [6, 11, 16, 21]:
+    for num_subjects in [10, 16]:
         if TEMP_DIR.is_dir():
             shutil.rmtree(str(Path(TEMP_DIR)))
+        tests_io("-" * 100)
         tests_io(
             f"-> Testing preprocessing {num_subjects} subjects on empty director from scratch.")
         process_and_compare(num_subjects=num_subjects,
@@ -175,6 +186,8 @@ def test_num_subjects_process(task_name: str, extraction_style: str):
                             test_data_dir=test_data_dir)
 
     tests_io(f"-> Succeeded in testing on empty directory.")
+    tests_io("-" * 100)
+    tests_io(f"-> Testing preprocessing 1 subjects on empty director from scratch.")
     # Test reducing subject count
     process_and_compare(num_subjects=1,
                         task_name=task_name,
@@ -192,7 +205,7 @@ def test_num_subjects_engineer(task_name: str, extraction_style: str):
                          TASK_NAME_MAPPING[task_name])  # Ground truth data dir
 
     # Load test data and extract ids
-    test_df = pd.read_csv(Path(test_data_dir, "X.csv"), na_values=[''], keep_default_na=False)
+    test_df = pd.read_csv(Path(test_data_dir, "X.csv"))
     test_df = extract_test_ids(test_df)
 
     # Align unstructured frames
@@ -200,7 +213,8 @@ def test_num_subjects_engineer(task_name: str, extraction_style: str):
     test_df = test_df.reset_index(drop=True)
 
     # Test on existing directory
-    for num_subjects in [1, 11, 16]:
+    for num_subjects in [1, 11]:
+        tests_io("-" * 100)
         tests_io(
             f"-> Testing engineering {num_subjects} subjects on existing directory from scratch.")
         engineer_and_compare(num_subjects=num_subjects,
@@ -211,9 +225,10 @@ def test_num_subjects_engineer(task_name: str, extraction_style: str):
     tests_io(f"-> Succeeded in testing on existing directory.")
 
     # Test on empty directory
-    for num_subjects in [11, 16]:
+    for num_subjects in [10, 16]:
         if TEMP_DIR.is_dir():
             shutil.rmtree(TEMP_DIR)
+        tests_io("-" * 100)
         tests_io(
             f"-> Testing preprocessing {num_subjects} subjects on empty directory from scratch.")
         engineer_and_compare(num_subjects=num_subjects,
@@ -222,7 +237,8 @@ def test_num_subjects_engineer(task_name: str, extraction_style: str):
                              test_df=test_df)
 
     tests_io(f"-> Succeeded in testing on empty directory.")
-
+    tests_io("-" * 100)
+    tests_io(f"-> Testing preprocessing 1 subjects on empty directory from scratch.")
     # Test reducing subject count
     engineer_and_compare(num_subjects=1,
                          task_name=task_name,

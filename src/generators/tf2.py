@@ -11,14 +11,19 @@ class TFGenerator(AbstractGenerator, Sequence):
                  reader: ProcessedSetReader,
                  scaler: AbstractScaler = None,
                  batch_size: int = 8,
+                 num_cpu: int = None,
                  shuffle: bool = True,
                  bining: str = "none"):
-        super(TFGenerator, self).__init__(reader=reader,
-                                          scaler=scaler,
-                                          batch_size=batch_size,
-                                          shuffle=shuffle,
-                                          bining=bining)
+        AbstractGenerator.__init__(self,
+                                   reader=reader,
+                                   scaler=scaler,
+                                   num_cpus=num_cpu,
+                                   batch_size=batch_size,
+                                   shuffle=shuffle,
+                                   bining=bining)
 
     def __getitem__(self, index=None):
         X, y = super().__getitem__(index)
-        return X, y.reshape(-1, 1)
+        if len(y.shape) == 1:
+            y = y.reshape(-1, 1)
+        return X, y

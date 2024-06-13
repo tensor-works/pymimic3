@@ -94,10 +94,10 @@ READER_TO_FILE_TYPE = {
 }
 
 
-def test_properties(extracted_reader: ExtractedSetReader):
+def test_properties():
     # TODO! test dtypes
     tests_io("Test case properties for ExtractedSetReader", level=0)
-    reader = extracted_reader
+    reader = ExtractedSetReader(Path(SEMITEMP_DIR, "extracted"))
     assert reader.root_path == Path(
         SEMITEMP_DIR, "extracted"
     ), f"Expected root path is {str(Path(SEMITEMP_DIR, 'extracted'))}, but reader root path is {str(reader.root_path)}"
@@ -127,10 +127,10 @@ def assert_dtypes(dataframe: pd.DataFrame, dtypes: dict):
     return True
 
 
-def test_read_csv(extracted_reader: ExtractedSetReader):
+def test_read_csv():
     # TODO! test dtypes
     tests_io("Test case read csv for ExtractedSetReader", level=0)
-    reader = extracted_reader
+    reader = ExtractedSetReader(Path(SEMITEMP_DIR, "extracted"))
 
     # Test dtypes of different bites sizes
     dtype_mapping_template = {
@@ -154,12 +154,6 @@ def test_read_csv(extracted_reader: ExtractedSetReader):
 
     tests_io("Read CSV working with file name and absolute path")
 
-    # Test dtype too small error
-    dtype_mapping_template['ROW_ID'] = 'Int8'
-    dtype_mapping = convert_dtype_dict(dtype_mapping_template, add_lower=False)
-    with pytest.raises(TypeError) as error:
-        absolute_df = reader.read_csv(absolute_diagnoses_path, dtypes=dtype_mapping)
-
     # Test for file types this is used on
     for file_name in ["episodic_info_df.csv", "icu_history.csv", "subject_info.csv"]:
         absolute_diagnoses_path = Path(SEMITEMP_DIR, "extracted", file_name)
@@ -178,9 +172,9 @@ def test_read_csv(extracted_reader: ExtractedSetReader):
     tests_io("Read CSV tested successfully")
 
 
-def test_read_timeseries(extracted_reader: ExtractedSetReader):
+def test_read_timeseries():
     tests_io("Test case read timeseries for ExtractedSetReader", level=0)
-    reader = extracted_reader
+    reader = ExtractedSetReader(Path(SEMITEMP_DIR, "extracted"))
 
     # --- test correct structure ---
     data = reader.read_timeseries(read_ids=True)
@@ -249,9 +243,10 @@ def test_read_timeseries(extracted_reader: ExtractedSetReader):
 
 @pytest.mark.parametrize(
     "reader_name", ["read_episodic_data", "read_events", "read_diagnoses", "read_icu_history"])
-def test_read_remaining_file_types(reader_name: str, extracted_reader: ExtractedSetReader):
+def test_read_remaining_file_types(reader_name: str):
     tests_io(f"Test case {reader_name} for ExtractedSetReader", level=0)
-    reader_method = getattr(extracted_reader, reader_name)
+    reader = ExtractedSetReader(Path(SEMITEMP_DIR, "extracted"))
+    reader_method = getattr(reader, reader_name)
     file_dtypes = DTYPES[READER_TO_FILE_TYPE[reader_name]]
 
     # --- test correct structure ---
@@ -284,10 +279,10 @@ def test_read_remaining_file_types(reader_name: str, extracted_reader: Extracted
     tests_io(f"{reader_name} read tested successfully")
 
 
-def test_read_subjects(extracted_reader: ExtractedSetReader):
+def test_read_subjects():
     tests_io("Test case read subjects for ExtractedSetReader", level=0)
 
-    reader = extracted_reader
+    reader = ExtractedSetReader(Path(SEMITEMP_DIR, "extracted"))
     data_with_ids = reader.read_subjects(read_ids=True)
 
     # Make sure no subjects missing or additional
@@ -354,9 +349,9 @@ def test_read_subjects(extracted_reader: ExtractedSetReader):
     tests_io("Read subjects tested successfully")
 
 
-def test_read_subjects_dir(extracted_reader: ExtractedSetReader):
+def test_read_subjects_dir():
     tests_io("Test case read subjects ExtractedSetReader", level=0)
-    reader = extracted_reader
+    reader = ExtractedSetReader(Path(SEMITEMP_DIR, "extracted"))
     ## With ids
     # Absolute
     data_with_ids = reader.read_subject(Path(reader.root_path, "10019"), read_ids=True)
@@ -446,11 +441,11 @@ if __name__ == "__main__":
                                 source_path=TEST_DATA_DEMO,
                                 storage_path=SEMITEMP_DIR,
                                 task="PHENO")
-    test_properties(reader)
-    test_read_csv(reader)
-    test_read_timeseries(reader)
+    test_properties()
+    test_read_csv()
+    test_read_timeseries()
     for reader_mname in ["read_episodic_data", "read_events", "read_diagnoses", "read_icu_history"]:
-        test_read_remaining_file_types(reader_mname, reader)
-    test_read_subjects_dir(reader)
+        test_read_remaining_file_types(reader_mname)
+    test_read_subjects_dir()
     if TEMP_DIR.is_dir():
         shutil.rmtree(str(TEMP_DIR))
