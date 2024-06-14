@@ -383,7 +383,7 @@ class LSTMNetwork(nn.Module):
 
 
 if __name__ == "__main__":
-    from tests.settings import *
+    from tests.tsettings import *
     import datasets
     from preprocessing.scalers import MinMaxScaler
     from generators.pytorch import TorchGenerator

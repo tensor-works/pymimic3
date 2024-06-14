@@ -1,5 +1,5 @@
 from models.pytorch.lstm import LSTMNetwork
-from tests.settings import *
+from tests.tsettings import *
 from pipelines.pytorch import TorchPipeline
 from pathlib import Path
 from datasets.readers import SplitSetReader

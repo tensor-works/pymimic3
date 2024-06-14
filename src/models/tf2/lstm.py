@@ -91,7 +91,7 @@ class LSTMNetwork(Model):
 if __name__ == "__main__":
     import datasets
     from pathlib import Path
-    from tests.settings import *
+    from tests.tsettings import *
     from preprocessing.scalers import MinMaxScaler
     from generators.tf2 import TFGenerator
     reader = datasets.load_data(chunksize=75836,

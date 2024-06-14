@@ -48,11 +48,11 @@ class AbstractGenerator:
         self._remainder_X = np.array([])
         self._remainder_y = np.array([])
 
-        if not ray.is_initialized():
-            ray.init(ignore_reinit_error=True, num_cpus=self._cpu_count)
-            log_dir = os.path.join(ray._private.utils.get_user_temp_dir(),
-                                   "ray/session_latest/logs")
-            print(f"Ray logs can be found in: {log_dir}")
+        # if not ray.is_initialized():
+        #     ray.init(ignore_reinit_error=True, num_cpus=self._cpu_count)
+        #     log_dir = os.path.join(ray._private.utils.get_user_temp_dir(),
+        #                            "ray/session_latest/logs")
+        #     print(f"Ray logs can be found in: {log_dir}")
 
     def __getitem__(self, index=None):
         if not self._workers:
@@ -103,6 +103,9 @@ class AbstractGenerator:
         self._close()
 
     def _create_workers(self):
+        worker = RayWorker(self._reader, self._scaler, self._row_only, self._bining, self._columns)
+        gen = worker.process_subject((self._subject_ids, self._batch_size))
+        next(gen)
         self._workers = [
             RayWorker.remote(self._reader, self._scaler, self._row_only, self._bining,
                              self._columns) for _ in range(self._cpu_count)
@@ -140,7 +143,11 @@ class AbstractGenerator:
         return chunks
 
     @staticmethod
-    def read_timeseries(X_df: pd.DataFrame, y_df: pd.DataFrame, row_only=False, bining="none"):
+    def read_timeseries(X_df: pd.DataFrame,
+                        y_df: pd.DataFrame,
+                        row_only=False,
+                        bining="none",
+                        masks=False):
         if bining == "log":
             y = y_df.applymap(LogBins.get_bin_log)
         elif bining == "custom":
@@ -195,7 +202,7 @@ class AbstractGenerator:
         return np.concatenate(data, axis=0, dtype=np.float32)
 
 
-@ray.remote
+# @ray.remote
 class RayWorker:
 
     def __init__(self, reader, scaler, row_only, bining, columns):
@@ -212,38 +219,39 @@ class RayWorker:
 
         # Set logging level to CRITICAL to suppress logging
         logging.getLogger().setLevel(logging.CRITICAL)
-        try:
-            X_batch, y_batch, t_batch = list(), list(), list()
-            for subject_id in subject_ids:
-                X_subject, y_subject = self.reader.read_sample(subject_id).values()
-                for X_stay, y_stay in zip(X_subject, y_subject):
-                    X_stay[X_stay.columns] = self.scaler.transform(X_stay)
-                    Xs, ys, ts = AbstractGenerator.read_timeseries(X_df=X_stay,
-                                                                   y_df=y_stay,
-                                                                   row_only=self.row_only,
-                                                                   bining=self.bining)
-                    Xs, ys, ts = AbstractGenerator._shuffled_data(Xs, ys, ts)
-                    for X, y, t in zip(Xs, ys, ts):
-                        X_batch.append(X)
-                        y_batch.append(y)
-                        t_batch.append(t)
-                        if len(X_batch) == batch_size:
-                            X = AbstractGenerator._zeropad_samples(X_batch)
-                            y = np.array(y_batch, dtype=np.float32)
-                            t = np.array(t_batch, dtype=np.float32)
-                            X_batch.clear()
-                            y_batch.clear()
-                            t_batch.clear()
-                            yield X, y, t
-            if X_batch:
-                X = AbstractGenerator._zeropad_samples(X_batch)
-                y = np.array(y_batch, dtype=np.float32)
-                t = np.array(t_batch, dtype=np.float32)
-                X_batch.clear()
-                y_batch.clear()
-                t_batch.clear()
-                yield X, y, t
-        finally:
-            # Restore the previous logging level
-            logging.getLogger().setLevel(previous_logging_level)
+        #try:
+        X_batch, y_batch, M_batch, t_batch = list(), list(), list(), list()
+        for subject_id in subject_ids:
+            X_subject, y_subject = self.reader.read_sample(subject_id).values()
+            for X_stay, y_stay in zip(X_subject, y_subject):
+                X_stay[X_stay.columns] = self.scaler.transform(X_stay)
+                Xs, ys, ts = AbstractGenerator.read_timeseries(X_df=X_stay,
+                                                               y_df=y_stay,
+                                                               row_only=self.row_only,
+                                                               masks=("PHENO_labels" in y_stay),
+                                                               bining=self.bining)
+                Xs, ys, ts = AbstractGenerator._shuffled_data(Xs, ys, ts)
+                for X, y, t in zip(Xs, ys, ts):
+                    X_batch.append(X)
+                    y_batch.append(y)
+                    t_batch.append(t)
+                    if len(X_batch) == batch_size:
+                        X = AbstractGenerator._zeropad_samples(X_batch)
+                        y = np.array(y_batch, dtype=np.float32)
+                        t = np.array(t_batch, dtype=np.float32)
+                        X_batch.clear()
+                        y_batch.clear()
+                        t_batch.clear()
+                        yield X, y, t
+        if X_batch:
+            X = AbstractGenerator._zeropad_samples(X_batch)
+            y = np.array(y_batch, dtype=np.float32)
+            t = np.array(t_batch, dtype=np.float32)
+            X_batch.clear()
+            y_batch.clear()
+            t_batch.clear()
+            yield X, y, t
+        # finally:
+        #     # Restore the previous logging level
+        #     logging.getLogger().setLevel(previous_logging_level)
         return

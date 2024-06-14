@@ -7,7 +7,7 @@ from preprocessing.scalers import MinMaxScaler
 import numpy as np
 from utils.IO import *
 from datasets.readers import ProcessedSetReader
-from tests.settings import *
+from tests.tsettings import *
 from preprocessing.imputers import PartialImputer
 
 
@@ -156,8 +156,7 @@ def assert_sample_sanity(X: np.ndarray, y: np.ndarray, bining: str, one_hot: boo
 
 
 if __name__ == "__main__":
-    # for task_name in TASK_NAMES:
-    for task_name in ["PHENO"]:
+    for task_name in ["MULTI"]:  #TASK_NAMES:
         reader = datasets.load_data(chunksize=75836,
                                     source_path=TEST_DATA_DEMO,
                                     storage_path=SEMITEMP_DIR,

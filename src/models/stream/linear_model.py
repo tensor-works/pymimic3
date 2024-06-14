@@ -43,7 +43,7 @@ if __name__ == '__main__':
 
     import datasets
     from river import optim
-    from tests.settings import *
+    from tests.tsettings import *
     from metrics.stream import MacroROCAUC, MicroROCAUC, PRAUC
     from river.metrics import ROCAUC
     from generators.stream import RiverGenerator

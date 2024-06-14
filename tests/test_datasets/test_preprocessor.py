@@ -7,7 +7,7 @@ from datasets.readers import ExtractedSetReader
 from utils.IO import *
 from tests.pytest_utils import copy_dataset
 from tests.decorators import repeat
-from tests.settings import *
+from tests.tsettings import *
 from tests.pytest_utils.preprocessing import assert_reader_equals, assert_dataset_equals
 
 kwargs = {
@@ -22,7 +22,8 @@ kwargs = {
     },
     "PHENO": {},
     "MULTI": {
-        "file_suffix": "h5"
+        "file_suffix": "h5",
+        "test_index": "filename"
     }
 }
 
@@ -55,7 +56,7 @@ def test_iterative_processing_task(task_name: str):
 
     tests_io(f"All {task_name} files have been created as expected")
     # Compare the dataframes in the directory
-    assert_reader_equals(reader, test_data_dir)
+    assert_reader_equals(reader, test_data_dir, **kwargs[generated_path.name])
     tests_io(f"{task_name} preprocessing successfully tested against original code!")
 
     return
@@ -88,11 +89,8 @@ def test_compact_processing_task(task_name: str):
 
     tests_io(f"All {task_name} files have been created as expected")
     # Compare the dataframes in the directory
-    assert_dataset_equals(dataset["X"],
-                          dataset["y"],
-                          generated_path,
-                          test_data_dir,
-                          test_index="filename")
+    assert_dataset_equals(dataset["X"], dataset["y"], generated_path, test_data_dir,
+                          **kwargs[generated_path.name])
     tests_io(f"{task_name} preprocessing successfully tested against original code!")
 
     return
@@ -102,7 +100,8 @@ def assert_file_creation(root_path: Path,
                          test_data_dir: Path,
                          label_start_time: float = None,
                          minimum_length_of_stay: float = None,
-                         file_suffix: str = None):
+                         file_suffix: str = None,
+                         **kwargs):
     """_summary_
 
     Args:
@@ -173,9 +172,9 @@ def assert_file_creation(root_path: Path,
 if __name__ == "__main__":
     import shutil
     _ = datasets.load_data(chunksize=75835, source_path=TEST_DATA_DEMO, storage_path=SEMITEMP_DIR)
-    for task in ["MULTI"]:  # TASK_NAMES:
-        # if Path(TEMP_DIR).is_dir():
-        #     shutil.rmtree(str(Path(TEMP_DIR)))
+    for task in TASK_NAMES:
+        if Path(TEMP_DIR).is_dir():
+            shutil.rmtree(str(Path(TEMP_DIR)))
         test_compact_processing_task(task)
         if Path(TEMP_DIR).is_dir():
             shutil.rmtree(str(TEMP_DIR))

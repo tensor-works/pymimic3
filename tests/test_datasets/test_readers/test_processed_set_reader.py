@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 from copy import deepcopy
 from utils.IO import *
-from tests.settings import *
+from tests.tsettings import *
 from datasets.readers import ProcessedSetReader
 from datasets.mimic_utils import upper_case_column_names
 

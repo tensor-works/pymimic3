@@ -6,7 +6,7 @@ import datasets
 import pandas as pd
 from typing import Dict
 from pathlib import Path
-from tests.settings import *
+from tests.tsettings import *
 from utils.IO import *
 from datasets.readers import ExtractedSetReader, EventReader, ProcessedSetReader
 from settings import *

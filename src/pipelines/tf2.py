@@ -90,7 +90,7 @@ class TFPipeline(AbstractPipeline):
 
 if __name__ == "__main__":
     from models.tf2.lstm import LSTMNetwork
-    from tests.settings import *
+    from tests.tsettings import *
     reader = datasets.load_data(chunksize=75836,
                                 source_path=TEST_DATA_DEMO,
                                 storage_path=SEMITEMP_DIR,

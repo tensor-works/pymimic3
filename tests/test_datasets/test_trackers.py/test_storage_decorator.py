@@ -2,7 +2,7 @@ import pytest
 import shutil
 from pathlib import Path
 from utils.IO import *
-from tests.settings import *
+from tests.tsettings import *
 from storable import storable
 
 

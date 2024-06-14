@@ -10,7 +10,7 @@ from datasets.writers import DataSetWriter
 from tests.pytest_utils.discretization import assert_strategy_equals, prepare_processed_data
 from utils.IO import *
 from tests.pytest_utils import copy_dataset
-from tests.settings import *
+from tests.tsettings import *
 
 
 @pytest.mark.parametrize("start_strategy", ["zero", "relative"])
