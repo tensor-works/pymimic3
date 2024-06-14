@@ -41,7 +41,8 @@ def assert_dataset_equals(X: dict,
                           y: dict,
                           generated_dir: Path,
                           test_data_dir: Path,
-                          test_index: str = "stay"):
+                          test_index: str = "stay",
+                          **kwargs):
     """_summary_
 
     Args:

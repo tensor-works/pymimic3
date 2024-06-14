@@ -16,11 +16,13 @@ class TorchGenerator(DataLoader):
                  batch_size: int = 8,
                  shuffle: bool = True,
                  num_workers: int = 1,
+                 deep_supervision: bool = False,
                  drop_last: bool = False,
                  bining: str = "none"):
         self._dataset = TorchDataset(reader=reader,
                                      scaler=scaler,
                                      batch_size=batch_size,
+                                     deep_supervision=deep_supervision,
                                      shuffle=shuffle,
                                      bining=bining)
         super().__init__(dataset=self._dataset,
@@ -29,19 +31,22 @@ class TorchGenerator(DataLoader):
                          drop_last=drop_last,
                          num_workers=0,
                          collate_fn=self.collate_fn)
+        self._deep_supervision = deep_supervision
 
     def collate_fn(self, batch):
-        samples, labels = zip(*batch)
+        if self._deep_supervision:
+            samples, labels, masks = zip(*batch)
+            masks = masks[0]
+            if masks.dim() == 1:
+                masks = masks.unsqueeze(1)
+        else:
+            samples, labels = zip(*batch)
         samples, labels = samples[0], labels[0]
         if labels.dim() == 1:
             labels = labels.unsqueeze(1)
+        if self._deep_supervision:
+            return [samples, masks], labels
         return samples, labels
-
-    def __iter__(self) -> _BaseDataLoaderIter:
-        return super().__iter__()
-
-    def __next__(self):
-        return super().__next__()
 
     def close(self):
         self._dataset.__del__()
@@ -53,22 +58,32 @@ class TorchDataset(AbstractGenerator, Dataset):
                  reader: ProcessedSetReader,
                  scaler: AbstractScaler = None,
                  batch_size: int = 8,
+                 deep_supervision: bool = False,
                  shuffle: bool = True,
                  bining: str = "none"):
         AbstractGenerator.__init__(self,
                                    reader=reader,
                                    scaler=scaler,
                                    batch_size=batch_size,
+                                   deep_supervision=deep_supervision,
                                    shuffle=shuffle,
                                    bining=bining)
 
     def __getitem__(self, index=None):
-        X, y = super().__getitem__(index)
+        if self._deep_supervision:
+            X, y, m = super().__getitem__(index)
+            if not m.flags.writeable:
+                m = m.copy()
+        else:
+            X, y = super().__getitem__(index)
         if not X.flags.writeable:
             X = X.copy()
-
         if not y.flags.writeable:
             y = y.copy()
+        if self._deep_supervision:
+            return torch.from_numpy(X).to(torch.float32), \
+                   torch.from_numpy(y).to(torch.float32), \
+                   torch.from_numpy(m).to(torch.float32)
         return torch.from_numpy(X).to(torch.float32), torch.from_numpy(y).to(torch.float32)
 
     def close(self):

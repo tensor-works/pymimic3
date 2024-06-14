@@ -54,7 +54,7 @@ class DataSetWriter():
         """
         possible_filenames = [
             "episodic_data", "timeseries", "subject_events", "subject_diagnoses",
-            "subject_icu_history", "X", "y", "t", "header"
+            "subject_icu_history", "X", "M", "y", "t", "header"
         ]
 
         if filename not in possible_filenames:

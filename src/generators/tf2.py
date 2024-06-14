@@ -12,6 +12,7 @@ class TFGenerator(AbstractGenerator, Sequence):
                  scaler: AbstractScaler = None,
                  batch_size: int = 8,
                  num_cpu: int = None,
+                 deep_supervision: bool = False,
                  shuffle: bool = True,
                  bining: str = "none"):
         AbstractGenerator.__init__(self,
@@ -21,9 +22,17 @@ class TFGenerator(AbstractGenerator, Sequence):
                                    batch_size=batch_size,
                                    shuffle=shuffle,
                                    bining=bining)
+        self._deep_supervision = deep_supervision
 
     def __getitem__(self, index=None):
-        X, y = super().__getitem__(index)
+        if self._deep_supervision:
+            X, y, m = super().__getitem__(index)
+            if len(m.shape) == 1:
+                m = m.reshape(-1, 1)
+        else:
+            X, y = super().__getitem__(index)
         if len(y.shape) == 1:
             y = y.reshape(-1, 1)
+        if self._deep_supervision:
+            return [X, m], y
         return X, y

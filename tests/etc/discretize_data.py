@@ -39,7 +39,7 @@ impute_strategies = ['zero', 'normal_value', 'previous', 'next']
 start_times = ['zero', 'relative']
 
 # Discritize the data from processed directory using different discretizer settings
-for task in ["MULTI"]:  # TASK_NAMES:
+for task in TASK_NAMES:
     list_file_path = Path(processed_paths[task], "listfile.csv")
     list_file = pd.read_csv(
         list_file_path,

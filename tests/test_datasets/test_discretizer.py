@@ -32,7 +32,8 @@ def test_iterative_discretizer(task_name: str, start_strategy: str, impute_strat
         impute_strategy = "normal"
 
     prepare_processed_data(task_name, listfile, preprocessed_readers[task_name])
-
+    tests_io(f"Testing with - task: {task_name}, start_strategy: {start_strategy},"
+             f" impute_strategy: {impute_strategy}, deep_supervision: False")
     reader = datasets.load_data(chunksize=75837,
                                 source_path=TEST_DATA_DEMO,
                                 storage_path=TEMP_DIR,
@@ -43,8 +44,23 @@ def test_iterative_discretizer(task_name: str, start_strategy: str, impute_strat
                                 task=task_name)
 
     X_discretized, _ = reader.read_samples(read_ids=True).values()
-
     assert_strategy_equals(X_discretized, test_dir_path)
+
+    if task_name in ["DECOMP", "LOS"]:
+        tests_io(f"Testing with - task: {task_name}, start_strategy: {start_strategy},"
+                 f" impute_strategy: {impute_strategy}, deep_supervision: True")
+        reader = datasets.load_data(chunksize=75837,
+                                    source_path=TEST_DATA_DEMO,
+                                    storage_path=TEMP_DIR,
+                                    discretize=True,
+                                    time_step_size=1.0,
+                                    start_at_zero=(start_strategy == "zero"),
+                                    impute_strategy=impute_strategy,
+                                    task=task_name,
+                                    deep_supervision=True)
+
+        X_discretized, _ = reader.read_samples(read_ids=True).values()
+        assert_strategy_equals(X_discretized, test_dir_path)
 
     tests_io("Succeeded in testing!")
 
@@ -69,6 +85,8 @@ def test_compact_discretizer(task_name: str, start_strategy: str, impute_strateg
 
     prepare_processed_data(task_name, listfile, preprocessed_readers[task_name])
 
+    tests_io(f"Testing with - task: {task_name}, start_strategy: {start_strategy},"
+             f" impute_strategy: {impute_strategy}, deep_supervision: False")
     X_discretized, _ = datasets.load_data(source_path=TEST_DATA_DEMO,
                                           storage_path=TEMP_DIR,
                                           discretize=True,
@@ -76,8 +94,20 @@ def test_compact_discretizer(task_name: str, start_strategy: str, impute_strateg
                                           start_at_zero=(start_strategy == "zero"),
                                           impute_strategy=impute_strategy,
                                           task=task_name).values()
-
     assert_strategy_equals(X_discretized, test_dir_path)
+
+    if task_name in ["DECOMP", "LOS"]:
+        tests_io(f"Testing with - task: {task_name}, start_strategy: {start_strategy},"
+                 f" impute_strategy: {impute_strategy}, deep_supervision: True")
+        X_discretized, _ = datasets.load_data(source_path=TEST_DATA_DEMO,
+                                              storage_path=TEMP_DIR,
+                                              discretize=True,
+                                              time_step_size=1.0,
+                                              start_at_zero=(start_strategy == "zero"),
+                                              impute_strategy=impute_strategy,
+                                              task=task_name,
+                                              deep_supervision=True).values()
+        assert_strategy_equals(X_discretized, test_dir_path)
 
     tests_io("Succeeded in testing!")
 
@@ -91,16 +121,16 @@ if __name__ == "__main__":
         # Path to discretizer sets
         test_data_dir = Path(TEST_GT_DIR, "discretized", TASK_NAME_MAPPING[task_name])
         # Listfile with truth values
-        listfile = pd.read_csv(Path(test_data_dir, "listfile.csv"),
-                               keep_default_na=False).set_index("stay")
+        idx_name = "filename" if task_name == "MULTI" else "stay"
+        listfile = pd.read_csv(Path(test_data_dir, "listfile.csv")).set_index(idx_name)
         stay_name_regex = r"(\d+)_episode(\d+)_timeseries\.csv"
 
         listfile = listfile.reset_index()
-        listfile["subject"] = listfile["stay"].apply(
+        listfile["subject"] = listfile[idx_name].apply(
             lambda x: re.search(stay_name_regex, x).group(1))
-        listfile["icustay"] = listfile["stay"].apply(
+        listfile["icustay"] = listfile[idx_name].apply(
             lambda x: re.search(stay_name_regex, x).group(2))
-        listfile = listfile.set_index("stay")
+        listfile = listfile.set_index(idx_name)
         listfiles[task_name] = listfile
     readers = dict()
     for task_name in TASK_NAMES:

@@ -731,16 +731,21 @@ class ProcessedSetReader(AbstractReader):
         self._reader_switch_Xy = {
             "csv": {
                 "X": (lambda x: self._read_csv(x, dtypes=DATASET_SETTINGS["timeseries"]["dtype"])),
-                "y": lambda x: self._read_csv(x)
+                "y": lambda x: self._read_csv(x),
+                "M": lambda x: self._read_csv(x),
+                "t": lambda x: self._read_csv(x)
             },
             "npy": {
                 "X": np.load,
                 "y": np.load,
+                "M": np.load,
                 "t": np.load
             },
             "h5": {
                 "X": self._read_hdf,
-                "y": pd.read_hdf
+                "y": pd.read_hdf,
+                "M": pd.read_hdf,
+                "t": pd.read_hdf
             }
         }
         super().__init__(root_path, subject_ids)
@@ -774,6 +779,7 @@ class ProcessedSetReader(AbstractReader):
                      subject_ids: Union[List[str], List[int]] = None,
                      read_ids: bool = False,
                      read_timestamps: bool = False,
+                     read_masks: bool = False,
                      data_type=None):
         """
         Read samples for the specified subject IDs, either as dictionary with ID keys or as list.
@@ -809,6 +815,7 @@ class ProcessedSetReader(AbstractReader):
             sample = self.read_sample(subject_id,
                                       read_ids=read_ids,
                                       read_timestamps=read_timestamps,
+                                      read_masks=read_masks,
                                       data_type=data_type)
             for prefix in sample:
                 if not len(sample[prefix]):
@@ -824,6 +831,7 @@ class ProcessedSetReader(AbstractReader):
                     subject_id: Union[int, str],
                     read_ids: bool = False,
                     read_timestamps: bool = False,
+                    read_masks: bool = False,
                     data_type=None) -> dict:
         """
         Read data for a single subject.
@@ -874,6 +882,9 @@ class ProcessedSetReader(AbstractReader):
 
         dataset = {"X": {}, "y": {}} if read_ids else {"X": [], "y": []}
 
+        if read_masks:
+            dataset.update({"M": {} if read_ids else []})
+
         if read_timestamps:
             dataset.update({"t": {} if read_ids else []})
 
@@ -895,7 +906,10 @@ class ProcessedSetReader(AbstractReader):
                 file_data = reader[prefix](file_path, **reader_kwargs)
                 file_data = _convert_file_data(file_data)
 
-                if prefix == "t" and read_timestamps:
+                if prefix == "t" and not read_timestamps:
+                    continue
+
+                if prefix == "M" and not read_masks:
                     continue
 
                 if read_ids:
@@ -915,6 +929,7 @@ class ProcessedSetReader(AbstractReader):
             read_timestamps: bool = False,
             data_type=None,
             return_ids: bool = False,
+            read_masks: bool = False,
             seed: int = 42):
         """
         Sample subjects randomly without replacement until subject list is exhauasted.
@@ -965,10 +980,12 @@ class ProcessedSetReader(AbstractReader):
             return self.read_samples(sample_ids,
                                      read_ids=read_ids,
                                      read_timestamps=read_timestamps,
+                                     read_masks=read_masks,
                                      data_type=data_type), sample_ids
         return self.read_samples(sample_ids,
                                  read_ids=read_ids,
                                  read_timestamps=read_timestamps,
+                                 read_masks=read_masks,
                                  data_type=data_type)
 
 

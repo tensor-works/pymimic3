@@ -95,6 +95,7 @@ def load_data(source_path: str,
               time_step_size: float = 1.0,
               impute_strategy: str = "previous",
               mode: str = "legacy",
+              deep_supervision: bool = False,
               start_at_zero=True,
               extract: bool = True,
               preprocess: bool = False,
@@ -216,6 +217,7 @@ def load_data(source_path: str,
                                            impute_strategy=impute_strategy,
                                            start_at_zero=start_at_zero,
                                            mode=mode,
+                                           deep_supervision=deep_supervision,
                                            verbose=False)
             reader = discretizer.transform_reader(reader=reader,
                                                   subject_ids=subject_ids,
@@ -267,6 +269,7 @@ def load_data(source_path: str,
                                        time_step_size=time_step_size,
                                        impute_strategy=impute_strategy,
                                        start_at_zero=start_at_zero,
+                                       deep_supervision=deep_supervision,
                                        mode=mode,
                                        verbose=False)
         dataset = discretizer.transform_dataset(dataset=dataset,
@@ -297,6 +300,8 @@ def _check_inputs(storage_path: str, source_path: str, chunksize: int, subject_i
         raise ValueError("One of extract, preprocess or engineer must be set to load the dataset.")
     if subject_ids is not None:
         return [int(subject_id) for subject_id in subject_ids]
+    if task == "MULTI" and engineer:
+        raise ValueError("Task 'MULTI' is for DNN's only and feature extraction is not supported.")
     return None
 
 

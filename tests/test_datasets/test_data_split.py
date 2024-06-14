@@ -85,7 +85,7 @@ def test_demographic_filter(
     discretized_readers: Dict[str, ProcessedSetReader],
     engineered_readers: Dict[str, ProcessedSetReader],
 ):
-    tests_io("Test case by demographic filter", level=0)
+    tests_io(f"Test case by demographic filter for task: {task_name}", level=0)
     # Discretization or feature engineering
     if preprocessing_style == "discretized":
         reader = discretized_readers[task_name]
@@ -163,7 +163,7 @@ def test_demo_split(
     discretized_readers: Dict[str, ProcessedSetReader],
     engineered_readers: Dict[str, ProcessedSetReader],
 ):
-    tests_io("Test case by demographic filter", level=0)
+    tests_io(f"Test case by demographic filter for task: {task_name}", level=0)
     # Discretization or feature engineering
     if preprocessing_style == "discretized":
         reader = discretized_readers[task_name]
@@ -226,7 +226,7 @@ def test_demo_and_ratio_split(
     discretized_readers: Dict[str, ProcessedSetReader],
     engineered_readers: Dict[str, ProcessedSetReader],
 ):
-    tests_io("Test case demographic split with specified ratios", level=0)
+    tests_io(f"Test case demographic split with specified ratios for task: {task_name}", level=0)
     # Discretization or feature engineering
     if preprocessing_style == "discretized":
         reader = discretized_readers[task_name]
@@ -310,7 +310,7 @@ def test_train_size(task_name, preprocessing_style, discretized_readers: Dict[st
 
     # Here we specify a train size, then proceed to test the different split methods, in order to see if
     # Fixing the train set size affects the splitting mechanism
-    tests_io("Test case train size", level=0)
+    tests_io(f"Test case train size for task: {task_name}", level=0)
     # Discretization or feature engineering
     if preprocessing_style == "discretized":
         reader = discretized_readers[task_name]

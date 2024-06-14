@@ -114,6 +114,7 @@ class MIMICDiscretizer(AbstractProcessor):
                  time_step_size: float = None,
                  start_at_zero: bool = True,
                  impute_strategy: str = "previous",
+                 deep_supervision: bool = False,
                  mode: str = "legacy",
                  eps: float = 1e-6,
                  verbose: bool = False):
@@ -122,6 +123,7 @@ class MIMICDiscretizer(AbstractProcessor):
         self._operation_adjective = "discretized"
         self._save_file_type = "hdf5"
         self._storage_path = storage_path
+        self._deep_supervision = deep_supervision
         self._writer = (None if storage_path is None else DataSetWriter(self._storage_path))
         self._source_reader = reader
         if tracker is not None:
@@ -165,6 +167,7 @@ class MIMICDiscretizer(AbstractProcessor):
 
         self._X = dict()
         self._y = dict()
+        self._M = dict()
 
     @property
     def tracker(self) -> PreprocessingTracker:
@@ -219,15 +222,26 @@ class MIMICDiscretizer(AbstractProcessor):
         X = {subject_id: X_processed}
         y = {subject_id: y_processed}
 
-        X_discretized, _ = self._transform((X, y))
-        if X_discretized is None:
-            return None, None
-        if self._tracker is None:
-            return X_discretized, y
+        if self._deep_supervision:
+            X_discretized, y_discretized, m_discretized = self._transform((X, y))
+        else:
+            X_discretized, y_discretized = self._transform((X, y))
 
-        with self._lock:
-            tracking_info = self._tracker.subjects[subject_id]
-        return (X_discretized, y), tracking_info
+        return_list = list()
+
+        if X_discretized is not None:
+            return_list.extend((None, None))
+            if self._deep_supervision:
+                return_list.append(None)
+        else:
+            return_list.extend((X_discretized, y_discretized))
+            if self._deep_supervision:
+                return_list.append(m_discretized)
+        if self._tracker is not None:
+            with self._lock:
+                tracking_info = self._tracker.subjects[subject_id]
+            return return_list, tracking_info
+        return return_list
 
     def _transform(self, dataset: Tuple[Dict[int, Dict[int, pd.DataFrame]]]):
         """
@@ -262,6 +276,8 @@ class MIMICDiscretizer(AbstractProcessor):
             X_subject = X_dict[subject_id]
             self._X[subject_id] = dict()
             self._y[subject_id] = dict()
+            if self._deep_supervision:
+                self._M[subject_id] = dict()
             tracking_info = dict()
 
             for stay_id in X_subject:
@@ -275,7 +291,12 @@ class MIMICDiscretizer(AbstractProcessor):
                     X_df = self._bin_data(X_df)
                     X_df = self._impute_data(X_df)
                 self._X[subject_id][stay_id] = X_df
-                self._y[subject_id][stay_id] = y_dict[subject_id][stay_id]
+                if self._deep_supervision:
+                    y_reindexed = y_dict[subject_id][stay_id].reindex(X_df.index + 1)
+                    self._y[subject_id][stay_id] = y_reindexed.fillna(0)
+                    self._M[subject_id][stay_id] = (~y_reindexed.isna()).astype(int)
+                else:
+                    self._y[subject_id][stay_id] = y_dict[subject_id][stay_id]
 
                 tracking_info[stay_id] = len(y_dict[subject_id][stay_id])
 
@@ -308,9 +329,8 @@ class MIMICDiscretizer(AbstractProcessor):
                 f"Discretized samples: {self._n_samples}"
                 f"Skipped subjects: {self._n_skip}",
                 flush_block=True)
-
-        self._y = y_dict
-
+        if self._deep_supervision:
+            return self._X, self._y, self._M
         return self._X, self._y
 
     def _bin_data(self, X):

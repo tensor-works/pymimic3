@@ -94,6 +94,19 @@ def discretized_readers() -> Dict[str, ProcessedSetReader]:
 
 
 @pytest.fixture(scope="session")
+def deep_supervision_readers() -> Dict[str, ProcessedSetReader]:
+    return {
+        name:
+            datasets.load_data(chunksize=75835,
+                               source_path=TEST_DATA_DEMO,
+                               storage_path=Path(SEMITEMP_DIR, "deep_supervision"),
+                               discretize=True,
+                               deep_supervision=True,
+                               task=name) for name in TASK_NAMES
+    }
+
+
+@pytest.fixture(scope="session")
 def discretizer_listfiles() -> None:
     list_files = dict()
     for task_name in TASK_NAMES:

@@ -150,6 +150,10 @@ class AbstractProcessor(ABC):
                 self._writer.write_bysubject({"y": self._y}, file_type=self._save_file_type)
                 self._X = dict()
                 self._y = dict()
+                if hasattr(self, "_deep_supervision") and self._deep_supervision:
+                    # MASK is create by discretizer
+                    self._writer.write_bysubject({"M": self._M}, file_type=self._save_file_type)
+                    self._M = dict()
             else:
                 self._writer.write_bysubject({"X": dict_subset(self._X, subjects)},
                                              file_type=self._save_file_type)
@@ -158,6 +162,12 @@ class AbstractProcessor(ABC):
                 for subject in subjects:
                     del self._X[subject]
                     del self._y[subject]
+                if hasattr(self, "_deep_supervision") and self._deep_supervision:
+                    # MASK is create by discretizer
+                    self._writer.write_bysubject({"M": dict_subset(self._M, subjects)},
+                                                 file_type=self._save_file_type)
+                    for subject in subjects:
+                        del self._M[subject]
 
         return
 
@@ -238,9 +248,7 @@ class AbstractProcessor(ABC):
         X_subjects = dict_subset(X_subjects, subject_ids)
         y_subjects = dict_subset(y_subjects, subject_ids)
 
-
-        _, \
-        _ = self._transform((X_subjects, y_subjects)) # Omitting timestamps
+        self._transform((X_subjects, y_subjects))  # Omitting timestamps
 
         if storage_path or self._storage_path:
             self.save_data()

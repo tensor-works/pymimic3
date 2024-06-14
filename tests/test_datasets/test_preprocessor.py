@@ -88,11 +88,8 @@ def test_compact_processing_task(task_name: str):
 
     tests_io(f"All {task_name} files have been created as expected")
     # Compare the dataframes in the directory
-    assert_dataset_equals(dataset["X"],
-                          dataset["y"],
-                          generated_path,
-                          test_data_dir,
-                          test_index="filename")
+    assert_dataset_equals(dataset["X"], dataset["y"], generated_path, test_data_dir,
+                          **kwargs[generated_path.name])
     tests_io(f"{task_name} preprocessing successfully tested against original code!")
 
     return
@@ -173,9 +170,9 @@ def assert_file_creation(root_path: Path,
 if __name__ == "__main__":
     import shutil
     _ = datasets.load_data(chunksize=75835, source_path=TEST_DATA_DEMO, storage_path=SEMITEMP_DIR)
-    for task in ["MULTI"]:  # TASK_NAMES:
-        # if Path(TEMP_DIR).is_dir():
-        #     shutil.rmtree(str(Path(TEMP_DIR)))
+    for task in ["MULTI"]:  #TASK_NAMES:
+        if Path(TEMP_DIR).is_dir():
+            shutil.rmtree(str(Path(TEMP_DIR)))
         test_compact_processing_task(task)
         if Path(TEMP_DIR).is_dir():
             shutil.rmtree(str(TEMP_DIR))
