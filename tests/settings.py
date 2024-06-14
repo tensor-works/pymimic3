@@ -19,8 +19,10 @@ TEST_DATA_DIR = Path(os.getenv("WORKINGDIR"), "tests", "data")
 TEST_DATA_DEMO = Path(TEST_DATA_DIR, "physionet.org", "files", "mimiciii-demo", "1.4")
 TEST_GT_DIR = Path(TEST_DATA_DIR, "generated-benchmark")
 
-TASK_NAMES = ["IHM", "DECOMP", "LOS", "PHENO"]
-FTASK_NAMES = ["in-hospital-mortality", "decompensation", "length-of-stay", "phenotyping"]
+TASK_NAMES = ["IHM", "DECOMP", "LOS", "PHENO", "MULTI"]
+FTASK_NAMES = [
+    "in-hospital-mortality", "decompensation", "length-of-stay", "phenotyping", "multitask"
+]
 TASK_NAME_MAPPING = dict(zip(TASK_NAMES, FTASK_NAMES))
 
 with Path(os.getenv("CONFIG"), "datasets.json").open() as file:

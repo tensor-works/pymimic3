@@ -524,8 +524,13 @@
         "IHM",
         "DECOMP",
         "LOS",
-        "PHENO"
+        "PHENO",
+        "MULTI"
     ],
+    "MULTI": {
+        "sample_precision": 1e-6,
+        "sample_rate": 1.0
+    },
     "IHM": {
         "label_start_time": 48,
         "sample_precision": 1e-6

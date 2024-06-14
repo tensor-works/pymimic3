@@ -8,42 +8,45 @@ from tests.settings import *
 from mimic3benchmark.readers import DecompensationReader
 
 from mimic3models.preprocessing import Discretizer
-from mimic3benchmark.readers import InHospitalMortalityReader, DecompensationReader, LengthOfStayReader, PhenotypingReader
+from mimic3benchmark.readers import InHospitalMortalityReader, DecompensationReader, LengthOfStayReader, PhenotypingReader, MultitaskReader
 
 # Set the paths to the data files
 processed_paths = {
     "IHM": Path(TEST_DATA_DIR, "generated-benchmark", "processed", "in-hospital-mortality"),
     "LOS": Path(TEST_DATA_DIR, "generated-benchmark", "processed", "length-of-stay"),
     "PHENO": Path(TEST_DATA_DIR, "generated-benchmark", "processed", "phenotyping"),
-    "DECOMP": Path(TEST_DATA_DIR, "generated-benchmark", "processed", "decompensation")
+    "DECOMP": Path(TEST_DATA_DIR, "generated-benchmark", "processed", "decompensation"),
+    "MULTI": Path(TEST_DATA_DIR, "generated-benchmark", "processed", "multitask")
 }
 
 discretized_paths = {
     "IHM": Path(TEST_DATA_DIR, "generated-benchmark", "discretized", "in-hospital-mortality"),
     "LOS": Path(TEST_DATA_DIR, "generated-benchmark", "discretized", "length-of-stay"),
     "PHENO": Path(TEST_DATA_DIR, "generated-benchmark", "discretized", "phenotyping"),
-    "DECOMP": Path(TEST_DATA_DIR, "generated-benchmark", "discretized", "decompensation")
+    "DECOMP": Path(TEST_DATA_DIR, "generated-benchmark", "discretized", "decompensation"),
+    "MULTI": Path(TEST_DATA_DIR, "generated-benchmark", "discretized", "multitask")
 }
 
 readers = {
     "IHM": InHospitalMortalityReader,
     "LOS": LengthOfStayReader,
     "PHENO": PhenotypingReader,
-    "DECOMP": DecompensationReader
+    "DECOMP": DecompensationReader,
+    "MULTI": MultitaskReader
 }
 
 impute_strategies = ['zero', 'normal_value', 'previous', 'next']
 start_times = ['zero', 'relative']
 
 # Discritize the data from processed directory using different discretizer settings
-for task in TASK_NAMES:
+for task in ["MULTI"]:  # TASK_NAMES:
     list_file_path = Path(processed_paths[task], "listfile.csv")
     list_file = pd.read_csv(
         list_file_path,
         na_values=[''],
         keep_default_na=False,
     )
-    if task in ["IHM", "PHENO"]:
+    if task in ["IHM", "PHENO", "MULTI"]:
         example_indices = list_file.index
     else:
         example_indices = list_file.groupby("stay")["period_length"].idxmax().values

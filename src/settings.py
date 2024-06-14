@@ -8,10 +8,10 @@ load_dotenv(verbose=False)
 
 __all__ = [
     'TASK_NAMES', 'DATASET_SETTINGS', 'DECOMP_SETTINGS', 'LOS_SETTINGS', 'PHENOT_SETTINGS',
-    'IHM_SETTINGS', 'TEXT_METRICS'
+    'IHM_SETTINGS', 'TEXT_METRICS', 'MULTI_SETTINGS'
 ]
 
-TASK_NAMES = ["DECOMP", "LOS", "PHENO", "IHM"]
+TASK_NAMES = ["DECOMP", "LOS", "PHENO", "IHM", "MULTI"]
 TEXT_METRICS = ["classification_report", "confusion_matrix"]
 
 with Path(os.getenv("CONFIG"), "datasets.json").open() as file:
@@ -20,3 +20,4 @@ with Path(os.getenv("CONFIG"), "datasets.json").open() as file:
     LOS_SETTINGS = DATASET_SETTINGS["LOS"]
     PHENOT_SETTINGS = DATASET_SETTINGS["PHENO"]
     IHM_SETTINGS = DATASET_SETTINGS["IHM"]
+    MULTI_SETTINGS = DATASET_SETTINGS["MULTI"]

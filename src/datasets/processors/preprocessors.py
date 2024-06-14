@@ -103,7 +103,7 @@ class MIMICPreprocessor(AbstractProcessor):
 
         self._operation_name = "preprocessing"  # For printing
         self._operation_adjective = "preprocessed"
-        self._save_file_type = "csv"
+        self._save_file_type = "hdf5" if task == "MULTI" else "csv"
         if label_type not in ["sparse", "one-hot"]:
             raise ValueError(f"Type must be one of {*['sparse', 'one-hot'],}")
 
@@ -346,8 +346,12 @@ class MIMICPreprocessor(AbstractProcessor):
                     mortality = int(cur_episodic_data_df["MORTALITY"])
                 else:
                     continue
-
-                if self._task == "IHM":
+                if self._task == "MULTI":
+                    stay_diagnoses_df = diagnoses_df[diagnoses_df['ICUSTAY_ID'] == icustay]
+                    self._X[subject][icustay], self._y[subject][icustay] = self.make_multitask_data(
+                        stay_timeseries_df, cur_episodic_data_df, cur_icuhistory_sr,
+                        stay_diagnoses_df, self._phenotypes_yaml, mortality)
+                elif self._task == "IHM":
                     self._X[subject][icustay], self._y[subject][
                         icustay] = self.make_inhospital_mortality_data(
                             stay_timeseries_df, cur_episodic_data_df, mortality)
@@ -414,6 +418,77 @@ class MIMICPreprocessor(AbstractProcessor):
 
         return self._X, self._y
 
+    def make_multitask_data(self, timeseries_df: pd.DataFrame, episodic_data_df: pd.DataFrame,
+                            icu_stay: pd.DataFrame, diagnoses_df: pd.DataFrame,
+                            phenotypes_yaml: pd.DataFrame, mortality: int):
+        # Initialize containers for features and labels
+        self._label_type = "sparse"
+        mortality = int(episodic_data_df.loc["MORTALITY"])
+        los = 24.0 * episodic_data_df.loc['LOS']  # in hours
+        deathtime = icu_stay['DEATHTIME']
+        precision = MULTI_SETTINGS['sample_precision']
+        sample_rate = MULTI_SETTINGS['sample_rate']
+
+        X = timeseries_df.copy()
+        y = {}
+
+        # Process In-Hospital Mortality (IHM)
+        _, y_ihm = self.make_inhospital_mortality_data(timeseries_df=timeseries_df,
+                                                       episodic_data_df=episodic_data_df,
+                                                       mortality=mortality)
+        y['IHM_pos'] = 0 if y_ihm.empty else 47
+        y['IHM_mask'] = 1 if not y_ihm.empty else 0
+        y['IHM_label'] = y_ihm['y'].iloc[0] if not y_ihm.empty else mortality
+
+        # Process Decompensation (DECOMP)
+        _, y_decomp = self.make_decompensation_data(timeseries_df=timeseries_df,
+                                                    episodic_data_df=episodic_data_df,
+                                                    icu_stay=icu_stay,
+                                                    label_start_time=0,
+                                                    stop_at_death=False)
+
+        sample_times = np.arange(0.0, min(los, y_decomp.index.max()) + precision, sample_rate)
+        dec_start_time = DECOMP_SETTINGS['label_start_time']
+        if not y_decomp.empty:
+            y_decomp = y_decomp.reindex(sample_times)
+            y_mask = y_decomp['y'].apply(lambda x: x > dec_start_time).values
+            y['DECOMP_masks'] = y_mask.reshape(-1).tolist()
+            y['DECOMP_labels'] = y_decomp['y'].fillna(0).values.reshape(-1).tolist()
+        else:
+            sample_times = np.arange(0.0, dec_start_time + precision, sample_rate)
+            y['DECOMP_masks'] = np.zeros(len(sample_times)).tolist()
+            y['DECOMP_labels'] = np.zeros(len(sample_times)).tolist()
+
+        # Process Length of Stay (LOS)
+        _, y_los = self.make_length_of_stay_data(timeseries_df=timeseries_df,
+                                                 episodic_data_df=episodic_data_df)
+        if not y_los.empty:
+            y_los = y_los.reindex(sample_times)
+            y_mask = y_los['y'].apply(lambda x: int(~np.isnan(x)))
+            y['LOS_masks'] = y_mask.values.reshape(-1).tolist()
+            y['LOS_labels'] = y_los['y'].fillna(0).values.reshape(-1).tolist()
+        else:
+            y['LOS_masks'] = np.zeros(len(sample_times)).tolist()
+            y['LOS_labels'] = np.zeros(len(sample_times)).tolist()
+        y["LOS_value"] = los
+
+        # Process Phenotyping (PHENO)
+        _, y_pheno = self.make_pheontyping_data(timeseries_df=timeseries_df,
+                                                episodic_data_df=episodic_data_df,
+                                                diagnoses_df=diagnoses_df,
+                                                phenotypes_yaml=phenotypes_yaml)
+        if not y_los.empty:
+            y['PHENO_labels'] = y_pheno.values.reshape(-1).tolist()
+        else:
+            y['PHENO_labels'] = [
+                0 for phenotype, data in phenotypes_yaml.items() if data['use_in_benchmark']
+            ]
+        y_df = pd.DataFrame()
+        for label, value in y.items():
+            y_df[label] = [value]
+
+        return X, y_df
+
     def make_inhospital_mortality_data(self, timeseries_df: pd.DataFrame,
                                        episodic_data_df: pd.DataFrame, mortality: int):
         """
@@ -442,8 +517,12 @@ class MIMICPreprocessor(AbstractProcessor):
 
         return X, y
 
-    def make_decompensation_data(self, timeseries_df: pd.DataFrame, episodic_data_df: pd.DataFrame,
-                                 icu_stay):
+    def make_decompensation_data(self,
+                                 timeseries_df: pd.DataFrame,
+                                 episodic_data_df: pd.DataFrame,
+                                 icu_stay,
+                                 label_start_time: float = None,
+                                 stop_at_death: bool = True):
         """
         Prepares data for the decompensation prediction task.
 
@@ -458,7 +537,8 @@ class MIMICPreprocessor(AbstractProcessor):
         """
         precision = DECOMP_SETTINGS['sample_precision']
         sample_rate = DECOMP_SETTINGS['sample_rate']
-        label_start_time = DECOMP_SETTINGS['label_start_time']
+        label_start_time = DECOMP_SETTINGS[
+            'label_start_time'] if label_start_time is None else label_start_time
         future_time_interval = DECOMP_SETTINGS['future_time_interval']
         # future_time_interval is Hours in which the preson will have to be dead for label to be 1
 
@@ -486,7 +566,9 @@ class MIMICPreprocessor(AbstractProcessor):
         event_times = timeseries_df.index[(timeseries_df.index < los + precision)
                                           & (timeseries_df.index > -precision)]
 
-        sample_times = np.arange(0.0, min(los, lived_time) + precision, sample_rate)
+        sample_times = np.arange(0.0,
+                                 min(los, lived_time if stop_at_death else np.inf) + precision,
+                                 sample_rate)
         sample_times = list(filter(lambda x: x > label_start_time, sample_times))
 
         # At least one measurement

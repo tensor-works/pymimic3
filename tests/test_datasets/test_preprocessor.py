@@ -20,7 +20,10 @@ kwargs = {
     "LOS": {
         "label_start_time": LOS_SETTINGS['label_start_time']
     },
-    "PHENO": {}
+    "PHENO": {},
+    "MULTI": {
+        "file_suffix": "h5"
+    }
 }
 
 
@@ -85,7 +88,11 @@ def test_compact_processing_task(task_name: str):
 
     tests_io(f"All {task_name} files have been created as expected")
     # Compare the dataframes in the directory
-    assert_dataset_equals(dataset["X"], dataset["y"], generated_path, test_data_dir)
+    assert_dataset_equals(dataset["X"],
+                          dataset["y"],
+                          generated_path,
+                          test_data_dir,
+                          test_index="filename")
     tests_io(f"{task_name} preprocessing successfully tested against original code!")
 
     return
@@ -94,7 +101,8 @@ def test_compact_processing_task(task_name: str):
 def assert_file_creation(root_path: Path,
                          test_data_dir: Path,
                          label_start_time: float = None,
-                         minimum_length_of_stay: float = None):
+                         minimum_length_of_stay: float = None,
+                         file_suffix: str = None):
     """_summary_
 
     Args:
@@ -110,6 +118,8 @@ def assert_file_creation(root_path: Path,
 
     assert root_path.is_dir(), f"Generated directory {root_path} does not exist"
     assert test_data_dir.is_dir(), f"Test directory {test_data_dir} does not exist"
+
+    file_suffix = "csv" if file_suffix is None else file_suffix
     # Test wether all files have been created correctly
     for file_path in Path(test_data_dir).iterdir():
         if file_path.name == "listfile.csv":
@@ -128,29 +138,30 @@ def assert_file_creation(root_path: Path,
 
         if label_start_time is not None:
             if label_start_time > test_data["Hours"].max():
-                assert not Path(root_path, str(subject_id), f"X_{stay_id}.csv").is_file(
+                assert not Path(root_path, str(subject_id), f"X_{stay_id}.{file_suffix}").is_file(
                 ), f"Sample file X_{stay_id}.csv for subject {subject_id} should be deleted due to minimum label start time."
-                assert not Path(root_path, str(subject_id), f"y_{stay_id}.csv").is_file(
+                assert not Path(root_path, str(subject_id), f"y_{stay_id}.{file_suffix}").is_file(
                 ), f"Label file y_{stay_id}.csv for subject {subject_id} should be deleted due to minimum label start time."
                 removed_count += 1
                 continue
 
         if minimum_length_of_stay is not None:
             test_episode_data = pd.read_csv(Path(test_data_dir.parent.parent, "extracted",
-                                                 str(subject_id), f"episode{stay_id}.csv"),
+                                                 str(subject_id),
+                                                 f"episode{stay_id}.{file_suffix}"),
                                             na_values=[''],
                                             keep_default_na=False)
             if test_episode_data["Length of Stay"][0] > minimum_length_of_stay:
-                assert not Path(root_path, str(subject_id), f"X_{stay_id}.csv").is_file(
+                assert not Path(root_path, str(subject_id), f"X_{stay_id}.{file_suffix}").is_file(
                 ), f"Sample file X_{stay_id}.csv for subject {subject_id} should be deleted due to minimum length of stay."
-                assert not Path(root_path, str(subject_id), f"y_{stay_id}.csv").is_file(
+                assert not Path(root_path, str(subject_id), f"y_{stay_id}.{file_suffix}").is_file(
                 ), f"Label file y_{stay_id}.csv for subject {subject_id} should be deleted due to minimum length of stay."
                 removed_count += 1
                 continue
 
-        assert Path(root_path, str(subject_id), f"X_{stay_id}.csv").is_file(
+        assert Path(root_path, str(subject_id), f"X_{stay_id}.{file_suffix}").is_file(
         ), f"Missing sample file X_{stay_id}.csv for subject {subject_id}"
-        assert Path(root_path, str(subject_id), f"y_{stay_id}.csv").is_file(
+        assert Path(root_path, str(subject_id), f"y_{stay_id}.{file_suffix}").is_file(
         ), f"Missing label file y_{stay_id}.csv for subject {subject_id}"
         tests_io(
             f"Total stays checked: {count}\n"
@@ -162,9 +173,9 @@ def assert_file_creation(root_path: Path,
 if __name__ == "__main__":
     import shutil
     _ = datasets.load_data(chunksize=75835, source_path=TEST_DATA_DEMO, storage_path=SEMITEMP_DIR)
-    for task in TASK_NAMES:
-        if Path(TEMP_DIR).is_dir():
-            shutil.rmtree(str(Path(TEMP_DIR)))
+    for task in ["MULTI"]:  # TASK_NAMES:
+        # if Path(TEMP_DIR).is_dir():
+        #     shutil.rmtree(str(Path(TEMP_DIR)))
         test_compact_processing_task(task)
         if Path(TEMP_DIR).is_dir():
             shutil.rmtree(str(TEMP_DIR))
