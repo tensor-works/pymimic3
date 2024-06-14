@@ -2,7 +2,7 @@ import os
 import subprocess
 from utils import load_json, write_json
 from pathlib import Path
-from tests.settings import *
+from tests.tsettings import *
 
 test_history_file = Path(os.getenv("TESTS"), "test_history.json")
 

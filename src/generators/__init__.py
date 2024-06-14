@@ -51,11 +51,11 @@ class AbstractGenerator:
         self._remainder_y = np.array([])
         self._remainder_M = np.array([])
 
-        if not ray.is_initialized():
-            ray.init(ignore_reinit_error=True, num_cpus=self._cpu_count)
-            log_dir = os.path.join(ray._private.utils.get_user_temp_dir(),
-                                   "ray/session_latest/logs")
-            print(f"Ray logs can be found in: {log_dir}")
+        # if not ray.is_initialized():
+        #     ray.init(ignore_reinit_error=True, num_cpus=self._cpu_count)
+        #     log_dir = os.path.join(ray._private.utils.get_user_temp_dir(),
+        #                            "ray/session_latest/logs")
+        #     print(f"Ray logs can be found in: {log_dir}")
 
     def __getitem__(self, index=None):
         if not self._workers:
@@ -165,7 +165,11 @@ class AbstractGenerator:
         return chunks
 
     @staticmethod
-    def read_timeseries(X_df: pd.DataFrame, y_df: pd.DataFrame, row_only=False, bining="none"):
+    def read_timeseries(X_df: pd.DataFrame,
+                        y_df: pd.DataFrame,
+                        row_only=False,
+                        bining="none",
+                        masks=False):
         if bining == "log":
             y = y_df.applymap(LogBins.get_bin_log)
         elif bining == "custom":
@@ -219,7 +223,7 @@ class AbstractGenerator:
         return np.concatenate(data, axis=0, dtype=np.float32)
 
 
-@ray.remote
+# @ray.remote
 class RayWorker:
 
     def __init__(self,

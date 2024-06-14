@@ -3,7 +3,7 @@ import pytest
 import pandas as pd
 from pathlib import Path
 from utils.IO import *
-from tests.settings import *
+from tests.tsettings import *
 from tests.pytest_utils import copy_dataset
 from tests.pytest_utils.general import assert_dataframe_equals
 from tests.decorators import repeat

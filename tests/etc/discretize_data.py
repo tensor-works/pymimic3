@@ -4,7 +4,7 @@ import sys
 sys.path.append(os.getenv("WORKINGDIR"))
 import pandas as pd
 from pathlib import Path
-from tests.settings import *
+from tests.tsettings import *
 from mimic3benchmark.readers import DecompensationReader
 
 from mimic3models.preprocessing import Discretizer

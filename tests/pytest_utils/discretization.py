@@ -11,7 +11,7 @@ from datasets.writers import DataSetWriter
 from datasets.processors.discretizers import MIMICDiscretizer
 from tests.pytest_utils.general import assert_dataframe_equals
 from utils.IO import *
-from tests.settings import *
+from tests.tsettings import *
 
 
 def prepare_processed_data(task_name: str, listfile: pd.DataFrame, reader: ProcessedSetReader):

@@ -7,7 +7,7 @@ import pandas as pd
 from copy import deepcopy
 from pathlib import Path
 from utils.IO import *
-from tests.settings import *
+from tests.tsettings import *
 from tests.pytest_utils import copy_dataset
 from tests.pytest_utils.general import assert_dataframe_equals
 from tests.pytest_utils.preprocessing import assert_reader_equals, assert_dataset_equals

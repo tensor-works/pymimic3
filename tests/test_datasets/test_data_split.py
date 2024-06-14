@@ -12,7 +12,7 @@ import numpy as np
 from typing import List, Dict
 from pathlib import Path
 from utils.IO import *
-from tests.settings import *
+from tests.tsettings import *
 from datasets.readers import ProcessedSetReader, SplitSetReader
 from sklearn import model_selection
 from pathlib import Path

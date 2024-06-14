@@ -5,7 +5,7 @@ import json
 import shutil
 from pathlib import Path
 from utils.IO import *
-from tests.settings import *
+from tests.tsettings import *
 
 base_path = Path(TEST_DATA_DIR, "configs", "case_configs")
 

@@ -3,7 +3,7 @@ import shutil
 from datasets.trackers import ExtractionTracker
 from pathlib import Path
 from utils.IO import *
-from tests.settings import *
+from tests.tsettings import *
 
 TRACKER_STATE = {
     "count_subject_events": {

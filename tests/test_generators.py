@@ -8,7 +8,7 @@ from preprocessing.scalers import MinMaxScaler
 import numpy as np
 from utils.IO import *
 from datasets.readers import ProcessedSetReader
-from tests.settings import *
+from tests.tsettings import *
 from preprocessing.imputers import PartialImputer
 from pathlib import Path
 

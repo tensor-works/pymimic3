@@ -6,7 +6,7 @@ from time import sleep
 from pathlib import Path
 from datasets.trackers import ExtractionTracker
 from datasets.readers import EventReader
-from tests.settings import *
+from tests.tsettings import *
 from tests.pytest_utils.general import assert_dataframe_equals
 from utils.IO import *
 

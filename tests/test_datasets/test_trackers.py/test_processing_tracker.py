@@ -3,7 +3,7 @@ import shutil
 from pathlib import Path
 from datasets.trackers import PreprocessingTracker
 from utils.IO import *
-from tests.settings import *
+from tests.tsettings import *
 
 tracker_state = {"subjects": {}, "is_finished": False, "num_subjects": None}
 

@@ -13,8 +13,9 @@ References
 ----------
 - YerevaNN/mimic3-benchmarks: https://github.com/YerevaNN/mimic3-benchmarks
 """
-import pandas as pd
+import warnings
 import shutil
+import pandas as pd
 import numpy as np
 from pathos.helpers import mp
 import operator
@@ -133,10 +134,12 @@ class DataSetWriter():
                 mode = "w"
                 header = True
             if file_type == "hdf5":
-                pd.DataFrame(df).to_hdf(Path(path.parent, f"{path.stem}.h5"),
-                                        key="data",
-                                        mode=mode,
-                                        index=index)
+                with warnings.catch_warnings():
+                    warnings.filterwarnings('ignore', category=pd.io.pytables.PerformanceWarning)
+                    pd.DataFrame(df).to_hdf(Path(path.parent, f"{path.stem}.h5"),
+                                            key="data",
+                                            mode=mode,
+                                            index=index)
             elif file_type == "csv":
                 pd.DataFrame(df).to_csv(Path(path.parent, f"{path.stem}.csv"),
                                         mode=mode,

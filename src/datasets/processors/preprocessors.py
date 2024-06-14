@@ -55,7 +55,7 @@ import random
 import numpy as np
 import dateutil
 import pandas as pd
-from typing import Dict
+from typing import Dict, Tuple, Dict
 from copy import deepcopy
 from pathlib import Path
 from multiprocess import Manager
@@ -425,34 +425,38 @@ class MIMICPreprocessor(AbstractProcessor):
         self._label_type = "sparse"
         mortality = int(episodic_data_df.loc["MORTALITY"])
         los = 24.0 * episodic_data_df.loc['LOS']  # in hours
-        deathtime = icu_stay['DEATHTIME']
         precision = MULTI_SETTINGS['sample_precision']
         sample_rate = MULTI_SETTINGS['sample_rate']
 
-        X = timeseries_df.copy()
         y = {}
 
+        # Process Phenotyping (PHENO)
+        X_pheno, y_pheno = self.make_pheontyping_data(timeseries_df=timeseries_df,
+                                                      episodic_data_df=episodic_data_df,
+                                                      diagnoses_df=diagnoses_df,
+                                                      phenotypes_yaml=phenotypes_yaml)
+        if X_pheno.empty:
+            return pd.DataFrame(), pd.DataFrame()
         # Process In-Hospital Mortality (IHM)
         _, y_ihm = self.make_inhospital_mortality_data(timeseries_df=timeseries_df,
                                                        episodic_data_df=episodic_data_df,
                                                        mortality=mortality)
         y['IHM_pos'] = 0 if y_ihm.empty else 47
         y['IHM_mask'] = 1 if not y_ihm.empty else 0
-        y['IHM_label'] = y_ihm['y'].iloc[0] if not y_ihm.empty else mortality
+        y['IHM_label'] = mortality if y_ihm.empty else y_ihm['y'].iloc[0]
 
         # Process Decompensation (DECOMP)
         _, y_decomp = self.make_decompensation_data(timeseries_df=timeseries_df,
                                                     episodic_data_df=episodic_data_df,
                                                     icu_stay=icu_stay,
-                                                    label_start_time=0,
-                                                    stop_at_death=False)
+                                                    label_start_time=-1e6,
+                                                    start_time=-1e6)
 
         sample_times = np.arange(0.0, min(los, y_decomp.index.max()) + precision, sample_rate)
         dec_start_time = DECOMP_SETTINGS['label_start_time']
         if not y_decomp.empty:
             y_decomp = y_decomp.reindex(sample_times)
-            y_mask = y_decomp['y'].apply(lambda x: x > dec_start_time).values
-            y['DECOMP_masks'] = y_mask.reshape(-1).tolist()
+            y['DECOMP_masks'] = (y_decomp.index > dec_start_time).astype(int).tolist()
             y['DECOMP_labels'] = y_decomp['y'].fillna(0).values.reshape(-1).tolist()
         else:
             sample_times = np.arange(0.0, dec_start_time + precision, sample_rate)
@@ -461,33 +465,33 @@ class MIMICPreprocessor(AbstractProcessor):
 
         # Process Length of Stay (LOS)
         _, y_los = self.make_length_of_stay_data(timeseries_df=timeseries_df,
-                                                 episodic_data_df=episodic_data_df)
+                                                 episodic_data_df=episodic_data_df,
+                                                 label_start_time=-1e6,
+                                                 start_time=-1e6)
+        los_start_time = LOS_SETTINGS['label_start_time']
         if not y_los.empty:
+            sample_times = np.arange(0.0, y_los.index.max() + precision, sample_rate)
             y_los = y_los.reindex(sample_times)
-            y_mask = y_los['y'].apply(lambda x: int(~np.isnan(x)))
-            y['LOS_masks'] = y_mask.values.reshape(-1).tolist()
+            y['LOS_masks'] = (y_los.index > los_start_time).astype(int).tolist()
             y['LOS_labels'] = y_los['y'].fillna(0).values.reshape(-1).tolist()
         else:
             y['LOS_masks'] = np.zeros(len(sample_times)).tolist()
             y['LOS_labels'] = np.zeros(len(sample_times)).tolist()
         y["LOS_value"] = los
 
-        # Process Phenotyping (PHENO)
-        _, y_pheno = self.make_pheontyping_data(timeseries_df=timeseries_df,
-                                                episodic_data_df=episodic_data_df,
-                                                diagnoses_df=diagnoses_df,
-                                                phenotypes_yaml=phenotypes_yaml)
-        if not y_los.empty:
+        # Pheno comes last
+        if not y_pheno.empty:
             y['PHENO_labels'] = y_pheno.values.reshape(-1).tolist()
         else:
             y['PHENO_labels'] = [
                 0 for phenotype, data in phenotypes_yaml.items() if data['use_in_benchmark']
             ]
+
         y_df = pd.DataFrame()
         for label, value in y.items():
             y_df[label] = [value]
 
-        return X, y_df
+        return X_pheno, y_df
 
     def make_inhospital_mortality_data(self, timeseries_df: pd.DataFrame,
                                        episodic_data_df: pd.DataFrame, mortality: int):
@@ -522,7 +526,7 @@ class MIMICPreprocessor(AbstractProcessor):
                                  episodic_data_df: pd.DataFrame,
                                  icu_stay,
                                  label_start_time: float = None,
-                                 stop_at_death: bool = True):
+                                 start_time: float = None):
         """
         Prepares data for the decompensation prediction task.
 
@@ -566,13 +570,13 @@ class MIMICPreprocessor(AbstractProcessor):
         event_times = timeseries_df.index[(timeseries_df.index < los + precision)
                                           & (timeseries_df.index > -precision)]
 
-        sample_times = np.arange(0.0,
-                                 min(los, lived_time if stop_at_death else np.inf) + precision,
-                                 sample_rate)
+        sample_times = np.arange(0.0, min(los, lived_time) + precision, sample_rate)
         sample_times = list(filter(lambda x: x > label_start_time, sample_times))
 
         # At least one measurement
-        sample_times = list(filter(lambda x: x > event_times[0], sample_times))
+        sample_times = list(
+            filter(lambda x: x > event_times[0]
+                   if start_time is None else start_time, sample_times))
 
         y = list()
 
@@ -590,7 +594,11 @@ class MIMICPreprocessor(AbstractProcessor):
 
         return X, y
 
-    def make_length_of_stay_data(self, timeseries_df: pd.DataFrame, episodic_data_df: pd.DataFrame):
+    def make_length_of_stay_data(self,
+                                 timeseries_df: pd.DataFrame,
+                                 episodic_data_df: pd.DataFrame,
+                                 label_start_time: int = None,
+                                 start_time: int = None) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """
         Prepares data for the length of stay prediction task.
 
@@ -607,7 +615,8 @@ class MIMICPreprocessor(AbstractProcessor):
         """
         precision = LOS_SETTINGS['sample_precision']
         sample_rate = LOS_SETTINGS['sample_rate']
-        label_start_time = LOS_SETTINGS['label_start_time']
+        label_start_time = LOS_SETTINGS[
+            'label_start_time'] if label_start_time is None else label_start_time
         bins = LOS_SETTINGS['bins']
 
         los = 24.0 * episodic_data_df.loc['LOS']  # in hours
@@ -622,7 +631,9 @@ class MIMICPreprocessor(AbstractProcessor):
 
         sample_times = np.arange(0.0, los + precision, sample_rate)
         sample_times = list(filter(lambda x: x > label_start_time, sample_times))
-        sample_times = list(filter(lambda x: x > event_times[0], sample_times))
+        sample_times = list(
+            filter(lambda x: x >= event_times[0]
+                   if start_time is None else start_time, sample_times))
 
         y = list()
 
