@@ -38,7 +38,6 @@ from pathlib import Path
 from abc import ABC, abstractmethod
 from pathos.multiprocessing import cpu_count, Pool
 from datasets.readers import ExtractedSetReader, ProcessedSetReader
-from datasets.mimic_utils import copy_subject_info
 from datasets.trackers import PreprocessingTracker
 from datasets.writers import DataSetWriter
 from utils.IO import *
@@ -142,27 +141,29 @@ class AbstractProcessor(ABC):
             A list of subject IDs to save data for. If None, all data is saved. Default is None.
         """
         if self._writer is None:
-            info_io("No storage path provided. Data will not be saved.")
+            info_io("No storage path provided. Data will not be saved.", verbose=self._verbose)
             return
         with self._lock:
+            is_deep_supervision = hasattr(self, "_deep_supervision") and self._deep_supervision
+            y_key = "yds" if is_deep_supervision else "y"
             if subjects is None:
                 self._writer.write_bysubject({"X": self._X}, file_type=self._save_file_type)
-                self._writer.write_bysubject({"y": self._y}, file_type=self._save_file_type)
+                self._writer.write_bysubject({y_key: self._y}, file_type=self._save_file_type)
                 self._X = dict()
                 self._y = dict()
-                if hasattr(self, "_deep_supervision") and self._deep_supervision:
+                if is_deep_supervision:
                     # MASK is create by discretizer
                     self._writer.write_bysubject({"M": self._M}, file_type=self._save_file_type)
                     self._M = dict()
             else:
                 self._writer.write_bysubject({"X": dict_subset(self._X, subjects)},
                                              file_type=self._save_file_type)
-                self._writer.write_bysubject({"y": dict_subset(self._y, subjects)},
+                self._writer.write_bysubject({y_key: dict_subset(self._y, subjects)},
                                              file_type=self._save_file_type)
                 for subject in subjects:
                     del self._X[subject]
                     del self._y[subject]
-                if hasattr(self, "_deep_supervision") and self._deep_supervision:
+                if is_deep_supervision:
                     # MASK is create by discretizer
                     self._writer.write_bysubject({"M": dict_subset(self._M, subjects)},
                                                  file_type=self._save_file_type)
@@ -212,32 +213,31 @@ class AbstractProcessor(ABC):
             self._tracker.set_subject_ids(subject_ids)
             self._tracker.set_num_subjects(num_subjects)
 
-        copy_subject_info(source_path, storage_path)
-
         if self._tracker.is_finished:
             info_io(
-                f"Compact {self._operation_name}  already finalized in directory:\n{str(self._storage_path)}"
-            )
+                f"Compact {self._operation_name}  already finalized in directory:\n{str(self._storage_path)}",
+                verbose=self._verbose)
             if num_subjects is not None:
                 subject_ids = random.sample(self._tracker.subject_ids, k=num_subjects)
             return ProcessedSetReader(root_path=self._storage_path,
                                       subject_ids=subject_ids).read_samples(read_ids=True)
 
-        info_io(f"Compact {self._operation_name}: {self._task}", level=0)
+        info_io(f"Compact {self._operation_name}: {self._task}", level=0, verbose=self._verbose)
 
         subject_ids, exclud_subj, unkonwn_subj = self._get_subject_ids(
             num_subjects=num_subjects,
             subject_ids=subject_ids,
             processed_subjects=self._tracker.subject_ids,
-            all_subjects=X_subjects.keys())
+            all_subjects=X_subjects.keys() if not self._tracker.force_rerun else list())
 
         if not subject_ids:
             self._tracker.is_finished = True
-            info_io(f"Finalized for task {self._task} in directory:\n{str(self._storage_path)}")
+            info_io(f"Finalized for task {self._task} in directory:\n{str(self._storage_path)}",
+                    verbose=self._verbose)
             if num_subjects and not self._n_subjects == num_subjects:
                 warn_io(
-                    f"The subject target was not reached, missing {self._n_subjects - num_subjects} subjects."
-                )
+                    f"The subject target was not reached, missing {self._n_subjects - num_subjects} subjects.",
+                    verbose=self._verbose)
             if orig_subject_ids is not None:
                 orig_subject_ids = list(set(orig_subject_ids) & set(self._tracker.subject_ids))
             return ProcessedSetReader(self._storage_path,
@@ -253,10 +253,10 @@ class AbstractProcessor(ABC):
         if storage_path or self._storage_path:
             self.save_data()
             info_io(
-                f"{self._operation_name.capitalize()} engineering for {self._task} in directory:\n{str(self._storage_path)}"
-            )
+                f"{self._operation_name.capitalize()} engineering for {self._task} in directory:\n{str(self._storage_path)}",
+                verbose=self._verbose)
         else:
-            info_io(f"Finalized {self._operation_name} for {self._task}.")
+            info_io(f"Finalized {self._operation_name} for {self._task}.", verbose=self._verbose)
         self._tracker.is_finished = True
         # TODO! inefficient
         if orig_subject_ids is not None:
@@ -299,19 +299,18 @@ class AbstractProcessor(ABC):
             self._tracker.set_subject_ids(subject_ids)
             self._tracker.set_num_subjects(num_subjects)
 
-        copy_subject_info(reader.root_path, self._storage_path)
-
         if self._tracker.is_finished:
             info_io(
-                f"{self._operation_name.capitalize()} for {self._task} is already in directory:\n{str(self._storage_path)}."
-            )
+                f"{self._operation_name.capitalize()} for {self._task} is already in directory:\n{str(self._storage_path)}.",
+                verbose=orig_verbose)
             if num_subjects is not None:
                 subject_ids = random.sample(self._tracker.subject_ids, k=num_subjects)
             self._verbose = orig_verbose
             return ProcessedSetReader(self._storage_path, subject_ids=subject_ids)
 
-        info_io(f"Iterative {self._operation_name}: {self._task}", level=0)
-        info_io(f"{self._operation_name.capitalize()} data for task {self._task}.")
+        info_io(f"Iterative {self._operation_name}: {self._task}", level=0, verbose=orig_verbose)
+        info_io(f"{self._operation_name.capitalize()} data for task {self._task}.",
+                verbose=orig_verbose)
 
         # Parallel processing logic
         def process_subject(subject_id: str):
@@ -332,27 +331,31 @@ class AbstractProcessor(ABC):
             num_subjects=num_subjects,
             subject_ids=subject_ids,
             all_subjects=reader.subject_ids,
-            processed_subjects=self._tracker.subject_ids)
+            processed_subjects=self._tracker.subject_ids
+            if not self._tracker.force_rerun else list())
 
         if not subject_ids:
             self._verbose = orig_verbose
             self._tracker.is_finished = True
-            info_io(f"Finalized for task {self._task} in directory:\n{str(self._storage_path)}")
+            info_io(f"Finalized for task {self._task} in directory:\n{str(self._storage_path)}",
+                    verbose=orig_verbose)
             if num_subjects and not self._n_subjects == num_subjects:
                 warn_io(
-                    f"The subject target was not reached, missing {self._n_subjects - num_subjects} subjects."
-                )
+                    f"The subject target was not reached, missing {self._n_subjects - num_subjects} subjects.",
+                    verbose=orig_verbose)
             if original_subject_ids is not None:
                 original_subject_ids = list(
                     set(original_subject_ids) & set(self._tracker.subject_ids))
             return ProcessedSetReader(self._storage_path, subject_ids=original_subject_ids)
 
         missing_subjects = len(unknown_subj)
-        info_io(f"{self._operation_name.capitalize()} timeseries data:\n"
-                f"{self._operation_adjective.capitalize()} subjects: {self._n_subjects}\n"
-                f"{self._operation_adjective.capitalize()} stays: {self._n_stays}\n"
-                f"{self._operation_adjective.capitalize()} samples: {self._n_samples}\n"
-                f"Skipped subjects: {len(unknown_subj)}")
+        info_io(
+            f"{self._operation_name.capitalize()} timeseries data:\n"
+            f"{self._operation_adjective.capitalize()} subjects: {self._n_subjects}\n"
+            f"{self._operation_adjective.capitalize()} stays: {self._n_stays}\n"
+            f"{self._operation_adjective.capitalize()} samples: {self._n_samples}\n"
+            f"Skipped subjects: {len(unknown_subj)}",
+            verbose=orig_verbose)
 
         # Start the run
         chunksize = max(len(subject_ids) // (cpu_count() - 1), 1)
@@ -367,7 +370,7 @@ class AbstractProcessor(ABC):
                         if num_subjects is None:
                             missing_subjects += 1
                             continue
-                        debug_io(f"Missing subject is: {subject_id}")
+                        debug_io(f"Missing subject is: {subject_id}", verbose=orig_verbose)
                         try:
                             subj = exclud_subj.pop()
                             res = chain(res,
@@ -375,8 +378,8 @@ class AbstractProcessor(ABC):
                         except IndexError:
                             missing_subjects += 1
                             debug_io(
-                                f"Could not replace missing subject. Excluded subjects is: {exclud_subj}"
-                            )
+                                f"Could not replace missing subject. Excluded subjects is: {exclud_subj}",
+                                verbose=orig_verbose)
                     else:
                         self._n_subjects += 1
                         self._n_stays += len(tracker_data) - 1
@@ -388,15 +391,17 @@ class AbstractProcessor(ABC):
                         f"{self._operation_adjective.capitalize()} stays: {self._n_stays}\n"
                         f"{self._operation_adjective.capitalize()} samples: {self._n_samples}\n"
                         f"Skipped subjects: {missing_subjects}",
-                        flush_block=(True and not int(os.getenv("DEBUG", 0))))
+                        flush_block=(True and not int(os.getenv("DEBUG", 0))),
+                        verbose=orig_verbose)
                 except StopIteration as e:
                     self._tracker.is_finished = True
                     info_io(
-                        f"Finalized for task {self._task} in directory:\n{str(self._storage_path)}")
+                        f"Finalized for task {self._task} in directory:\n{str(self._storage_path)}",
+                        verbose=orig_verbose)
                     if num_subjects is not None and missing_subjects:
                         warn_io(
-                            f"The subject target was not reached, missing {missing_subjects} subjects."
-                        )
+                            f"The subject target was not reached, missing {missing_subjects} subjects.",
+                            verbose=orig_verbose)
                     pool.close()
                     pool.join()
                     break

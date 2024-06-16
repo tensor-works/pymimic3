@@ -24,9 +24,11 @@ class AbstractGenerator:
                  batch_size: int = 8,
                  shuffle: bool = True,
                  bining: str = "none",
-                 deep_supervision: bool = False):
+                 deep_supervision: bool = False,
+                 target_replication: bool = False):
         self._batch_size = batch_size
         self._shuffle = shuffle
+        self._target_replication = target_replication
         self._reader = reader
         self._columns = None
         self._deep_supervision = deep_supervision
@@ -36,13 +38,13 @@ class AbstractGenerator:
         self._scaler = scaler
         self._random_ids = deepcopy(self._reader.subject_ids)
         random.shuffle(self._random_ids)
-        self.generator = self._generator()
+        self._generator = self.__generator()
         self._row_only = False
         if num_cpus is None:
             self._cpu_count = max(1, len(self._subject_ids) // (mp.cpu_count() - 2))
         else:
             self._cpu_count = min(num_cpus, mp.cpu_count())
-        self._workers = list()
+        self.__workers = list()
         if bining not in ["none", "log", "custom"]:
             raise ValueError("Bining must be one of ['none', 'log', 'custom']")
         self._bining = bining
@@ -51,19 +53,19 @@ class AbstractGenerator:
         self._remainder_y = np.array([])
         self._remainder_M = np.array([])
 
-        # if not ray.is_initialized():
-        #     ray.init(ignore_reinit_error=True, num_cpus=self._cpu_count)
-        #     log_dir = os.path.join(ray._private.utils.get_user_temp_dir(),
-        #                            "ray/session_latest/logs")
-        #     print(f"Ray logs can be found in: {log_dir}")
+        if not ray.is_initialized():
+            ray.init(ignore_reinit_error=True, num_cpus=self._cpu_count)
+            log_dir = os.path.join(ray._private.utils.get_user_temp_dir(),
+                                   "ray/session_latest/logs")
+            print(f"Ray logs can be found in: {log_dir}")
 
     def __getitem__(self, index=None):
-        if not self._workers:
+        if not self.__workers:
             self._create_workers()
             self._start_epoch()
 
         # Start with any remainder from the previous batch
-        X, y, m = next(self.generator)  # if not deepsupervsion m is timestamps else mask
+        X, y, m = next(self._generator)  # if not deepsupervsion m is timestamps else mask
         # Fetch new data until we have at least the required batch size
         while X.shape[0] < self._batch_size:
             X_res = self._remainder_X
@@ -76,7 +78,7 @@ class AbstractGenerator:
             else:
                 y = np.concatenate((y, y_res), axis=0, dtype=np.float32) if y_res.size else y
             if X.shape[0] < self._batch_size:
-                self._remainder_X, self._remainder_y, self._remainder_M = next(self.generator)
+                self._remainder_X, self._remainder_y, self._remainder_M = next(self._generator)
 
             # If the accumulated batch is larger than required, split it
             if X.shape[0] > self._batch_size:
@@ -120,30 +122,31 @@ class AbstractGenerator:
         # worker = RayWorker(self._reader, self._scaler, self._row_only, self._bining, self._columns)
         # gen = worker.process_subject((self._random_ids, self._batch_size))
         # X, y, t = next(gen)
-        self._workers = [
+        self.__workers = [
             RayWorker.remote(self._reader, self._scaler, self._row_only, self._bining,
-                             self._columns, self._deep_supervision) for _ in range(self._cpu_count)
+                             self._columns, self._deep_supervision, self._target_replication)
+            for _ in range(self._cpu_count)
         ]
 
     def _start_epoch(self):
         random.shuffle(self._random_ids)
-        ids = self.split_ids(self._random_ids, len(self._workers))
+        ids = self.split_ids(self._random_ids, len(self.__workers))
         if self._deep_supervision:
-            self.results = [
+            self.__results = [
                 worker.process_subject_deep_supervision.options(num_returns="dynamic").remote(
                     (subject_ids, self._batch_size))
-                for worker, subject_ids in zip(self._workers, ids)
+                for worker, subject_ids in zip(self.__workers, ids)
             ]
         else:
-            self.results = [
+            self.__results = [
                 worker.process_subject.options(num_returns="dynamic").remote(
                     (subject_ids, self._batch_size))
-                for worker, subject_ids in zip(self._workers, ids)
+                for worker, subject_ids in zip(self.__workers, ids)
             ]
 
-    def _generator(self):
+    def __generator(self):
         while True:
-            ready_ids, _ = ray.wait(self.results, num_returns=1)
+            ready_ids, _ = ray.wait(self.__results, num_returns=1)
             dynamci_result = ray.get(ready_ids[0])
             # self.results.remove(ready_ids[0])
             for object_result in dynamci_result:
@@ -198,9 +201,9 @@ class AbstractGenerator:
         return Xs, ys, ts
 
     def _close(self):
-        for worker in self._workers:
+        for worker in self.__workers:
             ray.kill(worker)
-        self._workers.clear()
+        self.__workers.clear()
 
     @staticmethod
     def _zeropad_samples(data):
@@ -223,7 +226,7 @@ class AbstractGenerator:
         return np.concatenate(data, axis=0, dtype=np.float32)
 
 
-# @ray.remote
+@ray.remote
 class RayWorker:
 
     def __init__(self,
@@ -232,13 +235,15 @@ class RayWorker:
                  row_only: bool,
                  bining: str,
                  columns: list,
-                 deep_supervision: bool = True):
+                 deep_supervision: bool = True,
+                 target_replication: bool = False):
         self._reader = reader
         self._scaler = scaler
         self._row_only = row_only
         self._bining = bining
         self._columns = columns
         self._deep_supervision = deep_supervision
+        self._target_replication = target_replication
 
     def process_subject_deep_supervision(self, args):
         subject_ids, batch_size = args
@@ -254,7 +259,9 @@ class RayWorker:
                     X_subject, y_subject, M_subject = self._reader.read_sample(
                         subject_id, read_masks=True, read_ids=True).values()
                     for stay_id in X_subject.keys():
-                        X_batch.append(X_subject[stay_id])
+                        X_stay = X_subject[stay_id]
+                        X_stay[X_stay.columns] = self._scaler.transform(X_stay)
+                        X_batch.append(X_stay)
                         y_batch.append(y_subject[stay_id])
                         m_batch.append(M_subject[stay_id])
                         if len(X_batch) == batch_size:
@@ -303,6 +310,8 @@ class RayWorker:
                                                                    bining=self._bining)
                     Xs, ys, ts = AbstractGenerator._shuffled_data(Xs, ys, ts)
                     for X, y, t in zip(Xs, ys, ts):
+                        if self._target_replication:
+                            y = np.expand_dims(y, axis=-1).repeat(X.shape[1], axis=1)
                         X_batch.append(X)
                         y_batch.append(y)
                         t_batch.append(t)

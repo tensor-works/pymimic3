@@ -5,6 +5,8 @@ import numpy as np
 from copy import deepcopy
 from utils.IO import *
 from tests.tsettings import *
+from settings import *
+from typing import Dict
 from datasets.readers import ProcessedSetReader
 from datasets.mimic_utils import upper_case_column_names
 
@@ -18,6 +20,10 @@ timeseries_label_cols = {
     "PHENO": [
         'y0', 'y1', 'y2', 'y3', 'y4', 'y5', 'y6', 'y7', 'y8', 'y9', 'y10', 'y11', 'y12', 'y13',
         'y14', 'y15', 'y16', 'y17', 'y18', 'y19', 'y20', 'y21', 'y22', 'y23', 'y24'
+    ],
+    "MULTI": [
+        'PHENO_LABELS', 'IHM_POS', 'IHM_MASK', 'IHM_LABEL', 'DECOMP_MASKS', 'DECOMP_LABELS',
+        'LOS_MASKS', 'LOS_LABELS', 'LOS_VALUE'
     ]
 }
 
@@ -26,12 +32,25 @@ DTYPES = {
     for column_name, dtype in DATASET_SETTINGS["timeseries"]["dtype"].items()
 }
 
+# TODO! Warnings because we do not have timestamps anymore
+
 
 @pytest.mark.parametrize("task_name", TASK_NAMES)
-def test_read_sample(task_name: str, preprocessed_readers: ProcessedSetReader):
+@pytest.mark.parametrize("reader_flavour", ["discretized", "engineered", "preprocessed"])
+def test_read_sample(
+    task_name: str,
+    reader_flavour: str,
+    preprocessed_readers: Dict[str, ProcessedSetReader],
+    engineered_readers: Dict[str, ProcessedSetReader],
+    discretized_readers: Dict[str, ProcessedSetReader],
+):
     tests_io(f"Test case read sample for task {task_name}", level=0)
-    reader = preprocessed_readers[task_name]
-
+    if reader_flavour == "preprocessed":
+        reader = preprocessed_readers[task_name]
+    elif reader_flavour == "discretized":
+        reader = discretized_readers[task_name]
+    elif reader_flavour == "engineered":
+        reader = engineered_readers[task_name]
     # 10017: Single stay
     # 40124: Multiple stays
 
@@ -272,7 +291,6 @@ if __name__ == "__main__":
                                     preprocess=True,
                                     task=task)
         reader_dict[task] = reader
-    for task in TASK_NAMES:
         test_read_sample(task, reader_dict)
         test_read_samples(task, reader_dict)
         test_random_sample(task, reader_dict)

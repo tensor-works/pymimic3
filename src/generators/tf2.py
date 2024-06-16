@@ -13,6 +13,7 @@ class TFGenerator(AbstractGenerator, Sequence):
                  batch_size: int = 8,
                  num_cpu: int = None,
                  deep_supervision: bool = False,
+                 target_replication: bool = False,
                  shuffle: bool = True,
                  bining: str = "none"):
         AbstractGenerator.__init__(self,
@@ -20,6 +21,8 @@ class TFGenerator(AbstractGenerator, Sequence):
                                    scaler=scaler,
                                    num_cpus=num_cpu,
                                    batch_size=batch_size,
+                                   target_replication=target_replication,
+                                   deep_supervision=deep_supervision,
                                    shuffle=shuffle,
                                    bining=bining)
         self._deep_supervision = deep_supervision
@@ -34,5 +37,5 @@ class TFGenerator(AbstractGenerator, Sequence):
         if len(y.shape) == 1:
             y = y.reshape(-1, 1)
         if self._deep_supervision:
-            return [X, m], y
+            return (X, m), y
         return X, y

@@ -40,6 +40,7 @@ import pathos, multiprocess
 from pathlib import Path
 from copy import deepcopy
 from multiprocess import Manager
+from multiprocessing import Lock
 from pathos.multiprocessing import cpu_count
 from utils.IO import *
 from .event_consumer import EventConsumer
@@ -91,8 +92,10 @@ class EventProducer(object):
                  chunksize: int,
                  tracker: ExtractionTracker,
                  icu_history_df: pd.DataFrame,
-                 subject_ids: list = None):
+                 subject_ids: list = None,
+                 verbose: bool = False):
         super().__init__()
+        self._verbose = verbose
         self._source_path = source_path
         self._storage_path = storage_path
         self._tracker = tracker
@@ -103,7 +106,9 @@ class EventProducer(object):
 
         # Counting variables
         self._count = 0  # count read data chunks
-        self._total_length = self._tracker.count_total_samples
+        self._lock = Lock()
+        with self._lock:
+            self._total_length = self._tracker.count_total_samples
         event_csv = ["CHARTEVENTS.csv", "LABEVENTS.csv", "OUTPUTEVENTS.csv"]
         self._ts_total_lengths = dict(zip(event_csv, [0] * 3))
 
@@ -128,7 +133,7 @@ class EventProducer(object):
                           in_q=self._in_q,
                           out_q=self._out_q,
                           icu_history_df=self._icu_history_df,
-                          lock=self._tracker._lock)
+                          lock=self._lock)
             # lock=multiprocess.Lock())
         ]
 
@@ -137,12 +142,16 @@ class EventProducer(object):
         progress_publisher = ProgressPublisher(n_consumers=self._cpus,
                                                source_path=self._source_path,
                                                in_q=self._out_q,
-                                               tracker=self._tracker)
+                                               tracker=self._tracker,
+                                               verbose=self._verbose,
+                                               lock=self._lock)
         progress_publisher.start()
         event_reader = EventReader(dataset_folder=self._source_path,
                                    chunksize=self._chunksize,
                                    subject_ids=self._subject_ids,
-                                   tracker=self._tracker)
+                                   tracker=self._tracker,
+                                   verbose=self._verbose,
+                                   lock=self._lock)
         while True:
             # Create more consumers if needed
             if len(consumers) < self._cpus and not self._in_q.empty():
@@ -151,7 +160,7 @@ class EventProducer(object):
                                   in_q=self._in_q,
                                   out_q=self._out_q,
                                   icu_history_df=self._icu_history_df,
-                                  lock=self._tracker._lock))
+                                  lock=self._lock))
                 consumers[-1].start()
             # Read data chunk from CSVs through readers
             event_frames, frame_lengths = event_reader.get_chunk()
@@ -183,7 +192,8 @@ class EventProducer(object):
 
                     # Record total length
                     self._total_length += sum(ts_lengths.values())
-                    self._tracker.count_total_samples = self._total_length
+                    with self._lock:
+                        self._tracker.count_total_samples = self._total_length
                     self._count += 1
                     debug_io(
                         f"Event producer finished on sample size restriction and produced {self._count} event chunks."
@@ -208,7 +218,8 @@ class EventProducer(object):
             self._count += 1
             self._total_length += sum(ts_lengths.values())
             self._update_total_lengths(ts_lengths)
-            self._tracker.count_total_samples = self._total_length
+            with self._lock:
+                self._tracker.count_total_samples = self._total_length
 
         # Join processes and queues when done reading
         debug_io(f"Joining in queue")

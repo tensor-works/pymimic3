@@ -81,6 +81,7 @@ from datasets.processors.discretizers import MIMICDiscretizer
 from . import extraction
 from .readers import ProcessedSetReader, ExtractedSetReader
 from .split import train_test_split
+from datasets.mimic_utils import copy_subject_info
 
 # global settings
 
@@ -95,13 +96,14 @@ def load_data(source_path: str,
               time_step_size: float = 1.0,
               impute_strategy: str = "previous",
               mode: str = "legacy",
-              deep_supervision: bool = False,
               start_at_zero=True,
+              deep_supervision: bool = False,
               extract: bool = True,
               preprocess: bool = False,
               engineer: bool = False,
               discretize: bool = False,
-              task: str = None) -> Union[ProcessedSetReader, ExtractedSetReader, dict]:
+              task: str = None,
+              verbose=True) -> Union[ProcessedSetReader, ExtractedSetReader, dict]:
     """
     Load and process the MIMIC-III dataset for machine learning and deep learning tasks.
 
@@ -180,7 +182,8 @@ def load_data(source_path: str,
                                                      chunksize=chunksize,
                                                      subject_ids=subject_ids,
                                                      num_subjects=num_subjects,
-                                                     task=task)
+                                                     task=task,
+                                                     verbose=verbose)
 
         if preprocess or engineer or discretize:
             # Contains phenotypes and a list of codes referring to the phenotype
@@ -192,11 +195,13 @@ def load_data(source_path: str,
                                              storage_path=processed_storage_path,
                                              phenotypes_yaml=phenotypes_yaml,
                                              label_type="one-hot",
-                                             verbose=True)
+                                             verbose=verbose)
+            copy_subject_info(reader.root_path, processed_storage_path)
 
-            reader = preprocessor.transform_reader(reader=reader,
-                                                   subject_ids=subject_ids,
-                                                   num_subjects=num_subjects)
+            proc_reader = preprocessor.transform_reader(reader=reader,
+                                                        subject_ids=subject_ids,
+                                                        num_subjects=num_subjects)
+            reader = proc_reader
 
         if engineer:
             engineered_storage_path = Path(storage_path, "engineered", task)
@@ -204,24 +209,26 @@ def load_data(source_path: str,
                                                          "engineering_config.json"),
                                         storage_path=engineered_storage_path,
                                         task=task,
-                                        verbose=True)
-            reader = engine.transform_reader(reader=reader,
+                                        verbose=verbose)
+            reader = engine.transform_reader(reader=proc_reader,
                                              subject_ids=subject_ids,
                                              num_subjects=num_subjects)
+            copy_subject_info(proc_reader.root_path, engineered_storage_path)
+
         if discretize:
             discretized_storage_path = Path(storage_path, "discretized", task)
-            discretizer = MIMICDiscretizer(reader=reader,
-                                           task=task,
+            discretizer = MIMICDiscretizer(task=task,
                                            storage_path=discretized_storage_path,
                                            time_step_size=time_step_size,
                                            impute_strategy=impute_strategy,
                                            start_at_zero=start_at_zero,
                                            mode=mode,
                                            deep_supervision=deep_supervision,
-                                           verbose=False)
-            reader = discretizer.transform_reader(reader=reader,
+                                           verbose=verbose)
+            reader = discretizer.transform_reader(reader=proc_reader,
                                                   subject_ids=subject_ids,
                                                   num_subjects=num_subjects)
+            copy_subject_info(proc_reader.root_path, discretized_storage_path)
 
         return reader
 
@@ -235,7 +242,8 @@ def load_data(source_path: str,
                                                 source_path=source_path,
                                                 num_subjects=num_subjects,
                                                 subject_ids=subject_ids,
-                                                task=task)
+                                                task=task,
+                                                verbose=verbose)
     if preprocess or engineer or discretize:
         processed_storage_path = Path(storage_path, "processed", task)
         # Contains phenotypes and a list of codes referring to the phenotype
@@ -245,11 +253,12 @@ def load_data(source_path: str,
                                          storage_path=processed_storage_path,
                                          phenotypes_yaml=phenotypes_yaml,
                                          label_type="one-hot",
-                                         verbose=True)
+                                         verbose=verbose)
         dataset = preprocessor.transform_dataset(dataset=dataset,
                                                  subject_ids=subject_ids,
                                                  num_subjects=num_subjects,
                                                  source_path=extracted_storage_path)
+        copy_subject_info(extracted_storage_path, processed_storage_path)
 
     if engineer:
         engineered_storage_path = Path(storage_path, "engineered", task)
@@ -257,10 +266,11 @@ def load_data(source_path: str,
                                                      "engineering_config.json"),
                                     storage_path=engineered_storage_path,
                                     task=task,
-                                    verbose=True)
+                                    verbose=verbose)
         dataset = engine.transform_dataset(dataset,
                                            subject_ids=subject_ids,
                                            num_subjects=num_subjects)
+        copy_subject_info(processed_storage_path, engineered_storage_path)
 
     if discretize:
         discretized_storage_path = Path(storage_path, "discretized", task)
@@ -271,10 +281,11 @@ def load_data(source_path: str,
                                        start_at_zero=start_at_zero,
                                        deep_supervision=deep_supervision,
                                        mode=mode,
-                                       verbose=False)
+                                       verbose=verbose)
         dataset = discretizer.transform_dataset(dataset=dataset,
                                                 subject_ids=subject_ids,
                                                 num_subjects=num_subjects)
+        copy_subject_info(processed_storage_path, discretized_storage_path)
 
     # TODO: make dependent from return reader (can also return reader)
     # TODO: write some tests for comparct generation

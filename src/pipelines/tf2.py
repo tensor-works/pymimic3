@@ -7,7 +7,8 @@ from preprocessing.scalers import AbstractScaler
 from managers import HistoryManager
 from managers import CheckpointManager
 from datasets.readers import ProcessedSetReader
-from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
+from tensorflow import keras
+from keras.callbacks import EarlyStopping, ModelCheckpoint
 from utils.IO import *
 from pipelines import AbstractPipeline
 

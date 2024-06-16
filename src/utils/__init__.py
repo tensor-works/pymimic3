@@ -275,3 +275,14 @@ def count_csv_size(file_path: Path):
         file_length = sum(bl.count("\n") for bl in blocks(f))
 
     return file_length - 1
+
+
+class NoopLock:
+
+    def __enter__(self):
+        # Do nothing
+        pass
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        # Do nothing
+        pass

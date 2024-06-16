@@ -8,6 +8,7 @@ from utils.IO import *
 from tests.pytest_utils import copy_dataset
 from tests.decorators import repeat
 from tests.tsettings import *
+from settings import *
 from tests.pytest_utils.preprocessing import assert_reader_equals, assert_dataset_equals
 
 kwargs = {

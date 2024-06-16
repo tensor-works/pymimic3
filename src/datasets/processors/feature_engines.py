@@ -196,11 +196,13 @@ class MIMICFeatureEngine(AbstractProcessor):
         X_dict, y_dict = dataset
 
         if self._verbose:
-            info_io(f"Engineering processed data:\n"
-                    f"Engineered subjects: {self._n_subjects}\n"
-                    f"Engineered stays: {self._n_stays}\n"
-                    f"Engineered samples: {self._n_samples}\n"
-                    f"Skipped subjects: {self._n_skip}")
+            info_io(
+                f"Engineering processed data:\n"
+                f"Engineered subjects: {self._n_subjects}\n"
+                f"Engineered stays: {self._n_stays}\n"
+                f"Engineered samples: {self._n_samples}\n"
+                f"Skipped subjects: {self._n_skip}",
+                verbose=self._verbose)
 
         self._samples_processed = 0
 
@@ -236,7 +238,8 @@ class MIMICFeatureEngine(AbstractProcessor):
                         f"Engineered stays: {self._n_stays}\n"
                         f"Engineered samples: {self._n_samples}\n"
                         f"Skipped subjects: {self._n_skip}",
-                        flush_block=True)
+                        flush_block=True,
+                        verbose=self._verbose)
 
             self._n_subjects += 1
             if self._tracker is not None:
@@ -250,7 +253,8 @@ class MIMICFeatureEngine(AbstractProcessor):
                 f"Engineered stays: {self._n_stays}\n"
                 f"Engineered samples: {self._n_samples}\n"
                 f"Skipped subjects: {self._n_skip}",
-                flush_block=True)
+                flush_block=True,
+                verbose=self._verbose)
         if return_timestamp:
             return self._X, self._y, self._t
         return self._X, self._y

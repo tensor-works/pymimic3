@@ -37,8 +37,10 @@ import threading
 import pandas as pd
 import numpy as np
 from pathlib import Path
+import multiprocessing as mp
 from collections.abc import Iterable
 from copy import deepcopy
+from utils import NoopLock
 from utils.IO import *
 from settings import *
 from .mimic_utils import upper_case_column_names, convert_dtype_dict, read_varmap_csv
@@ -227,7 +229,7 @@ class ExtractedSetReader(AbstractReader):
 
     convert_datetime = ["INTIME", "CHARTTIME", "OUTTIME", "ADMITTIME", "DISCHTIME", "DEATHTIME"]
 
-    def __init__(self, root_path: Path, subject_ids: list = None, num_samples: int = None) -> None:
+    def __init__(self, root_path: Path, subject_ids: list = None) -> None:
         """_summary_
 
         Args:
@@ -800,8 +802,11 @@ class ProcessedSetReader(AbstractReader):
         dict
             Dictionary containing the samples read.
         """
+        y_key = "yds" if read_masks else "y"
+        dataset = {"X": {}, y_key: {}} if read_ids else {"X": [], y_key: []}
 
-        dataset = {"X": {}, "y": {}} if read_ids else {"X": [], "y": []}
+        if read_masks:
+            dataset.update({"M": {} if read_ids else []})
 
         if read_timestamps:
             dataset.update({"t": {} if read_ids else []})
@@ -857,6 +862,7 @@ class ProcessedSetReader(AbstractReader):
         ValueError
             If the data_type is not one of the possible data types.
         """
+        y_key = "yds" if read_masks else "y"
         subject_id = int(subject_id)
         if not data_type in self._possibgle_datatypes:
             raise ValueError(
@@ -880,7 +886,7 @@ class ProcessedSetReader(AbstractReader):
                 return pd.DataFrame(X)
             return X
 
-        dataset = {"X": {}, "y": {}} if read_ids else {"X": [], "y": []}
+        dataset = {"X": {}, y_key: {}} if read_ids else {"X": [], y_key: []}
 
         if read_masks:
             dataset.update({"M": {} if read_ids else []})
@@ -1033,10 +1039,14 @@ class EventReader():
                  dataset_folder: Path,
                  subject_ids: list = None,
                  chunksize: int = None,
-                 tracker: ExtractionTracker = None) -> None:
+                 tracker: ExtractionTracker = None,
+                 verbose: bool = True,
+                 lock: mp.Lock = NoopLock()) -> None:
 
         self.dataset_folder = dataset_folder
         self._done = False
+        self._lock = lock
+        self._verbose = verbose
 
         # Logic to early terminate if none of the subjects are in the remaining dataset
         if subject_ids is not None and len(subject_ids):
@@ -1129,19 +1139,21 @@ class EventReader():
         """
         Initialize the reader by skipping rows according to the tracker if it exists.
         """
-        info_io(f"Starting reader initialization.")
+        info_io(f"Starting reader initialization.", verbose=self._verbose)
         header = "Initializing reader and starting at row:\n"
         msg = list()
         for csv in self._event_csv_kwargs:
             try:
-                n_chunks = self._tracker.count_subject_events[csv] // self._chunksize
-                skip_rows = self._tracker.count_subject_events[csv] % self._chunksize
+                with self._lock:
+                    n_chunks = self._tracker.count_subject_events[csv] // self._chunksize
+                    skip_rows = self._tracker.count_subject_events[csv] % self._chunksize
                 [len(self._csv_reader[csv].get_chunk()) for _ in range(n_chunks)]  # skipping chunks
                 self.event_csv_skip_rows[csv] = skip_rows  # rows to skip in first chunk
-                msg.append(f"{csv}: {self._tracker.count_subject_events[csv]}")
+                with self._lock:
+                    msg.append(f"{csv}: {self._tracker.count_subject_events[csv]}")
             except:
                 self._csv_handle[csv].close()
-        info_io(header + " - ".join(msg))
+        info_io(header + " - ".join(msg), verbose=self._verbose)
 
     def get_chunk(self) -> tuple:
         """

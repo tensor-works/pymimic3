@@ -8,6 +8,7 @@ from pathlib import Path
 from datasets.readers import ProcessedSetReader
 from datasets.writers import DataSetWriter
 from tests.pytest_utils.discretization import assert_strategy_equals, prepare_processed_data
+from datasets.processors.discretizers import MIMICDiscretizer
 from utils.IO import *
 from tests.pytest_utils import copy_dataset
 from tests.tsettings import *
@@ -46,21 +47,21 @@ def test_iterative_discretizer(task_name: str, start_strategy: str, impute_strat
     X_discretized, _ = reader.read_samples(read_ids=True).values()
     assert_strategy_equals(X_discretized, test_dir_path)
 
-    if task_name in ["DECOMP", "LOS"]:
-        tests_io(f"Testing with - task: {task_name}, start_strategy: {start_strategy},"
-                 f" impute_strategy: {impute_strategy}, deep_supervision: True")
-        reader = datasets.load_data(chunksize=75837,
-                                    source_path=TEST_DATA_DEMO,
-                                    storage_path=TEMP_DIR,
-                                    discretize=True,
-                                    time_step_size=1.0,
-                                    start_at_zero=(start_strategy == "zero"),
-                                    impute_strategy=impute_strategy,
-                                    task=task_name,
-                                    deep_supervision=True)
+    # if task_name in ["DECOMP", "LOS"]:
+    tests_io(f"Testing with - task: {task_name}, start_strategy: {start_strategy},"
+             f" impute_strategy: {impute_strategy}, deep_supervision: True")
+    reader = datasets.load_data(chunksize=75837,
+                                source_path=TEST_DATA_DEMO,
+                                storage_path=TEMP_DIR,
+                                discretize=True,
+                                time_step_size=1.0,
+                                start_at_zero=(start_strategy == "zero"),
+                                impute_strategy=impute_strategy,
+                                task=task_name,
+                                deep_supervision=True)
 
-        X_discretized, _ = reader.read_samples(read_ids=True).values()
-        assert_strategy_equals(X_discretized, test_dir_path)
+    X_discretized, _ = reader.read_samples(read_ids=True).values()
+    assert_strategy_equals(X_discretized, test_dir_path)
 
     tests_io("Succeeded in testing!")
 
@@ -112,6 +113,44 @@ def test_compact_discretizer(task_name: str, start_strategy: str, impute_strateg
     tests_io("Succeeded in testing!")
 
 
+def test_discretizer_state_persistence():
+    tests_io("Testing discretizer state persistence with deep supervision")
+    task_name = "DECOMP"
+    storage_path = TEMP_DIR
+    proc_reader = ProcessedSetReader(root_path=Path(SEMITEMP_DIR, "processed", "IHM"))
+    tests_io("Running discretizer without deep supervision")
+    reader = datasets.load_data(chunksize=75837,
+                                source_path=TEST_DATA_DEMO,
+                                storage_path=TEMP_DIR,
+                                discretize=True,
+                                task=task_name)
+
+    tests_io("Rerunning discretizer without deep supervision")
+    discretized_storage_path = Path(storage_path, "discretized", task_name)
+    discretizer = MIMICDiscretizer(task=task_name,
+                                   storage_path=discretized_storage_path,
+                                   verbose=False)
+    assert discretizer._tracker.is_finished == True
+    reader = discretizer.transform_reader(reader=proc_reader)
+
+    tests_io("Testing discretizer state persistence with deep supervision")
+    tests_io("Rerunning discretizer with deep supervision")
+    discretizer = MIMICDiscretizer(task=task_name,
+                                   storage_path=discretized_storage_path,
+                                   deep_supervision=True,
+                                   verbose=False)
+    assert discretizer._tracker.is_finished == False
+    reader = discretizer.transform_reader(reader=proc_reader)
+    tests_io("Rerunning discretizer without deep supervision")
+    discretizer = MIMICDiscretizer(task=task_name,
+                                   storage_path=discretized_storage_path,
+                                   deep_supervision=True,
+                                   verbose=False)
+    assert discretizer._tracker.is_finished == True
+    reader = discretizer.transform_reader(reader=proc_reader)
+    tests_io("Succeeded in testing state persistent")
+
+
 if __name__ == "__main__":
 
     import re
@@ -133,6 +172,7 @@ if __name__ == "__main__":
         listfile = listfile.set_index(idx_name)
         listfiles[task_name] = listfile
     readers = dict()
+    discretizer_dir = Path(TEMP_DIR, "discretized")
     for task_name in TASK_NAMES:
         # Simulate semi_temp fixture
         reader = datasets.load_data(chunksize=75837,
@@ -140,19 +180,22 @@ if __name__ == "__main__":
                                     storage_path=SEMITEMP_DIR,
                                     preprocess=True,
                                     task=task_name)
+        if discretizer_dir.is_dir():
+            shutil.rmtree(str(discretizer_dir))
+        test_discretizer_state_persistence()
         readers[task_name] = reader
         for start_strategy in ["zero", "relative"]:
             for impute_strategy in ["next", "normal_value", "previous", "zero"]:
-                if TEMP_DIR.is_dir():
-                    shutil.rmtree(str(TEMP_DIR))
+                if discretizer_dir.is_dir():
+                    shutil.rmtree(str(discretizer_dir))
                 test_iterative_discretizer(task_name=task_name,
                                            impute_strategy=impute_strategy,
                                            start_strategy=start_strategy,
                                            discretizer_listfiles=listfiles,
                                            preprocessed_readers=readers)
 
-                if TEMP_DIR.is_dir():
-                    shutil.rmtree(str(TEMP_DIR))
+                if discretizer_dir.is_dir():
+                    shutil.rmtree(str(discretizer_dir))
                 test_compact_discretizer(task_name=task_name,
                                          impute_strategy=impute_strategy,
                                          start_strategy=start_strategy,

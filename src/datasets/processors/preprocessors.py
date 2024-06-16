@@ -192,14 +192,14 @@ class MIMICPreprocessor(AbstractProcessor):
 
         if self._tracker.is_finished:
             info_io(
-                f"Compact {self._operation_name} already finalized in directory:\n{str(self._storage_path)}"
-            )
+                f"Compact {self._operation_name} already finalized in directory:\n{str(self._storage_path)}",
+                verbose=self._verbose)
             if num_subjects is not None:
                 subject_ids = random.sample(self._tracker.subject_ids, k=num_subjects)
             return ProcessedSetReader(root_path=self._storage_path,
                                       subject_ids=subject_ids).read_samples(read_ids=True)
 
-        info_io(f"Compact {self._operation_name}: {self._task}", level=0)
+        info_io(f"Compact {self._operation_name}: {self._task}", level=0, verbose=self._verbose)
 
         subject_ids, exclud_subj, unknown_subj = self._get_subject_ids(
             num_subjects=num_subjects,
@@ -210,11 +210,12 @@ class MIMICPreprocessor(AbstractProcessor):
 
         if not subject_ids:
             self._tracker.is_finished = True
-            info_io(f"Finalized for task {self._task} in directory:\n{str(self._storage_path)}")
+            info_io(f"Finalized for task {self._task} in directory:\n{str(self._storage_path)}",
+                    verbose=self._verbose)
             if num_subjects and not self._n_subjects == num_subjects:
                 warn_io(
-                    f"The subject target was not reached, missing {self._n_subjects - num_subjects} subjects."
-                )
+                    f"The subject target was not reached, missing {self._n_subjects - num_subjects} subjects.",
+                    verbose=self._verbose)
             if orig_subject_ids is not None:
                 orig_subject_ids = list(set(orig_subject_ids) & set(self._tracker.subject_ids))
             return ProcessedSetReader(self._storage_path,
@@ -255,10 +256,10 @@ class MIMICPreprocessor(AbstractProcessor):
         if self._storage_path is not None:
             self.save_data()
             info_io(
-                f"Finalized {self._operation_name} for {self._task} in directory:\n{str(self._storage_path)}"
-            )
+                f"Finalized {self._operation_name} for {self._task} in directory:\n{str(self._storage_path)}",
+                verbose=self._verbose)
         else:
-            info_io(f"Finalized {self._operation_name} for {self._task}.")
+            info_io(f"Finalized {self._operation_name} for {self._task}.", verbose=self._verbose)
         self._tracker.is_finished = True
         if orig_subject_ids is not None:
             orig_subject_ids = list(set(orig_subject_ids) & set(self._tracker.subject_ids))
@@ -334,7 +335,8 @@ class MIMICPreprocessor(AbstractProcessor):
                         f"Processed stays: {self._n_stays}\n"
                         f"Processed samples: {self._n_samples}\n"
                         f"Skipped subjects: {self._n_skip}",
-                        flush_block=True)
+                        flush_block=True,
+                        verbose=self._verbose)
                     start_verbose = False
 
             for icustay in subject_timeseries:
@@ -391,7 +393,8 @@ class MIMICPreprocessor(AbstractProcessor):
                             f"Processed stays: {self._n_stays}\n"
                             f"Processed samples: {self._n_samples}\n"
                             f"Skipped subjects: {self._n_skip}",
-                            flush_block=True)
+                            flush_block=True,
+                            verbose=self._verbose)
 
             if skip_subject:
                 continue
@@ -414,7 +417,8 @@ class MIMICPreprocessor(AbstractProcessor):
                 f"Processed stays: {self._n_stays}\n"
                 f"Processed samples: {self._n_samples}\n"
                 f"Skipped subjects: {self._n_skip}",
-                flush_block=True)
+                flush_block=True,
+                verbose=self._verbose)
 
         return self._X, self._y
 

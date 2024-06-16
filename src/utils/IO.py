@@ -93,27 +93,29 @@ def _get_line(caller):
     return f"{Fore.LIGHTWHITE_EX}{str(datetime.datetime.now().strftime('%m-%d %H:%M:%S'))[:19]}{Style.RESET_ALL} : {path:-<{PATH_PADDING}} : {Fore.LIGHTCYAN_EX}L {caller.lineno:<4}{Style.RESET_ALL}"
 
 
-def _print_iostring(string: str, line_header: str, flush_block: bool, collor: str):
+def _print_iostring(string: str, line_header: str, flush_block: bool, collor: str, verbose: bool):
     """
     Prints the message itself without the header.
     """
     if flush_block:
         lines = string.split('\n')
         num_lines = len(lines)
-        sys.stdout.write(f"\x1b[{num_lines}A")
-        sys.stdout.write('\x1b[2K')
-        print(lines[0])
-        for line in lines[1:]:
+        if verbose:
+            sys.stdout.write(f"\x1b[{num_lines}A")
             sys.stdout.write('\x1b[2K')
-            print(" " * HEADER_LENGTH + f"{collor}-{Style.RESET_ALL} {line}")
+            print(lines[0])
+            for line in lines[1:]:
+                sys.stdout.write('\x1b[2K')
+                print(" " * HEADER_LENGTH + f"{collor}-{Style.RESET_ALL} {line}")
 
-        sys.stdout.flush()
+            sys.stdout.flush()
         return True
     elif "\n" in string:
         lines = string.split('\n')
-        print(lines[0])
-        for line in lines[1:]:
-            print(" " * HEADER_LENGTH + f"{collor}-{Style.RESET_ALL} {line}")
+        if verbose:
+            print(lines[0])
+            for line in lines[1:]:
+                print(" " * HEADER_LENGTH + f"{collor}-{Style.RESET_ALL} {line}")
         return True
     return False
 
@@ -123,7 +125,8 @@ def info_io(message: str,
             end: str = None,
             flush: bool = None,
             unflush: bool = None,
-            flush_block: bool = False):
+            flush_block: bool = False,
+            verbose=True):
     """
     Prints a message with an information header, which can be formatted at different levels, or without any header formatting.
     Level 0: Wide header
@@ -146,7 +149,7 @@ def info_io(message: str,
     flush_block : bool, optional
         If True, prints the whole block at once to avoid disruptions. Defaults to False.
     """
-    base_io("INFO", Fore.BLUE, message, level, end, flush, unflush, flush_block)
+    base_io("INFO", Fore.BLUE, message, level, end, flush, unflush, flush_block, verbose)
 
 
 def tests_io(message: str,
@@ -154,7 +157,8 @@ def tests_io(message: str,
              end: str = None,
              flush: bool = None,
              unflush: bool = None,
-             flush_block: bool = False):
+             flush_block: bool = False,
+             verbose=True):
     """
     Prints a message with an information header, which can be formatted at different levels, or without any header formatting.
     Level 0: Wide header
@@ -176,15 +180,18 @@ def tests_io(message: str,
         If True, adds an additional newline before the message. Defaults to None.
     flush_block : bool, optional
         If True, prints the whole block at once to avoid disruptions. Defaults to False.
+    verbose : bool, optional
+        Whether to print the info message to CLI. Defaults to True.
     """
-    base_io("TEST", Fore.GREEN, message, level, end, flush, unflush, flush_block)
+    base_io("TEST", Fore.GREEN, message, level, end, flush, unflush, flush_block, verbose)
 
 
 def debug_io(message: str,
              end: str = None,
              flush: bool = None,
              unflush: bool = None,
-             flush_block: bool = False):
+             flush_block: bool = False,
+             verbose=True):
     """
     Prints a debug message if the DEBUG_OPTION is set to a non-zero value.
 
@@ -200,6 +207,8 @@ def debug_io(message: str,
         If True, adds an additional newline before the message. Defaults to None.
     flush_block : bool, optional
         If True, prints the whole block at once to avoid disruptions. Defaults to False.
+    verbose : bool, optional
+        Whether to print the debug message to CLI. Defaults to True.
     """
     # TODO: Improve this solution (Adopted because file level declaration will initialize before the var can be changed by test fixtures)
     global DEBUG_OPTION
@@ -207,14 +216,15 @@ def debug_io(message: str,
         DEBUG_OPTION = os.getenv("DEBUG", "0")
     if DEBUG_OPTION == "0":
         return
-    base_io("DEBUG", Fore.YELLOW, message, None, end, flush, unflush, flush_block)
+    base_io("DEBUG", Fore.YELLOW, message, None, end, flush, unflush, flush_block, verbose)
 
 
 def warn_io(message: str,
             end: str = None,
             flush: bool = None,
             unflush: bool = None,
-            flush_block: bool = False):
+            flush_block: bool = False,
+            verbose=True):
     """
     Prints a warning.
 
@@ -230,8 +240,10 @@ def warn_io(message: str,
         If True, adds an additional newline before the message. Defaults to None.
     flush_block : bool, optional
         If True, prints the whole block at once to avoid disruptions. Defaults to False.
+    verbose : bool, optional
+        Whether to print the warning message to CLI. Defaults to True.
     """
-    base_io("WARN", "\033[38;5;208m", message, None, end, flush, unflush, flush_block)
+    base_io("WARN", "\033[38;5;208m", message, None, end, flush, unflush, flush_block, verbose)
 
 
 def error_io(message: str,
@@ -239,7 +251,8 @@ def error_io(message: str,
              end: str = None,
              flush: bool = None,
              unflush: bool = None,
-             flush_block: bool = False):
+             flush_block: bool = False,
+             verbose=True):
     """
     Prints an error message with an error header and raises the specified exception.
 
@@ -257,13 +270,15 @@ def error_io(message: str,
         If True, adds an additional newline before the message. Defaults to None.
     flush_block : bool, optional
         If True, prints the whole block at once to avoid disruptions. Defaults to False.
+    verbose : bool, optional
+        Whether to print the error message to CLI. Defaults to True.
 
     Raises
     ------
     exception_type
         The specified exception type is raised after the error message is logged.
     """
-    base_io("ERROR", Fore.RED, message, None, end, flush, unflush, flush_block)
+    base_io("ERROR", Fore.RED, message, None, end, flush, unflush, flush_block, verbose)
     raise exception_type
 
 
@@ -274,7 +289,8 @@ def base_io(info_tag: str,
             end: str = None,
             flush: bool = None,
             unflush: bool = None,
-            flush_block: bool = False):
+            flush_block: bool = False,
+            verbose=True):
 
     # Get caller information
     caller = inspect.getframeinfo(inspect.stack()[2][0])
@@ -293,11 +309,11 @@ def base_io(info_tag: str,
 
     io_string = f"{collor_info_tag.ljust(info_tag_padding, '-')} {line_header} {collor}-{Style.RESET_ALL} {header_message}"
 
-    if level in [0, 1]:
+    if level in [0, 1] and verbose:
         print(" " * HEADER_LENGTH + "-")
-    if unflush:
+    if unflush and verbose:
         print()
-    if not _print_iostring(io_string, line_header, flush_block, collor):
+    if not _print_iostring(io_string, line_header, flush_block, collor, verbose) and verbose:
         if flush:
             end = "\r"
         print(io_string, end=end, flush=flush)

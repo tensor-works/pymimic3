@@ -82,8 +82,10 @@ class TimeseriesProcessor(object):
                  diagnoses_df: pd.DataFrame,
                  icu_history_df: pd.DataFrame,
                  varmap_df: pd.DataFrame,
-                 num_samples: int = None):
+                 num_samples: int = None,
+                 verbose: bool = False):
         self._storage_path = storage_path
+        self._verbose = verbose
         self._tracker = tracker
         self._dataset_reader = ExtractedSetReader(source_path)
         self._dataset_writer = DataSetWriter(storage_path)
@@ -202,7 +204,8 @@ class TimeseriesProcessor(object):
                 self._tracker.subject_ids.extend(info_df["SUBJECT_ID"].unique())
                 info_io(f"Subject directories extracted: {len(self._tracker.subject_ids)}",
                         end="\r",
-                        flush=True)
+                        flush=True,
+                        verbose=self._verbose)
 
                 if index % 100 == 0 and index != 0:
                     self._store_df_chunk(episodic_info_df)

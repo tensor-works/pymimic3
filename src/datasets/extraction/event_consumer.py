@@ -50,6 +50,7 @@ Examples
 
 import pandas as pd
 from pathlib import Path
+from utils import NoopLock
 from utils.IO import *
 from multiprocess import Process, JoinableQueue, Lock
 from .extraction_functions import extract_subject_events
@@ -85,8 +86,12 @@ class EventConsumer(Process):
         Joins the consumer process.
     """
 
-    def __init__(self, storage_path: Path, in_q: JoinableQueue, out_q: JoinableQueue,
-                 icu_history_df: pd.DataFrame, lock: Lock):
+    def __init__(self,
+                 storage_path: Path,
+                 in_q: JoinableQueue,
+                 out_q: JoinableQueue,
+                 icu_history_df: pd.DataFrame,
+                 lock: Lock = NoopLock()):
         super().__init__()
         self._in_q = in_q
         self._out_q = out_q

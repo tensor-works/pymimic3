@@ -51,11 +51,13 @@ Examples
 """
 
 import os
+import multiprocessing as mp
 from utils import count_csv_size
 from utils.IO import *
 from pathlib import Path
 from multiprocess import JoinableQueue, Process
 from ..trackers import ExtractionTracker
+from utils import NoopLock
 
 
 class ProgressPublisher(Process):
@@ -83,10 +85,17 @@ class ProgressPublisher(Process):
         Joins the progress publisher process.
     """
 
-    def __init__(self, n_consumers: int, source_path: Path, in_q: JoinableQueue,
-                 tracker: ExtractionTracker):
+    def __init__(self,
+                 n_consumers: int,
+                 source_path: Path,
+                 in_q: JoinableQueue,
+                 tracker: ExtractionTracker,
+                 verbose: bool = False,
+                 lock: mp.Lock = NoopLock()):
         super().__init__()
         self._in_q = in_q
+        self._lock = lock
+        self._verbose = verbose
         self._tracker = tracker
         self._n_consumers = n_consumers
         self._event_file_lengths = {
@@ -100,13 +109,14 @@ class ProgressPublisher(Process):
         # Print initial state
         msg = [f"Processed event rows: "]
         for csv_name in self._event_file_lengths.keys():
-            csv_event_count = self._tracker.count_subject_events[csv_name]
+            with self._lock:
+                csv_event_count = self._tracker.count_subject_events[csv_name]
             total_event_count = self._event_file_lengths[csv_name]
             print_name = csv_name.strip('.csv') + ": "
             msg.append(
                 f"{print_name} {csv_event_count:>{len(str(total_event_count))}}/{total_event_count}"
             )
-        info_io("\n".join(msg))
+        info_io("\n".join(msg), verbose=self._verbose)
 
         while True:
             # Draw tracking information from queue
@@ -116,21 +126,26 @@ class ProgressPublisher(Process):
             # Track consumer finishes
             if finished:
                 done_count += 1
-                debug_io(f"Publisher received consumer finished: {done_count}/{self._n_consumers}")
+                debug_io(f"Publisher received consumer finished: {done_count}/{self._n_consumers}",
+                         verbose=self._verbose)
             # Print current state
             msg = [f"Processed event rows: "]
             for csv_name in self._event_file_lengths.keys():
-                csv_event_count = self._tracker.count_subject_events[csv_name]
+                with self._lock:
+                    csv_event_count = self._tracker.count_subject_events[csv_name]
                 total_event_count = self._event_file_lengths[csv_name]
                 print_name = csv_name.strip('.csv') + ": "
                 msg.append(
                     f"{print_name} {csv_event_count:>{len(str(total_event_count))}}/{total_event_count}"
                 )
 
-            info_io("\n".join(msg), flush_block=not (int(os.getenv("DEBUG", 0))))
+            info_io("\n".join(msg),
+                    flush_block=not (int(os.getenv("DEBUG", 0))),
+                    verbose=self._verbose)
             # Join publisher
             if done_count == self._n_consumers:
-                self._tracker.has_subject_events = True
+                with self._lock:
+                    self._tracker.has_subject_events = True
                 debug_io("All consumers finished, publisher finishes now.")
                 self._in_q.task_done()
                 break
