@@ -213,35 +213,6 @@ class MIMICDiscretizer(AbstractProcessor):
             return []
         return self._source_reader.subject_ids
 
-    def transform_subject(self, subject_id: int, return_tracking: bool = False):
-        """
-        Transform the data for a specific subject.
-
-        This method reads the data for a specific subject, processes it, and returns
-        the discretized data along with tracking information.
-
-        Parameters
-        ----------
-        subject_id : int
-            The ID of the subject to transform data for.
-
-        Returns
-        -------
-        tuple
-            A tuple containing the discretized data and the tracking information.
-        """
-        subject_data = self._source_reader.read_samples([subject_id],
-                                                        read_ids=True,
-                                                        data_type=pd.DataFrame)
-
-        proc_data, \
-        tracking_info = self._transform(subject_data, return_tracking=True)
-
-        # Return with or without mask
-        if return_tracking:
-            return proc_data, tracking_info
-        return proc_data
-
     def _transform(self,
                    dataset: Tuple[Dict[int, Dict[int, pd.DataFrame]]],
                    return_tracking: bool = False):

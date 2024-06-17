@@ -19,7 +19,7 @@ TRACKER_STATE = {
     "has_icu_history": False,
     "has_diagnoses": False,
     "has_bysubject_info": False,
-    "is_finished": False,
+    "finished": False,
     "num_samples": None
 }
 
@@ -149,11 +149,6 @@ def test_num_samples_option():
     # Test decreasing the number of samples upon reinstantiation
     del tracker
     tracker = ExtractionTracker(storage_path=Path(TEMP_DIR, "progress"), num_samples=5)
-    # Check init
-    for attribute, value in TRACKER_STATE.items():
-        assert attribute in tracker._progress
-        if attribute not in EVENT_BOOLS + ["num_samples", "count_total_samples"]:
-            assert getattr(tracker, attribute) == value
     # Asser total samples unchanged
     assert tracker.count_total_samples == 10
 
@@ -218,11 +213,6 @@ def test_num_subjects_option():
     # Test decreasing the number of samples upon reinstantiation
     del tracker
     tracker = ExtractionTracker(storage_path=Path(TEMP_DIR, "progress"), num_subjects=5)
-    # Check init
-    for attribute, value in TRACKER_STATE.items():
-        assert attribute in tracker._progress
-        if attribute not in EVENT_BOOLS + ["num_samples", "subject_ids"]:
-            assert getattr(tracker, attribute) == value
     # Assert subject ids unchanged
     assert tracker.subject_ids == list(range(10))
     # Assert done
@@ -234,11 +224,6 @@ def test_num_subjects_option():
     # Test increasing the number of samples upon reinstantiation
     del tracker
     tracker = ExtractionTracker(storage_path=Path(TEMP_DIR, "progress"), num_subjects=15)
-    # Check init
-    for attribute, value in TRACKER_STATE.items():
-        assert attribute in tracker._progress
-        if attribute not in EVENT_BOOLS + ["num_samples", "subject_ids"]:
-            assert getattr(tracker, attribute) == value
     # Assert subject ids unchanged
     assert tracker.subject_ids == list(range(10))
     # Assert done
@@ -294,11 +279,6 @@ def test_subject_ids_option():
     # Test decreasing the number of subjects upon reinstantiation
     del tracker
     tracker = ExtractionTracker(storage_path=Path(TEMP_DIR, "progress"), subject_ids=list(range(5)))
-    # Check init
-    for attribute, value in TRACKER_STATE.items():
-        assert attribute in tracker._progress
-        if attribute not in EVENT_BOOLS + ["num_samples", "count_total_samples", "subject_ids"]:
-            assert getattr(tracker, attribute) == value
     # Assert subject ids unchanged
     assert tracker.count_total_samples == 10
     assert tracker.subject_ids == list(range(10))

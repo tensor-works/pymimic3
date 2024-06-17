@@ -128,7 +128,7 @@ def update_json(json_path, items: dict):
         json_path.parent.mkdir(parents=True, exist_ok=True)
     if not json_path.is_file():
         with open(json_path, 'w+') as file:
-            json.dump({}, file)
+            json.dump({}, file, cls=NpEncoder)
 
     with open(json_path, 'r') as file:
         json_data = json.load(file)
@@ -136,11 +136,11 @@ def update_json(json_path, items: dict):
     json_data.update(items)
     try:
         with open(json_path, 'w') as file:
-            json.dump(json_data, file, indent=4)
+            json.dump(json_data, file, indent=4, cls=NpEncoder)
     except KeyboardInterrupt:
         info_io("Finishing JSON operation before interupt.")
         with open(json_path, 'w') as file:
-            json.dump(json_data, file, indent=4)
+            json.dump(json_data, file, indent=4, cls=NpEncoder)
 
     return json_data
 
@@ -181,11 +181,11 @@ def write_json(json_path, json_data):
     """
     try:
         with open(json_path, 'w') as file:
-            json.dump(json_data, file, indent=4)
+            json.dump(json_data, file, indent=4, cls=NpEncoder)
     except KeyboardInterrupt:
         info_io("Finishing JSON operation before interupt.")
         with open(json_path, 'w') as file:
-            json.dump(json_data, file, indent=4)
+            json.dump(json_data, file, indent=4, cls=NpEncoder)
 
     return
 
@@ -286,3 +286,15 @@ class NoopLock:
     def __exit__(self, exc_type, exc_value, traceback):
         # Do nothing
         pass
+
+
+class NpEncoder(json.JSONEncoder):
+
+    def default(self, obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        if isinstance(obj, np.floating):
+            return float(obj)
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return super(NpEncoder, self).default(obj)

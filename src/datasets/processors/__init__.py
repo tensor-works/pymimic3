@@ -131,7 +131,7 @@ class AbstractProcessor(ABC):
                 [self._tracker.subjects[subject_id]["total"] for subject_id in proc_subjects])
             self._n_skip = 0
 
-    def save_data(self, subjects: list = None) -> None:
+    def save_data(self, subject_ids: list = None) -> None:
         """
         Save the discretized data to the storage path.
 
@@ -145,32 +145,26 @@ class AbstractProcessor(ABC):
         if self._writer is None:
             info_io("No storage path provided. Data will not be saved.", verbose=self._verbose)
             return
-        with self._lock:
-            is_deep_supervision = hasattr(self, "_deep_supervision") and self._deep_supervision
-            y_key = "yds" if is_deep_supervision else "y"
-            if subjects is None:
-                self._X_save = self._X
-                self._y_save = self._y
-                if is_deep_supervision:
-                    self._M_save = self._M
-                subjects = list(self._X.keys())
-            else:
-                subjects = set(subjects) & set(self._X.keys())
-                self._X_save = dict_subset(self._X, subjects)
-                self._y_save = dict_subset(self._y, subjects)
-                if is_deep_supervision:
-                    self._M_save = dict_subset(self._M, subjects)
 
-            self._writer.write_bysubject({"X": self._X_save}, file_type=self._save_file_type)
-            self._writer.write_bysubject({y_key: self._y_save}, file_type=self._save_file_type)
-            for subject in subjects:
-                del self._X[subject]
-                del self._y[subject]
-            if is_deep_supervision:
-                # MASK is create by discretizer
-                self._writer.write_bysubject({"M": self._M_save}, file_type=self._save_file_type)
-                for subject in subjects:
-                    del self._M[subject]
+        def save_dict(data: dict, key: str, subject_ids: list = None):
+            if subject_ids is None:
+                data_save = data
+                subject_ids = list(data.keys())
+            else:
+                data_save = dict_subset(data, subject_ids)
+            self._writer.write_bysubject({key: data_save}, file_type=self._save_file_type)
+            for subject in subject_ids:
+                del data[subject]
+
+        with self._lock:
+            save_dict(self._X, "X", subject_ids)
+            if hasattr(self, "_deep_supervision") and self._deep_supervision:
+                save_dict(self._M, "M", subject_ids)
+                save_dict(self._y, "yds", subject_ids)
+            else:
+                save_dict(self._y, "y", subject_ids)
+            if hasattr(self, "_t"):
+                save_dict(self._t, "t", subject_ids)
 
         return
 
@@ -194,7 +188,7 @@ class AbstractProcessor(ABC):
         if isinstance(self._source_reader, ProcessedSetReader):
             subject_data = self._source_reader.read_samples([subject_id],
                                                             read_ids=True,
-                                                            data_type=pd.DataFrame).values()
+                                                            data_type=pd.DataFrame)
         elif isinstance(self._source_reader, ExtractedSetReader):
             subject_data = self._source_reader.read_subjects([subject_id], read_ids=True)
 

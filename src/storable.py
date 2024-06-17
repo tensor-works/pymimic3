@@ -19,6 +19,7 @@ class SimpleProperty(object):
         self._default = default
 
     def __get__(self, instance, owner) -> Any:
+
         return instance._progress.get(self._name, self._default)
 
     def __set__(self, instance, value: Any):
@@ -406,7 +407,7 @@ def storable(cls):
 
             def _read_value(key):
                 value = db[key]
-                default_value = getattr(cls, key)
+                default_value = cls._originals.get(key, None)
                 # These types are miscast by shelve
                 if isinstance(default_value, bool):
                     return bool(value)

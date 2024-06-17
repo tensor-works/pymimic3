@@ -1,16 +1,14 @@
 import shutil
 import pytest
 import os
-import re
 import datasets
-import pandas as pd
 import ray
 from typing import Dict
-from pathlib import Path
 from tests.tsettings import *
 from utils.IO import *
-from datasets.readers import ExtractedSetReader, EventReader, ProcessedSetReader
+from datasets.readers import ExtractedSetReader, ProcessedSetReader
 from settings import *
+from tests.pytest_utils.discretization import prepare_discretizer_listfiles
 
 collect_ignore = ['src/utils/IO.py']
 
@@ -121,23 +119,7 @@ def discretized_readers() -> Dict[str, ProcessedSetReader]:
 
 @pytest.fixture(scope="session")
 def discretizer_listfiles() -> None:
-    list_files = dict()
-    for task_name in TASK_NAMES:
-        # Path to discretizer sets
-        test_data_dir = Path(TEST_GT_DIR, "discretized", TASK_NAME_MAPPING[task_name])
-        # Listfile with truth values
-        listfile = pd.read_csv(Path(test_data_dir, "listfile.csv"),
-                               na_values=[''],
-                               keep_default_na=False).set_index("stay")
-        stay_name_regex = r"(\d+)_episode(\d+)_timeseries\.csv"
-
-        listfile = listfile.reset_index()
-        listfile["subject"] = listfile["stay"].apply(
-            lambda x: re.search(stay_name_regex, x).group(1))
-        listfile["icustay"] = listfile["stay"].apply(
-            lambda x: re.search(stay_name_regex, x).group(2))
-        listfile = listfile.set_index("stay")
-        list_files[task_name] = listfile
+    list_files = prepare_discretizer_listfiles(list(set(TASK_NAMES) - set(["MULTI"])))
     return list_files
 
 

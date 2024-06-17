@@ -21,7 +21,7 @@ from pathos import multiprocessing as mp
 @pytest.mark.parametrize("task_name", ["DECOMP", "LOS"])
 def test_tf_generators_with_ds(task_name: str, batch_size: int, mode: str,
                                discretized_readers: Dict[str, ProcessedSetReader]):
-    tests_io(f"Test case tf2 iterative generator for task: {task_name}", level=0)
+    tests_io(f"Test case tf2 generator for task: {task_name}", level=0)
     reader = discretized_readers[task_name]
 
     if ray.is_initialized():
@@ -81,7 +81,7 @@ def test_tf_generators_with_ds(task_name: str, batch_size: int, mode: str,
 @pytest.mark.parametrize("batch_size", [1, 16])
 @pytest.mark.parametrize("task_name", ["IHM", "PHENO"])
 def test_tf_generators_with_tr(task_name, batch_size, mode, discretized_readers):
-    tests_io(f"Test case tf2 iterative generator for task: {task_name}", level=0)
+    tests_io(f"Test case tf2 generator for task: {task_name}", level=0)
     reader = discretized_readers[task_name]
 
     if ray.is_initialized():
@@ -122,7 +122,7 @@ def test_tf_generators_with_tr(task_name, batch_size, mode, discretized_readers)
 @pytest.mark.parametrize("task_name", ["DECOMP", "LOS"])
 def test_torch_generators_with_ds(task_name: str, batch_size: int, mode: str,
                                   discretized_readers: Dict[str, ProcessedSetReader]):
-    tests_io(f"Test case torch iterative generator for task: {task_name}", level=0)
+    tests_io(f"Test case torch generator for task: {task_name}", level=0)
     reader = discretized_readers[task_name]
 
     if ray.is_initialized():
@@ -193,7 +193,7 @@ def test_torch_generators_with_ds(task_name: str, batch_size: int, mode: str,
 @pytest.mark.parametrize("task_name", ["IHM", "PHENO"])
 def test_torch_generators_with_tr(task_name: str, batch_size: int, mode: str,
                                   discretized_readers: Dict[str, ProcessedSetReader]):
-    tests_io(f"Test case torch iterative generator for task: {task_name}", level=0)
+    tests_io(f"Test case torch generator for task: {task_name}", level=0)
     reader = discretized_readers[task_name]
 
     n_cpus = min(mp.cpu_count(), 4)

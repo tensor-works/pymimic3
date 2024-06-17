@@ -34,6 +34,8 @@ The following table describes the input and tracking details for each tracker in
 from typing import List
 from utils.IO import *
 from storable import storable
+from utils import write_json
+from pathlib import Path
 
 
 @storable
@@ -64,7 +66,7 @@ class ExtractionTracker():
     #: bool: Flag indicating if diagnoses data has been extracted.
     has_diagnoses: bool = False
     #: bool: Flag indicating if the extraction process is finished.
-    is_finished: bool = False
+    finished: bool = False
     #: list: A list of subject IDs for tracking progress.
     subject_ids: list = list()  # Not extraction target but tracking
     #: int: The target number of samples for extraction.
@@ -130,7 +132,18 @@ class ExtractionTracker():
         self.has_timeseries = False
         self.has_bysubject_info = False
         self.has_subject_events = False
-        self.is_finished = False
+        self.finished = False
+
+    @property
+    def is_finished(self):
+        return self.finished
+
+    @is_finished.setter
+    def is_finished(self, value):
+        assert isinstance(value, bool)
+        self.finished = value
+        if value:
+            write_json(Path(str(self._path) + ".json"), self._read())
 
 
 @storable
@@ -235,6 +248,7 @@ class PreprocessingTracker():
                 if "no_deep_supervision" not in self.supervision_modes:
                     self.supervision_modes.append("no_deep_supervision")
             self.force_rerun = False
+            write_json(Path(str(self._path) + ".json"), self._read())
 
     @property
     def subject_ids(self) -> List[int]:

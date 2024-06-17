@@ -24,8 +24,8 @@ def assert_file_creation(
     count = 0
     removed_count = 0
     subject_ids_checked = list()
-    tests_io(f"Total stays checked: {count}\n"
-             f"Total subjects checked: {len(set(subject_ids_checked))}\n"
+    tests_io(f"Total subjects checked: {len(set(subject_ids_checked))}\n"
+             f"Total stays checked: {count}\n"
              f"Subjects removed correctly: {removed_count}")
 
     assert root_path.is_dir(), f"Generated directory {root_path} does not exist"
@@ -78,8 +78,8 @@ def assert_file_creation(
                 f"In directory {Path(root_path, subject_id)}")
 
         tests_io(
-            f"Total stays checked: {count}\n"
             f"Total subjects checked: {len(set(subject_ids_checked))}\n"
+            f"Total stays checked: {count}\n"
             f"Subjects removed correctly: {removed_count}",
             flush_block=True)
 

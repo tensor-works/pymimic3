@@ -14,6 +14,27 @@ from utils.IO import *
 from tests.tsettings import *
 
 
+def prepare_discretizer_listfiles(task_name: str):
+    listfiles = dict()
+    # Preparing the listfiles
+    for task_name in TASK_NAMES:
+        # Path to discretizer sets
+        test_data_dir = Path(TEST_GT_DIR, "discretized", TASK_NAME_MAPPING[task_name])
+        # Listfile with truth values
+        idx_name = "filename" if task_name == "MULTI" else "stay"
+        listfile = pd.read_csv(Path(test_data_dir, "listfile.csv")).set_index(idx_name)
+        stay_name_regex = r"(\d+)_episode(\d+)_timeseries\.csv"
+
+        listfile = listfile.reset_index()
+        listfile["subject"] = listfile[idx_name].apply(
+            lambda x: re.search(stay_name_regex, x).group(1))
+        listfile["icustay"] = listfile[idx_name].apply(
+            lambda x: re.search(stay_name_regex, x).group(2))
+        listfile = listfile.set_index(idx_name)
+        listfiles[task_name] = listfile
+    return listfiles
+
+
 def prepare_processed_data(task_name: str, listfile: pd.DataFrame, reader: ProcessedSetReader):
     # Legacy period length calculation may cut off legitimate data
     source_path = Path(SEMITEMP_DIR, "processed", task_name)

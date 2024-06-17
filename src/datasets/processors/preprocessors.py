@@ -148,30 +148,6 @@ class MIMICPreprocessor(AbstractProcessor):
             return []
         return self._source_reader.subject_ids
 
-    def transform_subject(self, subject_id: int, return_tracking=False) -> None:
-        """
-        Transforms the extracted dataset for the specified task.
-
-        Parameters
-        ----------
-        dataset : dict
-            The dataset to transform.
-
-        Returns
-        -------
-        tuple
-            A tuple containing transformed feature and label data.
-        """
-        subject_data = self._source_reader.read_subject(subject_id, read_ids=True)
-
-        proc_data, \
-        tracking_info = self._transform({subject_id: subject_data},
-                                         return_tracking=True)
-
-        if return_tracking:
-            return proc_data, tracking_info
-        return proc_data
-
     def transform_dataset(self,
                           dataset: dict,
                           subject_ids: list = None,

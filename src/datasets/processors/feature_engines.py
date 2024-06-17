@@ -99,6 +99,7 @@ class MIMICFeatureEngine(AbstractProcessor):
         self._operation_name = "feature engieneering"  # For printing
         self._operation_adjective = "engineered"
         self._storage_path = storage_path
+        self._save_file_type = "hdf5"
         self._writer = (DataSetWriter(storage_path) if storage_path is not None else None)
         self._source_reader = reader
         if tracker is not None:
@@ -283,23 +284,7 @@ class MIMICFeatureEngine(AbstractProcessor):
         """
         return X, y, t
 
-    def save_data(self, subject_ids: list = None) -> None:
-        """
-        Saves the engineered feature data.
-
-        This method saves the engineered feature data to the specified storage path. If no subject IDs are provided, all 
-        engineered data will be saved. The data is saved in HDF5 format and optionally concatenated into CSV format for PHENO and IHM.
-        """
-        if subject_ids is None:
-            name_data_pairs = {"X": self._X, "y": self._y, "t": self._t}
-        else:
-            name_data_pairs = {
-                "X": dict_subset(self._X, subject_ids),
-                "y": dict_subset(self._y, subject_ids),
-                "t": dict_subset(self._t, subject_ids)
-            }
-        with self._lock:
-            self._writer.write_bysubject(name_data_pairs, file_type="hdf5")
+    def _processor_specific_save_data(self):
 
         def create_df(data, file_name) -> pd.DataFrame:
             if file_name == "X":
@@ -339,8 +324,6 @@ class MIMICFeatureEngine(AbstractProcessor):
         if self._save_as_samples:
             with self._lock:
                 append_data(self._X, self._y)
-
-        return
 
     def _shuffle(self, data: List[tuple]) -> None:
         """
