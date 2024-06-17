@@ -123,7 +123,7 @@ class MIMICPreprocessor(AbstractProcessor):
             with self._lock:
                 self._tracker = (None if storage_path is None else PreprocessingTracker(
                     Path(storage_path, "progress")))
-        self._processed_set_reader = (None if storage_path is None else ProcessedSetReader(
+        self._storage_reader = (None if storage_path is None else ProcessedSetReader(
             root_path=storage_path))
         self._phenotypes_yaml = phenotypes_yaml
         self._verbose = verbose
@@ -147,6 +147,30 @@ class MIMICPreprocessor(AbstractProcessor):
         if self._source_reader is None:
             return []
         return self._source_reader.subject_ids
+
+    def transform_subject(self, subject_id: int, return_tracking=False) -> None:
+        """
+        Transforms the extracted dataset for the specified task.
+
+        Parameters
+        ----------
+        dataset : dict
+            The dataset to transform.
+
+        Returns
+        -------
+        tuple
+            A tuple containing transformed feature and label data.
+        """
+        subject_data = self._source_reader.read_subject(subject_id, read_ids=True)
+
+        proc_data, \
+        tracking_info = self._transform({subject_id: subject_data},
+                                         return_tracking=True)
+
+        if return_tracking:
+            return proc_data, tracking_info
+        return proc_data
 
     def transform_dataset(self,
                           dataset: dict,
@@ -228,7 +252,7 @@ class MIMICPreprocessor(AbstractProcessor):
             y_subjects = dict()
             while not len(X_subjects) == num_subjects:
                 curr_dataset = dict_subset(dataset, subject_ids)
-                X, y = self._transform(dataset=curr_dataset)
+                (X, y) = self._transform(dataset=curr_dataset)
                 X_subjects.update(X)
                 y_subjects.update(y)
                 it_missing_subjects = set(X.keys()) - set(subject_ids)
@@ -266,34 +290,7 @@ class MIMICPreprocessor(AbstractProcessor):
         return ProcessedSetReader(root_path=self._storage_path,
                                   subject_ids=orig_subject_ids).read_samples(read_ids=True)
 
-    def transform_subject(self, subject_id: int) -> None:
-        """
-        Transforms the extracted dataset for the specified task.
-
-        Parameters
-        ----------
-        dataset : dict
-            The dataset to transform.
-
-        Returns
-        -------
-        tuple
-            A tuple containing transformed feature and label data.
-        """
-        subject_data = self._source_reader.read_subject(subject_id, read_ids=True)
-        if not subject_data:
-            return None, None
-        del subject_data["subject_events"]
-        X, y = self._transform({subject_id: subject_data})
-        if not X or not y:
-            return None, None
-        if self._tracker is None:
-            return X, y
-        with self._lock:
-            tracking_info = self._tracker.subjects[subject_id]
-        return (X, y), tracking_info
-
-    def _transform(self, dataset: dict):
+    def _transform(self, dataset: dict, return_tracking: bool = False):
         """
         Transforms the extracted dataset.
 
@@ -301,43 +298,44 @@ class MIMICPreprocessor(AbstractProcessor):
         processed tasks and labels along with tracking information if available.
         """
         start_verbose = True
+        tracking_info = dict()
 
         if self._task in ["LOS"] and self._label_type == "one-hot":
             self._label_type = "sparse"
 
         for subject, subject_data in dataset.items():
-            skip_subject = False
-
             subject_timeseries: pd.DataFrame = subject_data['timeseries']
             diagnoses_df: pd.DataFrame = subject_data['subject_diagnoses']
             icuhistory_df: pd.DataFrame = subject_data['subject_icu_history']
             episodic_data_df: pd.DataFrame = subject_data['episodic_data']
 
-            self._X[subject] = dict()
-            self._y[subject] = dict()
-
-            tracking_info = dict()
+            tracking_info[subject] = dict()
             with self._lock:
                 is_in_subjects = subject in self._tracker.subjects
-            if (self._tracker is not None) and \
-            is_in_subjects and \
-            (not self._X[subject]):
+            if (self._tracker is not None) and is_in_subjects and (not subject in self._X):
                 # Do not reprocess already existing directories
-                self._X[subject], self._y[subject] = self._processed_set_reader.read_sample(
-                    str(subject), read_ids=True).values()
-                skip_subject = True
+                self._X[subject], \
+                self._y[subject] = self._storage_reader.read_sample(
+                    subject, read_ids=True).values()
                 continue
-            elif start_verbose:
-                if self._verbose:
-                    info_io(
-                        f"Processing timeseries data:\n"
-                        f"Processed subjects: {self._n_subjects}\n"
-                        f"Processed stays: {self._n_stays}\n"
-                        f"Processed samples: {self._n_samples}\n"
-                        f"Skipped subjects: {self._n_skip}",
-                        flush_block=True,
-                        verbose=self._verbose)
-                    start_verbose = False
+            elif subject not in self._X:
+                # Process the subject
+                self._X[subject] = dict()
+                self._y[subject] = dict()
+            elif subject in self._X:
+                # Skip already processed subjects
+                continue
+
+            if start_verbose:
+                info_io(
+                    f"Processing timeseries data:\n"
+                    f"Processed subjects: {self._n_subjects}\n"
+                    f"Processed stays: {self._n_stays}\n"
+                    f"Processed samples: {self._n_samples}\n"
+                    f"Skipped subjects: {self._n_skip}",
+                    flush_block=True,
+                    verbose=self._verbose)
+                start_verbose = False
 
             for icustay in subject_timeseries:
                 stay_timeseries_df = subject_timeseries[icustay]
@@ -378,49 +376,38 @@ class MIMICPreprocessor(AbstractProcessor):
                     raise ValueError(
                         "Task must be one of: in_hospital_mortality, decompensation, length_of_stay, phenotyping"
                     )
-                if self._y[subject][icustay].empty:
+                if self._y[subject][icustay].empty or self._X[subject][icustay].empty:
                     del self._y[subject][icustay]
                     del self._X[subject][icustay]
                     continue
                 else:
-                    tracking_info[icustay] = len(self._y[subject][icustay])
+                    tracking_info[subject][icustay] = len(self._y[subject][icustay])
                     self._n_stays += 1
                     self._n_samples += len(self._y[subject][icustay])
-                    if self._verbose:
-                        info_io(
-                            f"Processing timeseries data:\n"
-                            f"Processed subjects: {self._n_subjects}\n"
-                            f"Processed stays: {self._n_stays}\n"
-                            f"Processed samples: {self._n_samples}\n"
-                            f"Skipped subjects: {self._n_skip}",
-                            flush_block=True,
-                            verbose=self._verbose)
+                    info_io(
+                        f"Processing timeseries data:\n"
+                        f"Processed subjects: {self._n_subjects}\n"
+                        f"Processed stays: {self._n_stays}\n"
+                        f"Processed samples: {self._n_samples}\n"
+                        f"Skipped subjects: {self._n_skip}",
+                        flush_block=True,
+                        verbose=self._verbose)
 
-            if skip_subject:
-                continue
+            tracking_info = self._update_tracking(subject, tracking_info)
 
-            if self._tracker is not None and tracking_info:
-                with self._lock:
-                    self._tracker.subjects.update({subject: tracking_info})
-
-            if not len(self._y[subject]) or not len(self._X[subject]):
-                del self._y[subject]
-                del self._X[subject]
-                self._n_skip += 1
-            else:
-                self._n_subjects += 1
-                # print(subject, self._n_subjects)
-        if self._verbose:
-            info_io(
-                f"Processing timeseries data:\n"
-                f"Processed subjects: {self._n_subjects}\n"
-                f"Processed stays: {self._n_stays}\n"
-                f"Processed samples: {self._n_samples}\n"
-                f"Skipped subjects: {self._n_skip}",
-                flush_block=True,
-                verbose=self._verbose)
-
-        return self._X, self._y
+        info_io(
+            f"Processing timeseries data:\n"
+            f"Processed subjects: {self._n_subjects}\n"
+            f"Processed stays: {self._n_stays}\n"
+            f"Processed samples: {self._n_samples}\n"
+            f"Skipped subjects: {self._n_skip}",
+            flush_block=True,
+            verbose=self._verbose)
+        if return_tracking:
+            return (dict_subset(self._X, dataset.keys()), \
+                    dict_subset(self._y, dataset.keys())), \
+                    tracking_info
+        return dict_subset(self._X, dataset.keys()), dict_subset(self._y, dataset.keys())
 
     def make_multitask_data(self, timeseries_df: pd.DataFrame, episodic_data_df: pd.DataFrame,
                             icu_stay: pd.DataFrame, diagnoses_df: pd.DataFrame,

@@ -122,7 +122,8 @@ class ProgressPublisher(Process):
             # Draw tracking information from queue
             frame_lengths, finished = self._in_q.get()
             # TODO! real crash resilience can only be achieved by updating in the event consumer
-            self._tracker.count_subject_events += frame_lengths
+            with self._lock:
+                self._tracker.count_subject_events += frame_lengths
             # Track consumer finishes
             if finished:
                 done_count += 1

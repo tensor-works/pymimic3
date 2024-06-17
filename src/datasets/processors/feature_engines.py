@@ -145,44 +145,10 @@ class MIMICFeatureEngine(AbstractProcessor):
         """
         return self._source_reader.subject_ids
 
-    def transform_subject(self, subject_id: int):
-        """
-        Transform the data for a specific subject.
-
-        This method reads the data for a specific subject, processes it, and returns
-        the engineered features along with tracking information.
-
-        Parameters
-        ----------
-        subject_id : int
-            The ID of the subject to transform data for.
-
-        Returns
-        -------
-        tuple
-            A tuple containing the engineered features and tracking information.
-        """
-        X_processed, y_processed = self._source_reader.read_sample(subject_id,
-                                                                   read_ids=True,
-                                                                   data_type=pd.DataFrame).values()
-        X = {subject_id: X_processed}
-        y = {subject_id: y_processed}
-        if X is None or y is None:
-            return None, None
-
-        X_engineered, y_engineered = self._transform((X, y))
-        if X_engineered is None or y_engineered is None:
-            return None, None
-        if self._tracker is None:
-            return X_engineered, y_engineered
-
-        with self._lock:
-            tracking_info = self._tracker.subjects[subject_id]
-        return (X_engineered, y_engineered), tracking_info
-
     def _transform(self,
                    dataset: Tuple[Dict[int, Dict[int, pd.DataFrame]]],
-                   return_timestamp=False):
+                   return_timestamp=False,
+                   return_tracking=False):
         """
         Save the engineered data to the storage path.
 
@@ -193,22 +159,22 @@ class MIMICFeatureEngine(AbstractProcessor):
         subject_ids : list, optional
             A list of subject IDs to save data for. If None, all data is saved. Default is None.
         """
-        X_dict, y_dict = dataset
+        X_dict, y_dict = dataset["X"], dataset["y"]
 
-        if self._verbose:
-            info_io(
-                f"Engineering processed data:\n"
-                f"Engineered subjects: {self._n_subjects}\n"
-                f"Engineered stays: {self._n_stays}\n"
-                f"Engineered samples: {self._n_samples}\n"
-                f"Skipped subjects: {self._n_skip}",
-                verbose=self._verbose)
+        info_io(
+            f"Engineering processed data:\n"
+            f"Engineered subjects: {self._n_subjects}\n"
+            f"Engineered stays: {self._n_stays}\n"
+            f"Engineered samples: {self._n_samples}\n"
+            f"Skipped subjects: {self._n_skip}",
+            verbose=self._verbose)
 
         self._samples_processed = 0
 
         self._X = dict()
         self._y = dict()
         self._t = dict()
+        tracking_info = dict()
 
         for subject_id in X_dict.keys():
             X_subject = X_dict[subject_id]
@@ -216,7 +182,7 @@ class MIMICFeatureEngine(AbstractProcessor):
             self._X[subject_id] = dict()
             self._y[subject_id] = dict()
             self._t[subject_id] = dict()
-            tracking_info = dict()
+            tracking_info[subject_id] = dict()
 
             for stay_id in X_subject:
                 X_df = X_subject[stay_id]
@@ -227,37 +193,42 @@ class MIMICFeatureEngine(AbstractProcessor):
                 self._X[subject_id][stay_id] = X_ss
                 self._y[subject_id][stay_id] = np.atleast_2d(ys)
                 self._t[subject_id][stay_id] = ts
-                tracking_info[stay_id] = len(ys)
-                self._n_samples += len(ys)
-                self._n_stays += 1
 
-                if self._verbose:
-                    info_io(
-                        f"Engineering processed data:\n"
-                        f"Engineered subjects: {self._n_subjects}\n"
-                        f"Engineered stays: {self._n_stays}\n"
-                        f"Engineered samples: {self._n_samples}\n"
-                        f"Skipped subjects: {self._n_skip}",
-                        flush_block=True,
-                        verbose=self._verbose)
+                n_samples = len(ys)
+                if n_samples and len(X_ss):
+                    tracking_info[subject_id][stay_id] = n_samples
+                    self._n_samples += n_samples
+                    self._n_stays += 1
+                else:
+                    del self._X[subject_id][stay_id]
+                    del self._y[subject_id][stay_id]
+                    del self._t[subject_id][stay_id]
 
-            self._n_subjects += 1
-            if self._tracker is not None:
-                with self._lock:
-                    self._tracker.subjects.update({subject_id: tracking_info})
+                info_io(
+                    f"Engineering processed data:\n"
+                    f"Engineered subjects: {self._n_subjects}\n"
+                    f"Engineered stays: {self._n_stays}\n"
+                    f"Engineered samples: {self._n_samples}\n"
+                    f"Skipped subjects: {self._n_skip}",
+                    flush_block=True,
+                    verbose=self._verbose)
 
-        if self._verbose:
-            info_io(
-                f"Engineering processed data:\n"
-                f"Engineered subjects: {self._n_subjects}\n"
-                f"Engineered stays: {self._n_stays}\n"
-                f"Engineered samples: {self._n_samples}\n"
-                f"Skipped subjects: {self._n_skip}",
-                flush_block=True,
-                verbose=self._verbose)
+            tracking_info = self._update_tracking(subject_id, tracking_info)
+
+        info_io(
+            f"Engineering processed data:\n"
+            f"Engineered subjects: {self._n_subjects}\n"
+            f"Engineered stays: {self._n_stays}\n"
+            f"Engineered samples: {self._n_samples}\n"
+            f"Skipped subjects: {self._n_skip}",
+            flush_block=True,
+            verbose=self._verbose)
+        return_list = [self._X, self._y]
         if return_timestamp:
-            return self._X, self._y, self._t
-        return self._X, self._y
+            return_list.append(self._t)
+        if return_tracking:
+            return tuple(return_list), tracking_info
+        return tuple(return_list), tracking_info
 
     def _engineer_stay(self, X_df: pd.DataFrame, y_df: pd.DataFrame):
         """

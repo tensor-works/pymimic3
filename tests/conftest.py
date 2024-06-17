@@ -4,6 +4,7 @@ import os
 import re
 import datasets
 import pandas as pd
+import ray
 from typing import Dict
 from pathlib import Path
 from tests.tsettings import *
@@ -33,6 +34,8 @@ def pytest_configure(config) -> None:
 
 @pytest.fixture(scope="function", autouse=True)
 def cleanup():
+    if ray.is_initialized():
+        ray.shutdown()
     if TEMP_DIR.is_dir():
         shutil.rmtree(str(TEMP_DIR))
 
@@ -42,15 +45,17 @@ def cleanup():
     # Clean after execution
     if TEMP_DIR.is_dir():
         shutil.rmtree(str(TEMP_DIR))
+    if ray.is_initialized():
+        ray.shutdown()
 
 
 @pytest.fixture(scope="session")
 def extracted_reader() -> ExtractedSetReader:
-    reader = datasets.load_data(chunksize=75835,
-                                source_path=TEST_DATA_DEMO,
-                                storage_path=SEMITEMP_DIR,
-                                verbose=False)
-    return reader
+    extract_reader = datasets.load_data(chunksize=75835,
+                                        source_path=TEST_DATA_DEMO,
+                                        storage_path=SEMITEMP_DIR,
+                                        verbose=False)
+    return extract_reader
 
 
 @pytest.fixture(scope="session")
@@ -62,60 +67,56 @@ def subject_ids(extracted_reader: ExtractedSetReader) -> list:
 
 @pytest.fixture(scope="session")
 def preprocessed_readers() -> Dict[str, ProcessedSetReader]:
-    readers = dict()
+    proc_reader = dict()
     for task_name in TASK_NAMES:
-        readers[task_name] = datasets.load_data(chunksize=75835,
-                                                source_path=TEST_DATA_DEMO,
-                                                storage_path=SEMITEMP_DIR,
-                                                preprocess=True,
-                                                task=task_name,
-                                                verbose=False)
-    return readers
+        proc_reader[task_name] = datasets.load_data(chunksize=75835,
+                                                    source_path=TEST_DATA_DEMO,
+                                                    storage_path=SEMITEMP_DIR,
+                                                    preprocess=True,
+                                                    task=task_name,
+                                                    verbose=False)
+    return proc_reader
 
 
 @pytest.fixture(scope="session")
 def engineered_readers() -> Dict[str, ProcessedSetReader]:
-    readers = dict()
+    eng_reader = dict()
     for task_name in set(TASK_NAMES) - {"MULTI"}:
         tests_io(f"Loading engineered reader for task {task_name}...", end="\r")
-        readers[task_name] = datasets.load_data(chunksize=75835,
-                                                source_path=TEST_DATA_DEMO,
-                                                storage_path=SEMITEMP_DIR,
-                                                engineer=True,
-                                                task=task_name,
-                                                verbose=False)
+        eng_reader[task_name] = datasets.load_data(chunksize=75835,
+                                                   source_path=TEST_DATA_DEMO,
+                                                   storage_path=SEMITEMP_DIR,
+                                                   engineer=True,
+                                                   task=task_name,
+                                                   verbose=True)
         tests_io(f"Done loading engineered reader for task {task_name}")
-    return readers
+    return eng_reader
 
 
 @pytest.fixture(scope="session")
 def discretized_readers() -> Dict[str, ProcessedSetReader]:
-    readers = dict()
+    disc_reader = dict()
     for task_name in set(TASK_NAMES) - {"MULTI"}:
         tests_io(f"Loading discretized reader for task {task_name}...", end="\r")
-        readers[task_name] = datasets.load_data(chunksize=75835,
-                                                source_path=TEST_DATA_DEMO,
-                                                storage_path=SEMITEMP_DIR,
-                                                discretize=True,
-                                                task=task_name,
-                                                verbose=False)
+        disc_reader[task_name] = datasets.load_data(chunksize=75835,
+                                                    source_path=TEST_DATA_DEMO,
+                                                    storage_path=SEMITEMP_DIR,
+                                                    discretize=True,
+                                                    task=task_name,
+                                                    verbose=False)
         tests_io(f"Done loading discretized reader for task {task_name}")
-    return readers
 
-
-@pytest.fixture(scope="session")
-def deep_supervision_readers() -> Dict[str, ProcessedSetReader]:
-    ds_readers = dict()
     for task_name in ["DECOMP", "LOS"]:
         tests_io(f"Loading deep supervision discretized reader for task {task_name}...", end="\r")
-        ds_readers[task_name] = datasets.load_data(chunksize=75835,
-                                                   source_path=TEST_DATA_DEMO,
-                                                   storage_path=SEMITEMP_DIR,
-                                                   deep_supervision=True,
-                                                   task=task_name,
-                                                   verbose=False)
+        _ = datasets.load_data(chunksize=75835,
+                               source_path=TEST_DATA_DEMO,
+                               storage_path=SEMITEMP_DIR,
+                               deep_supervision=True,
+                               discretize=True,
+                               task=task_name,
+                               verbose=False)
         tests_io(f"Done loading deep supervision discretized reader for task {task_name}")
-    return ds_readers
+    return disc_reader
 
 
 @pytest.fixture(scope="session")

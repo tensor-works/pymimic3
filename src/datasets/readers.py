@@ -41,6 +41,7 @@ import multiprocessing as mp
 from collections.abc import Iterable
 from copy import deepcopy
 from utils import NoopLock
+from collections import defaultdict
 from utils.IO import *
 from settings import *
 from .mimic_utils import upper_case_column_names, convert_dtype_dict, read_varmap_csv
@@ -730,25 +731,14 @@ class ProcessedSetReader(AbstractReader):
             root_path (Path): _description_
             subject_folders (list, optional): _description_. Defaults to None.
         """
-        self._reader_switch_Xy = {
-            "csv": {
-                "X": (lambda x: self._read_csv(x, dtypes=DATASET_SETTINGS["timeseries"]["dtype"])),
-                "y": lambda x: self._read_csv(x),
-                "M": lambda x: self._read_csv(x),
-                "t": lambda x: self._read_csv(x)
-            },
-            "npy": {
-                "X": np.load,
-                "y": np.load,
-                "M": np.load,
-                "t": np.load
-            },
-            "h5": {
-                "X": self._read_hdf,
-                "y": pd.read_hdf,
-                "M": pd.read_hdf,
-                "t": pd.read_hdf
-            }
+        self._reader_switch = {
+            "csv":
+                defaultdict(lambda: self._read_csv, \
+                {"X": (lambda x: self._read_csv(x, dtypes=DATASET_SETTINGS["timeseries"]["dtype"]))}),
+            "npy":
+                defaultdict(lambda: np.load),
+            "h5":
+                defaultdict(lambda: pd.read_hdf, {"X": self._read_hdf})
         }
         super().__init__(root_path, subject_ids)
         self._random_ids = deepcopy(self.subject_ids)
@@ -898,7 +888,7 @@ class ProcessedSetReader(AbstractReader):
         for file in dir_path.iterdir():
             stay_id = _extract_number(file.name)
             file_extension = file.suffix.strip(".")
-            reader = self._reader_switch_Xy[file_extension]
+            reader = self._reader_switch[file_extension]
             reader_kwargs = ({"allow_pickle": True} if file_extension == "npy" else {})
 
             if stay_id in stay_id_stack:

@@ -648,22 +648,6 @@ def assert_range(column, demographic_filter, invert=False):
 
 
 if __name__ == "__main__":
-    # reader = datasets.load_data(chunksize=75836,
-    #                             source_path=TEST_DATA_DEMO,
-    #                             storage_path=SEMITEMP_DIR,
-    #                             discretize=True,
-    #                             time_step_size=1.0,
-    #                             start_at_zero=True,
-    #                             impute_strategy='previous',
-    #                             task='DECOMP')
-    # test_demographic_filter("DECOMP", "discretized", {"DECOMP": reader}, {})
-    # test_demo_split("DECOMP", "discretized", {"DECOMP": reader}, {})
-    # test_demo_and_ratio_split("DECOMP", "discretized", {"DECOMP": reader}, {})
-
-    # for _ in range(10):
-    #     test_demo_and_ratio_split("DECOMP", "discretized", {"DECOMP": reader}, {})
-    # test_train_size("DECOMP", "discretized", {"DECOMP": reader}, {})
-
     discretized_readers = dict()
     engineered_readers = dict()
     if TEMP_DIR.is_dir():
