@@ -1,10 +1,14 @@
 import os
 import numpy as np
+import pandas as pd
 import pickle
+from typing import List, Union, Dict
 from utils.IO import *
 from pathlib import Path
 from abc import ABC, abstractmethod
 from tqdm import tqdm  # Importing tqdm for progress bars
+from datasets.readers import ProcessedSetReader
+from datasets.writers import DataSetWriter
 
 
 class AbstractScikitProcessor(ABC):
@@ -27,6 +31,12 @@ class AbstractScikitProcessor(ABC):
         Args:
             storage_path (_type_): _description_
         """
+        self._name: str = ...
+        self._action: str = ...
+        self._verbose: bool = ...
+        self._storage_name: str = ...
+        self._imputer: AbstractScikitProcessor = ...
+
         ...
 
     @abstractmethod
@@ -85,6 +95,7 @@ class AbstractScikitProcessor(ABC):
             If no storage path is provided.
         """
         if storage_path is not None:
+            Path(storage_path).mkdir(parents=True, exist_ok=True)
             self._storage_path = Path(storage_path, self._storage_name)
         if self._storage_path is None:
             raise ValueError("No storage path provided!")
@@ -112,41 +123,55 @@ class AbstractScikitProcessor(ABC):
                     return 1
         return 0
 
-    def fit_dataset(self, X):
+    def fit_dataset(self, \
+                    dataset: Dict[str, Union[Dict[str, Dict[str, Union[pd.DataFrame,np.ndarray]]], \
+                                             List[Union[pd.DataFrame, np.ndarray]]]]):
         """
         Fit the processor to an entire dataset.
 
         Parameters
         ----------
-        X : iterable
-            The dataset to fit.
+        dataset : iterable
+            The dataset to fit. The "X" key should indicate the features. The dataset can either be
+            in list or dictionary fromat.
 
         Returns
         -------
         self
             The fitted processor.
         """
+        X = dataset["X"]
         if self._verbose:
-            info_io(f"Fitting scaler to dataset of size {len(X)}")
+            info_io(f"Fitting {self._name} to dataset of size {len(X)}")
         n_fitted = 0
-
         with tqdm(total=len(X), unit='step', ascii=' >=', ncols=120,
                   disable=self._verbose) as progbar:
-            for frame in X:
-                if hasattr(self, "_imputer") and self._imputer is not None:
-                    frame = self._imputer.transform(frame)
-                self.partial_fit(frame)
-                n_fitted += 1
-                if self._verbose:
-                    progbar.update(1)
-
+            if isinstance(X, list):
+                for frame in X:
+                    if hasattr(self, "_imputer") and self._imputer is not None:
+                        frame = self._imputer.transform(frame)
+                    self.partial_fit(frame)
+                    n_fitted += 1
+                    if self._verbose:
+                        progbar.update(1)
+            elif isinstance(X, dict):
+                for subject_id, frames in X.items():
+                    for stay_id, frame in frames.items():
+                        if hasattr(self, "_imputer") and self._imputer is not None:
+                            frame = self._imputer.transform(frame)
+                        self.partial_fit(frame)
+                    n_fitted += 1
+                    if self._verbose:
+                        progbar.update(1)
+            else:
+                raise ValueError(f"Unrecognized dictionary type {type(X)}. Should be list or dict")
         self.save()
 
         if self._verbose:
-            info_io(f"Done computing new {Path(self._storage_path).stem}.")
+            info_io(f"Done computing new {self._name}.")
         return self
 
-    def fit_reader(self, reader, save=False):
+    def fit_reader(self, reader: ProcessedSetReader, save=False):
         """
         Fit the processor to a dataset read from a reader.
 
@@ -168,9 +193,7 @@ class AbstractScikitProcessor(ABC):
         if self.load():
             return self
         if self._verbose:
-            info_io(
-                f"Fitting {Path(self._storage_path).stem} to reader of size {len(reader.subject_ids)}"
-            )
+            info_io(f"Fitting {self._name} to reader of size {len(reader.subject_ids)}")
 
         with tqdm(total=len(reader.subject_ids),
                   unit='step',
@@ -197,3 +220,81 @@ class AbstractScikitProcessor(ABC):
             )
 
         return self
+
+    def transform_dataset(
+        self,
+        dataset: Dict[str, Union[Dict[str, Dict[str, Union[pd.DataFrame, np.ndarray]]], \
+                                 List[Union[pd.DataFrame, np.ndarray]]]],
+    ):
+        X = dataset["X"]
+        if self._verbose:
+            info_io(f"{self._action.capitalize()} dataset of size {len(X)}")
+        n_transformed = 0
+
+        with tqdm(total=len(X), unit='step', ascii=' >=', ncols=120,
+                  disable=self._verbose) as progbar:
+            if isinstance(X, list):
+                X_return = list()
+                for frame in X:
+                    X_return.append(self.transform(frame))
+                    n_transformed += 1
+                    if self._verbose:
+                        progbar.update(1)
+            elif isinstance(X, dict):
+                X_return = dict()
+                for subject_id, frames in X.items():
+                    X_return[subject_id] = dict()
+                    for stay_id, frame in frames.items():
+                        X_return[subject_id].update({stay_id: self.transform(frame)})
+                    n_transformed += 1
+                    if self._verbose:
+                        progbar.update(1)
+            else:
+                raise ValueError(f"Unrecognized dictionary type {type(X)}. Should be list or dict")
+        dataset["X"] = X_return
+        if self._verbose:
+            info_io(f"Done transforming dataset using {self._name}.")
+        return dataset
+
+    def transform_reader(self, reader: ProcessedSetReader):
+        if self._verbose:
+            info_io(f"{self._action.capitalize()} reader with {len(reader.subject_ids)} samples.")
+        dataset_writer = DataSetWriter(reader.root_path)
+        with tqdm(total=len(reader.subject_ids),
+                  unit='step',
+                  ascii=' >=',
+                  ncols=120,
+                  disable=self._verbose) as progbar:
+            n_transformed = 0
+
+            for subject_id in reader.subject_ids:
+                X_subjects, _ = reader.read_sample(subject_id, read_ids=True).values()
+                X_transformed = dict()
+                for stay_id, frame in X_subjects.items():
+                    X_transformed.update({stay_id: self.transform(frame)})
+
+                dataset_writer.write_bysubject({"X": {
+                    subject_id: X_transformed
+                }},
+                                               file_type="dynamic")
+                n_transformed += 1
+                if self._verbose:
+                    progbar.update(1)
+
+        self.save()
+
+        if self._verbose:
+            info_io(f"Done transforming reader using {self._name}.\n"
+                    f"Saved in location {reader.root_path}!")
+
+        return reader
+
+    def fit_transform_dataset(
+        self,
+        dataset: Dict[str, Union[Dict[str, Dict[str, Union[pd.DataFrame, np.ndarray]]],
+                                 List[Union[pd.DataFrame, np.ndarray]]]],
+    ):
+        return self.fit_dataset(dataset).transform_dataset(dataset)
+
+    def fit_transform_reader(self, reader: ProcessedSetReader):
+        return self.fit_reader(reader).transform_reader(reader)

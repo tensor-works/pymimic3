@@ -56,6 +56,8 @@ class PartialImputer(SimpleImputer, AbstractImputer):
         self.statistics_ = None
         self.n_features_in_ = 0
         self.n_samples_in_ = 0
+        self._name = "partial imputer"
+        self._action = "imputing"
         self._storage_name = "partial_imputer.pkl"
         if storage_path is not None:
             self._storage_path = Path(storage_path, self._storage_name)

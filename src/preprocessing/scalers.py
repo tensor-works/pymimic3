@@ -38,6 +38,7 @@ class AbstractScaler(AbstractScikitProcessor):
             self._storage_path = None
         self._verbose = verbose
         self._imputer = imputer
+        self._action = "scaling"
 
 
 class StandardScaler(_StandardScaler, AbstractScaler):
@@ -71,6 +72,7 @@ class StandardScaler(_StandardScaler, AbstractScaler):
         verbose : bool, optional
             If True, print verbose logs during processing, by default True.
         """
+        self._name = "standard scaler"
         self._storage_name = "standard_scaler.pkl"
         AbstractScaler.__init__(self, storage_path=storage_path, imputer=imputer, verbose=verbose)
         _StandardScaler.__init__(self, copy=copy, with_mean=with_mean, with_std=with_std)
@@ -186,6 +188,7 @@ class MinMaxScaler(_MinMaxScaler, AbstractScaler):
             storage_path (_type_, optional): _description_. Defaults to None.
             verbose (int, optional): _description_. Defaults to 1.
         """
+        self._name = "min-max scaler"
         self._storage_name = "minmax_scaler.pkl"
         AbstractScaler.__init__(self, storage_path=storage_path, imputer=imputer, verbose=verbose)
         _MinMaxScaler.__init__(self, feature_range=feature_range, copy=copy, clip=clip)
@@ -285,6 +288,7 @@ class MaxAbsScaler(_MaxAbsScaler, AbstractScaler):
     """
 
     def __init__(self, storage_path=None, imputer=None, verbose=True, copy=True):
+        self._name = "max-abs scaler"
         self._storage_name = "maxabs_scaler.pkl"
         AbstractScaler.__init__(self, storage_path=storage_path, imputer=imputer, verbose=verbose)
         _MaxAbsScaler().__init__(copy=copy)
@@ -397,6 +401,7 @@ class RobustScaler(_RobustScaler, AbstractScaler):
                  quantile_range=(25.0, 75.0),
                  copy=True,
                  verbose=True):
+        self._name = "robust scaler"
         self._storage_name = "robust_scaler.pkl"
         AbstractScaler.__init__(self, storage_path=storage_path, imputer=imputer, verbose=verbose)
         _RobustScaler().__init__(with_centering=with_centering,
