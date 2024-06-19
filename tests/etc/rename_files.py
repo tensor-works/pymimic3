@@ -6,7 +6,7 @@ from pathlib import Path
 import sys
 
 sys.path.append(os.getenv("WORKINGDIR"))
-from tests.settings import *
+from tests.tsettings import *
 
 for subject_dir in Path(TEST_DATA_DIR, "generated-benchmark", "extracted").iterdir():
     if not subject_dir.is_dir():

@@ -19,6 +19,7 @@ class SimpleProperty(object):
         self._default = default
 
     def __get__(self, instance, owner) -> Any:
+
         return instance._progress.get(self._name, self._default)
 
     def __set__(self, instance, value: Any):
@@ -196,11 +197,11 @@ class ProxyList(list):
     """
 
     def __init__(self, name, initial=None, write_callback=None, *args, **kwargs):
+        self._on_modified = write_callback
         super().__init__(*args, **kwargs)
         self._name = name
         if initial is None:
             initial = []
-        self._on_modified = write_callback
         self.extend(initial)
 
     def append(self, item):
@@ -253,25 +254,26 @@ class ListProperty:
     def __init__(self, name: str, default=None, write_callback=None):
         self._name = name
         self._write_callback = write_callback
-        self._default = ProxyList(name=name, initial=default, write_callback=write_callback)
+        self._default = default
 
     def __get__(self, instance, owner):
         if instance is not None:
             if self._name not in instance.__dict__:
-                instance.__dict__[self._name] = ProxyList(
-                    name=self._name,
-                    initial=self._default,
-                    write_callback=lambda n, x: self.__set__(instance, x))
-            return instance.__dict__[self._name]
+                instance._progress[self._name] = instance._read(self._name)
+                return ProxyList(name=self._name,
+                                 initial=instance._progress.get(self._name, self._default),
+                                 write_callback=lambda n, x: self.__set__(instance, x))
         else:
-            return self._default
+            return deepcopy(owner._originals.get(self._name, self._default))
 
     def __set__(self, instance, value):
-        if isinstance(value, list):
-            value = ProxyList(name=self._name, initial=value, write_callback=self._write_callback)
-        instance.__dict__[self._name] = value
-        if self._write_callback:
-            self._write_callback(self._name, value)
+        if isinstance(value, ProxyList):
+            value = list(value)
+        # instance.__dict__[self._name] = value
+        # if self._write_callback:
+        #     self._write_callback(self._name, value)
+        instance._progress[self._name] = value
+        instance._write({self._name: value})
 
 
 class DictionaryProperty(object):
@@ -405,7 +407,7 @@ def storable(cls):
 
             def _read_value(key):
                 value = db[key]
-                default_value = getattr(cls, key)
+                default_value = cls._originals.get(key, None)
                 # These types are miscast by shelve
                 if isinstance(default_value, bool):
                     return bool(value)

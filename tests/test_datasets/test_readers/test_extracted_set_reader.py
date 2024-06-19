@@ -7,7 +7,8 @@ import random
 import pytest
 from pathlib import Path
 from utils.IO import *
-from tests.settings import *
+from tests.tsettings import *
+from settings import *
 from datasets.readers import ExtractedSetReader
 from datasets.mimic_utils import convert_dtype_dict
 

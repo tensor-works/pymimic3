@@ -34,6 +34,8 @@ The following table describes the input and tracking details for each tracker in
 from typing import List
 from utils.IO import *
 from storable import storable
+from utils import write_json
+from pathlib import Path
 
 
 @storable
@@ -64,7 +66,7 @@ class ExtractionTracker():
     #: bool: Flag indicating if diagnoses data has been extracted.
     has_diagnoses: bool = False
     #: bool: Flag indicating if the extraction process is finished.
-    is_finished: bool = False
+    finished: bool = False
     #: list: A list of subject IDs for tracking progress.
     subject_ids: list = list()  # Not extraction target but tracking
     #: int: The target number of samples for extraction.
@@ -78,7 +80,9 @@ class ExtractionTracker():
                  subject_ids: list = None,
                  *args,
                  **kwargs) -> None:
-
+        # TODO: proof storables against concurrent access. Currently this has to be handles
+        # externally.
+        self._lock = None
         # If num samples has increase more samples need to be raised, if decreased value error
         if self.num_samples is not None and num_samples is None:
             # If changed to None extraction is carried out for all samples
@@ -128,7 +132,18 @@ class ExtractionTracker():
         self.has_timeseries = False
         self.has_bysubject_info = False
         self.has_subject_events = False
-        self.is_finished = False
+        self.finished = False
+
+    @property
+    def is_finished(self):
+        return self.finished
+
+    @is_finished.setter
+    def is_finished(self, value):
+        assert isinstance(value, bool)
+        self.finished = value
+        if value:
+            write_json(Path(str(self._path) + ".json"), self._read())
 
 
 @storable
@@ -146,7 +161,7 @@ class PreprocessingTracker():
     #: int: The target number of subjects for preprocessing.
     num_subjects: int = None
     #: bool: Flag indicating if the preprocessing is finished.
-    is_finished: bool = False
+    finished: bool = False
     #: bool: Flag indicating if the total count should be stored.
     _store_total: bool = True
     #: int: Discretization only. The time step size used in preprocessing.
@@ -157,10 +172,17 @@ class PreprocessingTracker():
     impute_strategy: str = None
     #: str: Discretization only. Legacy or experimental mode.
     mode: str = None
+    #: list: already create supervision modes
+    supervision_modes: list = list()
+    #: bool: Flag indicating if deep supervision is used.
+    deep_supervision: bool = None
+    #: bool: Flag indicating the rerun does not depend on existing subject data
+    force_rerun: bool = False
 
     def __init__(self, **kwargs):
         # Do nothing on init since subject_ids and num_subjects are not yet available
         self._lock = None
+        self.deep_supervision = kwargs.get("deep_supervision", None)
 
         # The impute startegies of the discretizer might change
         # In this case we rediscretize the data
@@ -170,7 +192,17 @@ class PreprocessingTracker():
                     if getattr(self, attribute) is not None and getattr(
                             self, attribute) != kwargs[attribute]:
                         self.reset()
+                        self.force_rerun = True
                     setattr(self, attribute, kwargs[attribute])
+
+        if self.deep_supervision is not None and self.deep_supervision:
+            if "deep_supervision" not in self.supervision_modes:
+                self.reset()
+                self.force_rerun = True
+        elif self.deep_supervision is not None and not self.deep_supervision:
+            if "no_deep_supervision" not in self.supervision_modes:
+                self.reset()
+                self.force_rerun = True
 
     def set_subject_ids(self, subject_ids: List[int]):
         """Set the subjects to be processed to see if reprocessing is necessary.
@@ -199,6 +231,24 @@ class PreprocessingTracker():
         elif self.num_subjects is not None and num_subjects is None:
             self.is_finished = False
             self.num_subjects = num_subjects
+
+    @property
+    def is_finished(self):
+        return self.finished
+
+    @is_finished.setter
+    def is_finished(self, value):
+        assert isinstance(value, bool)
+        self.finished = value
+        if value:
+            if self.deep_supervision is not None and self.deep_supervision:
+                if "deep_supervision" not in self.supervision_modes:
+                    self.supervision_modes.append("deep_supervision")
+            elif self.deep_supervision is not None and not self.deep_supervision:
+                if "no_deep_supervision" not in self.supervision_modes:
+                    self.supervision_modes.append("no_deep_supervision")
+            self.force_rerun = False
+            write_json(Path(str(self._path) + ".json"), self._read())
 
     @property
     def subject_ids(self) -> List[int]:
