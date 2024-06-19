@@ -15,7 +15,6 @@ from torch.optim import Optimizer
 from utils.IO import *
 from settings import *
 from models.pytorch.mappings import *
-from models.pytorch.layers import ExtendMask
 
 
 class LSTMNetwork(nn.Module):
@@ -82,11 +81,11 @@ class LSTMNetwork(nn.Module):
 
         self._dropout = nn.Dropout(dropout)
         self._output_layer = nn.Linear(input_size, self._output_dim)
-        if deep_supervision:
-            self._extend_mask = ExtendMask()
 
-    def forward(self, x, mask=None):
-        x.to(self._device)
+    def forward(self, x, masks=None):
+        if masks is not None:
+            masks = masks.to(self._device)
+        x = x.to(self._device)
         # Masking is not natively supported in PyTorch LSTM, assume x is already preprocessed if necessary
         for lstm in self.lstm_layers:
             x, _ = lstm(x)
@@ -94,15 +93,19 @@ class LSTMNetwork(nn.Module):
         x = self._dropout(x)
 
         if self._deep_supervision:
-            mask.to(self._device)
+            # return predictions for all timesteps
+            masks.to(self._device)
             x = self._output_layer(x)
-            x = self._extend_mask(x, mask)
         else:
+            # Only return the last prediction
             x = x[:, -1, :]
             x = self._output_layer(x)
 
         if self._final_activation:
             x = self._final_activation(x)
+        # maks predictions
+        if masks is not None:
+            x = masks * x
         return x
 
     @property
@@ -267,13 +270,15 @@ class LSTMNetwork(nn.Module):
             if self._deep_supervision:
                 inputs, masks = inputs
                 inputs = inputs.to(self._device)
-                mask = masks.to(self._device)
+                # Set labels to zero when masking since forward does the same
+                labels = labels * masks
+                masks = masks.to(self._device)
             else:
                 inputs = inputs.to(self._device)
-                mask = None
+                masks = None
             labels = labels.to(self._device)
             self._optimizer.zero_grad()
-            outputs = self(inputs, mask=mask)
+            outputs = self(inputs, masks=masks)
             if sample_weights is not None:
                 loss = self._loss(outputs, labels, sample_weight=sample_weights)
             else:
@@ -410,36 +415,37 @@ if __name__ == "__main__":
                                 discretize=True,
                                 time_step_size=1.0,
                                 start_at_zero=True,
+                                deep_supervision=True,
                                 impute_strategy='previous',
                                 task="DECOMP")
 
-    reader = datasets.train_test_split(reader, test_size=0.2, val_size=0.1)
+    # reader = datasets.train_test_split(reader, test_size=0.2, val_size=0.1)
 
-    scaler = MinMaxScaler().fit_reader(reader.train)
-    train_generator = TorchGenerator(reader=reader.train,
+    scaler = MinMaxScaler().fit_reader(reader)
+    train_generator = TorchGenerator(reader=reader,
                                      scaler=scaler,
-                                     batch_size=2,
+                                     batch_size=8,
                                      deep_supervision=True,
                                      shuffle=True)
-    val_generator = TorchGenerator(reader=reader.val,
-                                   scaler=scaler,
-                                   batch_size=2,
-                                   deep_supervision=True,
-                                   shuffle=True)
+    # val_generator = TorchGenerator(reader=reader.val,
+    #                                scaler=scaler,
+    #                                batch_size=2,
+    #                                deep_supervision=True,
+    #                                shuffle=True)
 
     model_path = Path(TEMP_DIR, "torch_lstm")
     model_path.mkdir(parents=True, exist_ok=True)
-    model = LSTMNetwork(10,
+    model = LSTMNetwork(1000,
                         0.2,
                         59,
                         recurrent_dropout=0.,
                         output_dim=1,
-                        depth=2,
+                        depth=3,
                         deep_supervision=True)
 
-    criterion = nn.BCEWithLogitsLoss()
+    criterion = nn.BCELoss()
     optimizer = optim.Adam(model.parameters(), lr=0.001)
     model.compile(optimizer=optimizer, loss=criterion)
     # Example training loop
-    history = model.fit(train_generator=train_generator, val_generator=val_generator, epochs=40)
+    history = model.fit(train_generator=train_generator, epochs=40)
     print(history)
