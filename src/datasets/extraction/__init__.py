@@ -287,7 +287,7 @@ def iterative_extraction(source_path: Path,
                                 subject_ids=subject_ids)
 
     dataset_writer = DataSetWriter(storage_path)
-    dataset_reader = ExtractedSetReader(source_path)
+    dataset_reader = ExtractedSetReader(storage_path)
 
     if tracker.is_finished:
         info_io(f"Iterative data extraction already finalized in directory:\n{storage_path}.",

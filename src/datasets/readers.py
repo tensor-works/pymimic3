@@ -44,6 +44,7 @@ from utils import NoopLock
 from collections import defaultdict
 from utils.IO import *
 from settings import *
+from utils import zeropad_samples
 from .mimic_utils import upper_case_column_names, convert_dtype_dict, read_varmap_csv
 from .trackers import ExtractionTracker
 from typing import List, Union, Dict
@@ -920,11 +921,11 @@ class ProcessedSetReader(AbstractReader):
 
     def random_samples(
             self,
-            n_samples: int = 1,
-            read_ids: bool = False,  # This is for debugging
+            n_subjects: int = 1,
+            read_ids: bool = False,
             read_timestamps: bool = False,
             data_type=None,
-            return_ids: bool = False,
+            return_ids: bool = False,  # This is for debugging
             read_masks: bool = False,
             seed: int = 42):
         """
@@ -954,7 +955,7 @@ class ProcessedSetReader(AbstractReader):
         """
         random.seed(seed)
         sample_ids = list()
-        n_samples_needed = n_samples
+        n_samples_needed = n_subjects
 
         while n_samples_needed > 0:
             if not self._random_ids:
@@ -969,7 +970,7 @@ class ProcessedSetReader(AbstractReader):
             if len(sample_ids) >= len(self.subject_ids):
                 if len(sample_ids) > len(self.subject_ids):
                     warn_io(
-                        f"Maximum number of samples in dataset reached! Requested {n_samples}, but dataset size is {len(self.subject_ids)}."
+                        f"Maximum number of samples in dataset reached! Requested {n_subjects}, but dataset size is {len(self.subject_ids)}."
                     )
                 break
         if return_ids:
@@ -983,6 +984,46 @@ class ProcessedSetReader(AbstractReader):
                                  read_timestamps=read_timestamps,
                                  read_masks=read_masks,
                                  data_type=data_type)
+
+    def to_numpy(self,
+                 n_samples: int = None,
+                 scaler=None,
+                 imputer=None,
+                 subject_ids: Union[List[str], List[int]] = None,
+                 read_masks: bool = False,
+                 read_timestamps: bool = False,
+                 data_type=None,
+                 return_ids: bool = False,
+                 seed: int = 42):
+        if subject_ids:
+            if n_samples:
+                warn_io("Both n_samples and subject_ids are specified. Ignoring n_samples.")
+
+            dataset = self.read_samples(subject_ids,
+                                        read_timestamps=read_timestamps,
+                                        read_masks=read_masks,
+                                        data_type=data_type)
+        else:
+            dataset, subject_ids = self.random_samples(n_subjects=n_samples,
+                                                       read_timestamps=read_timestamps,
+                                                       data_type=data_type,
+                                                       return_ids=True,
+                                                       read_masks=read_masks,
+                                                       seed=seed)
+            for prefix in deepcopy(list(dataset.keys())):
+                dataset[prefix] = dataset[prefix][:min(n_samples, len(dataset[prefix]))]
+        if imputer is not None:
+            dataset["X"] = [imputer.transform(sample) for sample in dataset["X"]]
+        if scaler is not None:
+            dataset["X"] = [scaler.transform(sample) for sample in dataset["X"]]
+        if scaler is None and imputer is None:
+            dataset["X"] = [sample.values for sample in dataset["X"]]
+
+        for prefix in deepcopy(list(dataset.keys())):
+            dataset[prefix] = zeropad_samples(dataset[prefix])
+        if return_ids:
+            return dataset, subject_ids
+        return dataset
 
 
 class EventReader():

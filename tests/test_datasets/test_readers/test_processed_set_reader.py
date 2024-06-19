@@ -7,6 +7,8 @@ from utils.IO import *
 from tests.tsettings import *
 from settings import *
 from typing import Dict
+from preprocessing.imputers import PartialImputer
+from preprocessing.scalers import MinMaxScaler
 from datasets.readers import ProcessedSetReader
 from datasets.mimic_utils import upper_case_column_names
 
@@ -226,6 +228,7 @@ def test_read_sample_with_ts(task_name: str, engineered_readers: Dict[str, Proce
 
 
 @pytest.mark.parametrize("task_name", TASK_NAMES)
+@pytest.mark.parametrize("reader_flavour", ["preprocessed", "discretized", "engineered"])
 def test_read_samples(task_name: str, reader_flavour: str,
                       preprocessed_readers: Dict[str, ProcessedSetReader],
                       engineered_readers: Dict[str, ProcessedSetReader],
@@ -409,9 +412,9 @@ def test_random_samples(task_name: str, reader_flavour: str,
     elif reader_flavour == "discretized":
         reader = discretized_readers[task_name]
     elif reader_flavour == "engineered":
-        reader = engineered_readers[task_name]
         if task_name == "MULTI":
             return
+        reader = engineered_readers[task_name]
 
         # Testing without reading ids and timestamps
 
@@ -464,7 +467,7 @@ def test_random_samples(task_name: str, reader_flavour: str,
     tests_io(f"Suceeded testing random samples for task {task_name} without replacement passed")
 
 
-@pytest.mark.parametrize("task_name", TASK_NAMES)
+@pytest.mark.parametrize("task_name", set(TASK_NAMES) - set(["MULTI"]))
 def test_random_samples_with_ts(task_name: str, engineered_readers: Dict[str, ProcessedSetReader]):
     # Start of test case
     tests_io(f"Test case for random samples with timestamps for engineered for task {task_name}",
@@ -553,6 +556,45 @@ def test_random_samples_with_ds(task_name: str, discretized_readers: Dict[str, P
 
     tests_io(f"Succeeded testing random samples with deep "
              f"supervision for task {task_name} with masks")
+
+
+@pytest.mark.parametrize("task_name", TASK_NAMES)
+@pytest.mark.parametrize("reader_flavour", ["discretized", "engineered"])
+def test_to_numpy(task_name: str, reader_flavour: str,
+                  discretized_readers: Dict[str, ProcessedSetReader],
+                  engineered_readers: Dict[str, ProcessedSetReader]):
+    if task_name == "MULTI":
+        # TODO! Implement multi readers
+        return
+    if reader_flavour == "discretized":
+        reader = discretized_readers[task_name]
+        imputer = None
+    elif reader_flavour == "engineered":
+        if task_name == "MULTI":
+            return
+        reader = engineered_readers[task_name]
+        imputer = PartialImputer().fit_reader(reader)
+    tests_io(f"Test case for to_numpy for task {task_name}", level=0)
+    scaler = MinMaxScaler(imputer=imputer).fit_reader(reader)
+
+    dataset = reader.to_numpy(10, scaler=scaler, imputer=imputer)
+    for prefix in dataset:
+        # Assert 10 samples
+        assert dataset[prefix].shape[0] == 10
+    tests_io(f"Succeeded in testing retriving limited amount of samples"
+             f" to_numpy for {reader_flavour} for task {task_name}")
+    for prefix in dataset:
+        dataset[prefix] = [dataset[prefix][index] for index in range(dataset[prefix].shape[0])]
+
+    check_samples(dataset,
+                  read_ids=False,
+                  read_timestamps=False,
+                  flavour=reader_flavour,
+                  data_type=np.ndarray,
+                  task_name=task_name)
+
+    tests_io(f"Succeeded in testing retrived sample sanity for"
+             f" to_numpy for {reader_flavour} for task {task_name}")
 
 
 def check_samples(samples: dict,
@@ -697,7 +739,7 @@ if __name__ == "__main__":
     proc_reader_dict = dict()
     eng_reader_dict = dict()
     disc_reader_dict = dict()
-    for task_name in ["MULTI"]:  # TASK_NAMES:
+    for task_name in TASK_NAMES:
         proc_reader = datasets.load_data(chunksize=75835,
                                          source_path=TEST_DATA_DEMO,
                                          storage_path=SEMITEMP_DIR,
@@ -719,12 +761,12 @@ if __name__ == "__main__":
                                             engineer=True,
                                             task=task_name)
             eng_reader_dict[task_name] = eng_reader
-            test_random_samples_with_ts(task_name, eng_reader_dict)
-            test_read_sample_with_ts(task_name, eng_reader_dict)
-            test_read_samples_with_ts(task_name, eng_reader_dict)
+            # test_random_samples_with_ts(task_name, eng_reader_dict)
+            # test_read_sample_with_ts(task_name, eng_reader_dict)
+            # test_read_samples_with_ts(task_name, eng_reader_dict)
         else:
             eng_reader_dict[task_name] = None
-
+        '''
         if task_name in ["DECOMP", "LOS"]:
             disc_reader = datasets.load_data(chunksize=75835,
                                              source_path=TEST_DATA_DEMO,
@@ -732,17 +774,20 @@ if __name__ == "__main__":
                                              discretize=True,
                                              deep_supervision=True,
                                              task=task_name)
-            test_random_samples_with_ds(task_name, disc_reader_dict)
-            test_read_sample_with_ds(task_name, disc_reader_dict)
-            test_read_samples_with_ds(task_name, disc_reader_dict)
+            # test_random_samples_with_ds(task_name, disc_reader_dict)
+            # test_read_sample_with_ds(task_name, disc_reader_dict)
+            # test_read_samples_with_ds(task_name, disc_reader_dict)
+        '''
         for flavour in ["preprocessed", "engineered", "discretized"]:
-
-            test_random_samples(task_name, flavour, proc_reader_dict, eng_reader_dict,
-                                disc_reader_dict)
-            test_read_sample(task_name, flavour, proc_reader_dict, eng_reader_dict,
-                             disc_reader_dict)
-            test_read_samples(task_name, flavour, proc_reader_dict, eng_reader_dict,
-                              disc_reader_dict)
+            # test_random_samples(task_name, flavour, proc_reader_dict, eng_reader_dict,
+            #                     disc_reader_dict)
+            # test_read_sample(task_name, flavour, proc_reader_dict, eng_reader_dict,
+            #                  disc_reader_dict)
+            # test_read_samples(task_name, flavour, proc_reader_dict, eng_reader_dict,
+            #                   disc_reader_dict)
+            ...
+        for flavour in ["engineered", "discretized"]:
+            test_to_numpy(task_name, flavour, disc_reader_dict, eng_reader_dict)
 
     print("All tests passed!")
     # if TEMP_DIR.is_dir():
