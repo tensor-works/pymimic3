@@ -2,13 +2,13 @@ import json
 import os
 from dotenv import load_dotenv
 from pathlib import Path
+from settings import *
 
 load_dotenv(verbose=False)
 
 __all__ = [
     'TEST_SETTINGS', 'SEMITEMP_DIR', 'TEMP_DIR', 'DEVTEMP_DIR', 'TEST_DATA_DIR', 'TEST_DATA_DEMO',
-    'TEST_GT_DIR', 'TASK_NAMES', 'FTASK_NAMES', 'TASK_NAME_MAPPING', 'DATASET_SETTINGS',
-    'DECOMP_SETTINGS', 'LOS_SETTINGS', 'PHENOT_SETTINGS', 'IHM_SETTINGS'
+    'TEST_GT_DIR', 'TASK_NAMES', 'FTASK_NAMES', 'TASK_NAME_MAPPING'
 ]
 
 TEST_SETTINGS = json.load(Path(os.getenv("TESTS"), "etc", "test.json").open())
@@ -19,15 +19,7 @@ TEST_DATA_DIR = Path(os.getenv("WORKINGDIR"), "tests", "data")
 TEST_DATA_DEMO = Path(TEST_DATA_DIR, "physionet.org", "files", "mimiciii-demo", "1.4")
 TEST_GT_DIR = Path(TEST_DATA_DIR, "generated-benchmark")
 
-TASK_NAMES = ["IHM", "DECOMP", "LOS", "PHENO", "MULTI"]
 FTASK_NAMES = [
     "in-hospital-mortality", "decompensation", "length-of-stay", "phenotyping", "multitask"
 ]
 TASK_NAME_MAPPING = dict(zip(TASK_NAMES, FTASK_NAMES))
-
-with Path(os.getenv("CONFIG"), "datasets.json").open() as file:
-    DATASET_SETTINGS = json.load(file)
-    DECOMP_SETTINGS = DATASET_SETTINGS["DECOMP"]
-    LOS_SETTINGS = DATASET_SETTINGS["LOS"]
-    PHENOT_SETTINGS = DATASET_SETTINGS["PHENO"]
-    IHM_SETTINGS = DATASET_SETTINGS["IHM"]

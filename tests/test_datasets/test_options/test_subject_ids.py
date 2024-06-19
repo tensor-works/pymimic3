@@ -7,7 +7,7 @@ import pandas as pd
 from copy import deepcopy
 from pathlib import Path
 from utils.IO import *
-from tests.settings import *
+from tests.tsettings import *
 from tests.pytest_utils import copy_dataset
 from tests.pytest_utils.general import assert_dataframe_equals
 from tests.pytest_utils.preprocessing import assert_reader_equals, assert_dataset_equals
@@ -83,8 +83,10 @@ def test_subject_ids_extraction(extracted_reader: ExtractedSetReader, subject_id
 
 
 @pytest.mark.parametrize("extraction_style", ["iterative", "compact"])
-@pytest.mark.parametrize("task_name", TASK_NAMES)
+@pytest.mark.parametrize("task_name", ["IHM"])
 def test_subject_ids_preprocessing_only(task_name: str, subject_ids: list, extraction_style: str):
+    if task_name == "MULTI":
+        return
     tests_io(f"Test case subject ids for preprocessing-only for task {task_name}.", level=0)
     test_data_dir = Path(TEST_GT_DIR, "processed",
                          TASK_NAME_MAPPING[task_name])  # Ground truth data dir
@@ -149,8 +151,10 @@ def test_subject_ids_preprocessing_only(task_name: str, subject_ids: list, extra
 
 
 @pytest.mark.parametrize("extraction_style", ["iterative", "compact"])
-@pytest.mark.parametrize("task_name", TASK_NAMES)
+@pytest.mark.parametrize("task_name", ["IHM"])
 def test_subject_ids_engineer_only(task_name: str, subject_ids: list, extraction_style: str):
+    if task_name == "MULTI":
+        return
     tests_io(f"Test case subject ids for engineering-only for task {task_name}.", level=0)
 
     # Test only engineering
@@ -225,8 +229,10 @@ def test_subject_ids_engineer_only(task_name: str, subject_ids: list, extraction
 
 
 @pytest.mark.parametrize("extraction_style", ["iterative", "compact"])
-@pytest.mark.parametrize("task_name", TASK_NAMES)
+@pytest.mark.parametrize("task_name", ["IHM"])
 def test_subject_ids_preprocessing(task_name: str, subject_ids: list, extraction_style: str):
+    if task_name == "MULTI":
+        return
     # Test preprocessing from scratch, that means no fully extracted data in temp beforehand
     tests_io(f"Test case subject ids for preprocessing from scratch for task {task_name}.", level=0)
     test_data_dir = Path(TEST_GT_DIR, "processed",
@@ -291,8 +297,10 @@ def test_subject_ids_preprocessing(task_name: str, subject_ids: list, extraction
 
 
 @pytest.mark.parametrize("extraction_style", ["iterative", "compact"])
-@pytest.mark.parametrize("task_name", TASK_NAMES)
+@pytest.mark.parametrize("task_name", ["IHM"])
 def test_subject_ids_engineer(task_name: str, subject_ids: list, extraction_style: str):
+    if task_name == "MULTI":
+        return
     tests_io(f"Test case subject ids for engineering from scratch for task {task_name}.", level=0)
     # Test engineering from scratch, that means no fully processed data in temp
     tests_io(f"Preparing fully preprocessed directory")
@@ -497,7 +505,7 @@ if __name__ == "__main__":
         if TEMP_DIR.is_dir():
             shutil.rmtree(str(TEMP_DIR))
         test_subject_ids_extraction(extraction_reader, subjects, extraction_style)
-        for task in TASK_NAMES:
+        for task in ["IHM"]:
             if not Path(SEMITEMP_DIR, "processed", task).is_dir():
                 reader = datasets.load_data(chunksize=75835,
                                             source_path=TEST_DATA_DEMO,

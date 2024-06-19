@@ -1,6 +1,6 @@
 import shutil
 from pathlib import Path
-from tests.settings import *
+from tests.tsettings import *
 
 
 def copy_dataset(folder: Path):

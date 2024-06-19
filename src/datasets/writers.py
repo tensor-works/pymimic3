@@ -13,12 +13,14 @@ References
 ----------
 - YerevaNN/mimic3-benchmarks: https://github.com/YerevaNN/mimic3-benchmarks
 """
-import pandas as pd
+import warnings
 import shutil
+import pandas as pd
 import numpy as np
 from pathos.helpers import mp
 import operator
 from pathlib import Path
+from utils import NoopLock
 from utils.IO import *
 from functools import reduce
 
@@ -47,18 +49,19 @@ class DataSetWriter():
 
     def __init__(self, root_path: Path) -> None:
         self.root_path = root_path
+        self._possible_filenames = [
+            "episodic_data", "timeseries", "subject_events", "subject_diagnoses",
+            "subject_icu_history", "X", "M", "y", "yds", "t", "header"
+        ]
 
     def _check_filename(self, filename: str):
         """
         Check if the filename is valid.
         """
-        possible_filenames = [
-            "episodic_data", "timeseries", "subject_events", "subject_diagnoses",
-            "subject_icu_history", "X", "y", "t", "header"
-        ]
-
-        if filename not in possible_filenames:
-            raise (f"choose a filename from {possible_filenames}")
+        if filename not in self._possible_filenames:
+            raise ValueError(
+                f"File name {filename} is invalid! Choose a filename from {self._possible_filenames}"
+            )
 
     def _get_subject_ids(self, data: dict):
         """
@@ -133,10 +136,12 @@ class DataSetWriter():
                 mode = "w"
                 header = True
             if file_type == "hdf5":
-                pd.DataFrame(df).to_hdf(Path(path.parent, f"{path.stem}.h5"),
-                                        key="data",
-                                        mode=mode,
-                                        index=index)
+                with warnings.catch_warnings():
+                    warnings.filterwarnings('ignore', category=pd.io.pytables.PerformanceWarning)
+                    pd.DataFrame(df).to_hdf(Path(path.parent, f"{path.stem}.h5"),
+                                            key="data",
+                                            mode=mode,
+                                            index=index)
             elif file_type == "csv":
                 pd.DataFrame(df).to_csv(Path(path.parent, f"{path.stem}.csv"),
                                         mode=mode,
@@ -188,7 +193,7 @@ class DataSetWriter():
                 )
                 shutil.rmtree(str(subject_path))
 
-    def write_subject_events(self, data: dict, lock: mp.Lock = None, dtypes: dict = None):
+    def write_subject_events(self, data: dict, lock: mp.Lock = NoopLock(), dtypes: dict = None):
         """
         Write subject events data to files by creating a new file or appending to existing file and create subject ID labeled directories.
 
@@ -207,17 +212,14 @@ class DataSetWriter():
         def write_csv(dataframe: pd.DataFrame, path: Path, lock: mp.Lock):
             if dataframe.empty:
                 return
-            if lock is not None:
-                lock.acquire()
-            if dtypes is not None:
-                dataframe = dataframe.astype(dtypes)
-            if not path.is_file():
-                dataframe.to_csv(path, index=False)
-            else:
-                dataframe.to_csv(path, mode='a', index=False, header=False)
+            with lock:
+                if dtypes is not None:
+                    dataframe = dataframe.astype(dtypes)
+                if not path.is_file():
+                    dataframe.to_csv(path, index=False)
+                else:
+                    dataframe.to_csv(path, mode='a', index=False, header=False)
 
-            if lock is not None:
-                lock.release()
             return
 
         for subject_id, subject_data in data.items():

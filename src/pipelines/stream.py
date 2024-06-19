@@ -118,7 +118,7 @@ class RiverPipeline(AbstractPipeline):
 
 if __name__ == '__main__':
     import datasets
-    from tests.settings import *
+    from tests.tsettings import *
     # from models.stream.linear_model import LogisticRegression
     from metrics.stream import PRAUC
 

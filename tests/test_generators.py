@@ -1,97 +1,256 @@
 import datasets
 import pytest
+import time
+import ray
+import numpy as np
 from generators.tf2 import TFGenerator
 from generators.pytorch import TorchGenerator
 from generators.stream import RiverGenerator
 from preprocessing.scalers import MinMaxScaler
-import numpy as np
 from utils.IO import *
 from datasets.readers import ProcessedSetReader
-from tests.settings import *
+from tests.tsettings import *
 from preprocessing.imputers import PartialImputer
+from pathlib import Path
+from typing import Dict
+from pathos import multiprocessing as mp
 
 
-@pytest.mark.parametrize("task_name", TASK_NAMES)
-def test_tf_generator(task_name, discretized_readers):
-    tests_io(f"Test case tf2 iterative generator for task: {task_name}", level=0)
+@pytest.mark.parametrize("mode", ["deep_supervision", "standard"])
+@pytest.mark.parametrize("batch_size", [1, 16])
+@pytest.mark.parametrize("task_name", ["DECOMP", "LOS"])
+def test_tf_generators_with_ds(task_name: str, batch_size: int, mode: str,
+                               discretized_readers: Dict[str, ProcessedSetReader]):
+    tests_io(f"Test case tf2 generator for task: {task_name}", level=0)
+    reader = discretized_readers[task_name]
+
+    if ray.is_initialized():
+        ray.shutdown()
+    n_cpus = min(mp.cpu_count(), 4)
+    ray.init(num_cpus=n_cpus)
+
+    # Test reader supervision
+    X, y, m = reader.random_samples(1, read_masks=True)
+    assert len(X), "Deep supervision has not been created correctly. Missing samples"
+    assert len(y), "Deep supervision has not been created correctly. Missing labels"
+    assert len(m), "Deep supervision has not been created correctly. Missing mask"
 
     # Prepare generator inputs
-    reader = discretized_readers[task_name]
     scaler = MinMaxScaler().fit_reader(reader)
 
     # Bining types for LOS
     for bining in ["none", "log", "custom"]:
-        # Batch sizes for dimensional robustness
-        for batch_size in [1, 8, 16]:
-            tests_io(f"Test case batch size: {batch_size}" + \
-                    (f" and bining: {bining}" if task_name == "LOS" else ""))
+        tests_io(f"Test case batch size: {batch_size}" + \
+                (f" and bining: {bining}" if task_name == "LOS" else "") + \
+                (f" and deep supervision" if mode == "deep_supervision" else "") + \
+                (f" and target replication" if mode == "target_replication" else ""))
 
-            # Create generator
-            generator = TFGenerator(reader=reader,
-                                    scaler=scaler,
-                                    batch_size=batch_size,
-                                    bining=bining,
-                                    shuffle=True)
-            assert len(generator)
-            for batch in range(len(generator)):
-                # Get batch
-                X, y = generator.__getitem__()
-                # Check batch
-                assert_batch_sanity(X, y, batch_size, bining)
-                tests_io(f"Successfully tested {batch + 1} batches", flush=True)
-            tests_io(f"Successfully tested {batch + 1} batches")
+        # Create generator
+        generator = TFGenerator(reader=reader,
+                                scaler=scaler,
+                                batch_size=batch_size,
+                                deep_supervision=(mode == "deep_supervision"),
+                                target_replication=(mode == "target_replication"),
+                                bining=bining,
+                                shuffle=True)
+        assert len(generator)
+        for batch in range(len(generator)):
+            # Get batch
+            X, y = generator.__getitem__()
+            if mode == "deep_supervision":
+                X, M = X
+            # Check batch
+            else:
+                M = None
+            assert_batch_sanity(X=X,
+                                y=y,
+                                task_name=task_name,
+                                batch_size=batch_size,
+                                bining=bining,
+                                M=M,
+                                target_repl=False)
+            tests_io(f"Successfully tested {batch + 1} batches", flush=True)
+        tests_io(f"Successfully tested {batch + 1} batches\n")
         if task_name != "LOS":
             break
 
+    ray.shutdown()
 
-@pytest.mark.parametrize("task_name", TASK_NAMES)
-def test_torch_generator(task_name, discretized_readers):
-    tests_io(f"Test case torch iterative generator for task: {task_name}", level=0)
 
-    # Prepare generator inputs
+@pytest.mark.parametrize("mode", ["target_replication", "standard"])
+@pytest.mark.parametrize("batch_size", [1, 16])
+@pytest.mark.parametrize("task_name", ["IHM", "PHENO"])
+def test_tf_generators_with_tr(task_name, batch_size, mode, discretized_readers):
+    tests_io(f"Test case tf2 generator for task: {task_name}", level=0)
     reader = discretized_readers[task_name]
+
+    if ray.is_initialized():
+        ray.shutdown()
+    n_cpus = min(mp.cpu_count(), 4)
+    ray.init(num_cpus=n_cpus)
+    # Prepare generator inputs
+    scaler = MinMaxScaler().fit_reader(reader)
+
+    # Bining types for LOS
+    tests_io(f"Test case batch size: {batch_size}" + \
+            (f" and deep supervision" if mode == "deep_supervision" else "") + \
+            (f" and target replication" if mode == "target_replication" else ""))
+
+    # Create generator
+    generator = TFGenerator(reader=reader,
+                            scaler=scaler,
+                            batch_size=batch_size,
+                            deep_supervision=(mode == "deep_supervision"),
+                            target_replication=(mode == "target_replication"),
+                            shuffle=True)
+    assert len(generator)
+    for batch in range(len(generator)):
+        # Get batch
+        X, y = generator.__getitem__()
+        assert_batch_sanity(X=X,
+                            y=y,
+                            task_name=task_name,
+                            batch_size=batch_size,
+                            target_repl=(mode == "target_replication"))
+        tests_io(f"Successfully tested {batch + 1} batches", flush=True)
+    tests_io(f"Successfully tested {batch + 1} batches\n")
+    ray.shutdown()
+
+
+@pytest.mark.parametrize("mode", ["deep_supervision", "standard"])
+@pytest.mark.parametrize("batch_size", [1, 16])
+@pytest.mark.parametrize("task_name", ["DECOMP", "LOS"])
+def test_torch_generators_with_ds(task_name: str, batch_size: int, mode: str,
+                                  discretized_readers: Dict[str, ProcessedSetReader]):
+    tests_io(f"Test case torch generator for task: {task_name}", level=0)
+    reader = discretized_readers[task_name]
+
+    if ray.is_initialized():
+        ray.shutdown()
+    n_cpus = min(mp.cpu_count(), 4)
+    ray.init(num_cpus=n_cpus)
+    # Prepare generator inputs
+
+    # Test reader supervision
+    X, y, m = reader.random_samples(1, read_masks=True)
+    assert len(X), "Deep supervision has not been created correctly. Missing samples"
+    assert len(y), "Deep supervision has not been created correctly. Missing labels"
+    assert len(m), "Deep supervision has not been created correctly. Missing mask"
+
     scaler = MinMaxScaler().fit_reader(reader)
 
     # Bining types for LOS
     for bining in ["none", "log", "custom"]:
-        # Batch sizes for dimensional robustness
-        for batch_size in [1, 8, 16]:
-            tests_io(f"Test case batch size: {batch_size}" + \
-                    (f" and bining: {bining}" if task_name == "LOS" else ""))
-            # Create generator
-            generator = TorchGenerator(reader=reader,
-                                       scaler=scaler,
-                                       batch_size=batch_size,
-                                       bining=bining,
-                                       drop_last=True,
-                                       shuffle=True)
-            assert len(generator)
-            import time
-            start = time.time()
-            for batch, (X, y) in enumerate(generator):
-                # Get batch
+        tests_io(f"Test case batch size: {batch_size}" + \
+                (f" and bining: {bining}" if task_name == "LOS" else "") + \
+                (f" and deep supervision" if mode == "deep_supervision" else "") + \
+                (f" and target replication" if mode == "target_replication" else ""))
+
+        # Create generator
+        generator = TorchGenerator(reader=reader,
+                                   scaler=scaler,
+                                   batch_size=batch_size,
+                                   deep_supervision=(mode == "deep_supervision"),
+                                   target_replication=(mode == "target_replication"),
+                                   bining=bining,
+                                   drop_last=True,
+                                   shuffle=True)
+        assert len(generator)
+        start = time.time()
+        for batch, (X, y) in enumerate(generator):
+            # Get batch
+            if mode == "deep_supervision":
+                X, M = X
                 X = X.numpy()
-                y = y.numpy()
-                # Check batch
-                assert_batch_sanity(X, y, batch_size, bining)
-                tests_io(f"Successfully tested {batch + 1} batches", flush=True)
-            tests_io(f"Successfully tested {batch + 1} batches")
-            end = time.time()
-            elapsed_time = end - start
-            minutes = int(elapsed_time // 60)
-            seconds = elapsed_time % 60
+                M = M.numpy()
+            elif mode in ["standard", "target_replication"]:
+                X = X.numpy()
+                M = None
+            y = y.numpy()
+            # Check batch
+            assert_batch_sanity(X=X,
+                                y=y,
+                                task_name=task_name,
+                                batch_size=batch_size,
+                                bining=bining,
+                                M=M,
+                                target_repl=False)
+            tests_io(f"Successfully tested {batch + 1} batches", flush=True)
+        tests_io(f"Successfully tested {batch + 1} batches\n")
+        end = time.time()
+        elapsed_time = end - start
+        minutes = int(elapsed_time // 60)
+        seconds = elapsed_time % 60
 
-            tests_io(f"Time enrolling the generator was: {minutes} min, {seconds:.2f} sec")
+        tests_io(f"Time enrolling the generator was: {minutes} min, {seconds:.2f} sec")
         if task_name != "LOS":
             break
+    ray.shutdown()
 
 
-@pytest.mark.parametrize("task_name", TASK_NAMES)
+@pytest.mark.parametrize("mode", ["target_replication", "standard"])
+@pytest.mark.parametrize("batch_size", [1, 16])
+@pytest.mark.parametrize("task_name", ["IHM", "PHENO"])
+def test_torch_generators_with_tr(task_name: str, batch_size: int, mode: str,
+                                  discretized_readers: Dict[str, ProcessedSetReader]):
+    tests_io(f"Test case torch generator for task: {task_name}", level=0)
+    reader = discretized_readers[task_name]
+
+    n_cpus = min(mp.cpu_count(), 4)
+    if ray.is_initialized():
+        ray.shutdown()
+    ray.init(num_cpus=n_cpus)
+    # Prepare generator inputs
+    scaler = MinMaxScaler().fit_reader(reader)
+
+    # Bining types for LOS
+    tests_io(f"Test case batch size: {batch_size}" + \
+            (f" and deep supervision" if mode == "deep_supervision" else "") + \
+            (f" and target replication" if mode == "target_replication" else ""))
+
+    # Create generator
+    generator = TorchGenerator(reader=reader,
+                               scaler=scaler,
+                               batch_size=batch_size,
+                               deep_supervision=False,
+                               target_replication=(mode == "target_replication"),
+                               drop_last=True,
+                               shuffle=True)
+    assert len(generator)
+    start = time.time()
+    print("Generator dim is: ", len(generator))
+    for batch, (X, y) in enumerate(generator):
+        # Get batch
+        X = X.numpy()
+        y = y.numpy()
+        # Check batch
+        assert_batch_sanity(X=X,
+                            y=y,
+                            task_name=task_name,
+                            batch_size=batch_size,
+                            target_repl=(mode == "target_replication"))
+        tests_io(f"Successfully tested {batch + 1} batches", flush=True)
+    tests_io(f"Successfully tested {batch + 1} batches\n")
+
+    end = time.time()
+    elapsed_time = end - start
+    minutes = int(elapsed_time // 60)
+    seconds = elapsed_time % 60
+
+    tests_io(f"Time enrolling the generator was: {minutes} min, {seconds:.2f} sec")
+    ray.shutdown()
+
+
+@pytest.mark.parametrize("task_name", set(TASK_NAMES) - set(["MULTI"]))
 def test_river_generator(task_name, engineered_readers):
     tests_io(f"Test case river generator for task: {task_name}", level=0)
-
-    # Prepare generator inputs
     reader = engineered_readers[task_name]
+
+    n_cpus = min(mp.cpu_count(), 4)
+    if ray.is_initialized():
+        ray.shutdown()
+    ray.init(num_cpus=n_cpus)
+    # Prepare generator inputs
     imputer = PartialImputer().fit_reader(reader)
     scaler = MinMaxScaler(imputer=imputer).fit_reader(reader)
 
@@ -108,41 +267,80 @@ def test_river_generator(task_name, engineered_readers):
             # No trace of one-hot encoding these in the original code base
             if task_name == "PHENO":  # or (task_name == "LOS" and bining != "none"):
                 y = np.fromiter(y.values(), dtype=float)
-            assert_sample_sanity(X, y, bining)
+            assert_sample_sanity(X, y, task_name, bining)
             tests_io(f"Successfully tested {batch + 1} samples", flush=True)
-        tests_io(f"Successfully tested {batch + 1} batches")
+        tests_io(f"Successfully tested {batch + 1} batches\n")
         if task_name != "LOS":
             break
+    ray.shutdown()
 
 
 def assert_batch_sanity(X: np.ndarray,
                         y: np.ndarray,
+                        task_name: str,
                         batch_size: int,
-                        bining: str,
-                        one_hot: bool = False):
+                        bining: str = "none",
+                        one_hot: bool = False,
+                        M: np.ndarray = None,
+                        target_repl: bool = False):
     # The batch might be sane but I am not
+    # B = batch_size, T = time_steps, F = features, N = number of classes
+    # (B, T, F) for X ]
+    # (B, N) for y without deep supervision or target replication
+    # (B, T, N) for y with deep supervision or target replication
+    # (B, T) for M with deep supervision
+
     assert not np.isnan(X).any()
     assert not np.isnan(y).any()
+    assert np.all((X >= 0) & (X <= 1))
+    # X[0] = B
     assert X.shape[0] == batch_size
+    # X[2] = F
     assert X.shape[2] == 59
+    # y[0] = B
+    assert y.shape[0] == batch_size
     assert X.dtype == np.float32
     assert y.dtype == np.float32
-    assert y.shape[0] == batch_size
+    if M is not None:
+        # Y[1] = T && X[1] = T
+        assert y.shape[1] == X.shape[1]
+        # M[0] = B && M[1] = T
+        assert M.shape == y.shape
+        assert M.dtype == y.dtype
+        content_index = 2
+    elif target_repl:
+        # Y[1] = T && X[1] = T
+        assert y.shape[1] == X.shape[1]
+        content_index = 2
+    else:
+        content_index = 1
+
+    # y[2] = N or y[1] = N
     if task_name in ["PHENO"]:
-        assert y.shape[1] == 25
-    elif task_name in ["DECOMP", "IHM"]:
-        assert y.shape[1] == 1
+        assert y.shape[content_index] == 25
+    elif task_name in ["DECOMP"]:
+        assert y.shape[content_index] == 1
+    elif task_name in ["IHM"]:
+        assert y.shape[content_index] == 1
     elif task_name in ["LOS"]:
         # Depending on the binning this changes
         if bining == "none":
-            assert y.shape[1] == 1
+            assert y.shape[content_index] == 1
         elif bining in ["log", "custom"] and one_hot:
-            assert y.shape[1] == 10
+            assert y.shape[content_index] == 10
 
 
-def assert_sample_sanity(X: np.ndarray, y: np.ndarray, bining: str, one_hot: bool = False):
+def assert_sample_sanity(X: np.ndarray,
+                         y: np.ndarray,
+                         task_name: str,
+                         bining: str = "none",
+                         one_hot: bool = False):
     assert not np.isnan(X).any()
     assert not np.isnan(y).any()
+    # F = features, N = number of classes
+    # There is not batch mode for a lot of river models
+    # (F) for X
+    # (N) for y
     assert len(X) == 714
     if task_name == "PHENO":
         assert len(y) == 25
@@ -156,21 +354,50 @@ def assert_sample_sanity(X: np.ndarray, y: np.ndarray, bining: str, one_hot: boo
 
 
 if __name__ == "__main__":
-    # for task_name in TASK_NAMES:
-    for task_name in ["PHENO"]:
-        reader = datasets.load_data(chunksize=75836,
-                                    source_path=TEST_DATA_DEMO,
-                                    storage_path=SEMITEMP_DIR,
-                                    discretize=True,
-                                    time_step_size=1.0,
-                                    start_at_zero=True,
-                                    impute_strategy='previous',
-                                    task=task_name)
-        test_torch_generator(task_name, {task_name: reader})
-        test_tf_generator(task_name, {task_name: reader})
-        reader = datasets.load_data(chunksize=75836,
-                                    source_path=TEST_DATA_DEMO,
-                                    storage_path=SEMITEMP_DIR,
-                                    engineer=True,
-                                    task=task_name)
+    for task_name in ["PHENO"]:  # TASK_NAMES:
+        if task_name == "MULTI":
+            continue
+        if not Path(SEMITEMP_DIR, "discretized", task_name).is_dir():
+            st_reader = datasets.load_data(chunksize=75836,
+                                           source_path=TEST_DATA_DEMO,
+                                           storage_path=SEMITEMP_DIR,
+                                           discretize=True,
+                                           time_step_size=1.0,
+                                           start_at_zero=True,
+                                           impute_strategy='previous',
+                                           task=task_name)
+        else:
+            st_reader = ProcessedSetReader(Path(SEMITEMP_DIR, "discretized", task_name))
+        if task_name in ["DECOMP", "LOS"]:
+            ds_reader = datasets.load_data(chunksize=75836,
+                                           source_path=TEST_DATA_DEMO,
+                                           storage_path=SEMITEMP_DIR,
+                                           discretize=True,
+                                           time_step_size=1.0,
+                                           start_at_zero=True,
+                                           deep_supervision=True,
+                                           impute_strategy='previous',
+                                           task=task_name)
+        # The ds reader fixture is not accessed but ensured the set is also created
+        # deep supervision
+        for batch_size in [1, 16]:
+            if task_name in ["DECOMP", "LOS"]:
+                for mode in ["deep_supervision", "standard"]:
+                    test_torch_generators_with_ds(task_name, batch_size, mode,
+                                                  {task_name: st_reader})
+                    test_tf_generators_with_ds(task_name, batch_size, mode, {task_name: st_reader})
+            if task_name in ["IHM", "PHENO"]:
+                for mode in ["target_replication", "standard"]:
+                    test_torch_generators_with_tr(task_name, batch_size, mode,
+                                                  {task_name: st_reader})
+                    test_tf_generators_with_tr(task_name, batch_size, mode, {task_name: st_reader})
+        if not Path(SEMITEMP_DIR, "engineered", task_name).is_dir():
+            reader = datasets.load_data(chunksize=75836,
+                                        source_path=TEST_DATA_DEMO,
+                                        storage_path=SEMITEMP_DIR,
+                                        engineer=True,
+                                        task=task_name)
+        else:
+            reader = ProcessedSetReader(Path(SEMITEMP_DIR, "engineered", task_name))
+
         test_river_generator(task_name, {task_name: reader})

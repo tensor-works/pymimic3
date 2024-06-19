@@ -2,9 +2,10 @@
 "https://stackoverflow.com/questions/69595923/how-to-decrease-the-learning-rate-every-10-epochs-by-a-factor-of-0-9"
 
 import json
-import tensorflow.keras.backend as K
+from tensorflow import keras
+import keras.backend as K
 from pathlib import Path
-from tensorflow.keras import callbacks, backend
+from keras import callbacks, backend
 
 
 class HistoryCheckpoint(callbacks.Callback):

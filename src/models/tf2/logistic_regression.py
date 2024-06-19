@@ -1,8 +1,8 @@
 #
-import tensorflow as tf
-from tensorflow.keras import Model
-from tensorflow.keras import layers
-from tensorflow.keras.optimizers import RMSprop, Adam
+import tensorflow as tensorflow
+from keras import Model
+from keras import layers
+from keras.optimizers import RMSprop, Adam
 from managers import ReducedCheckpointManager
 
 

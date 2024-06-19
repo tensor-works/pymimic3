@@ -6,9 +6,10 @@ from time import sleep
 from pathlib import Path
 from datasets.trackers import ExtractionTracker
 from datasets.readers import EventReader
-from tests.settings import *
+from tests.tsettings import *
 from tests.pytest_utils.general import assert_dataframe_equals
 from utils.IO import *
+from settings import *
 
 DTYPES = DATASET_SETTINGS["subject_events"]["dtype"]
 
@@ -27,7 +28,7 @@ def assert_dtypes(dataframe: pd.DataFrame):
 
 def test_get_full_chunk():
     tests_io("Test case getting full chunk", level=0)
-    tracker = ExtractionTracker(TEMP_DIR, num_samples=None)
+    tracker = ExtractionTracker(Path(TEMP_DIR, "extracted", "progress"), num_samples=None)
     event_reader = EventReader(chunksize=900000, dataset_folder=TEST_DATA_DEMO, tracker=tracker)
 
     samples, frame_lengths = event_reader.get_chunk()
@@ -44,7 +45,7 @@ def test_get_full_chunk():
 def test_get_mutlitple_chunks():
     tests_io("Test case getting multiple chunks", level=0)
 
-    tracker = ExtractionTracker(TEMP_DIR, num_samples=None)
+    tracker = ExtractionTracker(Path(TEMP_DIR, "extracted", "progress"), num_samples=None)
     event_reader = EventReader(chunksize=5000, dataset_folder=TEST_DATA_DEMO, tracker=tracker)
 
     samples, frame_lengths = event_reader.get_chunk()
@@ -75,7 +76,7 @@ def test_get_mutlitple_chunks():
 
 def test_resume_get_chunk():
     tests_io("Test case resuming get_chunk", level=0)
-    orig_tracker = ExtractionTracker(TEMP_DIR, num_samples=None)
+    orig_tracker = ExtractionTracker(Path(TEMP_DIR, "extracted", "progress"), num_samples=None)
     orig_event_reader = EventReader(chunksize=5000,
                                     dataset_folder=TEST_DATA_DEMO,
                                     tracker=orig_tracker)
@@ -95,7 +96,7 @@ def test_resume_get_chunk():
     # Tracker register the frames as read
     orig_tracker.count_subject_events += frame_lengths
 
-    restored_tracker = ExtractionTracker(TEMP_DIR)
+    restored_tracker = ExtractionTracker(Path(TEMP_DIR, "extracted", "progress"))
     restored_event_reader = EventReader(chunksize=5000,
                                         dataset_folder=TEST_DATA_DEMO,
                                         tracker=restored_tracker)
@@ -119,7 +120,7 @@ def test_resume_get_chunk():
         "OUTPUTEVENTS.csv": 200
     }
 
-    restored_tracker = ExtractionTracker(TEMP_DIR)
+    restored_tracker = ExtractionTracker(Path(TEMP_DIR, "extracted", "progress"))
     restored_event_reader = EventReader(chunksize=5000,
                                         dataset_folder=TEST_DATA_DEMO,
                                         tracker=restored_tracker)
@@ -142,7 +143,7 @@ def test_resume_get_chunk():
 
 def test_switch_chunk_sizes():
     tests_io("Test case switching chunk sizes", level=0)
-    orig_tracker = ExtractionTracker(TEMP_DIR, num_samples=None)
+    orig_tracker = ExtractionTracker(Path(TEMP_DIR, "extracted", "progress"), num_samples=None)
     orig_event_reader = EventReader(chunksize=4000,
                                     dataset_folder=TEST_DATA_DEMO,
                                     tracker=orig_tracker)
@@ -161,7 +162,7 @@ def test_switch_chunk_sizes():
         assert_dtypes(frame)
 
     # Crash and resume with half the chunk size
-    orig_tracker = ExtractionTracker(TEMP_DIR, num_samples=None)
+    orig_tracker = ExtractionTracker(Path(TEMP_DIR, "extracted", "progress"), num_samples=None)
     orig_event_reader = EventReader(chunksize=2000,
                                     dataset_folder=TEST_DATA_DEMO,
                                     tracker=orig_tracker)
@@ -180,7 +181,7 @@ def test_switch_chunk_sizes():
         assert_dtypes(frame)
 
     # Crash and resume with half the chunk size
-    orig_tracker = ExtractionTracker(TEMP_DIR, num_samples=None)
+    orig_tracker = ExtractionTracker(Path(TEMP_DIR, "extracted", "progress"), num_samples=None)
     orig_event_reader = EventReader(chunksize=1000,
                                     dataset_folder=TEST_DATA_DEMO,
                                     tracker=orig_tracker)
@@ -199,7 +200,7 @@ def test_switch_chunk_sizes():
         assert_dtypes(frame)
 
     # Crash and resume with half the chunk size
-    orig_tracker = ExtractionTracker(TEMP_DIR, num_samples=None)
+    orig_tracker = ExtractionTracker(Path(TEMP_DIR, "extracted", "progress"), num_samples=None)
     orig_event_reader = EventReader(chunksize=500,
                                     dataset_folder=TEST_DATA_DEMO,
                                     tracker=orig_tracker)
@@ -224,7 +225,7 @@ def test_subject_ids():
     """Test if the event reader stops on last subject occurence.
     """
     tests_io("Test case with subject ids", level=0)
-    tracker = ExtractionTracker(TEMP_DIR, num_samples=None)
+    tracker = ExtractionTracker(Path(TEMP_DIR, "extracted", "progress"), num_samples=None)
     subject_ids = ["40124"]  # int version 40124
     event_reader = EventReader(chunksize=1000000,
                                subject_ids=subject_ids,
@@ -275,22 +276,24 @@ def test_subject_ids():
 
 
 if __name__ == '__main__':
-    # if TEMP_DIR.is_dir():
-    #     shutil.rmtree(str(TEMP_DIR))
-    import shelve
-    reader = datasets.load_data(chunksize=75837, source_path=TEST_DATA_DEMO, storage_path=TEMP_DIR)
+    if TEMP_DIR.is_dir():
+        shutil.rmtree(str(TEMP_DIR))
+    # import shelve
+    # reader = datasets.load_data(chunksize=75837, source_path=TEST_DATA_DEMO, storage_path=TEMP_DIR)
+#
+# def reset():
+#     with shelve.open(str(Path(TEMP_DIR, "extracted"))) as db:
+#         db.clear()
 
-    def reset():
-        with shelve.open(str(Path(TEMP_DIR, "extracted"))) as db:
-            db.clear()
-
-    reset()
-    test_subject_ids()
-    reset()
-    test_get_full_chunk()
-    reset()
+# reset()
+# test_subject_ids()
+# reset()
+# test_get_full_chunk()
+    if TEMP_DIR.is_dir():
+        shutil.rmtree(str(TEMP_DIR))
     test_get_mutlitple_chunks()
-    reset()
+    if TEMP_DIR.is_dir():
+        shutil.rmtree(str(TEMP_DIR))
     test_switch_chunk_sizes()
     if TEMP_DIR.is_dir():
         shutil.rmtree(str(TEMP_DIR))
