@@ -4,8 +4,7 @@ import tensorflow as tf
 from pathlib import Path
 from utils.IO import *
 from utils import load_json, update_json
-from tensorflow import keras
-from keras import Model
+from tensorflow.keras import Model
 
 
 class AbstractCheckpointManager(object):

@@ -38,6 +38,7 @@ from pathlib import Path
 from abc import ABC, abstractmethod
 from pathos.multiprocessing import cpu_count, Pool
 from datasets.readers import ExtractedSetReader, ProcessedSetReader
+from datasets.mimic_utils import copy_subject_info
 from datasets.trackers import PreprocessingTracker
 from datasets.writers import DataSetWriter
 from utils.IO import *
@@ -66,8 +67,6 @@ class AbstractProcessor(ABC):
         self._save_file_type: str = ...
         self._operation_adjective: str = ...
         self._lock: Manager.Lock = ...
-        self._X: dict = ...
-        self._y: dict = ...
 
     @property
     @abstractmethod
@@ -131,7 +130,7 @@ class AbstractProcessor(ABC):
                 [self._tracker.subjects[subject_id]["total"] for subject_id in proc_subjects])
             self._n_skip = 0
 
-    def save_data(self, subject_ids: list = None) -> None:
+    def save_data(self, subjects: list = None) -> None:
         """
         Save the discretized data to the storage path.
 
@@ -143,82 +142,29 @@ class AbstractProcessor(ABC):
             A list of subject IDs to save data for. If None, all data is saved. Default is None.
         """
         if self._writer is None:
-            info_io("No storage path provided. Data will not be saved.", verbose=self._verbose)
+            info_io("No storage path provided. Data will not be saved.")
             return
-
-        def save_dict(data: dict, key: str, subject_ids: list = None):
-            if subject_ids is None:
-                data_save = data
-                subject_ids = list(data.keys())
-            else:
-                data_save = dict_subset(data, subject_ids)
-            self._writer.write_bysubject({key: data_save}, file_type=self._save_file_type)
-            for subject in subject_ids:
-                del data[subject]
-
         with self._lock:
-            save_dict(self._X, "X", subject_ids)
-            if hasattr(self, "_deep_supervision") and self._deep_supervision:
-                save_dict(self._M, "M", subject_ids)
-                save_dict(self._y, "yds", subject_ids)
+            if subjects is None:
+                self._writer.write_bysubject({"X": self._X}, file_type=self._save_file_type)
+                self._writer.write_bysubject({"y": self._y}, file_type=self._save_file_type)
+                self._X = dict()
+                self._y = dict()
             else:
-                save_dict(self._y, "y", subject_ids)
-            if hasattr(self, "_t"):
-                save_dict(self._t, "t", subject_ids)
+                self._writer.write_bysubject({"X": dict_subset(self._X, subjects)},
+                                             file_type=self._save_file_type)
+                self._writer.write_bysubject({"y": dict_subset(self._y, subjects)},
+                                             file_type=self._save_file_type)
+                for subject in subjects:
+                    del self._X[subject]
+                    del self._y[subject]
 
         return
-
-    def transform_subject(self, subject_id: int, return_tracking=False):
-        """
-        Transform the data for a specific subject.
-
-        This method reads the data for a specific subject, processes it, and returns
-        the engineered features along with tracking information.
-
-        Parameters
-        ----------
-        subject_id : int
-            The ID of the subject to transform data for.
-
-        Returns
-        -------
-        tuple
-            A tuple containing the engineered features and tracking information.
-        """
-        if isinstance(self._source_reader, ProcessedSetReader):
-            subject_data = self._source_reader.read_samples([subject_id],
-                                                            read_ids=True,
-                                                            data_type=pd.DataFrame)
-        elif isinstance(self._source_reader, ExtractedSetReader):
-            subject_data = self._source_reader.read_subjects([subject_id], read_ids=True)
-
-        proc_data, tracking_info = self._transform(subject_data, return_tracking=True)
-        if return_tracking:
-            return proc_data, tracking_info
-        return proc_data
-
-    def _update_tracking(self, subject_id: int, tracking_info: dict, overwrite: bool = True):
-        # Common logic for updating the tracking info and removing empty subjects
-        if subject_id in tracking_info:
-            if tracking_info[subject_id]:
-                self._n_subjects += 1
-                if self._tracker is not None:
-                    with self._lock:
-                        if not subject_id in self._tracker.subjects or overwrite:
-                            self._tracker.subjects.update({subject_id: tracking_info[subject_id]})
-            else:
-                self._n_skip += 1
-                del tracking_info[subject_id]
-                del self._y[subject_id]
-                del self._X[subject_id]
-                if hasattr(self, "_deep_supervision") and self._deep_supervision:
-                    del self._M[subject_id]
-
-        return tracking_info
 
     def transform_dataset(self,
                           dataset: Dict[str, Dict[str, Dict[str, pd.DataFrame]]],
                           storage_path=None,
+                          source_path=None,
                           subject_ids=None,
                           num_subjects=None) -> Dict[str, Dict[str, pd.DataFrame]]:
         """
@@ -256,32 +202,32 @@ class AbstractProcessor(ABC):
             self._tracker.set_subject_ids(subject_ids)
             self._tracker.set_num_subjects(num_subjects)
 
+        copy_subject_info(source_path, storage_path)
+
         if self._tracker.is_finished:
             info_io(
-                f"Compact {self._operation_name}  already finalized in directory:\n{str(self._storage_path)}",
-                verbose=self._verbose)
+                f"Compact {self._operation_name}  already finalized in directory:\n{str(self._storage_path)}"
+            )
             if num_subjects is not None:
                 subject_ids = random.sample(self._tracker.subject_ids, k=num_subjects)
             return ProcessedSetReader(root_path=self._storage_path,
                                       subject_ids=subject_ids).read_samples(read_ids=True)
 
-        info_io(f"Compact {self._operation_name}: {self._task}", level=0, verbose=self._verbose)
+        info_io(f"Compact {self._operation_name}: {self._task}", level=0)
 
         subject_ids, exclud_subj, unkonwn_subj = self._get_subject_ids(
             num_subjects=num_subjects,
             subject_ids=subject_ids,
-            processed_subjects=self._tracker.subject_ids
-            if not self._tracker.force_rerun else list(),
+            processed_subjects=self._tracker.subject_ids,
             all_subjects=X_subjects.keys())
 
         if not subject_ids:
             self._tracker.is_finished = True
-            info_io(f"Finalized for task {self._task} in directory:\n{str(self._storage_path)}",
-                    verbose=self._verbose)
+            info_io(f"Finalized for task {self._task} in directory:\n{str(self._storage_path)}")
             if num_subjects and not self._n_subjects == num_subjects:
                 warn_io(
-                    f"The subject target was not reached, missing {self._n_subjects - num_subjects} subjects.",
-                    verbose=self._verbose)
+                    f"The subject target was not reached, missing {self._n_subjects - num_subjects} subjects."
+                )
             if orig_subject_ids is not None:
                 orig_subject_ids = list(set(orig_subject_ids) & set(self._tracker.subject_ids))
             return ProcessedSetReader(self._storage_path,
@@ -292,15 +238,17 @@ class AbstractProcessor(ABC):
         X_subjects = dict_subset(X_subjects, subject_ids)
         y_subjects = dict_subset(y_subjects, subject_ids)
 
-        self._transform({"X": X_subjects, "y": y_subjects})  # Omitting timestamps
+
+        _, \
+        _ = self._transform((X_subjects, y_subjects)) # Omitting timestamps
 
         if storage_path or self._storage_path:
             self.save_data()
             info_io(
-                f"{self._operation_name.capitalize()} engineering for {self._task} in directory:\n{str(self._storage_path)}",
-                verbose=self._verbose)
+                f"{self._operation_name.capitalize()} engineering for {self._task} in directory:\n{str(self._storage_path)}"
+            )
         else:
-            info_io(f"Finalized {self._operation_name} for {self._task}.", verbose=self._verbose)
+            info_io(f"Finalized {self._operation_name} for {self._task}.")
         self._tracker.is_finished = True
         # TODO! inefficient
         if orig_subject_ids is not None:
@@ -343,34 +291,30 @@ class AbstractProcessor(ABC):
             self._tracker.set_subject_ids(subject_ids)
             self._tracker.set_num_subjects(num_subjects)
 
+        copy_subject_info(reader.root_path, self._storage_path)
+
         if self._tracker.is_finished:
             info_io(
-                f"{self._operation_name.capitalize()} for {self._task} is already in directory:\n{str(self._storage_path)}.",
-                verbose=orig_verbose)
+                f"{self._operation_name.capitalize()} for {self._task} is already in directory:\n{str(self._storage_path)}."
+            )
             if num_subjects is not None:
                 subject_ids = random.sample(self._tracker.subject_ids, k=num_subjects)
             self._verbose = orig_verbose
             return ProcessedSetReader(self._storage_path, subject_ids=subject_ids)
 
-        info_io(f"Iterative {self._operation_name}: {self._task}", level=0, verbose=orig_verbose)
-        info_io(f"{self._operation_name.capitalize()} data for task {self._task}.",
-                verbose=orig_verbose)
+        info_io(f"Iterative {self._operation_name}: {self._task}", level=0)
+        info_io(f"{self._operation_name.capitalize()} data for task {self._task}.")
 
         # Parallel processing logic
         def process_subject(subject_id: str):
             """_summary_"""
-            _, tracking_infos = self.transform_subject(subject_id, return_tracking=True)
+            _, tracking_infos = self.transform_subject(subject_id)
 
             if tracking_infos:
                 self.save_data([subject_id])
-                # Add total sample count
-                tracking_infos["total"] = sum([
-                    data for stay_id, data in tracking_infos[subject_id].items()
-                    if stay_id != "total"
-                ])
                 return subject_id, tracking_infos
-            # Return empty tracking info
-            return subject_id, tracking_infos
+
+            return subject_id, None
 
         def init(preprocessor):
             global processor_pr
@@ -380,34 +324,27 @@ class AbstractProcessor(ABC):
             num_subjects=num_subjects,
             subject_ids=subject_ids,
             all_subjects=reader.subject_ids,
-            processed_subjects=self._tracker.subject_ids
-            if not self._tracker.force_rerun else list())
-
-        # for subject_id in subject_ids:
-        #     process_subject(subject_id)
+            processed_subjects=self._tracker.subject_ids)
 
         if not subject_ids:
             self._verbose = orig_verbose
             self._tracker.is_finished = True
-            info_io(f"Finalized for task {self._task} in directory:\n{str(self._storage_path)}",
-                    verbose=orig_verbose)
+            info_io(f"Finalized for task {self._task} in directory:\n{str(self._storage_path)}")
             if num_subjects and not self._n_subjects == num_subjects:
                 warn_io(
-                    f"The subject target was not reached, missing {self._n_subjects - num_subjects} subjects.",
-                    verbose=orig_verbose)
+                    f"The subject target was not reached, missing {self._n_subjects - num_subjects} subjects."
+                )
             if original_subject_ids is not None:
                 original_subject_ids = list(
                     set(original_subject_ids) & set(self._tracker.subject_ids))
             return ProcessedSetReader(self._storage_path, subject_ids=original_subject_ids)
 
         missing_subjects = len(unknown_subj)
-        info_io(
-            f"{self._operation_name.capitalize()} timeseries data:\n"
-            f"{self._operation_adjective.capitalize()} subjects: {self._n_subjects}\n"
-            f"{self._operation_adjective.capitalize()} stays: {self._n_stays}\n"
-            f"{self._operation_adjective.capitalize()} samples: {self._n_samples}\n"
-            f"Skipped subjects: {len(unknown_subj)}",
-            verbose=orig_verbose)
+        info_io(f"{self._operation_name.capitalize()} timeseries data:\n"
+                f"{self._operation_adjective.capitalize()} subjects: {self._n_subjects}\n"
+                f"{self._operation_adjective.capitalize()} stays: {self._n_stays}\n"
+                f"{self._operation_adjective.capitalize()} samples: {self._n_samples}\n"
+                f"Skipped subjects: {len(unknown_subj)}")
 
         # Start the run
         chunksize = max(len(subject_ids) // (cpu_count() - 1), 1)
@@ -416,29 +353,26 @@ class AbstractProcessor(ABC):
 
             while True:
                 try:
-                    subject_id, tracker_info = next(res)
-                    if not tracker_info:
-                        # Subject could not be transformed
+                    subject_id, tracker_data = next(res)
+                    if tracker_data is None:
                         # Add new samples if to meet the num subjects target
                         if num_subjects is None:
-                            # No subject target was set lets move on
                             missing_subjects += 1
                             continue
-                        debug_io(f"Missing subject is: {subject_id}", verbose=orig_verbose)
+                        debug_io(f"Missing subject is: {subject_id}")
                         try:
-                            # Try to replace the missing subject to meet target
                             subj = exclud_subj.pop()
                             res = chain(res,
                                         [pool.apply_async(process_subject, args=(subj,)).get()])
                         except IndexError:
                             missing_subjects += 1
                             debug_io(
-                                f"Could not replace missing subject. Excluded subjects is: {exclud_subj}",
-                                verbose=orig_verbose)
-                    elif subject_id in tracker_info:
+                                f"Could not replace missing subject. Excluded subjects is: {exclud_subj}"
+                            )
+                    else:
                         self._n_subjects += 1
-                        self._n_stays += len(tracker_info[subject_id])
-                        self._n_samples += tracker_info["total"]
+                        self._n_stays += len(tracker_data) - 1
+                        self._n_samples += tracker_data["total"]
 
                     info_io(
                         f"{self._operation_name.capitalize()} timeseries data:\n"
@@ -446,17 +380,15 @@ class AbstractProcessor(ABC):
                         f"{self._operation_adjective.capitalize()} stays: {self._n_stays}\n"
                         f"{self._operation_adjective.capitalize()} samples: {self._n_samples}\n"
                         f"Skipped subjects: {missing_subjects}",
-                        flush_block=(True and not int(os.getenv("DEBUG", 0))),
-                        verbose=orig_verbose)
+                        flush_block=(True and not int(os.getenv("DEBUG", 0))))
                 except StopIteration as e:
                     self._tracker.is_finished = True
                     info_io(
-                        f"Finalized for task {self._task} in directory:\n{str(self._storage_path)}",
-                        verbose=orig_verbose)
+                        f"Finalized for task {self._task} in directory:\n{str(self._storage_path)}")
                     if num_subjects is not None and missing_subjects:
                         warn_io(
-                            f"The subject target was not reached, missing {missing_subjects} subjects.",
-                            verbose=orig_verbose)
+                            f"The subject target was not reached, missing {missing_subjects} subjects."
+                        )
                     pool.close()
                     pool.join()
                     break

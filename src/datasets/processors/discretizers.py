@@ -111,10 +111,9 @@ class MIMICDiscretizer(AbstractProcessor):
                  reader: ProcessedSetReader = None,
                  storage_path: Path = None,
                  tracker: PreprocessingTracker = None,
-                 time_step_size: float = 1.0,
+                 time_step_size: float = None,
                  start_at_zero: bool = True,
                  impute_strategy: str = "previous",
-                 deep_supervision: bool = False,
                  mode: str = "legacy",
                  eps: float = 1e-6,
                  verbose: bool = False):
@@ -123,28 +122,13 @@ class MIMICDiscretizer(AbstractProcessor):
         self._operation_adjective = "discretized"
         self._save_file_type = "hdf5"
         self._storage_path = storage_path
-        if deep_supervision and not task in ["DECOMP", "LOS"]:
-            raise ValueError(f"Deep supervision not implemented for {self._task}")
-
-        self._deep_supervision = deep_supervision
         self._writer = (None if storage_path is None else DataSetWriter(self._storage_path))
         self._source_reader = reader
         if tracker is not None:
             self._tracker = tracker
         else:
-            if storage_path is None:
-                self._tracker = None
-            else:
-                self._tracker = PreprocessingTracker(Path(storage_path, "progress"),
-                                                     time_step_size=time_step_size,
-                                                     start_at_zero=start_at_zero,
-                                                     impute_strategy=impute_strategy,
-                                                     mode=mode,
-                                                     deep_supervision=deep_supervision)
-                if len(self._tracker.supervision_modes):
-                    self._process_x = False
-                else:
-                    self._process_x = True
+            self._tracker = (None if storage_path is None else PreprocessingTracker(
+                Path(storage_path, "progress")))
         self._lock = Manager().Lock()
         self._verbose = verbose
         self._discretized_reader = (None if storage_path is None else ProcessedSetReader(
@@ -153,7 +137,7 @@ class MIMICDiscretizer(AbstractProcessor):
         self._time_step_size = time_step_size
         self._start_at_zero = start_at_zero
         self._eps = eps
-        if impute_strategy not in ["normal", "previous", "next", "zero"]:
+        if not impute_strategy in ["normal", "previous", "next", "zero"]:
             raise ValueError(
                 f"Impute strategy must be one of 'normal', 'previous', 'zero' or 'next'. Impute strategy is {impute_strategy}"
             )
@@ -181,7 +165,6 @@ class MIMICDiscretizer(AbstractProcessor):
 
         self._X = dict()
         self._y = dict()
-        self._M = dict()
 
     @property
     def tracker(self) -> PreprocessingTracker:
@@ -213,9 +196,40 @@ class MIMICDiscretizer(AbstractProcessor):
             return []
         return self._source_reader.subject_ids
 
-    def _transform(self,
-                   dataset: Tuple[Dict[int, Dict[int, pd.DataFrame]]],
-                   return_tracking: bool = False):
+    def transform_subject(self, subject_id: int):
+        """
+        Transform the data for a specific subject.
+
+        This method reads the data for a specific subject, processes it, and returns
+        the discretized data along with tracking information.
+
+        Parameters
+        ----------
+        subject_id : int
+            The ID of the subject to transform data for.
+
+        Returns
+        -------
+        tuple
+            A tuple containing the discretized data and the tracking information.
+        """
+        X_processed, y_processed = self._source_reader.read_sample(subject_id,
+                                                                   read_ids=True,
+                                                                   data_type=pd.DataFrame).values()
+        X = {subject_id: X_processed}
+        y = {subject_id: y_processed}
+
+        X_discretized, _ = self._transform((X, y))
+        if X_discretized is None:
+            return None, None
+        if self._tracker is None:
+            return X_discretized, y
+
+        with self._lock:
+            tracking_info = self._tracker.subjects[subject_id]
+        return (X_discretized, y), tracking_info
+
+    def _transform(self, dataset: Tuple[Dict[int, Dict[int, pd.DataFrame]]]):
         """
         Transform the entire dataset when passed as dictionary pair.
 
@@ -234,101 +248,70 @@ class MIMICDiscretizer(AbstractProcessor):
         dict
             A dictionary containing the discretized data, with subject IDs as keys.
         """
-        X_dict, y_dict = dataset["X"], dataset["y"]
-        tracking_info = dict()
-        info_io(
-            f"Discretizing processed data:\n"
-            f"Discretized subjects: {self._n_subjects}\n"
-            f"Discretized stays: {self._n_stays}\n"
-            f"Discretized samples: {self._n_samples}\n"
-            f"Skipped subjects: {self._n_skip}",
-            verbose=self._verbose)
+        X_dict, y_dict = dataset
+        if self._verbose:
+            info_io(f"Discretizing processed data:\n"
+                    f"Discretized subjects: {self._n_subjects}\n"
+                    f"Discretized stays: {self._n_stays}\n"
+                    f"Discretized samples: {self._n_samples}\n"
+                    f"Skipped subjects: {self._n_skip}")
 
         self._samples_processed = 0
-        set_process_x_to_false = False
 
         for subject_id in X_dict.keys():
             X_subject = X_dict[subject_id]
             self._X[subject_id] = dict()
             self._y[subject_id] = dict()
-            tracking_info[subject_id] = dict()
-            if self._deep_supervision:
-                self._M[subject_id] = dict()
-            if not self._process_x:
-                with self._lock:
-                    if subject_id in self._tracker.subject_ids:
-                        # Reason for missing subject can be config
-                        self._X[subject_id], _ = self._discretized_reader.read_sample(subject_id)
-                    else:
-                        set_process_x_to_false = True
-                        self._process_x = True
+            tracking_info = dict()
 
             for stay_id in X_subject:
-                # Do not reprocess if create for different supervision mode
-                if self._process_x:
-                    X_df = X_subject[stay_id]
-                    if self._mode == "experimental" and self._impute_strategy in [
-                            "previous", "next"
-                    ]:
-                        X_df = self._impute_data(X_df)
-                        X_df = self._categorize_data(X_df)
-                        X_df = self._bin_data(X_df)
-                    else:
-                        X_df = self._categorize_data(X_df)
-                        X_df = self._bin_data(X_df)
-                        X_df = self._impute_data(X_df)
-                    self._X[subject_id][stay_id] = X_df
-                if self._deep_supervision:
-                    y_reindexed = y_dict[subject_id][stay_id].reindex(
-                        self._X[subject_id][stay_id].index + 1)
-                    self._y[subject_id][stay_id] = y_reindexed.fillna(0)
-                    self._M[subject_id][stay_id] = (~y_reindexed.isna()).astype(int)
+                X_df = X_subject[stay_id]
+                if self._mode == "experimental" and self._impute_strategy in ["previous", "next"]:
+                    X_df = self._impute_data(X_df)
+                    X_df = self._categorize_data(X_df)
+                    X_df = self._bin_data(X_df)
                 else:
-                    self._y[subject_id][stay_id] = y_dict[subject_id][stay_id]
+                    X_df = self._categorize_data(X_df)
+                    X_df = self._bin_data(X_df)
+                    X_df = self._impute_data(X_df)
+                self._X[subject_id][stay_id] = X_df
+                self._y[subject_id][stay_id] = y_dict[subject_id][stay_id]
 
-                # Based on y_dict not self._y so supervision mode agnostic
-                n_samples = len(y_dict[subject_id][stay_id])
-                if n_samples and len(X_df):
-                    self._n_stays += 1
-                    self._n_samples += n_samples
-                    tracking_info[subject_id][stay_id] = n_samples
-                else:
-                    del self._y[subject_id][stay_id]
-                    del self._X[subject_id][stay_id]
-                    if self._deep_supervision:
-                        del self._M[subject_id][stay_id]
+                tracking_info[stay_id] = len(y_dict[subject_id][stay_id])
 
-                info_io(
-                    f"Discretizing processed data:\n"
-                    f"Discretized subjects: {self._n_subjects}\n"
-                    f"Discretized stays: {self._n_stays}\n"
-                    f"Discretized samples: {self._n_samples}\n"
-                    f"Skipped subjects: {self._n_skip}",
-                    flush_block=True,
-                    verbose=self._verbose)
+                if self._verbose:
+                    info_io(
+                        f"Discretizing processed data:\n"
+                        f"Discretized subjects: {self._n_subjects}\n"
+                        f"Discretized stays: {self._n_stays}\n"
+                        f"Discretized samples: {self._n_samples}"
+                        f"Skipped subjects: {self._n_skip}",
+                        flush_block=True)
 
-            tracking_info = self._update_tracking(subject_id, tracking_info, overwrite=False)
+            self._n_subjects += 1
+            if self._tracker is not None:
+                with self._lock:
+                    self._tracker.subjects.update({subject_id: tracking_info})
 
-            if set_process_x_to_false:
-                self._process_x = False
+            if not len(self._y[subject_id]) or not len(self._X[subject_id]):
+                del self._y[subject_id]
+                del self._X[subject_id]
+                self._n_skip += 1
+            else:
+                self._n_subjects += 1
 
-        info_io(
-            f"Discretizing processed data:\n"
-            f"Discretized subjects: {self._n_subjects}\n"
-            f"Discretized stays: {self._n_stays}\n"
-            f"Discretized samples: {self._n_samples}\n"
-            f"Skipped subjects: {self._n_skip}",
-            flush_block=True,
-            verbose=self._verbose)
+        if self._verbose:
+            info_io(
+                f"Discretizing processed data:\n"
+                f"Discretized subjects: {self._n_subjects}\n"
+                f"Discretized stays: {self._n_stays}\n"
+                f"Discretized samples: {self._n_samples}"
+                f"Skipped subjects: {self._n_skip}",
+                flush_block=True)
 
-        result_list = [dict_subset(self._X, [subject_id]), \
-                       dict_subset(self._y, [subject_id])]
+        self._y = y_dict
 
-        if self._deep_supervision:
-            result_list.append(dict_subset(self._M, [subject_id]))
-        if return_tracking:
-            return tuple(result_list), tracking_info
-        return tuple(result_list)
+        return self._X, self._y
 
     def _bin_data(self, X):
         """

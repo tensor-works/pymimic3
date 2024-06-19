@@ -9,13 +9,12 @@ from torch.utils.data import DataLoader
 from collections import defaultdict
 from pathlib import Path
 from torchmetrics import Metric
-from keras.utils import Progbar
+from tensorflow.keras.utils import Progbar
 from utils import to_snake_case
 from torch.optim import Optimizer
 from utils.IO import *
 from settings import *
 from models.pytorch.mappings import *
-from models.pytorch.layers import ExtendMask
 
 
 class LSTMNetwork(nn.Module):
@@ -24,9 +23,10 @@ class LSTMNetwork(nn.Module):
                  layer_size: Union[List[int], int],
                  dropout: float,
                  input_dim: int,
-                 deep_supervision: bool = False,
+                 bidirectional: bool = False,
                  recurrent_dropout: float = 0.,
                  final_activation: str = None,
+                 target_repl: bool = False,
                  output_dim: int = 1,
                  depth: int = 1,
                  model_path: Path = None):
@@ -43,7 +43,7 @@ class LSTMNetwork(nn.Module):
         self._dropout_rate = dropout
         self._recurrent_dropout = recurrent_dropout
         self._depth = depth
-        self._deep_supervision = deep_supervision
+        self._bidirectional = bidirectional
 
         if final_activation is None:
             if output_dim == 1:
@@ -54,6 +54,16 @@ class LSTMNetwork(nn.Module):
             self._final_activation = activation_mapping[final_activation]
 
         self._output_dim = output_dim
+
+        if output_dim == 1:
+            self._task = "binary"
+            self._num_classes = 1
+        elif isinstance(self._final_activation, nn.Softmax):
+            self._task = "multiclass"
+            self._num_classes = output_dim
+        elif isinstance(self._final_activation, nn.Sigmoid):
+            self._task = "multilabel"
+            self._num_classes = output_dim
 
         if isinstance(layer_size, int):
             self._hidden_sizes = [layer_size] * depth
@@ -71,39 +81,12 @@ class LSTMNetwork(nn.Module):
                         hidden_size=hidden_size,
                         num_layers=1,
                         batch_first=True,
-                        dropout=(recurrent_dropout if i < depth - 1 else 0)))
-            input_size = hidden_size
+                        dropout=(recurrent_dropout if i < depth - 1 else 0),
+                        bidirectional=bidirectional))
+            input_size = hidden_size * (2 if bidirectional else 1)
 
-        self._lstm_final = nn.LSTM(input_size=input_size,
-                                   hidden_size=hidden_size,
-                                   num_layers=1,
-                                   batch_first=True,
-                                   dropout=(recurrent_dropout if i < depth - 1 else 0))
-
-        self._dropout = nn.Dropout(dropout)
-        self._output_layer = nn.Linear(input_size, self._output_dim)
-        if deep_supervision:
-            self._extend_mask = ExtendMask()
-
-    def forward(self, x, mask=None):
-        x.to(self._device)
-        # Masking is not natively supported in PyTorch LSTM, assume x is already preprocessed if necessary
-        for lstm in self.lstm_layers:
-            x, _ = lstm(x)
-        x, _ = self._lstm_final(x)
-        x = self._dropout(x)
-
-        if self._deep_supervision:
-            mask.to(self._device)
-            x = self._output_layer(x)
-            x = self._extend_mask(x, mask)
-        else:
-            x = x[:, -1, :]
-            x = self._output_layer(x)
-
-        if self._final_activation:
-            x = self._final_activation(x)
-        return x
+        self.dropout = nn.Dropout(dropout)
+        self.output_layer = nn.Linear(input_size, self._output_dim)
 
     @property
     def optimizer(self):
@@ -167,6 +150,18 @@ class LSTMNetwork(nn.Module):
             if f"{i:04d}" in folder.name and ((i != epochs) or not keep_latest) and
             (i != best_epoch) and (".ckpt" in folder.name) and folder.is_file()
         ]
+
+    def forward(self, x):
+        x.to(self._device)
+        # Masking is not natively supported in PyTorch LSTM, assume x is already preprocessed if necessary
+        for lstm in self.lstm_layers:
+            x, _ = lstm(x)
+            x = self.dropout(x)
+        x = x[:, -1, :]
+        x = self.output_layer(x)
+        if self._final_activation:
+            x = self._final_activation(x)
+        return x
 
     def _get_metrics(self, metrics: Dict[str, Metric]):
         keys = list([metric for metric in metrics.keys() if self._allowed_key(metric)])
@@ -264,16 +259,10 @@ class LSTMNetwork(nn.Module):
         self._train_progbar = Progbar(generator_size)
 
         for batch_idx, (inputs, labels) in enumerate(train_generator):
-            if self._deep_supervision:
-                inputs, masks = inputs
-                inputs = inputs.to(self._device)
-                mask = masks.to(self._device)
-            else:
-                inputs = inputs.to(self._device)
-                mask = None
+            inputs = inputs.to(self._device)
             labels = labels.to(self._device)
             self._optimizer.zero_grad()
-            outputs = self(inputs, mask=mask)
+            outputs = self(inputs)
             if sample_weights is not None:
                 loss = self._loss(outputs, labels, sample_weight=sample_weights)
             else:
@@ -305,15 +294,9 @@ class LSTMNetwork(nn.Module):
             val_losses = []
             with torch.no_grad():
                 for val_inputs, val_labels in val_generator:
-                    if self._deep_supervision:
-                        val_inputs, val_masks = val_inputs
-                        val_inputs = val_inputs.to(self._device)
-                        val_masks = val_masks.to(self._device)
-                    else:
-                        val_inputs = val_inputs.to(self._device)
-                        val_masks = None
+                    val_inputs = val_inputs.to(self._device)
                     val_labels = val_labels.to(self._device)
-                    val_outputs = self(val_inputs, mask=val_masks)
+                    val_outputs = self(val_inputs)
                     val_loss = self._loss(val_outputs, val_labels)
                     val_losses.append(val_loss.item())
 
@@ -400,42 +383,32 @@ class LSTMNetwork(nn.Module):
 
 
 if __name__ == "__main__":
-    from tests.tsettings import *
+    from tests.settings import *
     import datasets
     from preprocessing.scalers import MinMaxScaler
     from generators.pytorch import TorchGenerator
     reader = datasets.load_data(chunksize=75836,
                                 source_path=TEST_DATA_DEMO,
-                                storage_path=Path(SEMITEMP_DIR, "deep_supervision"),
+                                storage_path=SEMITEMP_DIR,
                                 discretize=True,
                                 time_step_size=1.0,
                                 start_at_zero=True,
                                 impute_strategy='previous',
-                                task="DECOMP")
+                                task="IHM")
 
     reader = datasets.train_test_split(reader, test_size=0.2, val_size=0.1)
 
     scaler = MinMaxScaler().fit_reader(reader.train)
-    train_generator = TorchGenerator(reader=reader.train,
-                                     scaler=scaler,
-                                     batch_size=2,
-                                     deep_supervision=True,
-                                     shuffle=True)
-    val_generator = TorchGenerator(reader=reader.val,
-                                   scaler=scaler,
-                                   batch_size=2,
-                                   deep_supervision=True,
-                                   shuffle=True)
+    train_generator = TorchGenerator(reader=reader.train, scaler=scaler, batch_size=2, shuffle=True)
+    val_generator = TorchGenerator(reader=reader.val, scaler=scaler, batch_size=2, shuffle=True)
+
+    import torch
+    import torch.nn as nn
+    import torch.optim as optim
 
     model_path = Path(TEMP_DIR, "torch_lstm")
     model_path.mkdir(parents=True, exist_ok=True)
-    model = LSTMNetwork(10,
-                        0.2,
-                        59,
-                        recurrent_dropout=0.,
-                        output_dim=1,
-                        depth=2,
-                        deep_supervision=True)
+    model = LSTMNetwork(10, 0.2, 59, recurrent_dropout=0., output_dim=1, depth=2)
 
     criterion = nn.BCEWithLogitsLoss()
     optimizer = optim.Adam(model.parameters(), lr=0.001)

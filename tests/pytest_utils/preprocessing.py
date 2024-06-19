@@ -5,13 +5,10 @@ from pathlib import Path
 from utils.IO import *
 from tests.pytest_utils.general import assert_dataframe_equals
 from datasets.readers import ProcessedSetReader
-from tests.tsettings import *
+from tests.settings import *
 
 
-def assert_reader_equals(reader: ProcessedSetReader,
-                         test_data_dir: Path,
-                         test_index: str = "stay",
-                         **kwargs):
+def assert_reader_equals(reader: ProcessedSetReader, test_data_dir: Path):
     """_summary_
 
     Args:
@@ -34,8 +31,7 @@ def assert_reader_equals(reader: ProcessedSetReader,
                                                  y_stays=y_stays,
                                                  test_data_dir=test_data_dir,
                                                  root_path=reader.root_path,
-                                                 listfile=listfile,
-                                                 test_index=test_index)
+                                                 listfile=listfile)
         tests_io(f"Compared subjects: {subject_count}\n"
                  f"Compared stays: {stay_count}\n",
                  flush_block=True)
@@ -45,8 +41,7 @@ def assert_dataset_equals(X: dict,
                           y: dict,
                           generated_dir: Path,
                           test_data_dir: Path,
-                          test_index: str = "stay",
-                          **kwargs):
+                          test_index: str = "stay"):
     """_summary_
 
     Args:
@@ -101,10 +96,7 @@ def assert_subject_data_equals(subject_id: int,
             y_gen = parse_multi_gen(y)
             for task in y_true.keys():
                 for entry in y_true[task].keys():
-                    if isinstance(entry, (float, int)):
-                        np.isclose(y_gen[task][entry], y_true[task][entry])
-                    else:
-                        assert np.allclose(y_gen[task][entry], y_true[task][entry])
+                    assert y_gen[task][entry] == y_true[task][entry]
         elif len(y) == 1:
             if "y_true" in y_true:
                 assert np.isclose(float(np.squeeze(y_true["y_true"].values)), float(np.squeeze(y)))

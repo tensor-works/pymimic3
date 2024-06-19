@@ -12,7 +12,7 @@ from pathlib import Path
 from models.stream.mappings import metric_mapping
 from generators.stream import RiverGenerator
 from models.trackers import RiverHistory, LocalRiverHistory
-from keras.utils import Progbar
+from tensorflow.keras.utils import Progbar
 from utils import to_snake_case, dict_subset
 from abc import ABC
 from copy import deepcopy

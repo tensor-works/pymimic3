@@ -69,8 +69,7 @@ def compact_extraction(storage_path: Path,
                        num_subjects: int = None,
                        num_samples: int = None,
                        subject_ids: list = None,
-                       task: str = None,
-                       verbose: bool = True) -> dict:
+                       task: str = None) -> dict:
     """
     Perform single shot extraction of the dataset from the original source. Ensure enough RAM is available.
 
@@ -88,8 +87,6 @@ def compact_extraction(storage_path: Path,
         List of subject IDs to extract. If None, all subjects are extracted. Default is None.
     task : str, optional
         Specific task to extract data for. If None, all tasks are extracted. Default is None.
-    verbose : bool, optional
-        Whether to print verbose output. Default is True.
 
     Returns
     -------
@@ -107,8 +104,7 @@ def compact_extraction(storage_path: Path,
     dataset_reader = ExtractedSetReader(storage_path)
 
     if tracker.is_finished:  # and not compute_data:
-        info_io(f"Compact data extraction already finalized in directory:\n{str(storage_path)}",
-                verbose=verbose)
+        info_io(f"Compact data extraction already finalized in directory:\n{str(storage_path)}")
         if task is not None:
             # Make sure we don't pick empty subjects for the subsequent processing
             icu_history_df = dataset_reader.read_csv(Path(storage_path, "icu_history.csv"),
@@ -127,14 +123,14 @@ def compact_extraction(storage_path: Path,
         # If we know some processing is comming after we return all possible subjects for that task
         return dataset_reader.read_subjects(read_ids=True, subject_ids=subject_ids)
 
-    info_io("Compact Dataset Extraction: ALL", level=0, verbose=verbose)
-    info_io(f"Starting compact data extraction.", verbose=verbose)
-    info_io(f"Extracting data from source:\n{str(source_path)}", verbose=verbose)
-    info_io(f"Saving data at location:\n{str(storage_path)}", verbose=verbose)
+    info_io("Compact Dataset Extraction: ALL", level=0)
+    info_io(f"Starting compact data extraction.")
+    info_io(f"Extracting data from source:\n{str(source_path)}")
+    info_io(f"Saving data at location:\n{str(storage_path)}")
 
     # Read Dataframes for ICU history
     if tracker.has_icu_history:
-        info_io("ICU history data already extracted", verbose=verbose)
+        info_io("ICU history data already extracted")
         icu_history_df = dataset_reader.read_csv(Path(storage_path, "icu_history.csv"),
                                                  dtypes=convert_dtype_dict(
                                                      DATASET_SETTINGS["icu_history"]["dtype"]))
@@ -142,7 +138,7 @@ def compact_extraction(storage_path: Path,
                                                   dtypes=convert_dtype_dict(
                                                       DATASET_SETTINGS["subject_info"]["dtype"]))
     else:
-        info_io("Extracting ICU history data ...", end="\r", verbose=verbose)
+        info_io("Extracting ICU history data ...", end="\r")
         patients_df = read_patients_csv(source_path)
         admissions_df, admissions_info_df = read_admission_csv(source_path)
         icustays_df = read_icustays_csv(source_path)
@@ -153,15 +149,15 @@ def compact_extraction(storage_path: Path,
         tracker.has_icu_history = True
         icu_history_df.to_csv(Path(storage_path, "icu_history.csv"), index=False)
         subject_info_df.to_csv(Path(storage_path, "subject_info.csv"), index=False)
-        info_io("Done extracting ICU history data", verbose=verbose)
+        info_io("Done extracting ICU history data")
 
     if tracker.has_diagnoses:
-        info_io("Patient diagnosis data already extracted", verbose=verbose)
+        info_io("Patient diagnosis data already extracted")
         diagnoses_df = dataset_reader.read_csv(Path(storage_path, "diagnoses.csv"),
                                                dtypes=convert_dtype_dict(
                                                    DATASET_SETTINGS["diagnosis"]["dtype"]))
     else:
-        info_io("Extracting patient diagnosis data ...", end="\r", verbose=verbose)
+        info_io("Extracting patient diagnosis data ...", end="\r")
         # Read Dataframes for diagnoses
         icd9codes_df = read_icd9codes_csv(source_path)
 
@@ -170,7 +166,7 @@ def compact_extraction(storage_path: Path,
         diagnoses_df.to_csv(Path(storage_path, "diagnoses.csv"), index=False)
 
         tracker.has_diagnoses = True
-        info_io("Done extracting patient diagnosis data", verbose=verbose)
+        info_io("Done extracting patient diagnosis data")
 
     subject_ids, icu_history_df = get_subject_ids(task=task,
                                                   num_subjects=num_subjects,
@@ -181,18 +177,18 @@ def compact_extraction(storage_path: Path,
     subject_info_df = reduce_by_subjects(subject_info_df, subject_ids)
     diagnoses_df = reduce_by_subjects(diagnoses_df, subject_ids)
 
-    info_io("Extracting subject ICU history ...", end="\r", verbose=verbose)
+    info_io("Extracting subject ICU history ...", end="\r")
     subject_icu_history = get_by_subject(icu_history_df,
                                          DATASET_SETTINGS["ICUHISTORY"]["sort_value"])
-    info_io("Done extracting subject ICU history", verbose=verbose)
+    info_io("Done extracting subject ICU history")
 
-    info_io("Extracting subject diagnoses ...", end="\r", verbose=verbose)
+    info_io("Extracting subject diagnoses ...", end="\r")
     subject_diagnoses = get_by_subject(diagnoses_df[DATASET_SETTINGS["DIAGNOSES"]["columns"]],
                                        DATASET_SETTINGS["DIAGNOSES"]["sort_value"])
-    info_io("Done extracting subject diagnoses", verbose=verbose)
+    info_io("Done extracting subject diagnoses")
 
     if tracker.has_bysubject_info:
-        info_io("Subject diagnoses and subject ICU history already stored", verbose=verbose)
+        info_io("Subject diagnoses and subject ICU history already stored")
     else:
         dataset_writer.write_bysubject(
             {
@@ -202,10 +198,10 @@ def compact_extraction(storage_path: Path,
             index=False)
 
     if tracker.has_subject_events:
-        info_io("Subject events already extracted", verbose=verbose)
+        info_io("Subject events already extracted")
         subject_events = dataset_reader.read_events(read_ids=True)
     else:
-        info_io("Extracting subject events ...", end="\r", verbose=verbose)
+        info_io("Extracting subject events ...", end="\r")
         # Read Dataframes for event table
         event_reader = EventReader(source_path)
         chartevents_df = event_reader.get_all()
@@ -216,10 +212,10 @@ def compact_extraction(storage_path: Path,
             "subject_events": subject_events,
         }, index=False)
         tracker.has_subject_events = True
-        info_io("Done extracting subject events", verbose=verbose)
+        info_io("Done extracting subject events")
 
     if not tracker.has_timeseries or not tracker.has_episodic_data:
-        info_io("Extracting subject timeseries and episodic data ...", end="\r", verbose=verbose)
+        info_io("Extracting subject timeseries and episodic data ...", end="\r")
         # Read Dataframes for time series
         varmap_df = read_varmap_csv(resource_folder)
         episodic_data, timeseries = extract_timeseries(subject_events, subject_diagnoses,
@@ -230,12 +226,12 @@ def compact_extraction(storage_path: Path,
         tracker.subject_ids.extend(list(timeseries.keys()))
         tracker.has_episodic_data = True
         tracker.has_timeseries = True
-        info_io("Done extracting subject timeseries and episodic data", verbose=verbose)
+        info_io("Done extracting subject timeseries and episodic data")
     else:
-        info_io("Subject timeseries and episodic data already extracted", verbose=verbose)
+        info_io("Subject timeseries and episodic data already extracted")
 
     tracker.is_finished = True
-    info_io(f"Finalized data extraction in directory:\n{str(storage_path)}", verbose=verbose)
+    info_io(f"Finalized data extraction in directory:\n{str(storage_path)}")
     if original_subject_ids is not None:
         original_subject_ids = list(set(original_subject_ids) & set(tracker.subject_ids))
     return dataset_reader.read_subjects(read_ids=True, subject_ids=original_subject_ids)
@@ -247,8 +243,7 @@ def iterative_extraction(source_path: Path,
                          num_subjects: int = None,
                          num_samples: int = None,
                          subject_ids: list = None,
-                         task: str = None,
-                         verbose: bool = True) -> ExtractedSetReader:
+                         task: str = None) -> ExtractedSetReader:
     """
     Perform iterative extraction of the dataset, with specified chunk size. This will require less 
     RAM and run on multiple processes.
@@ -269,8 +264,6 @@ def iterative_extraction(source_path: Path,
         List of subject IDs to extract. If None, all subjects are extracted. Default is None.
     task : str, optional
         Specific task to extract data for. If None, all tasks are extracted. Default is None.
-    verbose : bool, optional
-        Whether to print verbose output. Default is True.
 
     Returns
     -------
@@ -287,11 +280,10 @@ def iterative_extraction(source_path: Path,
                                 subject_ids=subject_ids)
 
     dataset_writer = DataSetWriter(storage_path)
-    dataset_reader = ExtractedSetReader(storage_path)
+    dataset_reader = ExtractedSetReader(source_path)
 
     if tracker.is_finished:
-        info_io(f"Iterative data extraction already finalized in directory:\n{storage_path}.",
-                verbose=verbose)
+        info_io(f"Iterative data extraction already finalized in directory:\n{storage_path}.")
         if task is not None:
             # Make sure we don't pick empty subjects for the subsequent processing
             icu_history_df = dataset_reader.read_csv(Path(storage_path, "icu_history.csv"),
@@ -310,14 +302,14 @@ def iterative_extraction(source_path: Path,
         # If we know some processing is comming after we return all possible subjects for that task
         return ExtractedSetReader(storage_path, subject_ids=subject_ids)
 
-    info_io("Iterative Dataset Extraction: ALL", level=0, verbose=verbose)
-    info_io(f"Starting iterative data extraction.", verbose=verbose)
-    info_io(f"Extracting data from source:\n{str(source_path)}", verbose=verbose)
-    info_io(f"Saving data at location:\n{str(storage_path)}", verbose=verbose)
+    info_io("Iterative Dataset Extraction: ALL", level=0)
+    info_io(f"Starting iterative data extraction.")
+    info_io(f"Extracting data from source:\n{str(source_path)}")
+    info_io(f"Saving data at location:\n{str(storage_path)}")
 
     # Make ICU history dataframe
     if tracker.has_icu_history:
-        info_io("ICU history data already extracted", verbose=verbose)
+        info_io("ICU history data already extracted")
         icu_history_df = dataset_reader.read_csv(Path(storage_path, "icu_history.csv"),
                                                  dtypes=convert_dtype_dict(
                                                      DATASET_SETTINGS["icu_history"]["dtype"]))
@@ -326,7 +318,7 @@ def iterative_extraction(source_path: Path,
                                                       DATASET_SETTINGS["subject_info"]["dtype"]))
     else:
         # Read Dataframes for ICU history
-        info_io("Extracting ICU history data ...", end="\r", verbose=verbose)
+        info_io("Extracting ICU history data ...", end="\r")
         patients_df = read_patients_csv(source_path)
 
         admissions_df, admission_info_df = read_admission_csv(source_path)
@@ -339,17 +331,17 @@ def iterative_extraction(source_path: Path,
         icu_history_df.to_csv(Path(storage_path, "icu_history.csv"), index=False)
         subject_info_df.to_csv(Path(storage_path, "subject_info.csv"), index=False)
         tracker.has_icu_history = True
-        info_io("Done extracting ICU history data", verbose=verbose)
+        info_io("Done extracting ICU history data")
 
     # Read Dataframes for diagnoses
 
     if tracker.has_diagnoses:
-        info_io("Patient diagnosis data already extracted", verbose=verbose)
+        info_io("Patient diagnosis data already extracted")
         diagnoses_df = dataset_reader.read_csv(Path(storage_path, "diagnoses.csv"),
                                                dtypes=convert_dtype_dict(
                                                    DATASET_SETTINGS["diagnosis"]["dtype"]))
     else:
-        info_io("Extracting Patient diagnosis data ...", end="\r", verbose=verbose)
+        info_io("Extracting Patient diagnosis data ...", end="\r")
 
         icd9codes_df = read_icd9codes_csv(source_path)
         diagnoses_df, definition_map = make_diagnoses(source_path, icd9codes_df, icu_history_df)
@@ -358,7 +350,7 @@ def iterative_extraction(source_path: Path,
         #                definition_map).to_csv(Path(storage_path, "phenotype_matrix.csv"))
         diagnoses_df.to_csv(Path(storage_path, "diagnoses.csv"), index=False)
         tracker.has_diagnoses = True
-        info_io("Done extracting Patient diagnosis data", verbose=verbose)
+        info_io("Done extracting Patient diagnosis data")
 
     subject_ids, icu_history_df = get_subject_ids(task=task,
                                                   num_subjects=num_subjects,
@@ -382,10 +374,10 @@ def iterative_extraction(source_path: Path,
         }
         dataset_writer.write_bysubject(name_data_pairs, index=False)
     else:
-        info_io("Subject diagnoses and subject ICU history already stored", verbose=verbose)
+        info_io("Subject diagnoses and subject ICU history already stored")
 
     if not tracker.has_subject_events:
-        info_io("Extracting subject events ...", verbose=verbose)
+        info_io("Extracting subject events ...")
 
         EventProducer(source_path=source_path,
                       storage_path=storage_path,
@@ -393,15 +385,14 @@ def iterative_extraction(source_path: Path,
                       chunksize=chunksize,
                       tracker=tracker,
                       icu_history_df=icu_history_df,
-                      subject_ids=subject_ids,
-                      verbose=verbose).run()
+                      subject_ids=subject_ids).run()
     else:
-        info_io("Subject events already extracted", verbose=verbose)
+        info_io("Subject events already extracted")
 
     varmap_df = read_varmap_csv(resource_folder)
 
     if not tracker.has_episodic_data or not tracker.has_timeseries:
-        info_io("Extraction timeseries data from subject events", verbose=verbose)
+        info_io("Extraction timeseries data from subject events")
 
         # Starting the processor pool
         pool_processor = TimeseriesProcessor(storage_path=storage_path,
@@ -411,16 +402,15 @@ def iterative_extraction(source_path: Path,
                                              diagnoses_df=subject_diagnoses,
                                              icu_history_df=subject_icu_history,
                                              varmap_df=varmap_df,
-                                             num_samples=num_samples,
-                                             verbose=verbose)
+                                             num_samples=num_samples)
 
         pool_processor.run()
-        info_io(f"Subject directories extracted: {len(tracker.subject_ids)}", verbose=verbose)
+        info_io(f"Subject directories extracted: {len(tracker.subject_ids)}")
 
         tracker.has_episodic_data = True
         tracker.has_timeseries = True
     else:
-        info_io(f"Timeseries data already created", verbose=verbose)
+        info_io(f"Timeseries data already created")
 
     tracker.is_finished = True
     if original_subject_ids is not None:

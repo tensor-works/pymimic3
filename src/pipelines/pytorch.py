@@ -44,7 +44,7 @@ class TorchPipeline(AbstractPipeline):
 
 if __name__ == "__main__":
     from models.pytorch.lstm import LSTMNetwork
-    from tests.tsettings import *
+    from tests.settings import *
     reader = datasets.load_data(chunksize=75836,
                                 source_path=TEST_DATA_DEMO,
                                 storage_path=SEMITEMP_DIR,

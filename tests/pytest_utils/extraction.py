@@ -1,7 +1,7 @@
 import pandas as pd
 from typing import Dict
 from utils.IO import *
-from tests.tsettings import *
+from tests.settings import *
 from tests.pytest_utils.general import assert_dataframe_equals
 
 

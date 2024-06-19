@@ -12,7 +12,7 @@ import numpy as np
 from typing import List, Dict
 from pathlib import Path
 from utils.IO import *
-from tests.tsettings import *
+from tests.settings import *
 from datasets.readers import ProcessedSetReader, SplitSetReader
 from sklearn import model_selection
 from pathlib import Path
@@ -22,17 +22,17 @@ from datasets.split.splitters import ReaderSplitter
 from utils import dict_subset, is_numerical
 
 
-@pytest.mark.parametrize("reader_flavour", ["discretized", "engineered"])
-@pytest.mark.parametrize("task_name", ["DECOMP"])
+@pytest.mark.parametrize("preprocessing_style", ["discretized", "engineered"])
+@pytest.mark.parametrize("task_name", TASK_NAMES)
 def test_ratio_split(
     task_name,
-    reader_flavour,
+    preprocessing_style,
     discretized_readers: Dict[str, ProcessedSetReader],
     engineered_readers: Dict[str, ProcessedSetReader],
 ):
     tests_io(f"Test case by ratio for task: {task_name}", level=0)
     # Discretization or feature engineering
-    if reader_flavour == "discretized":
+    if preprocessing_style == "discretized":
         reader = discretized_readers[task_name]
     else:
         reader = engineered_readers[task_name]
@@ -62,7 +62,6 @@ def test_ratio_split(
                                                             str(curr_iter))))
             curr_iter += 1
 
-    curr_iter = 0
     # Test restoring splits for previous values
     for test_size in [0.0, 0.2, 0.4]:
         for val_size in [0.0, 0.2, 0.4]:
@@ -78,17 +77,17 @@ def test_ratio_split(
             curr_iter += 1
 
 
-@pytest.mark.parametrize("reader_flavour", ["discretized", "engineered"])
-@pytest.mark.parametrize("task_name", ["DECOMP"])
+@pytest.mark.parametrize("preprocessing_style", ["discretized", "engineered"])
+@pytest.mark.parametrize("task_name", TASK_NAMES)
 def test_demographic_filter(
     task_name,
-    reader_flavour,
+    preprocessing_style,
     discretized_readers: Dict[str, ProcessedSetReader],
     engineered_readers: Dict[str, ProcessedSetReader],
 ):
-    tests_io(f"Test case by demographic filter for task: {task_name}", level=0)
+    tests_io("Test case by demographic filter", level=0)
     # Discretization or feature engineering
-    if reader_flavour == "discretized":
+    if preprocessing_style == "discretized":
         reader = discretized_readers[task_name]
     else:
         reader = engineered_readers[task_name]
@@ -156,17 +155,17 @@ def test_demographic_filter(
         curr_iter += 1
 
 
-@pytest.mark.parametrize("task_name", ["DECOMP"])
-@pytest.mark.parametrize("reader_flavour", ["discretized", "engineered"])
+@pytest.mark.parametrize("task_name", TASK_NAMES)
+@pytest.mark.parametrize("preprocessing_style", ["discretized", "engineered"])
 def test_demo_split(
     task_name,
-    reader_flavour,
+    preprocessing_style,
     discretized_readers: Dict[str, ProcessedSetReader],
     engineered_readers: Dict[str, ProcessedSetReader],
 ):
-    tests_io(f"Test case by demographic filter for task: {task_name}", level=0)
+    tests_io("Test case by demographic filter", level=0)
     # Discretization or feature engineering
-    if reader_flavour == "discretized":
+    if preprocessing_style == "discretized":
         reader = discretized_readers[task_name]
     else:
         reader = engineered_readers[task_name]
@@ -219,17 +218,17 @@ def test_demo_split(
         tests_io(f"Succeeded testing the filter for val and test!")
 
 
-@pytest.mark.parametrize("task_name", ["DECOMP"])
-@pytest.mark.parametrize("reader_flavour", ["discretized", "engineered"])
+@pytest.mark.parametrize("task_name", ["DECOMP", "LOS"])
+@pytest.mark.parametrize("preprocessing_style", ["discretized", "engineered"])
 def test_demo_and_ratio_split(
     task_name,
-    reader_flavour,
+    preprocessing_style,
     discretized_readers: Dict[str, ProcessedSetReader],
     engineered_readers: Dict[str, ProcessedSetReader],
 ):
-    tests_io(f"Test case demographic split with specified ratios for task: {task_name}", level=0)
+    tests_io("Test case demographic split with specified ratios", level=0)
     # Discretization or feature engineering
-    if reader_flavour == "discretized":
+    if preprocessing_style == "discretized":
         reader = discretized_readers[task_name]
     else:
         reader = engineered_readers[task_name]
@@ -303,16 +302,17 @@ def test_demo_and_ratio_split(
         tests_io(f"All splits have invalid sets for {attribute}!")
 
 
-@pytest.mark.parametrize("task_name", ["DECOMP"])
-@pytest.mark.parametrize("reader_flavour", ["discretized", "engineered"])
-def test_train_size(task_name, reader_flavour, discretized_readers: Dict[str, ProcessedSetReader],
+@pytest.mark.parametrize("task_name", ["DECOMP", "LOS"])
+@pytest.mark.parametrize("preprocessing_style", ["discretized", "engineered"])
+def test_train_size(task_name, preprocessing_style, discretized_readers: Dict[str,
+                                                                              ProcessedSetReader],
                     engineered_readers: Dict[str, ProcessedSetReader]):
 
     # Here we specify a train size, then proceed to test the different split methods, in order to see if
     # Fixing the train set size affects the splitting mechanism
-    tests_io(f"Test case train size for task: {task_name}", level=0)
+    tests_io("Test case train size", level=0)
     # Discretization or feature engineering
-    if reader_flavour == "discretized":
+    if preprocessing_style == "discretized":
         reader = discretized_readers[task_name]
     else:
         reader = engineered_readers[task_name]
@@ -649,12 +649,28 @@ def assert_range(column, demographic_filter, invert=False):
 
 
 if __name__ == "__main__":
+    # reader = datasets.load_data(chunksize=75836,
+    #                             source_path=TEST_DATA_DEMO,
+    #                             storage_path=SEMITEMP_DIR,
+    #                             discretize=True,
+    #                             time_step_size=1.0,
+    #                             start_at_zero=True,
+    #                             impute_strategy='previous',
+    #                             task='DECOMP')
+    # test_demographic_filter("DECOMP", "discretized", {"DECOMP": reader}, {})
+    # test_demo_split("DECOMP", "discretized", {"DECOMP": reader}, {})
+    # test_demo_and_ratio_split("DECOMP", "discretized", {"DECOMP": reader}, {})
+
+    # for _ in range(10):
+    #     test_demo_and_ratio_split("DECOMP", "discretized", {"DECOMP": reader}, {})
+    # test_train_size("DECOMP", "discretized", {"DECOMP": reader}, {})
+
     discretized_readers = dict()
     engineered_readers = dict()
     if TEMP_DIR.is_dir():
         shutil.rmtree(TEMP_DIR)
     # Ratio reduction only works well when there are enough samples in the set
-    for task_name in ["DECOMP"]:
+    for task_name in ["LOS", "DECOMP"]:
         reader = datasets.load_data(chunksize=75836,
                                     source_path=TEST_DATA_DEMO,
                                     storage_path=SEMITEMP_DIR,
@@ -671,11 +687,11 @@ if __name__ == "__main__":
                                     task=task_name)
         engineered_readers[task_name] = reader
         for processing_style in ["discretized", "engineered"]:
-            test_ratio_split(task_name, processing_style, discretized_readers, engineered_readers)
             test_demographic_filter(task_name, processing_style, discretized_readers,
                                     engineered_readers)
             test_demo_split(task_name, processing_style, discretized_readers, engineered_readers)
             test_demo_and_ratio_split(task_name, processing_style, discretized_readers,
                                       engineered_readers)
             test_train_size(task_name, processing_style, discretized_readers, engineered_readers)
+            test_ratio_split(task_name, processing_style, discretized_readers, engineered_readers)
     pass

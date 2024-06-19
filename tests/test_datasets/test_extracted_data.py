@@ -8,7 +8,7 @@ from tests.decorators import repeat
 from datasets.readers import ExtractedSetReader
 from pathlib import Path
 from utils.IO import *
-from tests.tsettings import *
+from tests.settings import *
 from tests.pytest_utils.general import assert_dataframe_equals
 
 top_level_files = ["diagnoses.csv", "icu_history.csv"]
