@@ -672,10 +672,10 @@ if __name__ == "__main__":
         engineered_readers[task_name] = reader
         for processing_style in ["discretized", "engineered"]:
             test_ratio_split(task_name, processing_style, discretized_readers, engineered_readers)
-            # test_demographic_filter(task_name, processing_style, discretized_readers,
-            #                         engineered_readers)
-            # test_demo_split(task_name, processing_style, discretized_readers, engineered_readers)
-            # test_demo_and_ratio_split(task_name, processing_style, discretized_readers,
-            #                           engineered_readers)
-            # test_train_size(task_name, processing_style, discretized_readers, engineered_readers)
+            test_demographic_filter(task_name, processing_style, discretized_readers,
+                                    engineered_readers)
+            test_demo_split(task_name, processing_style, discretized_readers, engineered_readers)
+            test_demo_and_ratio_split(task_name, processing_style, discretized_readers,
+                                      engineered_readers)
+            test_train_size(task_name, processing_style, discretized_readers, engineered_readers)
     pass
