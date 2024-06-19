@@ -726,12 +726,6 @@ class ProcessedSetReader(AbstractReader):
     """
 
     def __init__(self, root_path: Path, subject_ids: list = None) -> None:
-        """_summary_
-
-        Args:
-            root_path (Path): _description_
-            subject_folders (list, optional): _description_. Defaults to None.
-        """
         self._reader_switch = {
             "csv":
                 defaultdict(lambda: self._read_csv, \
@@ -995,6 +989,48 @@ class ProcessedSetReader(AbstractReader):
                  data_type=None,
                  return_ids: bool = False,
                  seed: int = 42):
+        """
+        Convert the dataset to a NumPy array of dim (#ofSamples, maxTimeSteps, Features).
+
+        This function reads the specified number of samples or samples of specified subject IDs from the dataset,
+        applies optional scaling and imputation, and returns the data in NumPy array format. It can also
+        return the IDs of the subjects if specified. The function only works if the dataset is entirely numeric,
+        that is only after categorization has been applied. (Discretization or Feature engineering)
+
+        Parameters
+        ----------
+        n_samples : int, optional
+            The number of samples to read. If `subject_ids` is specified, this parameter is ignored. Default is None.
+        scaler : object, optional
+            An object that implements the `transform` method, used to scale the data. Default is None.
+        imputer : object, optional
+            An object that implements the `transform` method, used to impute missing values in the data. Default is None.
+        subject_ids : list of int or list of str, optional
+            A list of subject IDs to read. If specified, `n_samples` is ignored. Default is None.
+        read_masks : bool, optional
+            Whether to read masks. Default is False.
+        read_timestamps : bool, optional
+            Whether to read timestamps. Default is False.
+        data_type : type, optional
+            The type to cast the read data to. Can be one of [pd.DataFrame, np.ndarray, None]. Default is None.
+        return_ids : bool, optional
+            Whether to return the IDs of the subjects along with the data. Default is False.
+        seed : int, optional
+            Random seed for reproducibility when sampling. Default is 42.
+
+        Returns
+        -------
+        dict
+            A dictionary containing the dataset. Keys include 'X' for the data, 'y' for the labels, and optionally 'M' for masks
+            and 't' for timestamps if `read_masks` and `read_timestamps` are True.
+        list of int or list of str, optional
+            A list of subject IDs if `return_ids` is True.
+
+        Raises
+        ------
+        ValueError
+            If `data_type` is not one of the possible data types (pd.DataFrame, np.ndarray, None).
+        """
         if subject_ids:
             if n_samples:
                 warn_io("Both n_samples and subject_ids are specified. Ignoring n_samples.")
