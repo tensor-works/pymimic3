@@ -71,7 +71,6 @@ class AbstractGenerator:
 
         # Start with any remainder from the previous batch
         X, y, M = next(self._generator)  # if not deepsupervsion m is timestamps else mask
-        assert X.shape[1] == y.shape[1] == M.shape[1]
         # Fetch new data until we have at least the required batch size
         while X.shape[0] < self._batch_size:
             X_res = self._remainder_X
@@ -82,15 +81,12 @@ class AbstractGenerator:
                     m_res = self._remainder_M
                     M = self._stack_batches((M, m_res)) if m_res.size else M
                 y = self._stack_batches((y, y_res)) if y_res.size else y
-                assert X.shape[1] == y.shape[1] == M.shape[1]
             else:
                 y = np.concatenate((y, y_res), axis=0, dtype=np.float32) if y_res.size else y
             if X.shape[0] < self._batch_size:
                 self._remainder_X, \
                 self._remainder_y, \
                 self._remainder_M = next(self._generator)
-                assert self._remainder_X.shape[1] == self._remainder_y.shape[
-                    1] == self._remainder_M.shape[1]
 
             # If the accumulated batch is larger than required, split it
             if X.shape[0] > self._batch_size:
@@ -114,7 +110,6 @@ class AbstractGenerator:
             self._remainder_M = np.array([])
 
         if self._deep_supervision:
-            assert X.shape[1] == y.shape[1] == M.shape[1]
             return X, y, M
         return X, y
 
@@ -130,7 +125,8 @@ class AbstractGenerator:
         return self._steps
 
     def __del__(self):
-        self._close()
+        if self._cpu_count:
+            self._close()
 
     def _create_workers(self):
         '''
@@ -179,7 +175,6 @@ class AbstractGenerator:
                 dynamci_result = ray.get(ready_ids[0])
                 for object_result in dynamci_result:
                     X, y, t = ray.get(object_result)
-                    assert X.shape[1] == y.shape[1] == t.shape[1]
                     yield X, y, t
             else:
                 random.shuffle(self._random_ids)
@@ -189,7 +184,6 @@ class AbstractGenerator:
                                                                     reader=self._reader,
                                                                     scaler=self._scaler,
                                                                     bining=self._bining):
-                        assert X.shape[1] == y.shape[1] == M.shape[1]
                         yield X, y, M
                 else:
                     for X, y, t in process_subject(args=(self._random_ids, self._batch_size),
@@ -198,7 +192,6 @@ class AbstractGenerator:
                                                    row_only=self._row_only,
                                                    bining=self._bining,
                                                    target_replication=self._target_replication):
-                        assert X.shape[1] == y.shape[1] == t.shape[1]
                         yield X, y, t
 
     @staticmethod
@@ -236,10 +229,15 @@ class AbstractGenerator:
         return Xs, ys, ts
 
     def _close(self):
-        ray.get(self.__results)
-        for worker in self._ray_workers:
-            worker.exit.remote()
-        self._ray_workers.clear()
+        try:
+            ray.get(self.__results)
+            for worker in self._ray_workers:
+                worker.exit.remote()
+            self._ray_workers.clear()
+        except ValueError as e:
+            # If shutdown is quicker than this this will
+            # raise a ValueError. We can safely ignore this
+            pass
 
     @staticmethod
     def _stack_batches(data):

@@ -1,6 +1,7 @@
 import torch.optim as optim
 import torch.nn as nn
 import torchmetrics
+from metrics.pytorch import AUCPRC
 
 __all__ = ["optimizer_mapping", "loss_mapping", "metric_mapping", "activation_mapping"]
 
@@ -42,7 +43,7 @@ metric_mapping = {
     "mape": torchmetrics.MeanAbsolutePercentageError,
     "confusion_matrix": torchmetrics.ConfusionMatrix,
     "cohen_kappa": torchmetrics.CohenKappa,
-    "pr_auc": torchmetrics.PrecisionRecallCurve
+    "pr_auc": AUCPRC
 }
 
 activation_mapping = {"sigmoid": nn.Sigmoid(), "softmax": nn.Softmax(dim=-1), "relu": nn.ReLU()}

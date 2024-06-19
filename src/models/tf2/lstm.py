@@ -6,6 +6,7 @@ from tensorflow.keras import Model
 from tensorflow.keras import layers
 from utils.IO import *
 from models.tf2.mappings import activation_names
+from models.tf2 import AbstractTf2Model
 
 
 class LSTMNetwork(Model):
@@ -97,15 +98,20 @@ if __name__ == "__main__":
                                 discretize=True,
                                 time_step_size=1.0,
                                 start_at_zero=True,
+                                deep_supervision=True,
                                 impute_strategy='previous',
                                 task="DECOMP")
 
-    reader = datasets.train_test_split(reader, test_size=0.2, val_size=0.1)
+    # reader = datasets.train_test_split(reader, test_size=0.2, val_size=0.1)
 
-    scaler = MinMaxScaler().fit_reader(reader.train)
-    train_generator = TFGenerator(reader=reader.train, scaler=scaler, batch_size=8, shuffle=True)
+    scaler = MinMaxScaler().fit_reader(reader)
+    train_generator = TFGenerator(reader=reader,
+                                  scaler=scaler,
+                                  batch_size=8,
+                                  shuffle=True,
+                                  deep_supervision=True)
 
-    val_generator = TFGenerator(reader=reader.val, scaler=scaler, batch_size=8, shuffle=True)
+    # val_generator = TFGenerator(reader=reader.val, scaler=scaler, batch_size=8, shuffle=True)
 
     model_path = Path(TEMP_DIR, "tf_lstm")
     model_path.mkdir(parents=True, exist_ok=True)
@@ -116,4 +122,4 @@ if __name__ == "__main__":
                         depth=3,
                         final_activation='sigmoid')
     model.compile(optimizer=Adam(learning_rate=0.000001, clipvalue=1.0), loss="binary_crossentropy")
-    history = model.fit(train_generator, validation_data=val_generator, epochs=1000)
+    history = model.fit(train_generator, epochs=1000)

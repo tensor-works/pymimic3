@@ -1040,14 +1040,16 @@ class ProcessedSetReader(AbstractReader):
                                         read_masks=read_masks,
                                         data_type=data_type)
         else:
-            dataset, subject_ids = self.random_samples(n_subjects=n_samples,
+
+            dataset, subject_ids = self.random_samples(n_subjects=len(self.subject_ids),
                                                        read_timestamps=read_timestamps,
                                                        data_type=data_type,
                                                        return_ids=True,
                                                        read_masks=read_masks,
                                                        seed=seed)
-            for prefix in deepcopy(list(dataset.keys())):
-                dataset[prefix] = dataset[prefix][:min(n_samples, len(dataset[prefix]))]
+            if n_samples is not None:
+                for prefix in deepcopy(list(dataset.keys())):
+                    dataset[prefix] = dataset[prefix][:min(n_samples, len(dataset[prefix]))]
         if imputer is not None:
             dataset["X"] = [imputer.transform(sample) for sample in dataset["X"]]
         if scaler is not None:
