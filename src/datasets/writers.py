@@ -72,10 +72,22 @@ class DataSetWriter():
         subject_ids = list(reduce(operator.and_, id_sets))
         return subject_ids
 
+    def _dynamic_file_type(self, subject_dir: Path):
+        """
+        Checks the file type of other files in the directory.
+        If none defaults to csv.
+        """
+        for file in subject_dir.iterdir():
+            if file.is_file():
+                if file.suffix.strip(".") == "h5":
+                    return "hdf5"
+                return file.suffix.strip(".")
+        return "csv"
+
     def write_bysubject(self,
                         data: dict,
                         index: bool = True,
-                        exists_ok: bool = False,
+                        append: bool = False,
                         file_type: str = "csv"):
         """
         Write data of file type by subject and create subject ID labeled directories.
@@ -86,7 +98,7 @@ class DataSetWriter():
             The data to write.
         index : bool, optional
             Whether to write the index. Default is True.
-        exists_ok : bool, optional
+        append : bool, optional
             Whether to overwrite existing files. Default is False.
         file_type : str, optional
             The file type to write. Must be one of ['csv', 'npy', 'hdf5']. Default is 'csv'.
@@ -99,9 +111,10 @@ class DataSetWriter():
         if self.root_path is None:
             return
 
-        if not file_type in ["csv", "npy", "hdf5"]:
+        if not file_type in ["csv", "npy", "hdf5", "dynamic"]:
             raise ValueError(
-                f"file_type {file_type} not supported. Must be one of ['csv', 'npy', 'hdf5']")
+                f"file_type {file_type} not supported. Must be one of ['csv', 'npy', 'hdf5', 'dynamic']"
+            )
 
         for subject_id in self._get_subject_ids(data):
 
@@ -109,7 +122,7 @@ class DataSetWriter():
                 subject_id=subject_id,
                 data={filename: data[filename][subject_id] for filename in data.keys()},
                 index=index,
-                exists_ok=exists_ok,
+                append=append,
                 file_type=file_type)
 
         return
@@ -118,7 +131,7 @@ class DataSetWriter():
                        subject_id: int,
                        data: dict,
                        index: bool = True,
-                       exists_ok: bool = False,
+                       append: bool = False,
                        file_type: str = "csv"):
         """
         Write all files for a single subject
@@ -128,8 +141,9 @@ class DataSetWriter():
                     path: Path,
                     index: str = True,
                     file_type: str = "csv",
-                    exists_ok: bool = False) -> None:
-            if exists_ok and path.is_file() and not file_type == "hd5f":
+                    append: bool = False) -> None:
+            # Saving df with different file types and append modes
+            if append and path.is_file() and not file_type == "hd5f":
                 mode = "a"
                 header = False
             else:
@@ -151,18 +165,25 @@ class DataSetWriter():
                 if isinstance(df, (pd.DataFrame, pd.Series)):
                     df = df.to_numpy()
                 np.save(Path(path.parent, f"{path.stem}.npy"), df)
+            else:
+                raise ValueError(f"file_type {file_type} not supported")
 
-        if file_type in ["npy", "hdf5"] and exists_ok:
+        # --------------- parameter checks ---------------
+        if file_type in ["npy", "hdf5"] and append:
             raise ValueError("Append mode not supported for numpy files!")
 
-        if not file_type in ["csv", "npy", "hdf5"]:
-            raise ValueError(
-                f"file_type {file_type} not supported. Must be one of ['csv', 'npy', 'hdf5']")
+        if not file_type in ["csv", "npy", "hdf5", "dynamic"]:
+            raise ValueError(f"file_type {file_type} not supported. Must be one"
+                             " of ['csv', 'npy', 'hdf5', 'dynamic']")
+
+        subject_path = Path(self.root_path, str(subject_id))
+        if file_type == "dynamic":
+            file_type = self._dynamic_file_type(subject_path)
+
+        # ----------------- write files -----------------
         for filename, item in data.items():
             delet_flag = False
             self._check_filename(filename)
-
-            subject_path = Path(self.root_path, str(subject_id))
 
             if not subject_path.is_dir():
                 subject_path.mkdir(parents=True, exist_ok=True)
@@ -170,27 +191,22 @@ class DataSetWriter():
                 if not len(item):
                     continue
                 csv_path = Path(subject_path, f"{filename}")
-                save_df(df=item,
-                        path=csv_path,
-                        index=index,
-                        file_type=file_type,
-                        exists_ok=exists_ok)
+                save_df(df=item, path=csv_path, index=index, file_type=file_type, append=append)
             elif isinstance(item, dict):
                 for icustay_id, data in item.items():
                     if not len(data):
                         continue
                     csv_path = Path(subject_path, f"{filename}_{icustay_id}")
-                    save_df(df=data,
-                            path=csv_path,
-                            index=index,
-                            file_type=file_type,
-                            exists_ok=exists_ok)
+                    save_df(df=data, path=csv_path, index=index, file_type=file_type, append=append)
+            else:
+                raise TypeError(
+                    f"Object of type {type(item)} cannot be written using dataset writer\n"
+                    "Should be one of dict, pd.DataFrame, pd.Series or np.ndarray")
 
             # do not create empty or incomplete folders
             if not [folder for folder in subject_path.iterdir()] or delet_flag:
-                debug_io(
-                    f"Removing folder {subject_path}, because a file is missing or the folder is empty!"
-                )
+                debug_io(f"Removing folder {subject_path}, because a "
+                         "file is missing or the folder is empty!")
                 shutil.rmtree(str(subject_path))
 
     def write_subject_events(self, data: dict, lock: mp.Lock = NoopLock(), dtypes: dict = None):

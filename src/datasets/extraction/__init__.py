@@ -225,7 +225,7 @@ def compact_extraction(storage_path: Path,
         episodic_data, timeseries = extract_timeseries(subject_events, subject_diagnoses,
                                                        subject_icu_history, varmap_df)
         name_data_pair = {"episodic_data": episodic_data, "timeseries": timeseries}
-        dataset_writer.write_bysubject(name_data_pair, exists_ok=True)
+        dataset_writer.write_bysubject(name_data_pair, append=True)
 
         tracker.subject_ids.extend(list(timeseries.keys()))
         tracker.has_episodic_data = True

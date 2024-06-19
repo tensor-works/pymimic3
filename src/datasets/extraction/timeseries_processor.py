@@ -140,7 +140,7 @@ class TimeseriesProcessor(object):
             "episodic_data": episodic_data,
             "timeseries": timeseries,
         }
-        dataset_writer_pr.write_bysubject(name_data_pairs, exists_ok=True)
+        dataset_writer_pr.write_bysubject(name_data_pairs, append=True)
 
         info_dfs = list()
         # Return episodic information for compact storage as it is still needed for subsequent processing
