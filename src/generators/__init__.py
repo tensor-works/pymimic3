@@ -9,6 +9,7 @@ from copy import deepcopy
 from pathlib import Path
 from utils.IO import *
 from typing import List
+from utils import zeropad_samples
 from preprocessing.scalers import AbstractScaler
 from datasets.trackers import PreprocessingTracker
 from datasets.readers import ProcessedSetReader
@@ -41,15 +42,18 @@ class AbstractGenerator:
         random.shuffle(self._random_ids)
         self._generator = self.__generator()
         self._row_only = False
-        if not ray.is_initialized():
-            ray.init(ignore_reinit_error=True, num_cpus=mp.cpu_count() - 1)
+        if num_cpus:
+            if not ray.is_initialized():
+                ray.init(ignore_reinit_error=True, num_cpus=mp.cpu_count() - 1)
 
-        ray_res = ray.cluster_resources()
-        ray_cpu = int(ray_res.get("CPU", 0))
-        if num_cpus is None:
-            self._cpu_count = min(max(1, (ray_cpu - 1)), ray_cpu)
+            ray_res = ray.cluster_resources()
+            ray_cpu = int(ray_res.get("CPU", 0))
+            if num_cpus is None:
+                self._cpu_count = min(max(1, (ray_cpu - 1)), ray_cpu)
+            else:
+                self._cpu_count = min(num_cpus, ray_cpu)
         else:
-            self._cpu_count = min(num_cpus, ray_cpu)
+            self._cpu_count = 0
         self._ray_workers = list()
         if bining not in ["none", "log", "custom"]:
             raise ValueError("Bining must be one of ['none', 'log', 'custom']")
@@ -61,7 +65,7 @@ class AbstractGenerator:
         self._remainder_M = np.array([])
 
     def __getitem__(self, index=None):
-        if not self._ray_workers:
+        if not self._ray_workers and self._cpu_count:
             self._create_workers()
             self._start_epoch()
 
@@ -96,7 +100,8 @@ class AbstractGenerator:
 
         self._counter += 1
         if self._counter >= self._steps:
-            self._close()
+            if self._cpu_count:
+                self._close()
             self._counter = 0
             self._remainder_X = np.array([])
             self._remainder_y = np.array([])
@@ -140,7 +145,7 @@ class AbstractGenerator:
         '''
         self._ray_workers: List[RayWorker] = [
             RayWorker.remote(self._reader, self._scaler, self._row_only, self._bining,
-                             self._columns, self._deep_supervision, self._target_replication)
+                             self._columns, self._target_replication)
             for _ in range(self._cpu_count)
         ]
 
@@ -162,11 +167,29 @@ class AbstractGenerator:
 
     def __generator(self):
         while True:
-            ready_ids, _ = ray.wait(self.__results, num_returns=1)
-            dynamci_result = ray.get(ready_ids[0])
-            for object_result in dynamci_result:
-                X, y, t = ray.get(object_result)
-                yield X, y, t
+            if self._cpu_count:
+                ready_ids, _ = ray.wait(self.__results, num_returns=1)
+                dynamci_result = ray.get(ready_ids[0])
+                for object_result in dynamci_result:
+                    X, y, t = ray.get(object_result)
+                    yield X, y, t
+            else:
+                random.shuffle(self._random_ids)
+                if self._deep_supervision:
+                    for X, y, m in process_subject_deep_supervision(args=(self._random_ids,
+                                                                          self._batch_size),
+                                                                    reader=self._reader,
+                                                                    scaler=self._scaler,
+                                                                    bining=self._bining):
+                        yield X, y, m
+                else:
+                    for X, y, t in process_subject(args=(self._random_ids, self._batch_size),
+                                                   reader=self._reader,
+                                                   scaler=self._scaler,
+                                                   row_only=self._row_only,
+                                                   bining=self._bining,
+                                                   target_replication=self._target_replication):
+                        yield X, y, t
 
     @staticmethod
     def split_ids(input_list, cpu_count):
@@ -183,11 +206,7 @@ class AbstractGenerator:
         return chunks
 
     @staticmethod
-    def read_timeseries(X_df: pd.DataFrame,
-                        y_df: pd.DataFrame,
-                        row_only=False,
-                        bining="none",
-                        masks=False):
+    def read_timeseries(X_df: pd.DataFrame, y_df: pd.DataFrame, row_only=False, bining="none"):
         if bining == "log":
             y = y_df.applymap(LogBins.get_bin_log)
         elif bining == "custom":
@@ -206,30 +225,11 @@ class AbstractGenerator:
 
         return Xs, ys, ts
 
-    @staticmethod
-    def _shuffled_data(Xs, ys, ts):
-        indices = list(range(len(Xs)))
-        random.shuffle(indices)
-        Xs = [Xs[i] for i in indices]
-        ys = [ys[i] for i in indices]
-        ts = [ts[i] for i in indices]
-        return Xs, ys, ts
-
     def _close(self):
         ray.get(self.__results)
         for worker in self._ray_workers:
             worker.exit.remote()
         self._ray_workers.clear()
-
-    @staticmethod
-    def _zeropad_samples(data):
-        max_len = max([x.shape[0] for x in data])
-        ret = [
-            np.concatenate([x, np.zeros((max_len - x.shape[0],) + x.shape[1:])],
-                           axis=0,
-                           dtype=np.float32) for x in data
-        ]
-        return np.atleast_3d(np.array(ret, dtype=np.float32))
 
     @staticmethod
     def _stack_batches(data):
@@ -242,6 +242,9 @@ class AbstractGenerator:
         return np.concatenate(data, axis=0, dtype=np.float32)
 
 
+# TODO! these worker functions must go somewhere else
+
+
 @ray.remote
 class RayWorker:
 
@@ -251,7 +254,6 @@ class RayWorker:
                  row_only: bool,
                  bining: str,
                  columns: list,
-                 deep_supervision: bool = False,
                  target_replication: bool = False):
         self._reader = reader
         self._scaler = scaler
@@ -261,223 +263,138 @@ class RayWorker:
         self._target_replication = target_replication
 
     def process_subject_deep_supervision(self, args):
-        subject_ids, batch_size = args
-        # Store the current logging level
-        previous_logging_level = logging.getLogger().level
-
-        # Set logging level to CRITICAL to suppress logging
-        logging.getLogger().setLevel(logging.CRITICAL)
-        # try:
-        X_batch, y_batch, m_batch, t_batch = list(), list(), list(), list()
-        for subject_id in subject_ids:
-            X_subject, y_subject, M_subject = self._reader.read_sample(subject_id,
-                                                                       read_masks=True,
-                                                                       read_ids=True).values()
-            for stay_id in X_subject.keys():
-                X_stay = X_subject[stay_id]
-                X_stay[X_stay.columns] = self._scaler.transform(X_stay)
-                X_batch.append(X_stay)
-                y_batch.append(y_subject[stay_id])
-                m_batch.append(M_subject[stay_id])
-                if len(X_batch) == batch_size:
-                    X = AbstractGenerator._zeropad_samples(X_batch)
-                    y = AbstractGenerator._zeropad_samples(y_batch)
-                    m = AbstractGenerator._zeropad_samples(m_batch)
-                    y = np.array(y, dtype=np.float32)
-                    m = np.array(m, dtype=np.float32)
-                    X_batch.clear()
-                    y_batch.clear()
-                    m_batch.clear()
-                    yield X, y, m
-        if X_batch:
-            X = AbstractGenerator._zeropad_samples(X_batch)
-            y = AbstractGenerator._zeropad_samples(y_batch)
-            m = AbstractGenerator._zeropad_samples(m_batch)
-            y = np.array(y, dtype=np.float32)
-            m = np.array(m, dtype=np.float32)
-            X_batch.clear()
-            y_batch.clear()
-            m_batch.clear()
-            t_batch.clear()
-            yield X, y, m
-        # finally:
-        # Restore the previous logging level
-        logging.getLogger().setLevel(previous_logging_level)
-        # ray.actor.exit_actor()
-        return
+        return process_subject_deep_supervision(args,
+                                                reader=self._reader,
+                                                scaler=self._scaler,
+                                                bining=self._bining)
 
     def process_subject(self, args):
-        subject_ids, batch_size = args
-        # Store the current logging level
-        previous_logging_level = logging.getLogger().level
-
-        # Set logging level to CRITICAL to suppress logging
-        logging.getLogger().setLevel(logging.CRITICAL)
-        # try:
-        X_batch, y_batch, t_batch = list(), list(), list()
-        for subject_id in subject_ids:
-            X_subject, y_subject = self._reader.read_sample(subject_id, read_ids=True).values()
-            for stay_id in X_subject.keys():
-                X_stay, y_stay = X_subject[stay_id], y_subject[stay_id]
-                X_stay[X_stay.columns] = self._scaler.transform(X_stay)
-                Xs, ys, ts = AbstractGenerator.read_timeseries(X_df=X_stay,
-                                                               y_df=y_stay,
-                                                               row_only=self._row_only,
-                                                               bining=self._bining)
-                Xs, ys, ts = AbstractGenerator._shuffled_data(Xs, ys, ts)
-                for X, y, t in zip(Xs, ys, ts):
-                    if self._target_replication:
-                        y = np.atleast_2d(y).repeat(X.shape[0], axis=0)
-                    X_batch.append(X)
-                    y_batch.append(y)
-                    t_batch.append(t)
-                    if len(X_batch) == batch_size:
-                        X = AbstractGenerator._zeropad_samples(X_batch)
-                        if self._target_replication:
-                            y = AbstractGenerator._zeropad_samples(y_batch)
-                        else:
-                            y = np.array(y_batch, dtype=np.float32)
-                        t = np.array(t_batch, dtype=np.float32)
-                        X_batch.clear()
-                        y_batch.clear()
-                        t_batch.clear()
-                        yield X, y, t
-
-        if X_batch:
-            X = AbstractGenerator._zeropad_samples(X_batch)
-            if self._target_replication:
-                y = AbstractGenerator._zeropad_samples(y_batch)
-            else:
-                y = np.array(y_batch, dtype=np.float32)
-            t = np.array(t_batch, dtype=np.float32)
-            X_batch.clear()
-            y_batch.clear()
-            t_batch.clear()
-            yield X, y, t
-        #finally:
-        # Restore the previous logging level
-        logging.getLogger().setLevel(previous_logging_level)
-        return
+        return process_subject(args,
+                               reader=self._reader,
+                               scaler=self._scaler,
+                               row_only=self._row_only,
+                               bining=self._bining,
+                               target_replication=self._target_replication)
 
     def exit(self):
         ray.actor.exit_actor()
 
 
-class RayWorkerDebug:
+def process_subject_deep_supervision(args, reader: ProcessedSetReader, scaler: AbstractScaler,
+                                     bining: str):
+    # TODO! deep supervision binning
+    subject_ids, batch_size = args
+    # Store the current logging level
+    previous_logging_level = logging.getLogger().level
 
-    def __init__(self,
-                 reader: ProcessedSetReader,
-                 scaler: AbstractScaler,
-                 row_only: bool,
-                 bining: str,
-                 columns: list,
-                 deep_supervision: bool = False,
-                 target_replication: bool = False):
-        self._reader = reader
-        self._scaler = scaler
-        self._row_only = row_only
-        self._bining = bining
-        self._columns = columns
-        self._target_replication = target_replication
+    # Set logging level to CRITICAL to suppress logging
+    logging.getLogger().setLevel(logging.CRITICAL)
+    # try:
+    X_batch, y_batch, m_batch, t_batch = list(), list(), list(), list()
+    for subject_id in subject_ids:
+        X_subject, y_subject, M_subject = reader.read_sample(subject_id,
+                                                             read_masks=True,
+                                                             read_ids=True).values()
+        for stay_id in X_subject.keys():
+            X_stay = X_subject[stay_id]
+            X_stay[X_stay.columns] = scaler.transform(X_stay)
+            X_batch.append(X_stay)
+            y_batch.append(y_subject[stay_id])
+            m_batch.append(M_subject[stay_id])
+            if len(X_batch) == batch_size:
+                # Shuffle the inside of the batch again
+                X_batch, y_batch, m_batch = shuffled_data(X_batch, y_batch, m_batch)
+                X = zeropad_samples(X_batch)
+                y = zeropad_samples(y_batch)
+                m = zeropad_samples(m_batch)
+                y = np.array(y, dtype=np.float32)
+                m = np.array(m, dtype=np.float32)
+                X_batch.clear()
+                y_batch.clear()
+                m_batch.clear()
+                yield X, y, m
+    if X_batch:
+        # Shuffle the inside of the batch again
+        X_batch, y_batch, m_batch = shuffled_data(X_batch, y_batch, m_batch)
+        X = zeropad_samples(X_batch)
+        y = zeropad_samples(y_batch)
+        m = zeropad_samples(m_batch)
+        y = np.array(y, dtype=np.float32)
+        m = np.array(m, dtype=np.float32)
+        X_batch.clear()
+        y_batch.clear()
+        m_batch.clear()
+        t_batch.clear()
+        yield X, y, m
+    # finally:
+    # Restore the previous logging level
+    logging.getLogger().setLevel(previous_logging_level)
+    return
 
-    def process_subject_deep_supervision(self, args):
-        subject_ids, batch_size = args
-        # Store the current logging level
-        previous_logging_level = logging.getLogger().level
 
-        # Set logging level to CRITICAL to suppress logging
-        logging.getLogger().setLevel(logging.CRITICAL)
-        # try:
-        X_batch, y_batch, m_batch, t_batch = list(), list(), list(), list()
-        for subject_id in subject_ids:
-            X_subject, y_subject, M_subject = self._reader.read_sample(subject_id,
-                                                                       read_masks=True,
-                                                                       read_ids=True).values()
-            for stay_id in X_subject.keys():
-                X_stay = X_subject[stay_id]
-                X_stay[X_stay.columns] = self._scaler.transform(X_stay)
-                X_batch.append(X_stay)
-                y_batch.append(y_subject[stay_id])
-                m_batch.append(M_subject[stay_id])
+def process_subject(args, reader: ProcessedSetReader, scaler: AbstractScaler, row_only: bool,
+                    bining: str, target_replication: bool):
+    subject_ids, batch_size = args
+    # Store the current logging level
+    previous_logging_level = logging.getLogger().level
+
+    # Set logging level to CRITICAL to suppress logging
+    logging.getLogger().setLevel(logging.CRITICAL)
+    # try:
+    X_batch, y_batch, t_batch = list(), list(), list()
+    for subject_id in subject_ids:
+        X_subject, y_subject = reader.read_sample(subject_id, read_ids=True).values()
+        for stay_id in X_subject.keys():
+            X_stay, y_stay = X_subject[stay_id], y_subject[stay_id]
+            X_stay[X_stay.columns] = scaler.transform(X_stay)
+            Xs, ys, ts = AbstractGenerator.read_timeseries(X_df=X_stay,
+                                                           y_df=y_stay,
+                                                           row_only=row_only,
+                                                           bining=bining)
+            Xs, ys, ts = shuffled_data(Xs, ys, ts)
+            for X, y, t in zip(Xs, ys, ts):
+                if target_replication:
+                    y = np.atleast_2d(y).repeat(X.shape[0], axis=0)
+                X_batch.append(X)
+                y_batch.append(y)
+                t_batch.append(t)
                 if len(X_batch) == batch_size:
-                    X = AbstractGenerator._zeropad_samples(X_batch)
-                    y = AbstractGenerator._zeropad_samples(y_batch)
-                    m = AbstractGenerator._zeropad_samples(m_batch)
-                    y = np.array(y, dtype=np.float32)
-                    m = np.array(m, dtype=np.float32)
+                    # Shuffle the inside of the batch again
+                    X_batch, y_batch, t_batch = shuffled_data(X_batch, y_batch, t_batch)
+                    X = zeropad_samples(X_batch)
+                    if target_replication:
+                        y = zeropad_samples(y_batch)
+                    else:
+                        y = np.array(y_batch, dtype=np.float32)
+                    t = np.array(t_batch, dtype=np.float32)
                     X_batch.clear()
                     y_batch.clear()
-                    m_batch.clear()
-                    yield X, y, m
-        if X_batch:
-            X = AbstractGenerator._zeropad_samples(X_batch)
-            y = AbstractGenerator._zeropad_samples(y_batch)
-            m = AbstractGenerator._zeropad_samples(m_batch)
-            y = np.array(y, dtype=np.float32)
-            m = np.array(m, dtype=np.float32)
-            X_batch.clear()
-            y_batch.clear()
-            m_batch.clear()
-            t_batch.clear()
-            yield X, y, m
-        # finally:
-        # Restore the previous logging level
-        logging.getLogger().setLevel(previous_logging_level)
-        # ray.actor.exit_actor()
-        return
+                    t_batch.clear()
+                    yield X, y, t
 
-    def process_subject(self, args):
-        subject_ids, batch_size = args
-        # Store the current logging level
-        previous_logging_level = logging.getLogger().level
+    if X_batch:
+        # Shuffle the inside of the batch again
+        X_batch, y_batch, t_batch = shuffled_data(X_batch, y_batch, t_batch)
+        X = zeropad_samples(X_batch)
+        if target_replication:
+            y = zeropad_samples(y_batch)
+        else:
+            y = np.array(y_batch, dtype=np.float32)
+        t = np.array(t_batch, dtype=np.float32)
+        X_batch.clear()
+        y_batch.clear()
+        t_batch.clear()
+        yield X, y, t
+    #finally:
+    # Restore the previous logging level
+    logging.getLogger().setLevel(previous_logging_level)
+    return
 
-        # Set logging level to CRITICAL to suppress logging
-        logging.getLogger().setLevel(logging.CRITICAL)
-        # try:
-        X_batch, y_batch, t_batch = list(), list(), list()
-        for subject_id in subject_ids:
-            X_subject, y_subject = self._reader.read_sample(subject_id, read_ids=True).values()
-            for stay_id in X_subject.keys():
-                X_stay, y_stay = X_subject[stay_id], y_subject[stay_id]
-                X_stay[X_stay.columns] = self._scaler.transform(X_stay)
-                Xs, ys, ts = AbstractGenerator.read_timeseries(X_df=X_stay,
-                                                               y_df=y_stay,
-                                                               row_only=self._row_only,
-                                                               bining=self._bining)
-                Xs, ys, ts = AbstractGenerator._shuffled_data(Xs, ys, ts)
-                for X, y, t in zip(Xs, ys, ts):
-                    if self._target_replication:
-                        y = np.atleast_2d(y).repeat(X.shape[0], axis=0)
-                    X_batch.append(X)
-                    y_batch.append(y)
-                    t_batch.append(t)
-                    if len(X_batch) == batch_size:
-                        X = AbstractGenerator._zeropad_samples(X_batch)
-                        if self._target_replication:
-                            y = AbstractGenerator._zeropad_samples(y_batch)
-                        else:
-                            y = np.array(y_batch, dtype=np.float32)
-                        t = np.array(t_batch, dtype=np.float32)
-                        X_batch.clear()
-                        y_batch.clear()
-                        t_batch.clear()
-                        yield X, y, t
 
-        if X_batch:
-            X = AbstractGenerator._zeropad_samples(X_batch)
-            if self._target_replication:
-                y = AbstractGenerator._zeropad_samples(y_batch)
-            else:
-                y = np.array(y_batch, dtype=np.float32)
-            t = np.array(t_batch, dtype=np.float32)
-            X_batch.clear()
-            y_batch.clear()
-            t_batch.clear()
-            yield X, y, t
-        #finally:
-        # Restore the previous logging level
-        logging.getLogger().setLevel(previous_logging_level)
-        return
-
-    def exit(self):
-        ray.actor.exit_actor()
+def shuffled_data(Xs, ys, ts):
+    indices = list(range(len(Xs)))
+    random.shuffle(indices)
+    Xs = [Xs[i] for i in indices]
+    ys = [ys[i] for i in indices]
+    ts = [ts[i] for i in indices]
+    return Xs, ys, ts

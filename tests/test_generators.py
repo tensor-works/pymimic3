@@ -19,15 +19,17 @@ from pathos import multiprocessing as mp
 @pytest.mark.parametrize("mode", ["deep_supervision", "standard"])
 @pytest.mark.parametrize("batch_size", [1, 16])
 @pytest.mark.parametrize("task_name", ["DECOMP", "LOS"])
-def test_tf_generators_with_ds(task_name: str, batch_size: int, mode: str,
+@pytest.mark.parametrize("multiprocessed", [True, False])
+def test_tf_generators_with_ds(task_name: str, batch_size: int, mode: str, multiprocessed: bool,
                                discretized_readers: Dict[str, ProcessedSetReader]):
     tests_io(f"Test case tf2 generator for task: {task_name}", level=0)
     reader = discretized_readers[task_name]
 
-    if ray.is_initialized():
-        ray.shutdown()
-    n_cpus = min(mp.cpu_count(), 4)
-    ray.init(num_cpus=n_cpus)
+    if multiprocessed:
+        if ray.is_initialized():
+            ray.shutdown()
+        n_cpus = min(mp.cpu_count(), 4)
+        ray.init(num_cpus=n_cpus)
 
     # Test reader supervision
     X, y, m = reader.random_samples(1, read_masks=True)
@@ -49,6 +51,7 @@ def test_tf_generators_with_ds(task_name: str, batch_size: int, mode: str,
         generator = TFGenerator(reader=reader,
                                 scaler=scaler,
                                 batch_size=batch_size,
+                                num_cpus=n_cpus if multiprocessed else 0,
                                 deep_supervision=(mode == "deep_supervision"),
                                 target_replication=(mode == "target_replication"),
                                 bining=bining,
@@ -73,21 +76,24 @@ def test_tf_generators_with_ds(task_name: str, batch_size: int, mode: str,
         tests_io(f"Successfully tested {batch + 1} batches\n")
         if task_name != "LOS":
             break
-
-    ray.shutdown()
+    if multiprocessed:
+        ray.shutdown()
 
 
 @pytest.mark.parametrize("mode", ["target_replication", "standard"])
 @pytest.mark.parametrize("batch_size", [1, 16])
 @pytest.mark.parametrize("task_name", ["IHM", "PHENO"])
-def test_tf_generators_with_tr(task_name, batch_size, mode, discretized_readers):
+@pytest.mark.parametrize("multiprocessed", [True, False])
+def test_tf_generators_with_tr(task_name: str, batch_size: int, mode: str, multiprocessed: bool,
+                               discretized_readers):
     tests_io(f"Test case tf2 generator for task: {task_name}", level=0)
     reader = discretized_readers[task_name]
 
-    if ray.is_initialized():
-        ray.shutdown()
-    n_cpus = min(mp.cpu_count(), 4)
-    ray.init(num_cpus=n_cpus)
+    if multiprocessed:
+        if ray.is_initialized():
+            ray.shutdown()
+        n_cpus = min(mp.cpu_count(), 4)
+        ray.init(num_cpus=n_cpus)
     # Prepare generator inputs
     scaler = MinMaxScaler().fit_reader(reader)
 
@@ -100,6 +106,7 @@ def test_tf_generators_with_tr(task_name, batch_size, mode, discretized_readers)
     generator = TFGenerator(reader=reader,
                             scaler=scaler,
                             batch_size=batch_size,
+                            num_cpus=n_cpus if multiprocessed else 0,
                             deep_supervision=(mode == "deep_supervision"),
                             target_replication=(mode == "target_replication"),
                             shuffle=True)
@@ -114,21 +121,24 @@ def test_tf_generators_with_tr(task_name, batch_size, mode, discretized_readers)
                             target_repl=(mode == "target_replication"))
         tests_io(f"Successfully tested {batch + 1} batches", flush=True)
     tests_io(f"Successfully tested {batch + 1} batches\n")
-    ray.shutdown()
+    if multiprocessed:
+        ray.shutdown()
 
 
 @pytest.mark.parametrize("mode", ["deep_supervision", "standard"])
 @pytest.mark.parametrize("batch_size", [1, 16])
 @pytest.mark.parametrize("task_name", ["DECOMP", "LOS"])
-def test_torch_generators_with_ds(task_name: str, batch_size: int, mode: str,
+@pytest.mark.parametrize("multiprocessed", [True, False])
+def test_torch_generators_with_ds(task_name: str, batch_size: int, mode: str, multiprocessed: bool,
                                   discretized_readers: Dict[str, ProcessedSetReader]):
     tests_io(f"Test case torch generator for task: {task_name}", level=0)
     reader = discretized_readers[task_name]
 
-    if ray.is_initialized():
-        ray.shutdown()
-    n_cpus = min(mp.cpu_count(), 4)
-    ray.init(num_cpus=n_cpus)
+    if multiprocessed:
+        if ray.is_initialized():
+            ray.shutdown()
+        n_cpus = min(mp.cpu_count(), 4)
+        ray.init(num_cpus=n_cpus)
     # Prepare generator inputs
 
     # Test reader supervision
@@ -150,6 +160,7 @@ def test_torch_generators_with_ds(task_name: str, batch_size: int, mode: str,
         generator = TorchGenerator(reader=reader,
                                    scaler=scaler,
                                    batch_size=batch_size,
+                                   num_cpus=n_cpus if multiprocessed else 0,
                                    deep_supervision=(mode == "deep_supervision"),
                                    target_replication=(mode == "target_replication"),
                                    bining=bining,
@@ -185,21 +196,24 @@ def test_torch_generators_with_ds(task_name: str, batch_size: int, mode: str,
         tests_io(f"Time enrolling the generator was: {minutes} min, {seconds:.2f} sec")
         if task_name != "LOS":
             break
-    ray.shutdown()
+    if multiprocessed:
+        ray.shutdown()
 
 
 @pytest.mark.parametrize("mode", ["target_replication", "standard"])
 @pytest.mark.parametrize("batch_size", [1, 16])
 @pytest.mark.parametrize("task_name", ["IHM", "PHENO"])
-def test_torch_generators_with_tr(task_name: str, batch_size: int, mode: str,
+@pytest.mark.parametrize("multiprocessed", [True, False])
+def test_torch_generators_with_tr(task_name: str, batch_size: int, mode: str, multiprocessed: bool,
                                   discretized_readers: Dict[str, ProcessedSetReader]):
     tests_io(f"Test case torch generator for task: {task_name}", level=0)
     reader = discretized_readers[task_name]
 
-    n_cpus = min(mp.cpu_count(), 4)
-    if ray.is_initialized():
-        ray.shutdown()
-    ray.init(num_cpus=n_cpus)
+    if multiprocessed:
+        n_cpus = min(mp.cpu_count(), 4)
+        if ray.is_initialized():
+            ray.shutdown()
+        ray.init(num_cpus=n_cpus)
     # Prepare generator inputs
     scaler = MinMaxScaler().fit_reader(reader)
 
@@ -211,6 +225,7 @@ def test_torch_generators_with_tr(task_name: str, batch_size: int, mode: str,
     # Create generator
     generator = TorchGenerator(reader=reader,
                                scaler=scaler,
+                               num_cpus=n_cpus if multiprocessed else 0,
                                batch_size=batch_size,
                                deep_supervision=False,
                                target_replication=(mode == "target_replication"),
@@ -238,18 +253,22 @@ def test_torch_generators_with_tr(task_name: str, batch_size: int, mode: str,
     seconds = elapsed_time % 60
 
     tests_io(f"Time enrolling the generator was: {minutes} min, {seconds:.2f} sec")
-    ray.shutdown()
+    if multiprocessed:
+        ray.shutdown()
 
 
 @pytest.mark.parametrize("task_name", set(TASK_NAMES) - set(["MULTI"]))
-def test_river_generator(task_name, engineered_readers):
+@pytest.mark.parametrize("multiprocessed", [True, False])
+def test_river_generator(task_name: str, multiprocessed: bool,
+                         engineered_readers: ProcessedSetReader):
     tests_io(f"Test case river generator for task: {task_name}", level=0)
     reader = engineered_readers[task_name]
 
-    n_cpus = min(mp.cpu_count(), 4)
-    if ray.is_initialized():
-        ray.shutdown()
-    ray.init(num_cpus=n_cpus)
+    if multiprocessed:
+        n_cpus = min(mp.cpu_count(), 4)
+        if ray.is_initialized():
+            ray.shutdown()
+        ray.init(num_cpus=n_cpus)
     # Prepare generator inputs
     imputer = PartialImputer().fit_reader(reader)
     scaler = MinMaxScaler(imputer=imputer).fit_reader(reader)
@@ -257,7 +276,11 @@ def test_river_generator(task_name, engineered_readers):
     # Bining types for LOS
     for bining in ["none", "log", "custom"]:
         # No Batch sizes this is a stream
-        generator = RiverGenerator(reader=reader, scaler=scaler, shuffle=True, bining=bining)
+        generator = RiverGenerator(reader=reader,
+                                   scaler=scaler,
+                                   num_cpus=n_cpus if multiprocessed else 0,
+                                   shuffle=True,
+                                   bining=bining)
         if task_name == "LOS":
             tests_io(f"Test case with bining: {bining}")
         # Create generator
@@ -272,7 +295,8 @@ def test_river_generator(task_name, engineered_readers):
         tests_io(f"Successfully tested {batch + 1} batches\n")
         if task_name != "LOS":
             break
-    ray.shutdown()
+    if multiprocessed:
+        ray.shutdown()
 
 
 def assert_batch_sanity(X: np.ndarray,
@@ -354,7 +378,7 @@ def assert_sample_sanity(X: np.ndarray,
 
 
 if __name__ == "__main__":
-    for task_name in ["PHENO"]:  # TASK_NAMES:
+    for task_name in TASK_NAMES:
         if task_name == "MULTI":
             continue
         if not Path(SEMITEMP_DIR, "discretized", task_name).is_dir():
