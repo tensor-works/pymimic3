@@ -16,6 +16,16 @@ from utils.IO import *
 from pathlib import Path
 
 
+def zeropad_samples(data):
+    max_len = max([x.shape[0] for x in data])
+    ret = [
+        np.concatenate([x, np.zeros((max_len - x.shape[0],) + x.shape[1:])],
+                       axis=0,
+                       dtype=np.float32) for x in data
+    ]
+    return np.atleast_3d(np.array(ret, dtype=np.float32))
+
+
 def is_numerical(df: pd.DataFrame) -> bool:
     """
     Check if a DataFrame contains only numerical data.

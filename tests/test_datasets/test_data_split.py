@@ -62,6 +62,7 @@ def test_ratio_split(
                                                             str(curr_iter))))
             curr_iter += 1
 
+    curr_iter = 0
     # Test restoring splits for previous values
     for test_size in [0.0, 0.2, 0.4]:
         for val_size in [0.0, 0.2, 0.4]:
@@ -653,7 +654,7 @@ if __name__ == "__main__":
     if TEMP_DIR.is_dir():
         shutil.rmtree(TEMP_DIR)
     # Ratio reduction only works well when there are enough samples in the set
-    for task_name in ["LOS", "DECOMP"]:
+    for task_name in ["DECOMP"]:
         reader = datasets.load_data(chunksize=75836,
                                     source_path=TEST_DATA_DEMO,
                                     storage_path=SEMITEMP_DIR,
@@ -670,11 +671,11 @@ if __name__ == "__main__":
                                     task=task_name)
         engineered_readers[task_name] = reader
         for processing_style in ["discretized", "engineered"]:
+            test_ratio_split(task_name, processing_style, discretized_readers, engineered_readers)
             test_demographic_filter(task_name, processing_style, discretized_readers,
                                     engineered_readers)
             test_demo_split(task_name, processing_style, discretized_readers, engineered_readers)
             test_demo_and_ratio_split(task_name, processing_style, discretized_readers,
                                       engineered_readers)
             test_train_size(task_name, processing_style, discretized_readers, engineered_readers)
-            test_ratio_split(task_name, processing_style, discretized_readers, engineered_readers)
     pass

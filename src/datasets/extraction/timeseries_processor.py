@@ -87,7 +87,7 @@ class TimeseriesProcessor(object):
         self._storage_path = storage_path
         self._verbose = verbose
         self._tracker = tracker
-        self._dataset_reader = ExtractedSetReader(source_path)
+        self._dataset_reader = ExtractedSetReader(storage_path)
         self._dataset_writer = DataSetWriter(storage_path)
         if subject_ids is None:
             self._subject_ids = [

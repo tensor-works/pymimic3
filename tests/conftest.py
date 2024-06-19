@@ -13,10 +13,14 @@ from tests.pytest_utils.discretization import prepare_discretizer_listfiles
 collect_ignore = ['src/utils/IO.py']
 
 
+def pytest_addoption(parser):
+    parser.addoption("--no-cleanup", action="store_true", dest="deep_supervision", default=False)
+
+
 def pytest_configure(config) -> None:
     os.environ["DEBUG"] = "0"
 
-    if SEMITEMP_DIR.is_dir():
+    if SEMITEMP_DIR.is_dir() and not config.getoption("--no-cleanup"):
         shutil.rmtree(str(SEMITEMP_DIR))
 
     for task_name in TASK_NAMES:
@@ -94,7 +98,7 @@ def engineered_readers() -> Dict[str, ProcessedSetReader]:
 @pytest.fixture(scope="session")
 def discretized_readers() -> Dict[str, ProcessedSetReader]:
     disc_reader = dict()
-    for task_name in set(TASK_NAMES) - {"MULTI"}:
+    for task_name in set(TASK_NAMES):
         tests_io(f"Loading discretized reader for task {task_name}...", end="\r")
         disc_reader[task_name] = datasets.load_data(chunksize=75835,
                                                     source_path=TEST_DATA_DEMO,
@@ -125,5 +129,5 @@ def discretizer_listfiles() -> None:
 
 def pytest_unconfigure(config) -> None:
     os.environ["DEBUG"] = "0"
-    if SEMITEMP_DIR.is_dir():
+    if SEMITEMP_DIR.is_dir() and not config.getoption("--no-cleanup"):
         shutil.rmtree(str(SEMITEMP_DIR))
