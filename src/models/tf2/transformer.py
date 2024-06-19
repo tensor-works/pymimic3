@@ -1,13 +1,15 @@
 """https://keras.io/examples/timeseries/timeseries_transformer_classification/"""
 
 from tensorflow import keras
-from keras import layers
+from tensorflow.keras import layers
 
 
 def transformer_encoder(inputs, head_size, num_heads, ff_dim, dropout=0):
     # Normalization and Attention
     x = layers.LayerNormalization(epsilon=1e-6)(inputs)
-    x = layers.MultiHeadAttention(key_dim=head_size, num_heads=num_heads, dropout=dropout)(x, x)
+    x = layers.MultiHeadAttention(key_dim=head_size,
+                                  num_heads=num_heads,
+                                  dropout=dropout)(x, x)
     x = layers.Dropout(dropout)(x)
     res = x + inputs
 

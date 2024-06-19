@@ -16,16 +16,6 @@ from utils.IO import *
 from pathlib import Path
 
 
-def zeropad_samples(data):
-    max_len = max([x.shape[0] for x in data])
-    ret = [
-        np.concatenate([x, np.zeros((max_len - x.shape[0],) + x.shape[1:])],
-                       axis=0,
-                       dtype=np.float32) for x in data
-    ]
-    return np.atleast_3d(np.array(ret, dtype=np.float32))
-
-
 def is_numerical(df: pd.DataFrame) -> bool:
     """
     Check if a DataFrame contains only numerical data.
@@ -138,7 +128,7 @@ def update_json(json_path, items: dict):
         json_path.parent.mkdir(parents=True, exist_ok=True)
     if not json_path.is_file():
         with open(json_path, 'w+') as file:
-            json.dump({}, file, cls=NpEncoder)
+            json.dump({}, file)
 
     with open(json_path, 'r') as file:
         json_data = json.load(file)
@@ -146,11 +136,11 @@ def update_json(json_path, items: dict):
     json_data.update(items)
     try:
         with open(json_path, 'w') as file:
-            json.dump(json_data, file, indent=4, cls=NpEncoder)
+            json.dump(json_data, file, indent=4)
     except KeyboardInterrupt:
         info_io("Finishing JSON operation before interupt.")
         with open(json_path, 'w') as file:
-            json.dump(json_data, file, indent=4, cls=NpEncoder)
+            json.dump(json_data, file, indent=4)
 
     return json_data
 
@@ -191,11 +181,11 @@ def write_json(json_path, json_data):
     """
     try:
         with open(json_path, 'w') as file:
-            json.dump(json_data, file, indent=4, cls=NpEncoder)
+            json.dump(json_data, file, indent=4)
     except KeyboardInterrupt:
         info_io("Finishing JSON operation before interupt.")
         with open(json_path, 'w') as file:
-            json.dump(json_data, file, indent=4, cls=NpEncoder)
+            json.dump(json_data, file, indent=4)
 
     return
 
@@ -285,26 +275,3 @@ def count_csv_size(file_path: Path):
         file_length = sum(bl.count("\n") for bl in blocks(f))
 
     return file_length - 1
-
-
-class NoopLock:
-
-    def __enter__(self):
-        # Do nothing
-        pass
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        # Do nothing
-        pass
-
-
-class NpEncoder(json.JSONEncoder):
-
-    def default(self, obj):
-        if isinstance(obj, np.integer):
-            return int(obj)
-        if isinstance(obj, np.floating):
-            return float(obj)
-        if isinstance(obj, np.ndarray):
-            return obj.tolist()
-        return super(NpEncoder, self).default(obj)

@@ -4,7 +4,7 @@ import pandas as pd
 import sys
 
 sys.path.append(os.getenv("WORKINGDIR"))
-from tests.tsettings import *
+from tests.settings import *
 
 result_paths = [
     Path(TEST_DATA_DIR, "generated-benchmark", "extracted"),

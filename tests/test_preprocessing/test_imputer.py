@@ -1,7 +1,7 @@
 # Test the preprocessing.imputer class using the preprocessing_readers from conftest.py. You can find the imputer use case in preprocessing.discretizer and preprocessing.normalizer
 import pytest
 from preprocessing.imputers import PartialImputer
-from tests.tsettings import *
+from tests.settings import *
 """
 @pytest.mark.parametrize("task_name", TASK_NAMES)
 def test_imputer_fit_dataset(preprocessing_readers, task_name):

@@ -4,7 +4,7 @@ import sys
 sys.path.append(os.getenv("WORKINGDIR"))
 import pandas as pd
 from pathlib import Path
-from tests.tsettings import *
+from tests.settings import *
 from mimic3benchmark.readers import DecompensationReader
 
 from mimic3models.preprocessing import Discretizer
@@ -39,7 +39,7 @@ impute_strategies = ['zero', 'normal_value', 'previous', 'next']
 start_times = ['zero', 'relative']
 
 # Discritize the data from processed directory using different discretizer settings
-for task in TASK_NAMES:
+for task in ["MULTI"]:  # TASK_NAMES:
     list_file_path = Path(processed_paths[task], "listfile.csv")
     list_file = pd.read_csv(
         list_file_path,

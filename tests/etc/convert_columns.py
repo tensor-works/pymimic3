@@ -1,6 +1,6 @@
 import pandas as pd
 from datasets.mimic_utils import upper_case_column_names
-from tests.tsettings import *
+from tests.settings import *
 
 for csv in TEST_DATA_DEMO.iterdir():
     if csv.is_dir() or csv.suffix != ".csv":

@@ -3,7 +3,7 @@ import pytest
 import pandas as pd
 from pathlib import Path
 from utils.IO import *
-from tests.tsettings import *
+from tests.settings import *
 from tests.pytest_utils import copy_dataset
 from tests.pytest_utils.general import assert_dataframe_equals
 from tests.decorators import repeat
@@ -27,16 +27,6 @@ def test_iterative_engineer_task(task_name: str):
     tests_io(f"Test case iterative engineering for task {task_name}", level=0)
 
     generated_path = Path(TEMP_DIR, "engineered", task_name)  # Outpath for task genergeneraation
-    if task_name == "MULTI":
-        with pytest.raises(ValueError) as e:
-            reader = datasets.load_data(chunksize=75837,
-                                        source_path=TEST_DATA_DEMO,
-                                        storage_path=TEMP_DIR,
-                                        engineer=True,
-                                        task=generated_path.name)
-            assert e.value == "Task 'MULTI' is not supported for feature engineering."
-        tests_io(f"Succesfully tested task fail for {task_name}.")
-        return
     test_data_dir = Path(TEST_GT_DIR, "engineered",
                          TASK_NAME_MAPPING[task_name])  # Ground truth data dir
 
@@ -94,18 +84,10 @@ def test_compact_engineer_task(task_name: str):
     """
 
     tests_io(f"Test case compact engineering for task {task_name}", level=0)
+
     task_name_mapping = dict(zip(TASK_NAMES, FTASK_NAMES))
 
     generated_path = Path(TEMP_DIR, "engineered", task_name)  # Outpath for task generation
-    if task_name == "MULTI":
-        with pytest.raises(ValueError) as e:
-            dataset = datasets.load_data(source_path=TEST_DATA_DEMO,
-                                         storage_path=TEMP_DIR,
-                                         engineer=True,
-                                         task=generated_path.name)
-            assert e.value == "Task 'MULTI' is not supported for feature engineering."
-        tests_io(f"Succesfully tested task fail for {task_name}.")
-        return
     test_data_dir = Path(TEST_GT_DIR, "engineered",
                          task_name_mapping[task_name])  # Ground truth data dir
 

@@ -1,11 +1,8 @@
 import pdb
 import tensorflow as tf
-from typing import List, Union
-from models.tf2.layers import ExtendMask
 from tensorflow.keras import Model
 from tensorflow.keras import layers
-from utils.IO import *
-from models.tf2.mappings import activation_names
+from tensorflow.keras.layers import Bidirectional
 
 
 class LSTMNetwork(Model):
@@ -13,14 +10,15 @@ class LSTMNetwork(Model):
     """
 
     def __init__(self,
-                 layer_size: Union[List[int], int],
-                 input_dim: int,
-                 dropout: float = 0.,
-                 deep_supervision: bool = False,
-                 recurrent_dropout: float = 0.,
-                 final_activation: str = 'linear',
-                 output_dim: int = 1,
-                 depth: int = 1):
+                 layer_size,
+                 dropout,
+                 input_dim,
+                 bidirectional=False,
+                 recurrent_dropout=0.,
+                 task=None,
+                 target_repl=False,
+                 output_dim=1,
+                 depth=1):
         """
         """
         self.layer_size = layer_size
@@ -28,92 +26,98 @@ class LSTMNetwork(Model):
         self.recurrent_dropout = recurrent_dropout
         self.depth = depth
 
-        if not final_activation in activation_names:
-            raise ValueError(f"Activation function {final_activation} not supported. "
-                             f"Must be one of {*activation_names,}")
+        final_activation = {
+            "DECOMP": 'sigmoid',
+            "IHM": 'sigmoid',
+            "LOS": 'softmax',
+            "PHENO": 'softmax',
+            None: None if output_dim == 1 else 'softmax'
+        }
 
-        if isinstance(layer_size, int):
-            self._hidden_sizes = [layer_size] * depth
-        else:
-            self._hidden_sizes = layer_size
-            if depth != 1:
-                warn_io("Specified hidden sizes and depth are not consistent. "
-                        "Using hidden sizes and ignoring depth.")
+        num_classes = {"DECOMP": 1, "IHM": 1, "LOS": 10, "PHENO": 25, None: output_dim}
 
         # Input layers and masking
-        X = layers.Input(shape=(None, input_dim), name='x')
-        inputs = [X]
-        x = layers.Masking()(X)
+        input = layers.Input(shape=(None, input_dim), name='x')
 
-        if deep_supervision:
-            M = layers.Input(shape=(None,), name='M')
-            inputs.append(M)
+        x = layers.Masking()(input)
 
-        if isinstance(layer_size, int):
+        # TODO: compare bidirectional runs to one directiona
+
+        if type(layer_size) == int:
             iterator = [layer_size] * (depth - 1)
-            last_layer_size = layer_size
         else:
             iterator = layer_size[:-1]
-            last_layer_size = layer_size[-1]
+            layer_size = layer_size[-1]
 
         for i, size in enumerate(iterator):
-            x = layers.LSTM(units=size,
-                            activation='tanh',
-                            return_sequences=True,
-                            recurrent_dropout=recurrent_dropout,
-                            dropout=dropout,
-                            name=f"lstm_hidden_{i}")(x)
-
-        x = layers.LSTM(units=last_layer_size,
-                        activation='tanh',
-                        dropout=dropout,
-                        return_sequences=deep_supervision,
-                        recurrent_dropout=recurrent_dropout)(x)
+            if bidirectional:
+                num_units = size // 2
+                x = Bidirectional(
+                    layers.LSTM(units=num_units,
+                                activation='tanh',
+                                return_sequences=True,
+                                recurrent_dropout=recurrent_dropout,
+                                dropout=dropout,
+                                name=f"lstm_hidden_{i}"))(x)
+            else:
+                x = layers.LSTM(units=size,
+                                activation='tanh',
+                                return_sequences=True,
+                                recurrent_dropout=recurrent_dropout,
+                                dropout=dropout,
+                                name=f"lstm_hidden_{i}")(x)
 
         # Output module of the network
-        if dropout > 0:
-            x = layers.Dropout(dropout)(x)
+        return_sequences = target_repl
+        '''        
+        x = Bidirectional(layers.LSTM(units=layer_size,
+                                      activation='tanh',
+                                      return_sequences=return_sequences,
+                                      dropout=dropout_rate,
+                                      recurrent_dropout=recurrent_dropout,
+                                      name=f"lstm_hidden_{depth}"))(x)
+        '''
+        x = layers.LSTM(units=layer_size,
+                        activation='tanh',
+                        return_sequences=return_sequences,
+                        dropout=dropout,
+                        recurrent_dropout=recurrent_dropout)(x)
 
-        if deep_supervision:
-            y = layers.TimeDistributed(layers.Dense(output_dim, activation=final_activation))(x)
-            y = ExtendMask()([y, M])
-        else:
-            y = layers.Dense(output_dim, activation=final_activation)(x)
+        x = layers.Dense(num_classes[task], activation=final_activation[task])(x)
 
-        super(LSTMNetwork, self).__init__(inputs=inputs, outputs=y)
+        super(LSTMNetwork, self).__init__(inputs=[input], outputs=[x])
 
 
 if __name__ == "__main__":
     import datasets
     from pathlib import Path
-    from tests.tsettings import *
+    from tests.settings import *
     from preprocessing.scalers import MinMaxScaler
     from generators.tf2 import TFGenerator
-    from tensorflow.keras.optimizers import Adam
-
     reader = datasets.load_data(chunksize=75836,
                                 source_path=TEST_DATA_DEMO,
-                                storage_path=Path(SEMITEMP_DIR),
+                                storage_path=SEMITEMP_DIR,
                                 discretize=True,
                                 time_step_size=1.0,
                                 start_at_zero=True,
                                 impute_strategy='previous',
-                                task="DECOMP")
+                                task="IHM")
 
     reader = datasets.train_test_split(reader, test_size=0.2, val_size=0.1)
 
     scaler = MinMaxScaler().fit_reader(reader.train)
-    train_generator = TFGenerator(reader=reader.train, scaler=scaler, batch_size=8, shuffle=True)
+    train_generator = TFGenerator(reader=reader.train, scaler=scaler, batch_size=2, shuffle=True)
+    val_generator = TFGenerator(reader=reader.val, scaler=scaler, batch_size=2, shuffle=True)
 
-    val_generator = TFGenerator(reader=reader.val, scaler=scaler, batch_size=8, shuffle=True)
+    import torch
+    import torch.nn as nn
+    import torch.optim as optim
 
     model_path = Path(TEMP_DIR, "tf_lstm")
     model_path.mkdir(parents=True, exist_ok=True)
-    model = LSTMNetwork(1000,
-                        59,
-                        recurrent_dropout=0.,
-                        output_dim=1,
-                        depth=3,
-                        final_activation='sigmoid')
-    model.compile(optimizer=Adam(learning_rate=0.000001, clipvalue=1.0), loss="binary_crossentropy")
-    history = model.fit(train_generator, validation_data=val_generator, epochs=1000)
+    model = LSTMNetwork(10, 0.2, 59, recurrent_dropout=0., output_dim=1, depth=2)
+
+    model.compile(optimizer="adam", loss="mse")
+    # Example training loop
+    history = model.fit(train_generator, validation_data=val_generator, epochs=40)
+    print(history)

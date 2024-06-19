@@ -37,14 +37,10 @@ import threading
 import pandas as pd
 import numpy as np
 from pathlib import Path
-import multiprocessing as mp
 from collections.abc import Iterable
 from copy import deepcopy
-from utils import NoopLock
-from collections import defaultdict
 from utils.IO import *
 from settings import *
-from utils import zeropad_samples
 from .mimic_utils import upper_case_column_names, convert_dtype_dict, read_varmap_csv
 from .trackers import ExtractionTracker
 from typing import List, Union, Dict
@@ -231,7 +227,7 @@ class ExtractedSetReader(AbstractReader):
 
     convert_datetime = ["INTIME", "CHARTTIME", "OUTTIME", "ADMITTIME", "DISCHTIME", "DEATHTIME"]
 
-    def __init__(self, root_path: Path, subject_ids: list = None) -> None:
+    def __init__(self, root_path: Path, subject_ids: list = None, num_samples: int = None) -> None:
         """_summary_
 
         Args:
@@ -726,14 +722,26 @@ class ProcessedSetReader(AbstractReader):
     """
 
     def __init__(self, root_path: Path, subject_ids: list = None) -> None:
-        self._reader_switch = {
-            "csv":
-                defaultdict(lambda: self._read_csv, \
-                {"X": (lambda x: self._read_csv(x, dtypes=DATASET_SETTINGS["timeseries"]["dtype"]))}),
-            "npy":
-                defaultdict(lambda: np.load),
-            "h5":
-                defaultdict(lambda: pd.read_hdf, {"X": self._read_hdf})
+        """_summary_
+
+        Args:
+            root_path (Path): _description_
+            subject_folders (list, optional): _description_. Defaults to None.
+        """
+        self._reader_switch_Xy = {
+            "csv": {
+                "X": (lambda x: self._read_csv(x, dtypes=DATASET_SETTINGS["timeseries"]["dtype"])),
+                "y": lambda x: self._read_csv(x)
+            },
+            "npy": {
+                "X": np.load,
+                "y": np.load,
+                "t": np.load
+            },
+            "h5": {
+                "X": self._read_hdf,
+                "y": pd.read_hdf
+            }
         }
         super().__init__(root_path, subject_ids)
         self._random_ids = deepcopy(self.subject_ids)
@@ -766,7 +774,6 @@ class ProcessedSetReader(AbstractReader):
                      subject_ids: Union[List[str], List[int]] = None,
                      read_ids: bool = False,
                      read_timestamps: bool = False,
-                     read_masks: bool = False,
                      data_type=None):
         """
         Read samples for the specified subject IDs, either as dictionary with ID keys or as list.
@@ -787,11 +794,8 @@ class ProcessedSetReader(AbstractReader):
         dict
             Dictionary containing the samples read.
         """
-        y_key = "yds" if read_masks else "y"
-        dataset = {"X": {}, y_key: {}} if read_ids else {"X": [], y_key: []}
 
-        if read_masks:
-            dataset.update({"M": {} if read_ids else []})
+        dataset = {"X": {}, "y": {}} if read_ids else {"X": [], "y": []}
 
         if read_timestamps:
             dataset.update({"t": {} if read_ids else []})
@@ -805,7 +809,6 @@ class ProcessedSetReader(AbstractReader):
             sample = self.read_sample(subject_id,
                                       read_ids=read_ids,
                                       read_timestamps=read_timestamps,
-                                      read_masks=read_masks,
                                       data_type=data_type)
             for prefix in sample:
                 if not len(sample[prefix]):
@@ -821,7 +824,6 @@ class ProcessedSetReader(AbstractReader):
                     subject_id: Union[int, str],
                     read_ids: bool = False,
                     read_timestamps: bool = False,
-                    read_masks: bool = False,
                     data_type=None) -> dict:
         """
         Read data for a single subject.
@@ -847,7 +849,6 @@ class ProcessedSetReader(AbstractReader):
         ValueError
             If the data_type is not one of the possible data types.
         """
-        y_key = "yds" if read_masks else "y"
         subject_id = int(subject_id)
         if not data_type in self._possibgle_datatypes:
             raise ValueError(
@@ -871,10 +872,7 @@ class ProcessedSetReader(AbstractReader):
                 return pd.DataFrame(X)
             return X
 
-        dataset = {"X": {}, y_key: {}} if read_ids else {"X": [], y_key: []}
-
-        if read_masks:
-            dataset.update({"M": {} if read_ids else []})
+        dataset = {"X": {}, "y": {}} if read_ids else {"X": [], "y": []}
 
         if read_timestamps:
             dataset.update({"t": {} if read_ids else []})
@@ -883,7 +881,7 @@ class ProcessedSetReader(AbstractReader):
         for file in dir_path.iterdir():
             stay_id = _extract_number(file.name)
             file_extension = file.suffix.strip(".")
-            reader = self._reader_switch[file_extension]
+            reader = self._reader_switch_Xy[file_extension]
             reader_kwargs = ({"allow_pickle": True} if file_extension == "npy" else {})
 
             if stay_id in stay_id_stack:
@@ -897,10 +895,7 @@ class ProcessedSetReader(AbstractReader):
                 file_data = reader[prefix](file_path, **reader_kwargs)
                 file_data = _convert_file_data(file_data)
 
-                if prefix == "t" and not read_timestamps:
-                    continue
-
-                if prefix == "M" and not read_masks:
+                if prefix == "t" and read_timestamps:
                     continue
 
                 if read_ids:
@@ -915,12 +910,11 @@ class ProcessedSetReader(AbstractReader):
 
     def random_samples(
             self,
-            n_subjects: int = 1,
-            read_ids: bool = False,
+            n_samples: int = 1,
+            read_ids: bool = False,  # This is for debugging
             read_timestamps: bool = False,
             data_type=None,
-            return_ids: bool = False,  # This is for debugging
-            read_masks: bool = False,
+            return_ids: bool = False,
             seed: int = 42):
         """
         Sample subjects randomly without replacement until subject list is exhauasted.
@@ -949,7 +943,7 @@ class ProcessedSetReader(AbstractReader):
         """
         random.seed(seed)
         sample_ids = list()
-        n_samples_needed = n_subjects
+        n_samples_needed = n_samples
 
         while n_samples_needed > 0:
             if not self._random_ids:
@@ -964,102 +958,18 @@ class ProcessedSetReader(AbstractReader):
             if len(sample_ids) >= len(self.subject_ids):
                 if len(sample_ids) > len(self.subject_ids):
                     warn_io(
-                        f"Maximum number of samples in dataset reached! Requested {n_subjects}, but dataset size is {len(self.subject_ids)}."
+                        f"Maximum number of samples in dataset reached! Requested {n_samples}, but dataset size is {len(self.subject_ids)}."
                     )
                 break
         if return_ids:
             return self.read_samples(sample_ids,
                                      read_ids=read_ids,
                                      read_timestamps=read_timestamps,
-                                     read_masks=read_masks,
                                      data_type=data_type), sample_ids
         return self.read_samples(sample_ids,
                                  read_ids=read_ids,
                                  read_timestamps=read_timestamps,
-                                 read_masks=read_masks,
                                  data_type=data_type)
-
-    def to_numpy(self,
-                 n_samples: int = None,
-                 scaler=None,
-                 imputer=None,
-                 subject_ids: Union[List[str], List[int]] = None,
-                 read_masks: bool = False,
-                 read_timestamps: bool = False,
-                 data_type=None,
-                 return_ids: bool = False,
-                 seed: int = 42):
-        """
-        Convert the dataset to a NumPy array of dim (#ofSamples, maxTimeSteps, Features).
-
-        This function reads the specified number of samples or samples of specified subject IDs from the dataset,
-        applies optional scaling and imputation, and returns the data in NumPy array format. It can also
-        return the IDs of the subjects if specified. The function only works if the dataset is entirely numeric,
-        that is only after categorization has been applied. (Discretization or Feature engineering)
-
-        Parameters
-        ----------
-        n_samples : int, optional
-            The number of samples to read. If `subject_ids` is specified, this parameter is ignored. Default is None.
-        scaler : object, optional
-            An object that implements the `transform` method, used to scale the data. Default is None.
-        imputer : object, optional
-            An object that implements the `transform` method, used to impute missing values in the data. Default is None.
-        subject_ids : list of int or list of str, optional
-            A list of subject IDs to read. If specified, `n_samples` is ignored. Default is None.
-        read_masks : bool, optional
-            Whether to read masks. Default is False.
-        read_timestamps : bool, optional
-            Whether to read timestamps. Default is False.
-        data_type : type, optional
-            The type to cast the read data to. Can be one of [pd.DataFrame, np.ndarray, None]. Default is None.
-        return_ids : bool, optional
-            Whether to return the IDs of the subjects along with the data. Default is False.
-        seed : int, optional
-            Random seed for reproducibility when sampling. Default is 42.
-
-        Returns
-        -------
-        dict
-            A dictionary containing the dataset. Keys include 'X' for the data, 'y' for the labels, and optionally 'M' for masks
-            and 't' for timestamps if `read_masks` and `read_timestamps` are True.
-        list of int or list of str, optional
-            A list of subject IDs if `return_ids` is True.
-
-        Raises
-        ------
-        ValueError
-            If `data_type` is not one of the possible data types (pd.DataFrame, np.ndarray, None).
-        """
-        if subject_ids:
-            if n_samples:
-                warn_io("Both n_samples and subject_ids are specified. Ignoring n_samples.")
-
-            dataset = self.read_samples(subject_ids,
-                                        read_timestamps=read_timestamps,
-                                        read_masks=read_masks,
-                                        data_type=data_type)
-        else:
-            dataset, subject_ids = self.random_samples(n_subjects=n_samples,
-                                                       read_timestamps=read_timestamps,
-                                                       data_type=data_type,
-                                                       return_ids=True,
-                                                       read_masks=read_masks,
-                                                       seed=seed)
-            for prefix in deepcopy(list(dataset.keys())):
-                dataset[prefix] = dataset[prefix][:min(n_samples, len(dataset[prefix]))]
-        if imputer is not None:
-            dataset["X"] = [imputer.transform(sample) for sample in dataset["X"]]
-        if scaler is not None:
-            dataset["X"] = [scaler.transform(sample) for sample in dataset["X"]]
-        if scaler is None and imputer is None:
-            dataset["X"] = [sample.values for sample in dataset["X"]]
-
-        for prefix in deepcopy(list(dataset.keys())):
-            dataset[prefix] = zeropad_samples(dataset[prefix])
-        if return_ids:
-            return dataset, subject_ids
-        return dataset
 
 
 class EventReader():
@@ -1106,14 +1016,10 @@ class EventReader():
                  dataset_folder: Path,
                  subject_ids: list = None,
                  chunksize: int = None,
-                 tracker: ExtractionTracker = None,
-                 verbose: bool = True,
-                 lock: mp.Lock = NoopLock()) -> None:
+                 tracker: ExtractionTracker = None) -> None:
 
         self.dataset_folder = dataset_folder
         self._done = False
-        self._lock = lock
-        self._verbose = verbose
 
         # Logic to early terminate if none of the subjects are in the remaining dataset
         if subject_ids is not None and len(subject_ids):
@@ -1206,21 +1112,19 @@ class EventReader():
         """
         Initialize the reader by skipping rows according to the tracker if it exists.
         """
-        info_io(f"Starting reader initialization.", verbose=self._verbose)
+        info_io(f"Starting reader initialization.")
         header = "Initializing reader and starting at row:\n"
         msg = list()
         for csv in self._event_csv_kwargs:
             try:
-                with self._lock:
-                    n_chunks = self._tracker.count_subject_events[csv] // self._chunksize
-                    skip_rows = self._tracker.count_subject_events[csv] % self._chunksize
+                n_chunks = self._tracker.count_subject_events[csv] // self._chunksize
+                skip_rows = self._tracker.count_subject_events[csv] % self._chunksize
                 [len(self._csv_reader[csv].get_chunk()) for _ in range(n_chunks)]  # skipping chunks
                 self.event_csv_skip_rows[csv] = skip_rows  # rows to skip in first chunk
-                with self._lock:
-                    msg.append(f"{csv}: {self._tracker.count_subject_events[csv]}")
+                msg.append(f"{csv}: {self._tracker.count_subject_events[csv]}")
             except:
                 self._csv_handle[csv].close()
-        info_io(header + " - ".join(msg), verbose=self._verbose)
+        info_io(header + " - ".join(msg))
 
     def get_chunk(self) -> tuple:
         """

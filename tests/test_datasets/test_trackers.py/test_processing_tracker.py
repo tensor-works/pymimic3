@@ -3,9 +3,9 @@ import shutil
 from pathlib import Path
 from datasets.trackers import PreprocessingTracker
 from utils.IO import *
-from tests.tsettings import *
+from tests.settings import *
 
-tracker_state = {"subjects": {}, "finished": False, "num_subjects": None}
+tracker_state = {"subjects": {}, "is_finished": False, "num_subjects": None}
 
 
 def test_processing_tracker_basics():

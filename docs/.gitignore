@@ -1,2 +1,2 @@
-build/
-source/_generated
+./build/
+./source/_generated

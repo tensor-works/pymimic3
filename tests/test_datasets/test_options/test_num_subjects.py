@@ -6,7 +6,7 @@ from tests.pytest_utils import copy_dataset
 from typing import Dict
 from pathlib import Path
 from utils.IO import *
-from tests.tsettings import *
+from tests.settings import *
 from tests.pytest_utils.general import assert_dataframe_equals
 from tests.pytest_utils.preprocessing import assert_reader_equals, assert_dataset_equals
 from tests.pytest_utils.feature_engineering import extract_test_ids, concatenate_dataset
@@ -53,10 +53,8 @@ def test_num_subjects_extraction(extracted_reader: ExtractedSetReader, extractio
 
 
 @pytest.mark.parametrize("extraction_style", ["iterative", "compact"])
-@pytest.mark.parametrize("task_name", ["IHM"])
+@pytest.mark.parametrize("task_name", TASK_NAMES)
 def test_num_subjects_preprocessing_only(task_name: str, extraction_style: str):
-    if task_name == "MULTI":
-        return
     tests_io(f"Test case num subjects for preprocessing-only for task {task_name}.", level=0)
     test_data_dir = Path(TEST_GT_DIR, "processed",
                          TASK_NAME_MAPPING[task_name])  # Ground truth data dir
@@ -102,10 +100,8 @@ def test_num_subjects_preprocessing_only(task_name: str, extraction_style: str):
 
 
 @pytest.mark.parametrize("extraction_style", ["iterative", "compact"])
-@pytest.mark.parametrize("task_name", ["IHM"])
+@pytest.mark.parametrize("task_name", TASK_NAMES)
 def test_num_subjects_engineer_only(task_name: str, extraction_style: str):
-    if task_name == "MULTI":
-        return
     tests_io(f"Test case num subjects for engineering-only for task {task_name}.", level=0)
     # Test only engineering
     tests_io(f"Preparing fully preprocessed directory")
@@ -158,10 +154,8 @@ def test_num_subjects_engineer_only(task_name: str, extraction_style: str):
 
 
 @pytest.mark.parametrize("extraction_style", ["iterative", "compact"])
-@pytest.mark.parametrize("task_name", ["IHM"])
+@pytest.mark.parametrize("task_name", TASK_NAMES)
 def test_num_subjects_process(task_name: str, extraction_style: str):
-    if task_name == "MULTI":
-        return
     tests_io(f"Test case num subjects for preprocessing from scratch for task {task_name}.",
              level=0)
     test_data_dir = Path(TEST_GT_DIR, "processed",
@@ -203,10 +197,8 @@ def test_num_subjects_process(task_name: str, extraction_style: str):
 
 
 @pytest.mark.parametrize("extraction_style", ["iterative", "compact"])
-@pytest.mark.parametrize("task_name", ["IHM"])
+@pytest.mark.parametrize("task_name", TASK_NAMES)
 def test_num_subjects_engineer(task_name: str, extraction_style: str):
-    if task_name == "MULTI":
-        return
     tests_io(f"Test case num subjects for engineering from scratch for task {task_name}.", level=0)
 
     test_data_dir = Path(TEST_GT_DIR, "engineered",
@@ -341,7 +333,7 @@ if __name__ == "__main__":
         if TEMP_DIR.is_dir():
             shutil.rmtree(str(TEMP_DIR))
         test_num_subjects_extraction(extraction_reader, extraction_style)
-        for task in [["IHM"]]:
+        for task in TASK_NAMES:
             if not Path(SEMITEMP_DIR, "processed", task).is_dir():
                 reader = datasets.load_data(chunksize=75835,
                                             source_path=TEST_DATA_DEMO,

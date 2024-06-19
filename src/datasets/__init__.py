@@ -81,7 +81,6 @@ from datasets.processors.discretizers import MIMICDiscretizer
 from . import extraction
 from .readers import ProcessedSetReader, ExtractedSetReader
 from .split import train_test_split
-from datasets.mimic_utils import copy_subject_info
 
 # global settings
 
@@ -97,13 +96,11 @@ def load_data(source_path: str,
               impute_strategy: str = "previous",
               mode: str = "legacy",
               start_at_zero=True,
-              deep_supervision: bool = False,
               extract: bool = True,
               preprocess: bool = False,
               engineer: bool = False,
               discretize: bool = False,
-              task: str = None,
-              verbose=True) -> Union[ProcessedSetReader, ExtractedSetReader, dict]:
+              task: str = None) -> Union[ProcessedSetReader, ExtractedSetReader, dict]:
     """
     Load and process the MIMIC-III dataset for machine learning and deep learning tasks.
 
@@ -182,8 +179,7 @@ def load_data(source_path: str,
                                                      chunksize=chunksize,
                                                      subject_ids=subject_ids,
                                                      num_subjects=num_subjects,
-                                                     task=task,
-                                                     verbose=verbose)
+                                                     task=task)
 
         if preprocess or engineer or discretize:
             # Contains phenotypes and a list of codes referring to the phenotype
@@ -195,13 +191,11 @@ def load_data(source_path: str,
                                              storage_path=processed_storage_path,
                                              phenotypes_yaml=phenotypes_yaml,
                                              label_type="one-hot",
-                                             verbose=verbose)
-            copy_subject_info(reader.root_path, processed_storage_path)
+                                             verbose=True)
 
-            proc_reader = preprocessor.transform_reader(reader=reader,
-                                                        subject_ids=subject_ids,
-                                                        num_subjects=num_subjects)
-            reader = proc_reader
+            reader = preprocessor.transform_reader(reader=reader,
+                                                   subject_ids=subject_ids,
+                                                   num_subjects=num_subjects)
 
         if engineer:
             engineered_storage_path = Path(storage_path, "engineered", task)
@@ -209,26 +203,23 @@ def load_data(source_path: str,
                                                          "engineering_config.json"),
                                         storage_path=engineered_storage_path,
                                         task=task,
-                                        verbose=verbose)
-            reader = engine.transform_reader(reader=proc_reader,
+                                        verbose=True)
+            reader = engine.transform_reader(reader=reader,
                                              subject_ids=subject_ids,
                                              num_subjects=num_subjects)
-            copy_subject_info(proc_reader.root_path, engineered_storage_path)
-
         if discretize:
             discretized_storage_path = Path(storage_path, "discretized", task)
-            discretizer = MIMICDiscretizer(task=task,
+            discretizer = MIMICDiscretizer(reader=reader,
+                                           task=task,
                                            storage_path=discretized_storage_path,
                                            time_step_size=time_step_size,
                                            impute_strategy=impute_strategy,
                                            start_at_zero=start_at_zero,
                                            mode=mode,
-                                           deep_supervision=deep_supervision,
-                                           verbose=verbose)
-            reader = discretizer.transform_reader(reader=proc_reader,
+                                           verbose=False)
+            reader = discretizer.transform_reader(reader=reader,
                                                   subject_ids=subject_ids,
                                                   num_subjects=num_subjects)
-            copy_subject_info(proc_reader.root_path, discretized_storage_path)
 
         return reader
 
@@ -242,8 +233,7 @@ def load_data(source_path: str,
                                                 source_path=source_path,
                                                 num_subjects=num_subjects,
                                                 subject_ids=subject_ids,
-                                                task=task,
-                                                verbose=verbose)
+                                                task=task)
     if preprocess or engineer or discretize:
         processed_storage_path = Path(storage_path, "processed", task)
         # Contains phenotypes and a list of codes referring to the phenotype
@@ -253,12 +243,11 @@ def load_data(source_path: str,
                                          storage_path=processed_storage_path,
                                          phenotypes_yaml=phenotypes_yaml,
                                          label_type="one-hot",
-                                         verbose=verbose)
+                                         verbose=True)
         dataset = preprocessor.transform_dataset(dataset=dataset,
                                                  subject_ids=subject_ids,
                                                  num_subjects=num_subjects,
                                                  source_path=extracted_storage_path)
-        copy_subject_info(extracted_storage_path, processed_storage_path)
 
     if engineer:
         engineered_storage_path = Path(storage_path, "engineered", task)
@@ -266,11 +255,10 @@ def load_data(source_path: str,
                                                      "engineering_config.json"),
                                     storage_path=engineered_storage_path,
                                     task=task,
-                                    verbose=verbose)
+                                    verbose=True)
         dataset = engine.transform_dataset(dataset,
                                            subject_ids=subject_ids,
                                            num_subjects=num_subjects)
-        copy_subject_info(processed_storage_path, engineered_storage_path)
 
     if discretize:
         discretized_storage_path = Path(storage_path, "discretized", task)
@@ -279,13 +267,11 @@ def load_data(source_path: str,
                                        time_step_size=time_step_size,
                                        impute_strategy=impute_strategy,
                                        start_at_zero=start_at_zero,
-                                       deep_supervision=deep_supervision,
                                        mode=mode,
-                                       verbose=verbose)
+                                       verbose=False)
         dataset = discretizer.transform_dataset(dataset=dataset,
                                                 subject_ids=subject_ids,
                                                 num_subjects=num_subjects)
-        copy_subject_info(processed_storage_path, discretized_storage_path)
 
     # TODO: make dependent from return reader (can also return reader)
     # TODO: write some tests for comparct generation
@@ -311,8 +297,6 @@ def _check_inputs(storage_path: str, source_path: str, chunksize: int, subject_i
         raise ValueError("One of extract, preprocess or engineer must be set to load the dataset.")
     if subject_ids is not None:
         return [int(subject_id) for subject_id in subject_ids]
-    if task == "MULTI" and engineer:
-        raise ValueError("Task 'MULTI' is for DNN's only and feature extraction is not supported.")
     return None
 
 

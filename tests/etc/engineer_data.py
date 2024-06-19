@@ -5,7 +5,7 @@ sys.path.append(os.getenv("WORKINGDIR"))
 import pandas as pd
 import numpy as np
 from pathlib import Path
-from tests.tsettings import TEST_DATA_DIR, TASK_NAMES
+from tests.settings import TEST_DATA_DIR, TASK_NAMES
 # This is copied into the mimic3benchmark directory once cloned
 from mimic3benchmark.readers import InHospitalMortalityReader, DecompensationReader, LengthOfStayReader, PhenotypingReader
 from mimic3models.in_hospital_mortality.logistic.main import read_and_extract_features as ihm_extractor

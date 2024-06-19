@@ -11,7 +11,7 @@ __all__ = [
     'IHM_SETTINGS', 'TEXT_METRICS', 'MULTI_SETTINGS'
 ]
 
-TASK_NAMES = ["IHM", "DECOMP", "LOS", "PHENO", "MULTI"]
+TASK_NAMES = ["DECOMP", "LOS", "PHENO", "IHM", "MULTI"]
 TEXT_METRICS = ["classification_report", "confusion_matrix"]
 
 with Path(os.getenv("CONFIG"), "datasets.json").open() as file:

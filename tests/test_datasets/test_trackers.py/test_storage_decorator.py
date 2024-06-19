@@ -2,7 +2,7 @@ import pytest
 import shutil
 from pathlib import Path
 from utils.IO import *
-from tests.tsettings import *
+from tests.settings import *
 from storable import storable
 
 
@@ -279,13 +279,13 @@ def test_list_basic():
 
     test_instance.subject_ids = ["a", "b", "c"]
     assert test_instance.subject_ids == ["a", "b", "c"]
-    assert test_instance._progress["subject_ids"] == ["a", "b", "c"]
+    assert test_instance._progress["subjects"] == ["a", "b", "c"]
 
     tests_io("Succeeded testing basic list assignment.")
     del test_instance
     test_instance = CountTestClass(Path(TEMP_DIR, "progress"))
     assert test_instance.subject_ids == ["a", "b", "c"]
-    assert test_instance._progress["subject_ids"] == ["a", "b", "c"]
+    assert test_instance._progress["subjects"] == ["a", "b", "c"]
     tests_io("Succeeded testing restoration of basic list assignment.")
     # We are tempering with the cls so need to make sure nothing is permanent
     del test_instance
@@ -293,7 +293,7 @@ def test_list_basic():
         shutil.rmtree(str(TEMP_DIR))
     test_instance = CountTestClass(Path(TEMP_DIR, "progress"))
     assert test_instance.subject_ids == []
-    assert test_instance._progress["subject_ids"] == []
+    assert test_instance._progress["subjects"] == []
     tests_io("Succeeded testing list non permanency on database deletion.")
 
 
@@ -420,12 +420,6 @@ def check_dtypes(instance):
 
 
 if __name__ == "__main__":
-    if TEMP_DIR.is_dir():
-        shutil.rmtree(str(TEMP_DIR))
-    test_list_basic()
-    if TEMP_DIR.is_dir():
-        shutil.rmtree(str(TEMP_DIR))
-    test_total_count()
     if TEMP_DIR.is_dir():
         shutil.rmtree(str(TEMP_DIR))
     test_list_extend()
