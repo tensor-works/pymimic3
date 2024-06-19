@@ -90,7 +90,7 @@ class TorchDataset(AbstractGenerator, Dataset):
         if self._deep_supervision:
             return torch.from_numpy(X).to(torch.float32), \
                    torch.from_numpy(y).to(torch.float32), \
-                   torch.from_numpy(m).to(torch.float32)
+                   torch.from_numpy(m).to(torch.int8)
         return torch.from_numpy(X).to(torch.float32), torch.from_numpy(y).to(torch.float32)
 
     def close(self):

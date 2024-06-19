@@ -40,7 +40,6 @@ class AbstractGenerator:
         self._scaler = scaler
         self._random_ids = deepcopy(self._reader.subject_ids)
         random.shuffle(self._random_ids)
-        self._generator = self.__generator()
         self._row_only = False
         if num_cpus:
             if not ray.is_initialized():
@@ -63,6 +62,7 @@ class AbstractGenerator:
         self._remainder_X = np.array([])
         self._remainder_y = np.array([])
         self._remainder_M = np.array([])
+        self._generator = self.__generator()
 
     def __getitem__(self, index=None):
         if not self._ray_workers and self._cpu_count:
@@ -70,7 +70,8 @@ class AbstractGenerator:
             self._start_epoch()
 
         # Start with any remainder from the previous batch
-        X, y, m = next(self._generator)  # if not deepsupervsion m is timestamps else mask
+        X, y, M = next(self._generator)  # if not deepsupervsion m is timestamps else mask
+        assert X.shape[1] == y.shape[1] == M.shape[1]
         # Fetch new data until we have at least the required batch size
         while X.shape[0] < self._batch_size:
             X_res = self._remainder_X
@@ -79,12 +80,17 @@ class AbstractGenerator:
             if self._deep_supervision or self._target_replication:
                 if self._deep_supervision:
                     m_res = self._remainder_M
-                    m = self._stack_batches((m, m_res)) if m_res.size else m
+                    M = self._stack_batches((M, m_res)) if m_res.size else M
                 y = self._stack_batches((y, y_res)) if y_res.size else y
+                assert X.shape[1] == y.shape[1] == M.shape[1]
             else:
                 y = np.concatenate((y, y_res), axis=0, dtype=np.float32) if y_res.size else y
             if X.shape[0] < self._batch_size:
-                self._remainder_X, self._remainder_y, self._remainder_M = next(self._generator)
+                self._remainder_X, \
+                self._remainder_y, \
+                self._remainder_M = next(self._generator)
+                assert self._remainder_X.shape[1] == self._remainder_y.shape[
+                    1] == self._remainder_M.shape[1]
 
             # If the accumulated batch is larger than required, split it
             if X.shape[0] > self._batch_size:
@@ -93,8 +99,8 @@ class AbstractGenerator:
                 X = X[:self._batch_size]
                 y = y[:self._batch_size]
                 if self._deep_supervision:
-                    self._remainder_M = m[self._batch_size:]
-                    m = m[:self._batch_size]
+                    self._remainder_M = M[self._batch_size:]
+                    M = M[:self._batch_size]
 
                 break
 
@@ -105,10 +111,11 @@ class AbstractGenerator:
             self._counter = 0
             self._remainder_X = np.array([])
             self._remainder_y = np.array([])
-            self._remainder_m = np.array([])
+            self._remainder_M = np.array([])
 
         if self._deep_supervision:
-            return X, y, m
+            assert X.shape[1] == y.shape[1] == M.shape[1]
+            return X, y, M
         return X, y
 
     def _count_batches(self):
@@ -172,16 +179,18 @@ class AbstractGenerator:
                 dynamci_result = ray.get(ready_ids[0])
                 for object_result in dynamci_result:
                     X, y, t = ray.get(object_result)
+                    assert X.shape[1] == y.shape[1] == t.shape[1]
                     yield X, y, t
             else:
                 random.shuffle(self._random_ids)
                 if self._deep_supervision:
-                    for X, y, m in process_subject_deep_supervision(args=(self._random_ids,
+                    for X, y, M in process_subject_deep_supervision(args=(self._random_ids,
                                                                           self._batch_size),
                                                                     reader=self._reader,
                                                                     scaler=self._scaler,
                                                                     bining=self._bining):
-                        yield X, y, m
+                        assert X.shape[1] == y.shape[1] == M.shape[1]
+                        yield X, y, M
                 else:
                     for X, y, t in process_subject(args=(self._random_ids, self._batch_size),
                                                    reader=self._reader,
@@ -189,6 +198,7 @@ class AbstractGenerator:
                                                    row_only=self._row_only,
                                                    bining=self._bining,
                                                    target_replication=self._target_replication):
+                        assert X.shape[1] == y.shape[1] == t.shape[1]
                         yield X, y, t
 
     @staticmethod
