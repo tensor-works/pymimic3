@@ -3,7 +3,8 @@ import torch.nn as nn
 import torch.optim as optim
 import numpy as np
 import pickle
-from typing import Union, List, Dict
+import warnings
+from typing import Union, Dict, overload, Optional
 from models.trackers import ModelHistory, LocalModelHistory
 from torch.utils.data import DataLoader
 from pathlib import Path
@@ -18,7 +19,7 @@ from models.pytorch.mappings import *
 
 class AbstractTorchNetwork(nn.Module):
 
-    def __init__(self, model_path: Path = None):
+    def __init__(self, output_dim: int, model_path: Path = None):
         super(AbstractTorchNetwork, self).__init__()
         self._model_path = model_path
         if self._model_path is not None:
@@ -28,6 +29,19 @@ class AbstractTorchNetwork(nn.Module):
         else:
             # Mimics the storable
             self._history = LocalModelHistory()
+
+        # This needs to be known for torch metrics
+        if output_dim == 1:
+            self._task = "binary"
+            self._num_classes = 1
+        elif isinstance(self._final_activation, nn.Softmax):
+            self._task = "multiclass"
+            self._num_classes = output_dim
+        elif isinstance(self._final_activation, nn.Sigmoid):
+            self._task = "multilabel"
+            self._num_classes = output_dim
+
+        self._deep_supervision: bool = ...
 
     @property
     def optimizer(self):
@@ -94,7 +108,7 @@ class AbstractTorchNetwork(nn.Module):
 
     def _get_metrics(self, metrics: Dict[str, Metric]):
         keys = list([metric for metric in metrics.keys() if self._allowed_key(metric)])
-        values = [metrics[key].get() for key in keys]
+        values = [metrics[key].compute().item() for key in keys]
         return list(zip(keys, values))
 
     def _init_metrics(self, metrics, prefix: str = None) -> Dict[str, Metric]:
@@ -110,7 +124,7 @@ class AbstractTorchNetwork(nn.Module):
                 metric = metric(**settings)
             if prefix is not None:
                 metric_name = f"{prefix}_{metric_name}"
-            return_metrics[metric_name] = metric
+            return_metrics[metric_name] = metric.to(self._device)
         return return_metrics
 
     def compile(self,
@@ -118,6 +132,7 @@ class AbstractTorchNetwork(nn.Module):
                 loss=None,
                 metrics: Dict[str, Union[str, type, Metric]] = None,
                 class_weight=None):
+        self._device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         if isinstance(optimizer, str):
             if optimizer in optimizer_mapping:
                 self._optimizer = optimizer_mapping[optimizer](self.parameters(), lr=0.001)
@@ -148,7 +163,6 @@ class AbstractTorchNetwork(nn.Module):
             self._test_metrics = dict()
             self._val_metrics = dict()
 
-        self._device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.to(self._device)
 
     def _latest_epoch(self, epochs: int, filepath: Path):
@@ -172,15 +186,110 @@ class AbstractTorchNetwork(nn.Module):
     def _update_metrics(self, metrics: Dict[str, Metric], y_pred, y_true):
         # https://torchmetrics.readthedocs.io/en/v0.8.0/pages/classification.html
         # What do we need?
-        for _, metric in metrics.items():
-            metric.update(y_pred, y_true.astype(int))
+        with warnings.catch_warnings():
+            for _, metric in metrics.items():
+                metric.update(y_pred,
+                              y_true.int() if hasattr(y_true, "int") else y_true.astype(int))
 
+    @overload
+    def _train(self,
+               x: np.ndarray,
+               y: np.ndarray,
+               batch_size: int,
+               epoch: int = 0,
+               epochs: int = 1,
+               sample_weights: Optional[Dict] = None,
+               has_val: bool = False):
+        ...
+
+    @overload
     def _train(self,
                train_generator: DataLoader,
                epoch: int = 0,
                epochs: int = 1,
-               sample_weights: dict = None,
+               sample_weights: Optional[Dict] = None,
                has_val: bool = False):
+        ...
+
+    def _train(self, *args, **kwargs):
+        if ((len(args) >= 1 and isinstance(args[0], (np.ndarray, list, tuple))) or "x" in kwargs) \
+            and (len(args) >= 2 and isinstance(args[1], np.ndarray) or "y" in kwargs):
+            return self._train_with_arrays(*args, **kwargs)
+        elif (len(args) >= 1 and isinstance(args[0], DataLoader) or "train_generator" in kwargs):
+            return self._train_with_dataloader(*args, **kwargs)
+        else:
+            raise TypeError("Invalid arguments")
+
+    def _train_with_arrays(self,
+                           inputs: np.ndarray,
+                           labels: np.ndarray,
+                           batch_size: int,
+                           sample_weights: dict = None,
+                           epoch: int = 0,
+                           epochs: int = 1,
+                           has_val: bool = False):
+        print(f'\nEpoch {epoch}/{epochs}')
+        self.train()
+        train_losses = []
+        if isinstance(inputs, (list, tuple)):
+            inputs, masks = inputs
+        data_size = inputs.shape[0]
+        generator_size = int(np.ceil(data_size / batch_size))
+        self._train_progbar = Progbar(generator_size)
+
+        for batch_idx in range(generator_size):
+            start_idx = batch_idx * batch_size
+            end_idx = min((batch_idx + 1) * batch_size, data_size)
+
+            input_batch = inputs[start_idx:end_idx]
+            label_batch = labels[start_idx:end_idx]
+
+            if self._deep_supervision:
+                masks_batch = masks[start_idx:end_idx]
+                last_idx = np.flatnonzero(masks[start_idx:end_idx].sum(axis=0))[-1] + 1
+                input_batch = torch.tensor(input_batch[:, :last_idx, :]).to(self._device)
+                masks_batch = masks_batch[:, :last_idx, :]
+                # Set labels to zero when masking since forward does the same
+                label_batch = label_batch[:, :last_idx, :] * masks_batch
+                masks_batch = torch.tensor(masks_batch).to(self._device)
+            else:
+                # TODO! This is clearly wrong
+                last_idx_input = np.flatnonzero(~np.logical_and.reduce(
+                    (input_batch == 0).all(axis=0), axis=1))[-1] + 1
+                last_idx_label = np.flatnonzero(~np.logical_and.reduce(
+                    (label_batch == 0).all(axis=0), axis=1))[-1] + 1
+                last_idx = max(last_idx_input, last_idx_label)
+                input_batch = torch.tensor(input_batch[:, :last_idx, :]).to(self._device)
+                label_batch = label_batch[:, :last_idx, :]
+                masks_batch = None
+
+            label_batch = torch.tensor(label_batch).to(self._device)
+            self._optimizer.zero_grad()
+            outputs = self(input_batch, masks=masks_batch)
+            loss = self._loss(outputs, label_batch)
+            self._update_metrics(self._train_metrics, outputs, label_batch)
+            loss.backward()
+            self._optimizer.step()
+            train_losses.append(loss.item())
+
+            self._train_progbar.update(batch_idx + 1,
+                                       values=[('loss', loss.item())] +
+                                       self._get_metrics(self._train_metrics),
+                                       finalize=(batch_idx == generator_size - 1 and not has_val))
+
+        avg_train_loss = np.mean(train_losses)
+        self._history.train_loss[epoch] = avg_train_loss
+        if self._history.best_train["loss"] > avg_train_loss:
+            self._history.best_train["loss"] = avg_train_loss
+            self._history.best_train["epoch"] = epoch
+
+    def _train_with_dataloader(self,
+                               train_generator: DataLoader,
+                               batch_size: int,
+                               epoch: int = 0,
+                               epochs: int = 1,
+                               sample_weights: dict = None,
+                               has_val: bool = False):
         print(f'\nEpoch {epoch}/{epochs}')
         self.train()
         train_losses = []
@@ -191,17 +300,16 @@ class AbstractTorchNetwork(nn.Module):
             if self._deep_supervision:
                 inputs, masks = inputs
                 inputs = inputs.to(self._device)
-                mask = masks.to(self._device)
+                # Set labels to zero when masking since forward does the same
+                labels = labels * masks
+                masks = masks.to(self._device)
             else:
                 inputs = inputs.to(self._device)
-                mask = None
+                masks = None
             labels = labels.to(self._device)
             self._optimizer.zero_grad()
-            outputs = self(inputs, mask=mask)
-            if sample_weights is not None:
-                loss = self._loss(outputs, labels, sample_weight=sample_weights)
-            else:
-                loss = self._loss(outputs, labels)
+            outputs = self(inputs, masks=masks)
+            loss = self._loss(outputs, labels)
             self._update_metrics(self._train_metrics, outputs, labels)
             loss.backward()
             self._optimizer.step()
@@ -258,16 +366,81 @@ class AbstractTorchNetwork(nn.Module):
     def evaluate(self, test_generator: DataLoader):
         self._evaluate(val_generator=test_generator, val_frequency=0, epoch=0)
 
+    @overload
     def fit(self,
             train_generator: DataLoader,
-            epochs: int,
+            epochs: int = 1,
+            patience: Optional[int] = None,
+            save_best_only: bool = True,
+            restore_best_weights: bool = True,
+            sample_weights: Optional[Dict] = None,
+            val_frequency: int = 1,
+            val_generator: Optional[DataLoader] = None,
+            model_path: Optional[Path] = None):
+        ...
+
+    @overload
+    def fit(self,
+            inputs: np.ndarray,
+            labels: np.ndarray,
+            epochs: int = 1,
+            batch_size: int = 32,
+            patience: Optional[int] = None,
+            save_best_only: bool = True,
+            restore_best_weights: bool = True,
+            sample_weights: Optional[Dict] = None,
+            val_frequency: int = 1,
+            val_inputs: Optional[np.ndarray] = None,
+            val_labels: Optional[np.ndarray] = None,
+            model_path: Optional[Path] = None):
+        ...
+
+    def fit(self, *args, **kwargs):
+        if len(args) == 1 and isinstance(args[0], DataLoader):
+            return self._fit_with_dataloader(*args, **kwargs)
+        elif len(args) == 2 and isinstance(args[0], np.ndarray) and isinstance(args[1], np.ndarray):
+            return self._fit_with_arrays(*args, **kwargs)
+        else:
+            raise TypeError("Invalid arguments")
+
+    def fit(self,
+            *args,
+            batch_size: int = 32,
+            epochs: int = 1,
             patience: int = None,
             save_best_only: bool = True,
             restore_best_weights: bool = True,
             sample_weights: dict = None,
             val_frequency: int = 1,
             val_generator: DataLoader = None,
-            model_path: Path = None):
+            model_path: Path = None,
+            **kwargs):
+        is_array = False
+        if len(args) >= 1 and isinstance(args[0], DataLoader):
+            train_data = (args[0],)
+        elif "train_generator" in kwargs:
+            train_data = (kwargs["train_generator"],)
+        else:
+            if len(args) >= 1 and isinstance(args[0], (np.ndarray, torch.Tensor, list, tuple)):
+                x = args[0]
+                is_array = True
+            elif "x" in kwargs:
+                x = kwargs["x"]
+                is_array = True
+            else:
+                raise TypeError("Invalid arguments")
+
+            if len(args) >= 2 and isinstance(args[1], (np.ndarray, torch.Tensor)):
+                y = args[1]
+                is_array = True
+            elif "y" in kwargs:
+                y = kwargs["y"]
+                is_array = True
+            else:
+                raise TypeError("Invalid arguments")
+        if is_array:
+            train_data = (x, y)
+
         if model_path is not None:
             self._model_path = model_path
             self._model_path.mkdir(parents=True, exist_ok=True)
@@ -282,7 +455,8 @@ class AbstractTorchNetwork(nn.Module):
 
         for epoch in range(initial_epoch + 1, epochs + 1):
 
-            self._train(train_generator=train_generator,
+            self._train(*train_data,
+                        batch_size=batch_size,
                         epoch=epoch,
                         epochs=epochs,
                         sample_weights=sample_weights,

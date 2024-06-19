@@ -14,7 +14,7 @@ collect_ignore = ['src/utils/IO.py']
 
 
 def pytest_addoption(parser):
-    parser.addoption("--no-cleanup", action="store_true", dest="deep_supervision", default=False)
+    parser.addoption("--no-cleanup", action="store_true", default=False)
 
 
 def pytest_configure(config) -> None:

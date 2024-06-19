@@ -5,21 +5,22 @@ from typing import Union, List, Dict
 from utils.IO import *
 from settings import *
 from models.pytorch.mappings import *
+from models.pytorch import AbstractTorchNetwork
 
 
 class LSTMNetwork(AbstractTorchNetwork):
 
     def __init__(self,
                  layer_size: Union[List[int], int],
-                 dropout: float,
                  input_dim: int,
+                 dropout: float = 0.,
                  deep_supervision: bool = False,
                  recurrent_dropout: float = 0.,
                  final_activation: str = None,
                  output_dim: int = 1,
                  depth: int = 1,
                  model_path: Path = None):
-        super().__init__(model_path)
+        super().__init__(output_dim, model_path)
 
         self._layer_size = layer_size
         self._dropout_rate = dropout
@@ -124,8 +125,8 @@ if __name__ == "__main__":
     model_path = Path(TEMP_DIR, "torch_lstm")
     model_path.mkdir(parents=True, exist_ok=True)
     model = LSTMNetwork(1000,
-                        0.2,
                         59,
+                        0.2,
                         recurrent_dropout=0.,
                         output_dim=1,
                         depth=3,
