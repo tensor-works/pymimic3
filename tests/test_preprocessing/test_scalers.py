@@ -131,6 +131,7 @@ def test_fit_transform_reader(task_name: str, engineered_readers: Dict[str, Proc
     tests_io(f"Succeeded in testing fit_transform_reader")
 
 
+@pytest.mark.parametrize("task_name", ["DECOMP"])
 def test_save_load(task_name: str, engineered_readers: Dict[str, ProcessedSetReader]):
     reader = engineered_readers[task_name]
 
