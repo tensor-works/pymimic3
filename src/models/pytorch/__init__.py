@@ -302,14 +302,16 @@ class AbstractTorchNetwork(nn.Module):
                                epochs: int = 1,
                                sample_weights: dict = None,
                                has_val: bool = False):
+        batch_size = 8  # REMOVE
         print(f'\nEpoch {epoch}/{epochs}')
         self.train()
         train_losses = []
         generator_size = len(train_generator)
         self._train_progbar = Progbar(generator_size)
-
+        count = 0
+        accumulated_outputs = []
+        accumulated_labels = []
         for batch_idx, (inputs, labels) in enumerate(train_generator):
-            self._optimizer.zero_grad()
             if self._deep_supervision:
                 inputs, masks = inputs
                 inputs = inputs.to(self._device)
@@ -324,16 +326,37 @@ class AbstractTorchNetwork(nn.Module):
             loss = self._loss(outputs, labels)
             outputs = torch.masked_select(outputs, masks)
             labels = torch.masked_select(labels, masks)
-            loss.backward()
-            self._optimizer.step()
-            torch.nn.utils.clip_grad_norm_(self.parameters(), max_norm=1.0)
-            self._update_metrics(self._train_metrics, outputs, labels)
-            train_losses.append(loss.item())
+            # Accumulate outputs and labels
+            accumulated_outputs.append(outputs.view(-1))
+            accumulated_labels.append(labels.view(-1))
+            count += 1
 
-            self._train_progbar.update(batch_idx + 1,
-                                       values=[('loss', loss.item())] +
-                                       self._get_metrics(self._train_metrics),
-                                       finalize=(batch_idx == generator_size and not has_val))
+            if count >= batch_size:
+                # Concatenate accumulated outputs and labels
+                accumulated_outputs = torch.cat(accumulated_outputs)
+                accumulated_labels = torch.cat(accumulated_labels)
+
+                # Compute loss
+                loss = self._loss(accumulated_outputs, accumulated_labels)
+
+                # Backward pass and optimization
+                self._optimizer.zero_grad()
+                loss.backward()
+                self._optimizer.step()
+                # torch.nn.utils.clip_grad_norm_(self.parameters(), max_norm=1.0)
+
+                # Update metrics
+                self._update_metrics(self._train_metrics, accumulated_outputs, accumulated_labels)
+                train_losses.append(loss.item())
+                # Reset accumulators and count
+                accumulated_outputs = []
+                accumulated_labels = []
+                count = 0
+
+        self._train_progbar.update(batch_idx + 1,
+                                   values=[('loss', loss.item())] +
+                                   self._get_metrics(self._train_metrics),
+                                   finalize=(batch_idx == generator_size and not has_val))
 
         avg_train_loss = np.mean(train_losses)
         self._history.train_loss[epoch] = avg_train_loss
