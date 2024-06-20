@@ -984,7 +984,7 @@ class ProcessedSetReader(AbstractReader):
                  scaler=None,
                  imputer=None,
                  subject_ids: Union[List[str], List[int]] = None,
-                 read_masks: bool = False,
+                 deep_supervision: bool = False,
                  read_timestamps: bool = False,
                  data_type=None,
                  return_ids: bool = False,
@@ -1037,7 +1037,7 @@ class ProcessedSetReader(AbstractReader):
 
             dataset = self.read_samples(subject_ids,
                                         read_timestamps=read_timestamps,
-                                        read_masks=read_masks,
+                                        read_masks=deep_supervision,
                                         data_type=data_type)
         else:
 
@@ -1045,7 +1045,7 @@ class ProcessedSetReader(AbstractReader):
                                                        read_timestamps=read_timestamps,
                                                        data_type=data_type,
                                                        return_ids=True,
-                                                       read_masks=read_masks,
+                                                       read_masks=deep_supervision,
                                                        seed=seed)
             if n_samples is not None:
                 for prefix in deepcopy(list(dataset.keys())):
