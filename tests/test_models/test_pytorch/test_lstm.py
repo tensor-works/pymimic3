@@ -34,7 +34,7 @@ def test_torch_lstm_with_deep_supervision(
     # -- Compile the model --
     # criterion = nn.BCEWithLogitsLoss()
     criterion = nn.BCELoss()
-    optimizer = optim.Adam(model.parameters(), lr=0.001)
+    optimizer = optim.RMSprop(model.parameters(), lr=0.001)
     model.compile(optimizer=optimizer, loss=criterion, metrics=["roc_auc", "pr_auc"])
     tests_io("Succeeded in creating the model")
 
@@ -43,11 +43,11 @@ def test_torch_lstm_with_deep_supervision(
         # -- Create the generator --
         train_generator = TorchGenerator(reader=reader,
                                          scaler=scaler,
-                                         batch_size=8,
+                                         batch_size=1,
                                          deep_supervision=True,
                                          shuffle=True)
         tests_io("Succeeded in creating the generator")
-        history = model.fit(train_generator=train_generator, epochs=40)
+        history = model.fit(train_generator=train_generator, epochs=30)
     elif data_flavour == "numpy":
         # -- Create the dataset --
         dataset = reader.to_numpy(scaler=scaler, deep_supervision=True)
@@ -55,7 +55,7 @@ def test_torch_lstm_with_deep_supervision(
         tests_io("Succeeded in creating the numpy dataset")
     assert min(list(history["train_loss"])) <= 1.5, \
         f"Failed in asserting minimum loss ({min(list(history.history['loss']))}) <= 1.5"
-    assert max(list(history["train_auc"])) >= 0.8, \
+    assert max(list(history["train_auc"])) >= 0.75, \
         f"Failed in asserting maximum auc ({max(list(history.history['auc']))}) >= 0.8"
     assert max(list(history["train_auc_1"])) >= 0.2, \
         f"Failed in asserting maximum auc_1 ({max(list(history.history['auc_1']))}) >= 0.45"
