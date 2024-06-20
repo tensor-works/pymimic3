@@ -19,9 +19,17 @@ from models.pytorch.mappings import *
 
 class AbstractTorchNetwork(nn.Module):
 
-    def __init__(self, output_dim: int, model_path: Path = None):
+    def __init__(self, final_activation, output_dim: int, model_path: Path = None):
         super(AbstractTorchNetwork, self).__init__()
         self._model_path = model_path
+        if final_activation is None:
+            if output_dim == 1:
+                self._final_activation = nn.Sigmoid()
+            else:
+                self._final_activation = nn.Softmax(dim=-1)
+        else:
+            self._final_activation = activation_mapping[final_activation]
+
         if self._model_path is not None:
             # Persistent history
             self._model_path.mkdir(parents=True, exist_ok=True)
@@ -119,7 +127,10 @@ class AbstractTorchNetwork(nn.Module):
                 metric_name = metric
                 metric = metric_mapping[metric]
             else:
-                metric_name = to_snake_case(metric.__name__)
+                try:
+                    metric_name = to_snake_case(metric.__name__)
+                except:
+                    metric_name = "unknonw"
             if isinstance(metric, type):
                 metric = metric(**settings)
             if prefix is not None:
@@ -267,15 +278,16 @@ class AbstractTorchNetwork(nn.Module):
             self._optimizer.zero_grad()
             outputs = self(input_batch, masks=masks_batch)
             loss = self._loss(outputs, label_batch)
-            self._update_metrics(self._train_metrics, outputs, label_batch)
             loss.backward()
             self._optimizer.step()
             train_losses.append(loss.item())
 
-            self._train_progbar.update(batch_idx + 1,
-                                       values=[('loss', loss.item())] +
-                                       self._get_metrics(self._train_metrics),
-                                       finalize=(batch_idx == generator_size - 1 and not has_val))
+            with torch.no_grad():
+                self._update_metrics(self._train_metrics, outputs, label_batch)
+                self._train_progbar.update(
+                    batch_idx + 1,
+                    values=[('loss', loss.item())] + self._get_metrics(self._train_metrics),
+                    finalize=(batch_idx == generator_size - 1 and not has_val))
 
         avg_train_loss = np.mean(train_losses)
         self._history.train_loss[epoch] = avg_train_loss
@@ -297,22 +309,25 @@ class AbstractTorchNetwork(nn.Module):
         self._train_progbar = Progbar(generator_size)
 
         for batch_idx, (inputs, labels) in enumerate(train_generator):
+            self._optimizer.zero_grad()
             if self._deep_supervision:
                 inputs, masks = inputs
                 inputs = inputs.to(self._device)
                 # Set labels to zero when masking since forward does the same
-                labels = labels * masks
-                masks = masks.to(self._device)
+                masks = masks.to(self._device).bool()
             else:
                 inputs = inputs.to(self._device)
                 masks = None
             labels = labels.to(self._device)
-            self._optimizer.zero_grad()
+            # labels = labels * masks
             outputs = self(inputs, masks=masks)
             loss = self._loss(outputs, labels)
-            self._update_metrics(self._train_metrics, outputs, labels)
+            outputs = torch.masked_select(outputs, masks)
+            labels = torch.masked_select(labels, masks)
             loss.backward()
             self._optimizer.step()
+            torch.nn.utils.clip_grad_norm_(self.parameters(), max_norm=1.0)
+            self._update_metrics(self._train_metrics, outputs, labels)
             train_losses.append(loss.item())
 
             self._train_progbar.update(batch_idx + 1,

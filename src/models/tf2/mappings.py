@@ -8,7 +8,7 @@ activation_names = [
 
 metric_mapping = {
     "roc_auc": metrics.AUC(50, curve="ROC"),
-    "roc_pr": metrics.AUC(50, curve="PR"),
+    "pr_auc": metrics.AUC(50, curve="PR"),
     "accuracy": "accuracy",
     "acc": "acc",
     "binary_accuracy": "binary_accuracy",

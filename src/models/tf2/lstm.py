@@ -1,3 +1,4 @@
+from models.tf2 import AbstractTf2Model
 import pdb
 import tensorflow as tf
 from typing import List, Union
@@ -6,10 +7,9 @@ from tensorflow.keras import Model
 from tensorflow.keras import layers
 from utils.IO import *
 from models.tf2.mappings import activation_names
-from models.tf2 import AbstractTf2Model
 
 
-class LSTMNetwork(Model):
+class LSTMNetwork(AbstractTf2Model):
     """
     """
 
