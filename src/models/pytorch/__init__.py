@@ -135,6 +135,8 @@ class AbstractTorchNetwork(nn.Module):
                 metric = metric(**settings)
             if prefix is not None:
                 metric_name = f"{prefix}_{metric_name}"
+                getattr(self._history, f"{prefix}_metrics")[metric_name] = dict()
+
             return_metrics[metric_name] = metric.to(self._device)
         return return_metrics
 
@@ -165,7 +167,7 @@ class AbstractTorchNetwork(nn.Module):
             self._loss = loss
         if metrics is not None:
             self._metrics = self._init_metrics(metrics)
-            self._train_metrics = self._init_metrics(metrics)
+            self._train_metrics = self._init_metrics(metrics, prefix="train")
             self._test_metrics = self._init_metrics(metrics, prefix="test")
             self._val_metrics = self._init_metrics(metrics, prefix="val")
         else:
@@ -235,65 +237,74 @@ class AbstractTorchNetwork(nn.Module):
                            inputs: np.ndarray,
                            labels: np.ndarray,
                            batch_size: int,
-                           sample_weights: dict = None,
                            epoch: int = 0,
                            epochs: int = 1,
+                           sample_weights: dict = None,
                            has_val: bool = False):
         print(f'\nEpoch {epoch}/{epochs}')
         self.train()
-        train_losses = []
         if isinstance(inputs, (list, tuple)):
             inputs, masks = inputs
-        data_size = inputs.shape[0]
-        generator_size = int(np.ceil(data_size / batch_size))
-        self._train_progbar = Progbar(generator_size)
 
-        for batch_idx in range(generator_size):
+        # Dimension variables
+        data_size = inputs.shape[0]
+        train_losses = []
+        epoch_size = int(np.floor(data_size / batch_size))
+        self._train_progbar = Progbar(epoch_size)
+
+        # Batch iter variables
+        self._count = 0
+        accumulated_outputs = []
+        accumulated_labels = []
+
+        # Main loop
+        for batch_idx in range(epoch_size):
             start_idx = batch_idx * batch_size
             end_idx = min((batch_idx + 1) * batch_size, data_size)
-
+            # Split into batches
             input_batch = inputs[start_idx:end_idx]
             label_batch = labels[start_idx:end_idx]
 
-            if self._deep_supervision:
-                masks_batch = masks[start_idx:end_idx]
-                last_idx = np.flatnonzero(masks[start_idx:end_idx].sum(axis=0))[-1] + 1
-                input_batch = torch.tensor(input_batch[:, :last_idx, :]).to(self._device)
-                masks_batch = masks_batch[:, :last_idx, :]
-                # Set labels to zero when masking since forward does the same
-                label_batch = label_batch[:, :last_idx, :] * masks_batch
-                masks_batch = torch.tensor(masks_batch).to(self._device)
-            else:
-                # TODO! This is clearly wrong
-                last_idx_input = np.flatnonzero(~np.logical_and.reduce(
-                    (input_batch == 0).all(axis=0), axis=1))[-1] + 1
-                last_idx_label = np.flatnonzero(~np.logical_and.reduce(
-                    (label_batch == 0).all(axis=0), axis=1))[-1] + 1
-                last_idx = max(last_idx_input, last_idx_label)
-                input_batch = torch.tensor(input_batch[:, :last_idx, :]).to(self._device)
-                label_batch = label_batch[:, :last_idx, :]
-                masks_batch = None
+            for sample_idx, (input, label) in enumerate(zip(input_batch, label_batch)):
+                if self._deep_supervision:
+                    input = torch.tensor(input).to(self._device)
+                    # Set labels to zero when masking since forward does the same
+                    mask = masks[batch_size * batch_idx + sample_idx]
+                    mask = torch.tensor(mask).to(self._device).bool()
+                else:
+                    input = torch.tensor(input).to(self._device)
+                    mask = None
+            label = torch.tensor(label).to(self._device)
 
-            label_batch = torch.tensor(label_batch).to(self._device)
-            self._optimizer.zero_grad()
-            outputs = self(input_batch, masks=masks_batch)
-            loss = self._loss(outputs, label_batch)
-            loss.backward()
-            self._optimizer.step()
-            train_losses.append(loss.item())
+            # labels = labels * masks
+            output = self(input, masks=mask)
+            output = torch.masked_select(output, mask)
+            label = torch.masked_select(label, mask)
+            # Accumulate outputs and labels
+            accumulated_outputs.append(output.view(-1))
+            accumulated_labels.append(labels.view(-1))
+
+            # Optimize network on batch
+            aggr_outputs, \
+            aggr_labels, \
+            loss = self._optimize_batch(aggr_outputs, aggr_labels, batch_size)
 
             with torch.no_grad():
-                self._update_metrics(self._train_metrics, outputs, label_batch)
-                self._train_progbar.update(
-                    batch_idx + 1,
-                    values=[('loss', loss.item())] + self._get_metrics(self._train_metrics),
-                    finalize=(batch_idx == generator_size - 1 and not has_val))
+                self._train_progbar.update(batch_idx + 1,
+                                           values=[('loss', loss.item())] +
+                                           self._get_metrics(self._train_metrics),
+                                           finalize=(batch_idx == epoch_size and not has_val))
 
         avg_train_loss = np.mean(train_losses)
         self._history.train_loss[epoch] = avg_train_loss
         if self._history.best_train["loss"] > avg_train_loss:
             self._history.best_train["loss"] = avg_train_loss
             self._history.best_train["epoch"] = epoch
+        
+        
+        keys = list([metric for metric in metrics.keys()< if self._allowed_key(metric)])
+        values = [metrics[key].compute().item() for key in keys]    
+        
 
     def _train_with_dataloader(self,
                                train_generator: DataLoader,
@@ -302,67 +313,83 @@ class AbstractTorchNetwork(nn.Module):
                                epochs: int = 1,
                                sample_weights: dict = None,
                                has_val: bool = False):
-        batch_size = 8  # REMOVE
         print(f'\nEpoch {epoch}/{epochs}')
         self.train()
+
+        #Tracking variables
         train_losses = []
         generator_size = len(train_generator)
         self._train_progbar = Progbar(generator_size)
-        count = 0
-        accumulated_outputs = []
-        accumulated_labels = []
-        for batch_idx, (inputs, labels) in enumerate(train_generator):
+
+        # Batch iter variables
+        self._count = 0
+        aggr_outputs = []
+        aggr_labels = []
+
+        # Main loop
+        for batch_idx, (input, label) in enumerate(train_generator):
             if self._deep_supervision:
-                inputs, masks = inputs
-                inputs = inputs.to(self._device)
+                input, mask = input
+                input = input.to(self._device)
                 # Set labels to zero when masking since forward does the same
-                masks = masks.to(self._device).bool()
+                mask = mask.to(self._device).bool()
             else:
-                inputs = inputs.to(self._device)
-                masks = None
-            labels = labels.to(self._device)
+                input = input.to(self._device)
+                mask = None
+            label = label.to(self._device)
+
             # labels = labels * masks
-            outputs = self(inputs, masks=masks)
-            loss = self._loss(outputs, labels)
-            outputs = torch.masked_select(outputs, masks)
-            labels = torch.masked_select(labels, masks)
+            output = self(input, masks=mask)
+            output = torch.masked_select(output, mask)
+            label = torch.masked_select(label, mask)
             # Accumulate outputs and labels
-            accumulated_outputs.append(outputs.view(-1))
-            accumulated_labels.append(labels.view(-1))
-            count += 1
+            aggr_outputs.append(output.view(-1))
+            aggr_labels.append(label.view(-1))
 
-            if count >= batch_size:
-                # Concatenate accumulated outputs and labels
-                accumulated_outputs = torch.cat(accumulated_outputs)
-                accumulated_labels = torch.cat(accumulated_labels)
+            # Optimizer network on abtch
+            aggr_outputs, \
+            aggr_labels, \
+            loss = self._optimize_batch(aggr_outputs, aggr_labels, batch_size)
 
-                # Compute loss
-                loss = self._loss(accumulated_outputs, accumulated_labels)
-
-                # Backward pass and optimization
-                self._optimizer.zero_grad()
-                loss.backward()
-                self._optimizer.step()
-                # torch.nn.utils.clip_grad_norm_(self.parameters(), max_norm=1.0)
-
-                # Update metrics
-                self._update_metrics(self._train_metrics, accumulated_outputs, accumulated_labels)
-                train_losses.append(loss.item())
-                # Reset accumulators and count
-                accumulated_outputs = []
-                accumulated_labels = []
-                count = 0
-
-        self._train_progbar.update(batch_idx + 1,
-                                   values=[('loss', loss.item())] +
-                                   self._get_metrics(self._train_metrics),
-                                   finalize=(batch_idx == generator_size and not has_val))
+            with torch.no_grad():
+                self._train_progbar.update(batch_idx + 1,
+                                           values=[('loss', loss.item())] +
+                                           self._get_metrics(self._train_metrics),
+                                           finalize=(batch_idx == generator_size and not has_val))
 
         avg_train_loss = np.mean(train_losses)
         self._history.train_loss[epoch] = avg_train_loss
         if self._history.best_train["loss"] > avg_train_loss:
             self._history.best_train["loss"] = avg_train_loss
             self._history.best_train["epoch"] = epoch
+
+    def _optimize_batch(self, outputs: list, labels: list, batch_size: int):
+        self._count += 1
+
+        if self._count >= batch_size:
+            # Concatenate accumulated outputs and labels
+            outputs = torch.cat(outputs)
+            labels = torch.cat(labels)
+
+            # Compute loss
+            loss = self._loss(outputs, labels)
+
+            # Backward pass and optimization
+            self._optimizer.zero_grad()
+            loss.backward()
+            self._optimizer.step()
+            # torch.nn.utils.clip_grad_norm_(self.parameters(), max_norm=1.0)
+
+            # Update metrics
+            with torch.no_grad():
+                self._update_metrics(self._train_metrics, outputs, labels)
+            self._train_losses.append(loss.item())
+            # Reset accumulators and count
+            outputs = []
+            labels = []
+            self._count = 0
+
+        return outputs, labels, loss
 
     def _evaluate(self,
                   val_generator: DataLoader,

@@ -9,11 +9,19 @@ from settings import *
 @storable
 class ModelHistory():
 
+    # Loss
     train_loss: dict = {}
     val_loss: dict = {}
+    test_loss: float = np.nan
+
+    # Metrics
+    train_metrics: dict = {}
+    val_metrics: dict = {}
+    test_metrics: dict = {}
+
+    # Best
     best_val: dict = {"loss": float('inf'), "epoch": np.nan}
     best_train: dict = {"loss": float('inf'), "epoch": np.nan}
-    test_loss: float = np.nan
 
     def to_json(self):
         update_json(Path(self._path.parent, f"{self._path.stem}.json"), self._progress)
@@ -22,16 +30,28 @@ class ModelHistory():
 
 class LocalModelHistory():
 
+    # Loss
     train_loss: dict = {}
     val_loss: dict = {}
+    test_loss: float = np.nan
+
+    # Metrics
+    train_metrics: dict = {}
+    val_metrics: dict = {}
+    test_metrics: dict = {}
+
+    # Best
     best_val: dict = {"loss": float('inf'), "epoch": np.nan}
     best_train: dict = {"loss": float('inf'), "epoch": np.nan}
-    test_loss: float = np.nan
 
     def to_json(self):
         return {
             "train_loss": self.train_loss,
             "val_loss": self.val_loss,
+            "test_loss": self.test_loss,
+            "train_metrics": self.train_metrics,
+            "val_metrics": self.val_metrics,
+            "test_metrics": self.test_metrics,
             "best_val": self.best_val,
             "best_train": self.best_train,
             "test_loss": self.test_loss
