@@ -47,7 +47,7 @@ def test_torch_lstm_with_deep_supervision(
                                          deep_supervision=True,
                                          shuffle=True)
         tests_io("Succeeded in creating the generator")
-        history = model.fit(train_generator=train_generator, epochs=30)
+        history = model.fit(train_generator=train_generator, epochs=20)
     elif data_flavour == "numpy":
         # -- Create the dataset --
         dataset = reader.to_numpy(scaler=scaler, deep_supervision=True)
