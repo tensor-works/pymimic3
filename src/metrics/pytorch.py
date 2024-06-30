@@ -1,11 +1,10 @@
-import torch
 from torcheval.metrics import BinaryAUPRC, MulticlassAUPRC, MultilabelAUPRC
-import torch.nn as nn
+from copy import deepcopy
 
 # TODO! This absolutetly needs testing
 
 
-class AUCPRC:
+class AUCPRC(object):
 
     def __init__(self, task: str, num_classes: int = 1):
         if task == "binary":
@@ -52,3 +51,18 @@ class AUCPRC:
         else:
             # Set attributes normally otherwise
             super().__setattr__(name, value)
+
+    def __deepcopy__(self, memo):
+        # Create a new instance of the class
+        cls = self.__class__
+        result = cls.__new__(cls)
+        memo[id(self)] = result
+
+        # Copy the _task attribute
+        setattr(result, '_task', deepcopy(self._task, memo))
+
+        # Deep copy the metric attribute
+        if hasattr(self, 'metric'):
+            setattr(result, 'metric', deepcopy(self.metric, memo))
+
+        return result

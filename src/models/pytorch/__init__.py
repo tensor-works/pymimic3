@@ -4,6 +4,8 @@ import torch.optim as optim
 import numpy as np
 import pickle
 import warnings
+from typing import List, Tuple
+from copy import deepcopy
 from typing import Union, Dict, overload, Optional
 from models.trackers import ModelHistory, LocalModelHistory
 from torch.utils.data import DataLoader
@@ -49,8 +51,6 @@ class AbstractTorchNetwork(nn.Module):
             self._task = "multilabel"
             self._num_classes = output_dim
 
-        self._deep_supervision: bool = ...
-
     @property
     def optimizer(self):
         if hasattr(self, "_optimizer"):
@@ -60,6 +60,10 @@ class AbstractTorchNetwork(nn.Module):
     def loss(self):
         if hasattr(self, "_loss"):
             return self._loss
+
+    @property
+    def history(self):
+        return self._history
 
     def save(self, epoch):
         """_summary_
@@ -114,38 +118,61 @@ class AbstractTorchNetwork(nn.Module):
             (i != best_epoch) and (".ckpt" in folder.name) and folder.is_file()
         ]
 
-    def _get_metrics(self, metrics: Dict[str, Metric]):
+    def _get_metrics(self, metrics: Dict[str, Metric]) -> List[Tuple[str, float]]:
         keys = list([metric for metric in metrics.keys() if self._allowed_key(metric)])
-        values = [metrics[key].compute().item() for key in keys]
+        values = [metrics[key]["value"] for key in keys]
         return list(zip(keys, values))
 
-    def _init_metrics(self, metrics, prefix: str = None) -> Dict[str, Metric]:
+    def _init_metrics(self,
+                      metrics,
+                      prefices: list = ["train", "val", "test"]) -> Dict[str, Metric]:
         settings = {"task": self._task, "num_classes": self._num_classes}
-        return_metrics = dict()
+        return_metrics = {"loss": {"obj": None, "value": 0.0}}
+
+        # Creat the base metric dict
         for metric in metrics:
+            # Map string metrics to objects
             if isinstance(metric, str):
                 metric_name = metric
                 metric = metric_mapping[metric]
             else:
+                # Get the name of object metrics
                 try:
                     metric_name = to_snake_case(metric.__name__)
                 except:
                     metric_name = "unknonw"
+            # If type, instantiate
             if isinstance(metric, type):
                 metric = metric(**settings)
-            if prefix is not None:
-                metric_name = f"{prefix}_{metric_name}"
-                getattr(self._history, f"{prefix}_metrics")[metric_name] = dict()
 
-            return_metrics[metric_name] = metric.to(self._device)
-        return return_metrics
+            return_metrics[metric_name] = {"obj": metric.to(self._device), "value": 0.0}
+
+        # Create metric dict for each prefix and add to the return dict
+        prefixed_metrics = dict()
+        prefixed_metrics[""] = return_metrics
+        for prefix in prefices:
+            prefixed_metric = dict()
+            for metric_name, metric in return_metrics.items():
+                prefixed_metric[metric_name] = deepcopy(metric)
+                metric_history: dict = getattr(self._history, f"{prefix}_metrics")
+                # If the metric is not yet in history, then add
+                if not metric_name in metric_history:
+                    metric_history[metric_name] = dict()
+
+            prefixed_metrics[prefix] = prefixed_metric
+
+        return prefixed_metrics
 
     def compile(self,
                 optimizer: Dict[str, Union[str, type, Optimizer]] = None,
                 loss=None,
                 metrics: Dict[str, Union[str, type, Metric]] = None,
-                class_weight=None):
+                class_weight=None,
+                clip_value: float = None):
         self._device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self._clip_value = clip_value
+        self._test_counter = 0
+
         if isinstance(optimizer, str):
             if optimizer in optimizer_mapping:
                 self._optimizer = optimizer_mapping[optimizer](self.parameters(), lr=0.001)
@@ -165,16 +192,7 @@ class AbstractTorchNetwork(nn.Module):
                                  f"Supported losses are {loss_mapping.keys()}")
         else:
             self._loss = loss
-        if metrics is not None:
-            self._metrics = self._init_metrics(metrics)
-            self._train_metrics = self._init_metrics(metrics, prefix="train")
-            self._test_metrics = self._init_metrics(metrics, prefix="test")
-            self._val_metrics = self._init_metrics(metrics, prefix="val")
-        else:
-            self._metrics = dict()
-            self._train_metrics = dict()
-            self._test_metrics = dict()
-            self._val_metrics = dict()
+        self._metrics = self._init_metrics(metrics)
 
         self.to(self._device)
 
@@ -196,14 +214,6 @@ class AbstractTorchNetwork(nn.Module):
 
         return 0
 
-    def _update_metrics(self, metrics: Dict[str, Metric], y_pred, y_true):
-        # https://torchmetrics.readthedocs.io/en/v0.8.0/pages/classification.html
-        # What do we need?
-        with warnings.catch_warnings():
-            for _, metric in metrics.items():
-                metric.update(y_pred,
-                              y_true.int() if hasattr(y_true, "int") else y_true.astype(int))
-
     @overload
     def _train(self,
                x: np.ndarray,
@@ -217,7 +227,7 @@ class AbstractTorchNetwork(nn.Module):
 
     @overload
     def _train(self,
-               train_generator: DataLoader,
+               generator: DataLoader,
                epoch: int = 0,
                epochs: int = 1,
                sample_weights: Optional[Dict] = None,
@@ -228,14 +238,111 @@ class AbstractTorchNetwork(nn.Module):
         if ((len(args) >= 1 and isinstance(args[0], (np.ndarray, list, tuple))) or "x" in kwargs) \
             and (len(args) >= 2 and isinstance(args[1], np.ndarray) or "y" in kwargs):
             return self._train_with_arrays(*args, **kwargs)
-        elif (len(args) >= 1 and isinstance(args[0], DataLoader) or "train_generator" in kwargs):
+        elif (len(args) >= 1 and isinstance(args[0], DataLoader) or "generator" in kwargs):
             return self._train_with_dataloader(*args, **kwargs)
         else:
             raise TypeError("Invalid arguments")
 
+    def _on_epoch_start(self, generator_size: int = 0, batch_size: int = 0, has_val: bool = False):
+        # Insecure about consistency of these here
+        self._current_metrics = dict()
+        if generator_size:
+            self._epoch_progbar = Progbar(generator_size // batch_size)
+
+        # Batch iter variables
+        self._sample_count = 0
+        self._batch_count = 1
+        self._generator_size = generator_size
+        self._batch_size = batch_size
+        self._has_val = has_val
+
+    def _on_epoch_end(self, epoch: int, prefix: str = ""):
+        # Update loss history
+        if hasattr(self._history, f"{prefix}_loss"):
+            loss_history = getattr(self._history, f"{prefix}_loss")
+            avg_loss = self._current_metrics["loss"]
+            if prefix in ["train", "val"]:
+                loss_history[epoch] = avg_loss
+            else:
+                setattr(self._history, f"{prefix}_loss", avg_loss)
+        # Update best loss
+        if hasattr(self._history, f"best_{prefix}"):
+            best_epochs = getattr(self._history, f"best_{prefix}")
+            if best_epochs["loss"] > avg_loss:
+                best_epochs["loss"] = avg_loss
+                best_epochs["epoch"] = epoch
+
+        if hasattr(self._history, f"{prefix}_metrics"):
+            metric_history = getattr(self._history, f"{prefix}_metrics")
+            for key, metric in self._metrics[prefix].items():
+                metric_history[key][epoch] = metric["value"]
+
+        self._current_metrics = dict()
+        self._sample_count = 0
+        self._batch_count = 0
+        self._generator_size = 0
+        self._batch_size = 0
+        self._has_val = False
+
+    def _update_metrics(self,
+                        loss: torch.Tensor,
+                        outputs: torch.Tensor,
+                        labels: torch.Tensor,
+                        prefix: str,
+                        finalize: bool = False,
+                        update_progbar: bool = False):
+        # Update metrics
+        with torch.no_grad():
+            # https://torchmetrics.readthedocs.io/en/v0.8.0/pages/classification.html
+            # What do we need?
+            with warnings.catch_warnings():
+                warnings.filterwarnings(
+                    "ignore",
+                    message=
+                    "No positive samples in targets, true positive value should be meaningless. "
+                    "Returning zero tensor in true positive score")
+                for name, metric in self._metrics[prefix].items():
+                    if name == "loss":
+                        runing_avg = metric["value"] + (loss.item() -
+                                                        metric["value"]) / (self._batch_count)
+                        # Extra step necessary for actually updating the value
+                        metric.update({"value": runing_avg})
+                    else:
+                        metric["obj"].update(
+                            outputs,
+                            labels.int() if hasattr(labels, "int") else labels.astype(int))
+                        new_value = metric["obj"].compute().item()
+                        runing_avg = metric["value"] + (new_value -
+                                                        metric["value"]) / (self._batch_count)
+                        # Extra step necessary for actually updating the value
+                        metric.update({"value": runing_avg})
+        # Reset accumulators and count
+        self._current_metrics["loss"] = loss.item()
+        self._current_metrics.update(dict(self._get_metrics(self._metrics[prefix])))
+
+        if update_progbar:
+            self._epoch_progbar.update(
+                self._epoch_progbar.target if prefix == "val" else self._batch_count,
+                values=self._prefixed_metrics(self._get_metrics(self._metrics[prefix]),
+                                              prefix=prefix if prefix != "train" else None),
+                finalize=finalize)
+
+    def _prefixed_metrics(self, metrics: List[Tuple[str, float]],
+                          prefix: str) -> List[Tuple[str, float]]:
+        if prefix is None:
+            return metrics
+        return [(f"{prefix}_{metric}", value) for metric, value in metrics]
+
+    def remove_end_padding(self, tensor):
+        # Find the last non-zero element in each row
+        last_nonzero = torch.max((tensor != 0).long().cumsum(1), dim=1).values
+        # Create a mask for rows to keep
+        mask = torch.arange(tensor.shape[1], device=tensor.device)[None, :] < last_nonzero[:, None]
+        return tensor[mask].reshape(-1, last_nonzero.max())
+
     def _train_with_arrays(self,
-                           inputs: np.ndarray,
-                           labels: np.ndarray,
+                           x: np.ndarray,
+                           y: np.ndarray,
                            batch_size: int,
                            epoch: int = 0,
                            epochs: int = 1,
@@ -243,71 +350,65 @@ class AbstractTorchNetwork(nn.Module):
                            has_val: bool = False):
         print(f'\nEpoch {epoch}/{epochs}')
         self.train()
-        if isinstance(inputs, (list, tuple)):
-            inputs, masks = inputs
+
+        # Handle masking
+        if isinstance(x, (list, tuple)):
+            x, masks = x
+            masks = torch.tensor(masks, dtype=torch.float32).bool().to(self._device)
+            masking_flag = True
+        else:
+            masking_flag = False
 
         # Dimension variables
-        data_size = inputs.shape[0]
-        train_losses = []
+        data_size = x.shape[0]
         epoch_size = int(np.floor(data_size / batch_size))
-        self._train_progbar = Progbar(epoch_size)
+
+        x = torch.tensor(x, dtype=torch.float32).to(self._device)
+        y = torch.tensor(y, dtype=torch.float32).to(self._device)
+
+        self._on_epoch_start(data_size, batch_size, has_val)
 
         # Batch iter variables
-        self._count = 0
-        accumulated_outputs = []
-        accumulated_labels = []
+        aggr_outputs = []
+        aggr_labels = []
 
         # Main loop
-        for batch_idx in range(epoch_size):
-            start_idx = batch_idx * batch_size
-            end_idx = min((batch_idx + 1) * batch_size, data_size)
-            # Split into batches
-            input_batch = inputs[start_idx:end_idx]
-            label_batch = labels[start_idx:end_idx]
+        iter_len = len(x) - 1
+        for sample_idx, (input, label) in enumerate(zip(x, y)):
+            if masking_flag:
+                # Set labels to zero when masking since forward does the same
+                mask = masks[sample_idx]
+                if len(input.shape) < 3:
+                    mask = mask.unsqueeze(0)
+                mask = mask
+            else:
+                # TODO! Is there a better way. What if there is an actual patient with all zero across
+                # TODO! 59 columns? Am I paranoid. Maybe adding the discretizer masking can alleviat
+                input = self.remove_end_padding(input)
+                mask = None
+            if len(input.shape) < 3:
+                input = input.unsqueeze(0)
 
-            for sample_idx, (input, label) in enumerate(zip(input_batch, label_batch)):
-                if self._deep_supervision:
-                    input = torch.tensor(input).to(self._device)
-                    # Set labels to zero when masking since forward does the same
-                    mask = masks[batch_size * batch_idx + sample_idx]
-                    mask = torch.tensor(mask).to(self._device).bool()
-                else:
-                    input = torch.tensor(input).to(self._device)
-                    mask = None
-            label = torch.tensor(label).to(self._device)
+            if len(label.shape) < 3:
+                label = label.unsqueeze(0)
 
             # labels = labels * masks
             output = self(input, masks=mask)
-            output = torch.masked_select(output, mask)
-            label = torch.masked_select(label, mask)
+            if masking_flag:
+                output = torch.masked_select(output, mask)
+                label = torch.masked_select(label, mask)
             # Accumulate outputs and labels
-            accumulated_outputs.append(output.view(-1))
-            accumulated_labels.append(labels.view(-1))
+            aggr_outputs.append(output.view(-1))
+            aggr_labels.append(label.view(-1))
 
-            # Optimize network on batch
+            # Optimizer network on abtch
             aggr_outputs, \
-            aggr_labels, \
-            loss = self._optimize_batch(aggr_outputs, aggr_labels, batch_size)
+            aggr_labels = self._optimize_batch(outputs=aggr_outputs, labels=aggr_labels, finalize=(not has_val and sample_idx == iter_len))
 
-            with torch.no_grad():
-                self._train_progbar.update(batch_idx + 1,
-                                           values=[('loss', loss.item())] +
-                                           self._get_metrics(self._train_metrics),
-                                           finalize=(batch_idx == epoch_size and not has_val))
-
-        avg_train_loss = np.mean(train_losses)
-        self._history.train_loss[epoch] = avg_train_loss
-        if self._history.best_train["loss"] > avg_train_loss:
-            self._history.best_train["loss"] = avg_train_loss
-            self._history.best_train["epoch"] = epoch
-        
-        
-        keys = list([metric for metric in metrics.keys()< if self._allowed_key(metric)])
-        values = [metrics[key].compute().item() for key in keys]    
-        
+        self._on_epoch_end(epoch, prefix="train")
 
     def _train_with_dataloader(self,
-                               train_generator: DataLoader,
+                               generator: DataLoader,
                                batch_size: int,
                                epoch: int = 0,
                                epochs: int = 1,
@@ -315,20 +416,22 @@ class AbstractTorchNetwork(nn.Module):
                                has_val: bool = False):
         print(f'\nEpoch {epoch}/{epochs}')
         self.train()
+        masking_flag = None
 
         #Tracking variables
-        train_losses = []
-        generator_size = len(train_generator)
-        self._train_progbar = Progbar(generator_size)
-
-        # Batch iter variables
-        self._count = 0
+        generator_size = len(generator)
+        self._on_epoch_start(generator_size, batch_size, has_val)
         aggr_outputs = []
         aggr_labels = []
 
         # Main loop
-        for batch_idx, (input, label) in enumerate(train_generator):
-            if self._deep_supervision:
+        iter_len = len(generator) - 1
+        for idx, (input, label) in enumerate(generator):
+            if masking_flag == None:
+                # Most efficient way to set this I could think of
+                masking_flag = isinstance(input, (list, tuple))
+
+            if masking_flag:
                 input, mask = input
                 input = input.to(self._device)
                 # Set labels to zero when masking since forward does the same
@@ -340,33 +443,24 @@ class AbstractTorchNetwork(nn.Module):
 
             # labels = labels * masks
             output = self(input, masks=mask)
-            output = torch.masked_select(output, mask)
-            label = torch.masked_select(label, mask)
+            if masking_flag:
+                output = torch.masked_select(output, mask)
+                label = torch.masked_select(label, mask)
             # Accumulate outputs and labels
             aggr_outputs.append(output.view(-1))
             aggr_labels.append(label.view(-1))
 
             # Optimizer network on abtch
             aggr_outputs, \
-            aggr_labels, \
-            loss = self._optimize_batch(aggr_outputs, aggr_labels, batch_size)
+            aggr_labels = self._optimize_batch(outputs=aggr_outputs, labels=aggr_labels,finalize=not has_val and iter_len == idx)
 
-            with torch.no_grad():
-                self._train_progbar.update(batch_idx + 1,
-                                           values=[('loss', loss.item())] +
-                                           self._get_metrics(self._train_metrics),
-                                           finalize=(batch_idx == generator_size and not has_val))
+        self._on_epoch_end(epoch, prefix="train")
 
-        avg_train_loss = np.mean(train_losses)
-        self._history.train_loss[epoch] = avg_train_loss
-        if self._history.best_train["loss"] > avg_train_loss:
-            self._history.best_train["loss"] = avg_train_loss
-            self._history.best_train["epoch"] = epoch
+    def _optimize_batch(self, outputs: list, labels: list, finalize: bool = False):
+        # This encapsulation creates me a lot of trouble by adding members that are hard to trace
+        self._sample_count += 1
 
-    def _optimize_batch(self, outputs: list, labels: list, batch_size: int):
-        self._count += 1
-
-        if self._count >= batch_size:
+        if self._sample_count >= self._batch_size:
             # Concatenate accumulated outputs and labels
             outputs = torch.cat(outputs)
             labels = torch.cat(labels)
@@ -378,31 +472,103 @@ class AbstractTorchNetwork(nn.Module):
             self._optimizer.zero_grad()
             loss.backward()
             self._optimizer.step()
-            # torch.nn.utils.clip_grad_norm_(self.parameters(), max_norm=1.0)
+            if self._clip_value is not None:
+                torch.nn.utils.clip_grad_norm_(self.parameters(), max_norm=1.0)
 
-            # Update metrics
-            with torch.no_grad():
-                self._update_metrics(self._train_metrics, outputs, labels)
-            self._train_losses.append(loss.item())
-            # Reset accumulators and count
+            # Reset count
+            self._update_metrics(loss,
+                                 outputs,
+                                 labels,
+                                 prefix="train",
+                                 update_progbar=True,
+                                 finalize=finalize)
+            self._sample_count = 0
+            self._batch_count += 1
+
+            # Reset aggregator vars
             outputs = []
             labels = []
-            self._count = 0
+        return outputs, labels
 
-        return outputs, labels, loss
-
-    def _evaluate(self,
-                  val_generator: DataLoader,
-                  val_frequency: int,
-                  epoch: int,
-                  is_test: bool = False):
-
-        if val_generator is not None and (epoch) % val_frequency == 0:
+    def _evaluate_with_arrays(self,
+                              x: np.ndarray,
+                              y: np.ndarray,
+                              val_frequency: int,
+                              epoch: int,
+                              is_test: bool = False):
+        prefix = "test" if is_test else "val"
+        self._on_epoch_start()
+        if isinstance(x, (list, tuple)):
+            x, y = x
+            masking_flag = True
+        else:
+            masking_flag = False
+        # Evaluate only if necessary
+        if (val_frequency is not  None and epoch is not None) \
+            and len(x) and len(y) and (epoch) % val_frequency == 0:
             self.eval()
             val_losses = []
             with torch.no_grad():
-                for val_inputs, val_labels in val_generator:
-                    if self._deep_supervision:
+                x = torch.tensor(x, dtype=torch.float32).to(self._device)
+                y = torch.tensor(y, dtype=torch.float32).to(self._device)
+                last_iter = len(x) - 1
+                for idx, (val_inputs, val_labels) in enumerate(zip(x, y)):
+                    if masking_flag:
+                        val_inputs, val_masks = val_inputs
+                        if len(val_masks.shape) < 3:
+                            val_masks: torch.Tensor = val_masks.unsqueeze(0)
+                    else:
+                        val_masks = None
+
+                    if len(val_inputs.shape) < 3:
+                        val_inputs: torch.Tensor = val_inputs.unsqueeze(0)
+                    if len(val_labels.shape) < 3:
+                        val_labels: torch.Tensor = val_labels.unsqueeze(0)
+
+                    if masking_flag:
+                        val_outputs = torch.masked_select(val_outputs, val_masks)
+                        val_labels = torch.masked_select(val_labels, val_masks)
+
+                    val_outputs = self(val_inputs, masks=val_masks)
+                    val_loss = self._loss(val_outputs.view(-1), val_labels.view(-1))
+                    val_losses.append(val_loss.item())
+                    self._update_metrics(val_loss,
+                                         val_outputs,
+                                         val_labels,
+                                         prefix=prefix,
+                                         update_progbar=(idx == last_iter) and prefix == "val")
+                    self._batch_count += 1
+
+            avg_val_loss = np.mean(val_losses)
+            # Only update history if test
+            if is_test:
+                self._on_epoch_end(epoch, prefix="test")
+            # Also complete progbar if eval
+            else:
+                self._on_epoch_end(epoch, prefix="val")
+            return avg_val_loss
+
+    def _evaluate_with_generators(self,
+                                  generator: DataLoader,
+                                  val_frequency: int = 0,
+                                  epoch: int = 0,
+                                  is_test: bool = False):
+        prefix = "test" if is_test else "val"
+        self._on_epoch_start()
+        if generator is not None and (not val_frequency or (epoch) % val_frequency == 0):
+            masking_flag = None
+            val_losses = []
+
+            # Execute with no grad and eval mode
+            self.eval()
+            with torch.no_grad():
+                # Unroll generator
+                last_iter = len(generator) - 1
+                for idx, (val_inputs, val_labels) in enumerate(generator):
+                    if masking_flag == None:
+                        # Most efficient way to set this I could think of
+                        masking_flag = isinstance(val_inputs, (list, tuple))
+                    if masking_flag:
                         val_inputs, val_masks = val_inputs
                         val_inputs = val_inputs.to(self._device)
                         val_masks = val_masks.to(self._device)
@@ -410,63 +576,92 @@ class AbstractTorchNetwork(nn.Module):
                         val_inputs = val_inputs.to(self._device)
                         val_masks = None
                     val_labels = val_labels.to(self._device)
-                    val_outputs = self(val_inputs, mask=val_masks)
+                    val_outputs = self(val_inputs, masks=val_masks)
                     val_loss = self._loss(val_outputs, val_labels)
                     val_losses.append(val_loss.item())
+                    self._update_metrics(val_loss,
+                                         val_outputs,
+                                         val_labels,
+                                         prefix=prefix,
+                                         update_progbar=(idx == last_iter) and prefix == "val")
+                    self._batch_count += 1
 
             avg_val_loss = np.mean(val_losses)
             if is_test:
-                self._history.test_loss = avg_val_loss
+                self._test_counter += 1
+                self._on_epoch_end(self._test_counter, prefix="test")
             else:
-                self._history.val_loss[epoch] = avg_val_loss
-                if self._history.best_val["loss"] > avg_val_loss:
-                    self._history.best_val["loss"] = avg_val_loss
-                    self._history.best_val["epoch"] = epoch
-                if hasattr(self, "_train_progbar"):
-                    self._train_progbar.update(self._train_progbar.target,
-                                               values=[('loss', avg_val_loss),
-                                                       ('val_loss', avg_val_loss)])
+                self._on_epoch_end(epoch, prefix="val")
             return avg_val_loss
 
-    def evaluate(self, test_generator: DataLoader):
-        self._evaluate(val_generator=test_generator, val_frequency=0, epoch=0)
+    @overload
+    def evaluate(self, x: np.ndarray, y: np.ndarray):
+        ...
+
+    @overload
+    def evaluate(self, validation_data: DataLoader):
+        ...
+
+    def evaluate(self, *args, **kwargs):
+        return self._evaluate(*args, is_test=True, epoch=None, val_frequency=None, **kwargs)
+
+    def _evaluate(self, *args, **kwargs):
+        # Array evaluation
+        if (len(args) >= 1 and isinstance(args[0], (list, tuple))):
+            # Unpack and pass individual
+            x, y = args[0]
+            return self._evaluate_with_arrays(x, y, *args, **kwargs)
+        elif "validation_data" in kwargs and isinstance(kwargs["validation_data"], (list, tuple)):
+            x, y = kwargs.pop("validation_data")
+            return self._evaluate_with_arrays(x, y, *args, **kwargs)
+        # Generator evaluation
+        elif len(args) >= 1 and isinstance(args[0], DataLoader):
+            return self._evaluate_with_generators(*args, **kwargs)
+        elif "validation_data" in kwargs and isinstance(kwargs["validation_data"], DataLoader):
+            kwargs["generator"] = kwargs.pop("validation_data")
+            return self._evaluate_with_generators(*args, **kwargs)
+        else:
+            if len(args) >= 1 and isinstance(args[0], np.ndarray):
+                x = args[0]
+            elif "x" in kwargs:
+                x = kwargs["x"]
+
+            if len(args) >= 2 and isinstance(args[1], np.ndarray):
+                y = args[1]
+            elif "y" in kwargs:
+                y = kwargs["y"]
+            try:
+                return self._evaluate_with_arrays(x, y, **kwargs)
+            except TypeError as e:
+                raise TypeError("Invalid arguments")
 
     @overload
     def fit(self,
-            train_generator: DataLoader,
+            generator: DataLoader,
             epochs: int = 1,
             patience: Optional[int] = None,
             save_best_only: bool = True,
             restore_best_weights: bool = True,
             sample_weights: Optional[Dict] = None,
-            val_frequency: int = 1,
-            val_generator: Optional[DataLoader] = None,
+            validation_freq: int = 1,
+            validation_data: Optional[DataLoader] = None,
             model_path: Optional[Path] = None):
         ...
 
     @overload
     def fit(self,
-            inputs: np.ndarray,
-            labels: np.ndarray,
+            x: np.ndarray,
+            y: np.ndarray,
             epochs: int = 1,
             batch_size: int = 32,
             patience: Optional[int] = None,
             save_best_only: bool = True,
             restore_best_weights: bool = True,
             sample_weights: Optional[Dict] = None,
-            val_frequency: int = 1,
-            val_inputs: Optional[np.ndarray] = None,
-            val_labels: Optional[np.ndarray] = None,
+            validation_freq: int = 1,
+            validation_data: Optional[Union[tuple, list]] = None,
             model_path: Optional[Path] = None):
         ...
-
-    def fit(self, *args, **kwargs):
-        if len(args) == 1 and isinstance(args[0], DataLoader):
-            return self._fit_with_dataloader(*args, **kwargs)
-        elif len(args) == 2 and isinstance(args[0], np.ndarray) and isinstance(args[1], np.ndarray):
-            return self._fit_with_arrays(*args, **kwargs)
-        else:
-            raise TypeError("Invalid arguments")
 
     def fit(self,
             *args,
@@ -476,15 +671,15 @@ class AbstractTorchNetwork(nn.Module):
             save_best_only: bool = True,
             restore_best_weights: bool = True,
             sample_weights: dict = None,
-            val_frequency: int = 1,
-            val_generator: DataLoader = None,
+            validation_freq: int = 1,
+            validation_data: Union[DataLoader, tuple, list] = None,
             model_path: Path = None,
             **kwargs):
         is_array = False
         if len(args) >= 1 and isinstance(args[0], DataLoader):
             train_data = (args[0],)
-        elif "train_generator" in kwargs:
-            train_data = (kwargs["train_generator"],)
+        elif "generator" in kwargs:
+            train_data = (kwargs["generator"],)
         else:
             if len(args) >= 1 and isinstance(args[0], (np.ndarray, torch.Tensor, list, tuple)):
                 x = args[0]
@@ -509,11 +704,11 @@ class AbstractTorchNetwork(nn.Module):
         if model_path is not None:
             self._model_path = model_path
             self._model_path.mkdir(parents=True, exist_ok=True)
-        if patience is None:
-            patience = epochs
-        if val_generator is None:
+        if validation_data is None and patience is not None:
             warn_io("WARNING:tensorflow:Early stopping conditioned on metric `val_loss` "
                     "which is not available. Available metrics are: loss")
+        if patience is None:
+            patience = epochs
         self._patience_counter = 0
         initial_epoch = self._latest_epoch(epochs, self._model_path)
         self.load(epochs, weights_only=True)
@@ -525,11 +720,13 @@ class AbstractTorchNetwork(nn.Module):
                         epoch=epoch,
                         epochs=epochs,
                         sample_weights=sample_weights,
-                        has_val=val_generator is not None)
+                        has_val=validation_data is not None)
+            if validation_data is not None:
+                self._evaluate(validation_data=validation_data,
+                               val_frequency=validation_freq,
+                               epoch=epoch)
 
-            self._evaluate(val_generator=val_generator, val_frequency=val_frequency, epoch=epoch)
-
-            if val_generator is not None:
+            if validation_data is not None:
                 best_epoch = self._history.best_val["epoch"]
             else:
                 best_epoch = self._history.best_train["epoch"]

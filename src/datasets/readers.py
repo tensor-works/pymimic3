@@ -44,7 +44,7 @@ from utils import NoopLock
 from collections import defaultdict
 from utils.IO import *
 from settings import *
-from utils import zeropad_samples
+from utils import zeropad_samples, read_timeseries, is_iterable
 from .mimic_utils import upper_case_column_names, convert_dtype_dict, read_varmap_csv
 from .trackers import ExtractionTracker
 from typing import List, Union, Dict
@@ -985,6 +985,7 @@ class ProcessedSetReader(AbstractReader):
                  imputer=None,
                  subject_ids: Union[List[str], List[int]] = None,
                  deep_supervision: bool = False,
+                 normalize_inputs: bool = False,
                  read_timestamps: bool = False,
                  data_type=None,
                  return_ids: bool = False,
@@ -1007,8 +1008,12 @@ class ProcessedSetReader(AbstractReader):
             An object that implements the `transform` method, used to impute missing values in the data. Default is None.
         subject_ids : list of int or list of str, optional
             A list of subject IDs to read. If specified, `n_samples` is ignored. Default is None.
-        read_masks : bool, optional
-            Whether to read masks. Default is False.
+        deep_supervision : bool, optional
+            Whether to read the dataset in deep supervision mode. If True, returns prefices X, M, and yds where M is the masks
+            and yds is the deep supervision targets. Default is False.
+        normalize_inputs : bool, optional
+            If True, ensures that the time step dimension of the targets equals the time dimension of the samples.
+            A mask is returned indicating where the original targets are located in the series. Default is False.
         read_timestamps : bool, optional
             Whether to read timestamps. Default is False.
         data_type : type, optional
@@ -1021,8 +1026,9 @@ class ProcessedSetReader(AbstractReader):
         Returns
         -------
         dict
-            A dictionary containing the dataset. Keys include 'X' for the data, 'y' for the labels, and optionally 'M' for masks
-            and 't' for timestamps if `read_masks` and `read_timestamps` are True.
+            A dictionary containing the dataset. Keys include 'X' for the data, 'y' for the labels, and optionally
+            'M' for masks, 't' for timestamps if `read_timestamps` is True, and 'yds' for deep supervision targets
+            if `deep_supervision` is True.
         list of int or list of str, optional
             A list of subject IDs if `return_ids` is True.
 
@@ -1039,6 +1045,7 @@ class ProcessedSetReader(AbstractReader):
                                         read_timestamps=read_timestamps,
                                         read_masks=deep_supervision,
                                         data_type=data_type)
+            prefices = deepcopy(list(dataset.keys()))
         else:
 
             dataset, subject_ids = self.random_samples(n_subjects=len(self.subject_ids),
@@ -1047,9 +1054,42 @@ class ProcessedSetReader(AbstractReader):
                                                        return_ids=True,
                                                        read_masks=deep_supervision,
                                                        seed=seed)
+            prefices = deepcopy(list(dataset.keys()))
             if n_samples is not None:
-                for prefix in deepcopy(list(dataset.keys())):
+                for prefix in prefices:
                     dataset[prefix] = dataset[prefix][:min(n_samples, len(dataset[prefix]))]
+
+        buffer_dataset = dict(zip(prefices, [[] for _ in range(len(prefices))]))
+        # TODO! buffer_dataset["M"] = []
+        n_samples = len(dataset["X"])
+        if not deep_supervision:
+            for sample in range(n_samples):
+                X_df, y_df = dataset["X"][sample], dataset["y"][sample]
+                X_dfs, y_dfs, ts = read_timeseries(X_df, y_df, dtype=pd.DataFrame)
+                # TODO! masks = [y_df]
+                buffer_dataset["X"].extend(X_dfs)
+                buffer_dataset["y"].extend(y_dfs)
+                # TODO! buffer_dataset["M"].extend(np.ones)
+
+        dataset = buffer_dataset
+        del buffer_dataset
+
+        # Normalize lengths on the smallest times stamp
+        if deep_supervision and normalize_inputs:
+            for idx in range(n_samples):
+                length = min([int(dataset[prefix][idx].index[-1]) \
+                            for prefix in prefices])
+                for prefix in prefices:
+                    dataset[prefix][idx] = dataset[prefix][idx][:length]
+
+            # Needs masking if a series
+            if not "M" in dataset:
+                dataset["M"] = list()
+                for idx in range(n_samples):
+                    y_reindex_df = dataset["y"][idx].reindex(dataset["X"][idx].index)
+                    dataset["y"][idx] = y_reindex_df.fillna(0)
+                    dataset["M"].append((~y_reindex_df.isna()).astype(int))
+
         if imputer is not None:
             dataset["X"] = [imputer.transform(sample) for sample in dataset["X"]]
         if scaler is not None:
@@ -1058,7 +1098,10 @@ class ProcessedSetReader(AbstractReader):
             dataset["X"] = [sample.values for sample in dataset["X"]]
 
         for prefix in deepcopy(list(dataset.keys())):
-            dataset[prefix] = zeropad_samples(dataset[prefix])
+            if len(dataset[prefix]) and is_iterable(dataset[prefix][0]):
+                dataset[prefix] = zeropad_samples(dataset[prefix])
+            else:
+                dataset[prefix] = np.array(dataset["y"]).reshape(-1, 1, 1)
         if return_ids:
             return dataset, subject_ids
         return dataset

@@ -265,29 +265,28 @@ class MIMICDiscretizer(AbstractProcessor):
 
             for stay_id in X_subject:
                 # Do not reprocess if create for different supervision mode
+                y_df = y_dict[subject_id][stay_id]
                 if self._process_x:
                     X_df = X_subject[stay_id]
-                    if self._mode == "experimental" and self._impute_strategy in [
-                            "previous", "next"
-                    ]:
+                    if self._mode == "experimental" and self._impute_strategy \
+                       in ["previous", "next"]:
                         X_df = self._impute_data(X_df)
                         X_df = self._categorize_data(X_df)
-                        X_df = self._bin_data(X_df)
+                        X_df = self._bin_data(X_df, y_df)
                     else:
                         X_df = self._categorize_data(X_df)
-                        X_df = self._bin_data(X_df)
+                        X_df = self._bin_data(X_df, y_df)
                         X_df = self._impute_data(X_df)
                     self._X[subject_id][stay_id] = X_df
                 if self._deep_supervision:
-                    y_reindexed = y_dict[subject_id][stay_id].reindex(
-                        self._X[subject_id][stay_id].index + 1)
+                    y_reindexed = y_df.reindex(self._X[subject_id][stay_id].index)
                     self._y[subject_id][stay_id] = y_reindexed.fillna(0)
                     self._M[subject_id][stay_id] = (~y_reindexed.isna()).astype(int)
                 else:
-                    self._y[subject_id][stay_id] = y_dict[subject_id][stay_id]
+                    self._y[subject_id][stay_id] = y_df
 
                 # Based on y_dict not self._y so supervision mode agnostic
-                n_samples = len(y_dict[subject_id][stay_id])
+                n_samples = len(y_df)
                 if n_samples and len(X_df):
                     self._n_stays += 1
                     self._n_samples += n_samples
@@ -330,7 +329,7 @@ class MIMICDiscretizer(AbstractProcessor):
             return tuple(result_list), tracking_info
         return tuple(result_list)
 
-    def _bin_data(self, X):
+    def _bin_data(self, X, y):
         """
         Bin the time series data into discrete time steps.
         """
@@ -344,13 +343,15 @@ class MIMICDiscretizer(AbstractProcessor):
             else:
                 ts = list(X.index - start_timestamp)
 
+            # TODO! Here you make X continue until los
+
             # Maps sample_periods to discretization bins
             tsid_to_bins = list(map(lambda x: int(x / self._time_step_size - self._eps), ts))
             # Tentative solution
             if self._start_at_zero:
-                N_bins = tsid_to_bins[-1] + 1
+                N_bins = int(max(tsid_to_bins[-1], y.index[-1])) + 1
             else:
-                N_bins = tsid_to_bins[-1] - tsid_to_bins[0] + 1
+                N_bins = int(max(tsid_to_bins[-1] - tsid_to_bins[0], y.index[-1])) + 1
 
             # Reduce DataFrame to bins, keep original channels
             X['bins'] = tsid_to_bins

@@ -11,59 +11,12 @@ from utils import is_iterable
 import torch.nn as nn
 
 
-class TimeDistributed(nn.Module):
-
-    def __init__(self, module, batch_first=True):
-        super(TimeDistributed, self).__init__()
-        self.module = module
-        self.batch_first = batch_first
-
-    def forward(self, x):
-        if len(x.size()) <= 2:
-            return self.module(x)
-
-        # Compute TimeDistributed layer
-        batch_size = x.size(0)
-        time_steps = x.size(1)
-        remaining_dims = x.size()[2:]
-
-        # Reshape input tensor for module
-        if self.batch_first:
-            x = x.contiguous().view(batch_size * time_steps, *remaining_dims)
-        else:
-            x = x.contiguous().view(time_steps, batch_size, *remaining_dims).transpose(0, 1)
-
-        # Apply module and reshape output
-        y = self.module(x)
-        if self.batch_first:
-            y = y.view(batch_size, time_steps, *y.size()[1:])
-        else:
-            y = y.view(time_steps, batch_size, *y.size()[1:]).transpose(0, 1)
-
-        return y
-
-
-class TimeDistributedDense(nn.Module):
-
-    def __init__(self, input_size, output_size):
-        super().__init__()
-        self.dense = nn.Linear(input_size, output_size)
-
-    def forward(self, x):
-        batch_size, seq_len, _ = x.size()
-        x_reshaped = x.contiguous().view(-1, x.size(-1))  # Combine batch_size and seq_len
-        y = self.dense(x_reshaped)
-        y = y.view(batch_size, seq_len, -1)  # Restore batch_size and seq_len
-        return y
-
-
 class LSTMNetwork(AbstractTorchNetwork):
 
     def __init__(self,
                  layer_size: Union[List[int], int],
                  input_dim: int,
                  dropout: float = 0.,
-                 deep_supervision: bool = False,
                  recurrent_dropout: float = 0.,
                  final_activation: str = None,
                  output_dim: int = 1,
@@ -75,7 +28,6 @@ class LSTMNetwork(AbstractTorchNetwork):
         self._dropout_rate = dropout
         self._recurrent_dropout = recurrent_dropout
         self._depth = depth
-        self._deep_supervision = deep_supervision
         self._output_dim = output_dim
 
         if isinstance(layer_size, int):
@@ -125,9 +77,10 @@ class LSTMNetwork(AbstractTorchNetwork):
                 elif 'bias_hh' in name:
                     p.data.fill_(0)
 
-    def forward(self, x, masks=None):
+    def forward(self, x, masks=None) -> torch.Tensor:
         if masks is not None:
             masks = masks.to(self._device)
+        masking_falg = masks is not None
         x = x.to(self._device)
 
         # Masking is not natively supported in PyTorch LSTM, assume x is already preprocessed if necessary
@@ -135,7 +88,7 @@ class LSTMNetwork(AbstractTorchNetwork):
             x, _ = lstm(x)
         x, _ = self._lstm_final(x)
 
-        if self._deep_supervision:
+        if masking_falg:
             outputs = list()
             # Apply the linear to teach timestep
             for ts in range(x.shape[1]):
@@ -176,7 +129,6 @@ if __name__ == "__main__":
     scaler = MinMaxScaler().fit_reader(reader)
     train_generator = TorchGenerator(reader=reader,
                                      scaler=scaler,
-                                     batch_size=8,
                                      deep_supervision=True,
                                      shuffle=True)
     # val_generator = TorchGenerator(reader=reader.val,
@@ -187,16 +139,19 @@ if __name__ == "__main__":
 
     model_path = Path(TEMP_DIR, "torch_lstm")
     model_path.mkdir(parents=True, exist_ok=True)
-    model = LSTMNetwork(1000,
-                        59,
-                        output_dim=1,
-                        depth=1,
-                        final_activation="softmax",
-                        deep_supervision=True)
+    model = LSTMNetwork(1000, 59, output_dim=1, depth=1, final_activation="softmax")
     import torch
-    criterion = nn.BCELoss(torch.tensor([4.0], dtype=torch.float32))
-    optimizer = optim.Adam(model.parameters(), lr=0.00001)
+    import numpy as np
+    criterion = nn.BCELoss()
+    optimizer = optim.Adam(model.parameters(), lr=0.001)
     model.compile(optimizer=optimizer, loss=criterion, metrics=["pr_auc", "roc_auc"])
     # Example training loop
-    history = model.fit(train_generator=train_generator, epochs=40)
-    print(history)
+    history = model.fit(generator=train_generator,
+                        validation_data=train_generator,
+                        epochs=1,
+                        batch_size=8)
+    model.evaluate(train_generator)
+    x, y = np.random.uniform(0, 1, (200, 100, 59)), np.random.choice([0, 1], (200, 1, 1))
+    model.fit(x, y, epochs=1, batch_size=8, validation_data=(x, y))
+    model.evaluate(x, y)
+    print()

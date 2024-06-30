@@ -2,18 +2,16 @@ import numpy as np
 import pandas as pd
 import random
 import ray
-import os
 import logging
 
 from copy import deepcopy
 from pathlib import Path
 from utils.IO import *
 from typing import List
-from utils import zeropad_samples
+from utils import zeropad_samples, read_timeseries
 from preprocessing.scalers import AbstractScaler
 from datasets.trackers import PreprocessingTracker
 from datasets.readers import ProcessedSetReader
-from metrics import CustomBins, LogBins
 from pathos import multiprocessing as mp
 
 
@@ -208,26 +206,6 @@ class AbstractGenerator:
 
         return chunks
 
-    @staticmethod
-    def read_timeseries(X_df: pd.DataFrame, y_df: pd.DataFrame, row_only=False, bining="none"):
-        if bining == "log":
-            y = y_df.applymap(LogBins.get_bin_log)
-        elif bining == "custom":
-            y = y_df.applymap(CustomBins.get_bin_custom)
-        else:
-            y = y_df
-
-        if row_only:
-            Xs = [X_df.loc[timestamp].values for timestamp in y_df.index]
-        else:
-            Xs = [X_df.loc[:timestamp].values for timestamp in y_df.index]
-
-        indices = np.random.permutation(len(Xs))
-        ys = y.squeeze(axis=1).values.tolist()
-        ts = y_df.index.tolist()
-
-        return Xs, ys, ts
-
     def _close(self):
         try:
             ray.get(self.__results)
@@ -355,10 +333,7 @@ def process_subject(args, reader: ProcessedSetReader, scaler: AbstractScaler, ro
         for stay_id in X_subject.keys():
             X_stay, y_stay = X_subject[stay_id], y_subject[stay_id]
             X_stay[X_stay.columns] = scaler.transform(X_stay)
-            Xs, ys, ts = AbstractGenerator.read_timeseries(X_df=X_stay,
-                                                           y_df=y_stay,
-                                                           row_only=row_only,
-                                                           bining=bining)
+            Xs, ys, ts = read_timeseries(X_df=X_stay, y_df=y_stay, row_only=row_only, bining=bining)
             Xs, ys, ts = shuffled_data(Xs, ys, ts)
             for X, y, t in zip(Xs, ys, ts):
                 if target_replication:
