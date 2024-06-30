@@ -537,6 +537,8 @@ class MIMICPreprocessor(AbstractProcessor):
         event_times = timeseries_df.index[(timeseries_df.index < los + precision)
                                           & (timeseries_df.index > -precision)]
 
+        # TODO! This is legacy but technically its unnecessary to keep records after labels end
+        # TODO! (see filtering of samples) fixing this will fail tests
         sample_times = np.arange(0.0, min(los, lived_time) + precision, sample_rate)
         sample_times = list(filter(lambda x: x > label_start_time, sample_times))
 

@@ -91,7 +91,7 @@ def test_tf2_lstm(
     if data_flavour == "generator":
         # -- Create the generator --
         train_generator = TFGenerator(reader=reader, scaler=scaler, batch_size=8, shuffle=True)
-        history = model.fit(train_generator, epochs=10)
+        history = model.fit(train_generator, epochs=5)
         tests_io("Succeeded in creating the generator")
     elif data_flavour == "numpy":
         # -- Create the dataset --
@@ -132,7 +132,7 @@ if __name__ == "__main__":
 
             reader = ProcessedSetReader(Path(SEMITEMP_DIR, "discretized", task_name))
             dataset = reader.to_numpy()
-            for flavour in ["generator", "numpy"]:
+            for flavour in ["numpy", "generator"]:
                 disc_reader[task_name] = reader
-                test_tf2_lstm_with_deep_supvervision(task_name, flavour, disc_reader)
                 test_tf2_lstm(task_name, flavour, disc_reader)
+                test_tf2_lstm_with_deep_supvervision(task_name, flavour, disc_reader)

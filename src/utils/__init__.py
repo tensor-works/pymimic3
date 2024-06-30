@@ -11,19 +11,50 @@ import numpy as np
 import pandas as pd
 from typing import Dict, Union
 from multipledispatch import dispatch
-
+from metrics import CustomBins, LogBins
 from utils.IO import *
 from pathlib import Path
 
 
-def zeropad_samples(data):
-    max_len = max([x.shape[0] for x in data])
+def zeropad_samples(data: np.ndarray, length: int = None) -> np.ndarray:
+    if length is None:
+        length = max([x.shape[0] for x in data])
     ret = [
-        np.concatenate([x, np.zeros((max_len - x.shape[0],) + x.shape[1:])],
+        np.concatenate([x, np.zeros((length - x.shape[0],) + x.shape[1:])],
                        axis=0,
                        dtype=np.float32) for x in data
     ]
     return np.atleast_3d(np.array(ret, dtype=np.float32))
+
+
+def read_timeseries(X_df: pd.DataFrame,
+                    y_df: pd.DataFrame,
+                    row_only=False,
+                    bining="none",
+                    dtype=np.ndarray):
+    if bining == "log":
+        y = y_df.applymap(LogBins.get_bin_log)
+    elif bining == "custom":
+        y = y_df.applymap(CustomBins.get_bin_custom)
+    else:
+        y = y_df
+
+    if row_only:
+        Xs = [
+            X_df.loc[timestamp].values if dtype in [np.ndarray, np.array] else X_df.loc[timestamp]
+            for timestamp in y_df.index
+        ]
+    else:
+        Xs = [
+            X_df.loc[:timestamp].values if dtype in [np.ndarray, np.array] else X_df.loc[:timestamp]
+            for timestamp in y_df.index
+        ]
+
+    indices = np.random.permutation(len(Xs))
+    ys = y.squeeze(axis=1).values.tolist()
+    ts = y_df.index.tolist()
+
+    return Xs, ys, ts
 
 
 def is_numerical(df: pd.DataFrame) -> bool:
