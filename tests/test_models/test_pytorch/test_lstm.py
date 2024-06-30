@@ -108,10 +108,11 @@ if __name__ == "__main__":
     import shutil
     disc_reader = dict()
     for i in range(10):
-        for task_name in ["DECOMP"]:
+        for task_name in ["IHM", "DECOMP", "LOS", "PHENO"]:
             """
             if Path(SEMITEMP_DIR, "discretized", task_name).exists():
                 shutil.rmtree(Path(SEMITEMP_DIR, "discretized", task_name))
+            """
             reader = datasets.load_data(chunksize=75836,
                                         source_path=TEST_DATA_DEMO,
                                         storage_path=SEMITEMP_DIR,
@@ -120,7 +121,6 @@ if __name__ == "__main__":
                                         start_at_zero=True,
                                         impute_strategy='previous',
                                         task=task_name)
-            """
             # reader = datasets.load_data(chunksize=75836,
             #                             source_path=TEST_DATA_DEMO,
             #                             storage_path=SEMITEMP_DIR,
@@ -132,6 +132,6 @@ if __name__ == "__main__":
             #                             task=task_name)
             reader = ProcessedSetReader(Path(SEMITEMP_DIR, "discretized", task_name))
             disc_reader[task_name] = reader
-            for flavour in ["numpy", "generator"]:
+            for flavour in ["numpy"]:  #, "generator"]:
                 # test_torch_lstm_with_deep_supervision(task_name, flavour, disc_reader)
                 test_torch_lstm(task_name, flavour, disc_reader)

@@ -247,7 +247,8 @@ class AbstractTorchNetwork(nn.Module):
         # Insecure about consistency of these here
         self._current_metrics = dict()
         if generator_size:
-            self._epoch_progbar = Progbar(generator_size // batch_size)
+            self._epoch_progbar = Progbar((generator_size // batch_size))
+        self._sample_size = (generator_size // batch_size) * batch_size
 
         # Batch iter variables
         self._sample_count = 0
@@ -334,11 +335,7 @@ class AbstractTorchNetwork(nn.Module):
         return [(f"{prefix}_{metric}", value) for metric, value in metrics]
 
     def remove_end_padding(self, tensor):
-        # Find the last non-zero element in each row
-        last_nonzero = torch.max((tensor != 0).long().cumsum(1), dim=1).values
-        # Create a mask for rows to keep
-        mask = torch.arange(tensor.shape[1], device=tensor.device)[None, :] < last_nonzero[:, None]
-        return tensor[mask].reshape(-1, last_nonzero.max())
+        return tensor[:torch.max(torch.nonzero((tensor != 0).long().sum(1))) + 1, :]
 
     def _train_with_arrays(self,
                            x: np.ndarray,
@@ -348,6 +345,8 @@ class AbstractTorchNetwork(nn.Module):
                            epochs: int = 1,
                            sample_weights: dict = None,
                            has_val: bool = False):
+        # TODO! while keeping the generator at single sample maybe using padded squences from torch ist still
+        # TODO! more efficient
         print(f'\nEpoch {epoch}/{epochs}')
         self.train()
 
@@ -361,10 +360,9 @@ class AbstractTorchNetwork(nn.Module):
 
         # Dimension variables
         data_size = x.shape[0]
-        epoch_size = int(np.floor(data_size / batch_size))
-
-        x = torch.tensor(x, dtype=torch.float32).to(self._device)
-        y = torch.tensor(y, dtype=torch.float32).to(self._device)
+        idx = np.random.permutation(len(x))
+        x = torch.tensor(x[idx, :, :], dtype=torch.float32).to(self._device)
+        y = torch.tensor(y[idx, :, :], dtype=torch.float32).to(self._device)
 
         self._on_epoch_start(data_size, batch_size, has_val)
 
@@ -404,6 +402,10 @@ class AbstractTorchNetwork(nn.Module):
             # Optimizer network on abtch
             aggr_outputs, \
             aggr_labels = self._optimize_batch(outputs=aggr_outputs, labels=aggr_labels, finalize=(not has_val and sample_idx == iter_len))
+
+            # Miss inclomplete batch
+            if sample_idx == self._sample_size:
+                break
 
         self._on_epoch_end(epoch, prefix="train")
 
@@ -453,6 +455,10 @@ class AbstractTorchNetwork(nn.Module):
             # Optimizer network on abtch
             aggr_outputs, \
             aggr_labels = self._optimize_batch(outputs=aggr_outputs, labels=aggr_labels,finalize=not has_val and iter_len == idx)
+
+            # Miss inclomplete batch
+            if idx == self._sample_size:
+                break
 
         self._on_epoch_end(epoch, prefix="train")
 
