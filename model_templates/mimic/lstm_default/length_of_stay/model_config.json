@@ -1,7 +1,0 @@
-{
-    "layer_size": 128,
-    "input_dim": 59,
-    "depth": 1,
-    "dropout_rate": 0,
-    "task": "LOS"
-}

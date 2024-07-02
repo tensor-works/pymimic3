@@ -4,6 +4,7 @@ import torch.optim as optim
 import numpy as np
 import pickle
 import warnings
+from types import FunctionType
 from typing import List, Tuple
 from copy import deepcopy
 from typing import Union, Dict, overload, Optional
@@ -126,7 +127,7 @@ class AbstractTorchNetwork(nn.Module):
     def _init_metrics(self,
                       metrics,
                       prefices: list = ["train", "val", "test"]) -> Dict[str, Metric]:
-        settings = {"task": self._task, "num_classes": self._num_classes}
+        settings = {"task": self._task, "num_labels": self._num_classes}
         return_metrics = {"loss": {"obj": None, "value": 0.0}}
 
         # Creat the base metric dict
@@ -142,7 +143,7 @@ class AbstractTorchNetwork(nn.Module):
                 except:
                     metric_name = "unknonw"
             # If type, instantiate
-            if isinstance(metric, type):
+            if isinstance(metric, (type, FunctionType)):
                 metric = metric(**settings)
 
             return_metrics[metric_name] = {"obj": metric.to(self._device), "value": 0.0}
@@ -362,7 +363,7 @@ class AbstractTorchNetwork(nn.Module):
         data_size = x.shape[0]
         idx = np.random.permutation(len(x))
         x = torch.tensor(x[idx, :, :], dtype=torch.float32).to(self._device)
-        y = torch.tensor(y[idx, :, :], dtype=torch.float32).to(self._device)
+        y = torch.tensor(y[idx, :, :]).to(self._device)
 
         self._on_epoch_start(data_size, batch_size, has_val)
 
@@ -387,17 +388,23 @@ class AbstractTorchNetwork(nn.Module):
             if len(input.shape) < 3:
                 input = input.unsqueeze(0)
 
-            if len(label.shape) < 3:
-                label = label.unsqueeze(0)
+            # if len(label.shape) < 3:
+            #     label = label.unsqueeze(0)
 
             # labels = labels * masks
             output = self(input, masks=mask)
             if masking_flag:
                 output = torch.masked_select(output, mask)
                 label = torch.masked_select(label, mask)
-            # Accumulate outputs and labels
-            aggr_outputs.append(output.view(-1))
-            aggr_labels.append(label.view(-1))
+            # Accumulate outputs and labels either flat or with dim of multilabel
+            aggr_outputs.append(output)
+            aggr_labels.append(label)
+            #aggr_outputs.append(
+            #    output.view(*(-1,) if self._num_classes == 1 else (-1, self._num_classes),))
+            #aggr_labels.append(
+            #    label.view(
+            #        *(-1,) if self._num_classes == 1 or self._final_activation == "softmax" else
+            #        (-1, self._num_classes),))
 
             # Optimizer network on abtch
             aggr_outputs, \
@@ -449,7 +456,7 @@ class AbstractTorchNetwork(nn.Module):
                 output = torch.masked_select(output, mask)
                 label = torch.masked_select(label, mask)
             # Accumulate outputs and labels
-            aggr_outputs.append(output.view(-1))
+            aggr_outputs.append(output.view(-1, self._num_classes))
             aggr_labels.append(label.view(-1))
 
             # Optimizer network on abtch
@@ -469,7 +476,12 @@ class AbstractTorchNetwork(nn.Module):
         if self._sample_count >= self._batch_size:
             # Concatenate accumulated outputs and labels
             outputs = torch.cat(outputs)
-            labels = torch.cat(labels)
+
+            # If multilabel, labels are one-hot, else they are sparse
+            if self._task == "multilabel":
+                labels = torch.cat(labels, axis=1).T
+            else:
+                labels = torch.cat(labels)
 
             # Compute loss
             loss = self._loss(outputs, labels)

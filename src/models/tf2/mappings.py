@@ -7,8 +7,8 @@ activation_names = [
 ]
 
 metric_mapping = {
-    "roc_auc": metrics.AUC(50, curve="ROC"),
-    "pr_auc": metrics.AUC(50, curve="PR"),
+    "roc_auc": lambda *args, **kwargs: metrics.AUC(*args, curve="ROC", **kwargs),
+    "pr_auc": lambda *args, **kwargs: metrics.AUC(*args, curve="ROC", **kwargs),
     "accuracy": "accuracy",
     "acc": "acc",
     "binary_accuracy": "binary_accuracy",

@@ -20,10 +20,10 @@ class CustomBins:
     def get_bin_custom(x, one_hot=False):
         index = bisect.bisect_right(CustomBins.lower_bounds, x) - 1
         if one_hot:
-            ret = np.zeros((CustomBins.nbins,))
+            ret = np.zeros((CustomBins.nbins,), dtype=np.int8)
             ret[index] = 1
             return ret
-        return index
+        return np.int8(index)
 
 
 class LogBins:
@@ -41,7 +41,7 @@ class LogBins:
             binid = nbins - 1
 
         if one_hot:
-            ret = np.zeros((LogBins.nbins,))
+            ret = np.zeros((LogBins.nbins,), dtype=np.int8)
             ret[binid] = 1
             return ret
         return binid

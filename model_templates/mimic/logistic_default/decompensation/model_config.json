@@ -1,6 +1,0 @@
-{
-    "penalty": "l2",
-    "C": 0.001,
-    "solver": "liblinear",
-    "multi_class": "auto"
-}

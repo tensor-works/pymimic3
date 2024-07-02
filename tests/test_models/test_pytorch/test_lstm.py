@@ -1,7 +1,6 @@
 import datasets
 import pytest
-import ray
-import multiprocessing as mp
+import json
 from utils.IO import *
 from datasets.readers import ProcessedSetReader
 from typing import Dict
@@ -12,6 +11,7 @@ from tests.tsettings import *
 from preprocessing.scalers import MinMaxScaler
 from generators.pytorch import TorchGenerator
 from models.pytorch.lstm import LSTMNetwork
+from tests.msettings import *
 
 
 @pytest.mark.parametrize("data_flavour", ["generator", "numpy"])
@@ -29,14 +29,29 @@ def test_torch_lstm_with_deep_supervision(
     scaler = MinMaxScaler().fit_reader(reader)
 
     # -- Create the model --
-    model = LSTMNetwork(128, 59, output_dim=1)
+    # Parameters
+    output_dim = OUTPUT_DIMENSIONS[task_name]
+    final_activation = FINAL_ACTIVATIONS[task_name]
+    model_dimensions = STANDARD_LSTM_DS_PARAMS[task_name]["model"]
+    # Obj
+    model = LSTMNetwork(input_dim=59,
+                        output_dim=output_dim,
+                        final_activation=final_activation,
+                        **model_dimensions)
 
     # -- Compile the model --
-    # criterion = nn.BCEWithLogitsLoss()
-    criterion = nn.BCELoss()
-    optimizer = optim.RMSprop(model.parameters(), lr=0.001)
-    model.compile(optimizer=optimizer, loss=criterion, metrics=["roc_auc", "pr_auc"])
-    tests_io("Succeeded in creating the model")
+    # TODO! remvoe criterion = nn.BCEWithLogitsLoss()
+    criterion = NETWORK_CRITERIONS[task_name]
+    optimizer = optim.Adam(model.parameters(), lr=0.001)
+    model.compile(optimizer=optimizer, loss=criterion, metrics=NETWORK_METRICS[task_name])
+
+    # Let them know
+    tests_io(f"Succeeded in creating the model with:\n"
+             f"output dim: {output_dim}\n"
+             f"final_activation: {final_activation}\n"
+             f"model_dimension: {json.dumps(model_dimensions, indent=4)}\n"
+             f"criterion: {criterion}\n"
+             f"optimizer: Adam, lr=0.001")
 
     # -- fit --
     if data_flavour == "generator":
@@ -76,25 +91,56 @@ def test_torch_lstm(
     scaler = MinMaxScaler().fit_reader(reader)
 
     # -- Create the model --
-    model = LSTMNetwork(128, 59, output_dim=1)
+    # Parameters
+    output_dim = OUTPUT_DIMENSIONS[task_name]
+    final_activation = FINAL_ACTIVATIONS[task_name]
+    model_dimensions = STANDARD_LSTM_PARAMS[task_name]["model"]
+    # Obj
+    model = LSTMNetwork(input_dim=59,
+                        output_dim=output_dim,
+                        final_activation=final_activation,
+                        **model_dimensions)
 
     # -- Compile the model --
-    criterion = nn.BCELoss()
+    criterion = NETWORK_CRITERIONS[task_name]
     optimizer = optim.Adam(model.parameters(), lr=0.001)
-    model.compile(optimizer=optimizer, loss=criterion, metrics=["roc_auc", "pr_auc"])
-    tests_io("Succeeded in creating the model")
+    model.compile(optimizer=optimizer, loss=criterion, metrics=NETWORK_METRICS[task_name])
+
+    # Let them know
+    tests_io(f"Succeeded in creating the model with:\n"
+             f"output dim: {output_dim}\n"
+             f"final_activation: {final_activation}\n"
+             f"model_dimension: {json.dumps(model_dimensions, indent=4)}\n"
+             f"criterion: {criterion}\n"
+             f"optimizer: Adam, lr=0.001")
 
     # -- fit --
     if data_flavour == "generator":
         # -- Create the generator --
-        train_generator = TorchGenerator(reader=reader, scaler=scaler, shuffle=True)
-        history = model.fit(generator=train_generator, epochs=5, batch_size=8)
+        train_generator = TorchGenerator(reader=reader,
+                                         scaler=scaler,
+                                         shuffle=True,
+                                         **GENERATOR_OPTIONS[task_name])
         tests_io("Succeeded in creating the generator")
+
+        # -- Fitting the model --
+        history = model.fit(generator=train_generator, epochs=5, batch_size=8)
+
     elif data_flavour == "numpy":
         # -- Create the dataset --
-        dataset = reader.to_numpy(scaler=scaler)
-        history = model.fit(dataset["X"], dataset["y"], batch_size=8, epochs=5)
-        tests_io("Succeeded in creating the numpy dataset")
+        tests_io("Loading the numpy dataset...", end="\r")
+        dataset = reader.to_numpy(scaler=scaler, **GENERATOR_OPTIONS[task_name])
+        tests_io("Done loading the numpy dataset")
+
+        # -- Fitting the model --
+        if task_name == "IHM":
+            epochs = 20
+        elif task_name == "PHENO":
+            epochs = 20
+        else:
+            epochs = 5
+        history = model.fit(dataset["X"], dataset["y"], batch_size=8, epochs=epochs)
+
     assert min(list(history["train_loss"].values())) <= 1.5, \
         f"Failed in asserting minimum loss ({min(list(history['train_loss'].values()))}) <= 1.5"
     assert max(list(history["train_metrics"]["roc_auc"].values())) >= 0.72, \
@@ -108,7 +154,7 @@ if __name__ == "__main__":
     import shutil
     disc_reader = dict()
     for i in range(10):
-        for task_name in ["IHM", "DECOMP", "LOS", "PHENO"]:
+        for task_name in ["PHENO"]:  # ["IHM", "DECOMP", "PHENO", "LOS"]:
             """
             if Path(SEMITEMP_DIR, "discretized", task_name).exists():
                 shutil.rmtree(Path(SEMITEMP_DIR, "discretized", task_name))

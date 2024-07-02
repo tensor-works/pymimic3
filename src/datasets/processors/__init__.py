@@ -426,6 +426,7 @@ class AbstractProcessor(ABC):
                             continue
                         debug_io(f"Missing subject is: {subject_id}", verbose=orig_verbose)
                         try:
+
                             # Try to replace the missing subject to meet target
                             subj = exclud_subj.pop()
                             res = chain(res,
