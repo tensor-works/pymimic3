@@ -988,6 +988,8 @@ class ProcessedSetReader(AbstractReader):
                  normalize_inputs: bool = False,
                  read_timestamps: bool = False,
                  data_type=None,
+                 bining: str = "none",
+                 one_hot: bool = False,
                  return_ids: bool = False,
                  seed: int = 42):
         """
@@ -1037,6 +1039,10 @@ class ProcessedSetReader(AbstractReader):
         ValueError
             If `data_type` is not one of the possible data types (pd.DataFrame, np.ndarray, None).
         """
+        if one_hot and bining == "none":
+            warn_io("One hot encoding is specified but no bining is applied."
+                    " Ignoring one hot encoding.")
+
         if subject_ids:
             if n_samples:
                 warn_io("Both n_samples and subject_ids are specified. Ignoring n_samples.")
@@ -1060,22 +1066,25 @@ class ProcessedSetReader(AbstractReader):
                     dataset[prefix] = dataset[prefix][:min(n_samples, len(dataset[prefix]))]
 
         buffer_dataset = dict(zip(prefices, [[] for _ in range(len(prefices))]))
-        # TODO! buffer_dataset["M"] = []
         n_samples = len(dataset["X"])
         if not deep_supervision:
             for sample in range(n_samples):
                 X_df, y_df = dataset["X"][sample], dataset["y"][sample]
-                X_dfs, y_dfs, ts = read_timeseries(X_df, y_df, dtype=pd.DataFrame)
-                # TODO! masks = [y_df]
+                X_dfs, y_dfs, ts = read_timeseries(X_df,
+                                                   y_df,
+                                                   bining=bining,
+                                                   one_hot=one_hot,
+                                                   dtype=pd.DataFrame)
                 buffer_dataset["X"].extend(X_dfs)
                 buffer_dataset["y"].extend(y_dfs)
-                # TODO! buffer_dataset["M"].extend(np.ones)
+        else:
+            raise NotImplementedError("apply bining here")
 
         dataset = buffer_dataset
         del buffer_dataset
 
         # Normalize lengths on the smallest times stamp
-        if deep_supervision and normalize_inputs:
+        if normalize_inputs:
             for idx in range(n_samples):
                 length = min([int(dataset[prefix][idx].index[-1]) \
                             for prefix in prefices])

@@ -31,7 +31,7 @@ testFolder=$(dirname $(dirname $SCRIPT))
 
 # Download the MIMIC-III demo dataset from the web
 destinationDir="$testFolder/data/"
-convertScript="$testFolder/etc/convert_columns.py"
+convertScript="$testFolder/etc/benchmark_scriptsconvert_columns.py"
 
 if [ ! -d "$destinationDir/physionet.org" ]; then
     echo "Downloading the MIMIC-III demo dataset directory..."
@@ -58,10 +58,10 @@ if [ ! -d "$generatedDir" ]; then
     git clone "https://github.com/YerevaNN/mimic3-benchmarks.git" $generatedDir
 fi
 
-renameScript="$testFolder/etc/rename_files.py"
-revertSplitScript="$testFolder/etc/revert_split.py"
-engineScript="$testFolder/etc/engineer_data.py"
-discretizerScript="$testFolder/etc/discretize_data.py"
+renameScript="$testFolder/etc/benchmark_scriptsrename_files.py"
+revertSplitScript="$testFolder/etc/benchmark_scriptsrevert_split.py"
+engineScript="$testFolder/etc/benchmark_scriptsengineer_data.py"
+discretizerScript="$testFolder/etc/benchmark_scriptsdiscretize_data.py"
 
 # Change into the MIMIC-III benchmarks directory
 currentDir=$(pwd)

@@ -1,5 +1,0 @@
-{
-    "chunksize": 5000000,
-    "source_path": "mimic-iii",
-    "storage_path": "processed"
-}

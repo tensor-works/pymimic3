@@ -1,6 +1,0 @@
-{
-    "penalty": "l2",
-    "C": 1e-5,
-    "solver": "sag",
-    "multi_class": "multinomial"
-}

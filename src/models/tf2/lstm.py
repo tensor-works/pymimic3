@@ -29,9 +29,15 @@ class LSTMNetwork(AbstractTf2Model):
         self.recurrent_dropout = recurrent_dropout
         self.depth = depth
 
-        if not final_activation in activation_names:
-            raise ValueError(f"Activation function {final_activation} not supported. "
-                             f"Must be one of {*activation_names,}")
+        if final_activation is None:
+            if output_dim == 1:
+                self._final_activation = "sigmoid"
+            else:
+                self._final_activation = "softmax"
+        else:
+            if not final_activation in activation_names:
+                raise ValueError(f"Activation function {final_activation} not supported. "
+                                 f"Must be one of {*activation_names,}")
 
         if isinstance(layer_size, int):
             self._hidden_sizes = [layer_size] * depth

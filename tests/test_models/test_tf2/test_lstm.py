@@ -80,24 +80,45 @@ def test_tf2_lstm(
     scaler = MinMaxScaler().fit_reader(reader)
 
     # -- Create the model --
-    model = LSTMNetwork(128, 59, recurrent_dropout=0., output_dim=1, final_activation='sigmoid')
+    if task_name in ["IHM", "DECOMP"]:
+        output_dim = 1
+    elif task_name == "LOS":
+        output_dim = 10
+    elif task_name == "PHENO":
+        output_dim = 25
+    model = LSTMNetwork(128, 59, recurrent_dropout=0., output_dim=output_dim)
 
     # -- Compile the model --
+    if task_name in ["IHM", "DECOMP"]:
+        loss = "binary_crossentropy"
+    elif task_name in ["LOS", "PHENO"]:
+        loss = "categorical_crossentropy"
+
     optimizer = Adam(learning_rate=0.001, clipvalue=1.0)
-    model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=["roc_auc", "pr_auc"])
+    model.compile(optimizer=optimizer, loss=loss, metrics=["roc_auc", "pr_auc"])
     tests_io("Succeeded in creating the model")
 
     # -- fit --
     if data_flavour == "generator":
         # -- Create the generator --
         train_generator = TFGenerator(reader=reader, scaler=scaler, batch_size=8, shuffle=True)
-        history = model.fit(train_generator, epochs=5)
         tests_io("Succeeded in creating the generator")
+
+        # -- Fitting the model --
+        history = model.fit(train_generator, epochs=5)
+
     elif data_flavour == "numpy":
         # -- Create the dataset --
-        dataset = reader.to_numpy(scaler=scaler)
+        tests_io("Loading the numpy dataset...", end="\r")
+        # Binned with custom bins one LOS task
+        dataset = reader.to_numpy(scaler=scaler,
+                                  bining="custom" if task_name == "LOS" else "none",
+                                  one_hot=task_name == "LOS")
+        tests_io("Done loading the numpy dataset")
+
+        # -- Fitting the model --
         history = model.fit(dataset["X"], dataset["y"], batch_size=8, epochs=10)
-        tests_io("Succeeded in creating the numpy dataset")
+
     assert min(list(history.history["loss"])) <= 1.3, \
         f"Failed in asserting minimum loss ({min(list(history.history['loss']))}) <= 1.5"
     assert max(list(history.history["auc"])) >= 0.8, \
@@ -110,7 +131,7 @@ def test_tf2_lstm(
 if __name__ == "__main__":
     disc_reader = dict()
     for i in range(10):
-        for task_name in ["DECOMP"]:
+        for task_name in ["LOS"]:
             # reader = datasets.load_data(chunksize=75836,
             #                             source_path=TEST_DATA_DEMO,
             #                             storage_path=SEMITEMP_DIR,

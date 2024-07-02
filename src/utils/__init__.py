@@ -10,7 +10,6 @@ import json
 import numpy as np
 import pandas as pd
 from typing import Dict, Union
-from multipledispatch import dispatch
 from metrics import CustomBins, LogBins
 from utils.IO import *
 from pathlib import Path
@@ -31,13 +30,14 @@ def read_timeseries(X_df: pd.DataFrame,
                     y_df: pd.DataFrame,
                     row_only=False,
                     bining="none",
+                    one_hot=False,
                     dtype=np.ndarray):
     if bining == "log":
-        y = y_df.applymap(LogBins.get_bin_log)
+        y_df = y_df.apply(lambda x: LogBins.get_bin_log(x, one_hot=one_hot))
     elif bining == "custom":
-        y = y_df.applymap(CustomBins.get_bin_custom)
+        y_df = y_df.apply(lambda x: CustomBins.get_bin_custom(x, one_hot=one_hot))
     else:
-        y = y_df
+        y_df = y_df.astype(np.float32)
 
     if row_only:
         Xs = [
@@ -50,8 +50,7 @@ def read_timeseries(X_df: pd.DataFrame,
             for timestamp in y_df.index
         ]
 
-    indices = np.random.permutation(len(Xs))
-    ys = y.squeeze(axis=1).values.tolist()
+    ys = y_df.squeeze(axis=1).values
     ts = y_df.index.tolist()
 
     return Xs, ys, ts

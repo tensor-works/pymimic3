@@ -116,8 +116,6 @@ class PRAUC(river_metrics.ROCAUC):
 class MicroROCAUC(river_metrics.ROCAUC):
 
     def __init__(self, n_thresholds=10, pos_val=True):
-        self._y_true_all = []
-        self._y_pred_all = []
         super().__init__(n_thresholds=n_thresholds, pos_val=pos_val)
 
     def update(self, y_true: dict, y_pred: dict):
@@ -137,8 +135,8 @@ class MicroROCAUC(river_metrics.ROCAUC):
 class MacroROCAUC(river_metrics.base.MultiClassMetric):
 
     def __init__(self, n_thresholds=10, pos_val=True):
-        self._n_thresholds = n_thresholds
-        self._pos_val = pos_val
+        self._n_thresholds = n_thresholds  # TODO! does nothing
+        self._pos_val = pos_val  # TODO! does nothing
         self._per_class_rocaucs = collections.defaultdict(river_metrics.ROCAUC)
         self._classes = set()
 
