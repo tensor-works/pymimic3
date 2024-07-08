@@ -1,4 +1,5 @@
-from tensorflow.keras import metrics
+import tensorflow_addons as tfa
+from metrics.tf2 import AUC, DynamicCohenKappa
 
 activation_names = [
     "elu", "exponential", "gelu", "hard_sigmoid", "hard_silu", "hard_swish", "leaky_relu", "linear",
@@ -7,8 +8,11 @@ activation_names = [
 ]
 
 metric_mapping = {
-    "roc_auc": lambda *args, **kwargs: metrics.AUC(*args, curve="ROC", **kwargs),
-    "pr_auc": lambda *args, **kwargs: metrics.AUC(*args, curve="ROC", **kwargs),
+    "roc_auc": AUC(curve="ROC"),
+    "micro_roc_auc": AUC(curve="ROC", average="micro", multi_label=True),
+    "macro_roc_auc": AUC(curve="ROC", average="macro", multi_label=True),
+    "pr_auc": AUC(curve="PR"),
+    "cohen_kappa": DynamicCohenKappa(),
     "accuracy": "accuracy",
     "acc": "acc",
     "binary_accuracy": "binary_accuracy",

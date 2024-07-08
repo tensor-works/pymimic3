@@ -12,7 +12,7 @@ class AUPRC(metric.Metric[Tensor]):
     def __new__(cls,
                 task: Literal["binary", "multiclass", "multilabel"],
                 num_labels: int = 1,
-                average=Literal["macro", "weighted", "none", "micro"]):
+                average: Literal["macro", "weighted", "none", "micro"] = "macro"):
         if average not in ["macro", "micro", "none"]:
             raise ValueError("Average must be one of 'macro', 'micro', or 'none'"
                              f" but is {average}")

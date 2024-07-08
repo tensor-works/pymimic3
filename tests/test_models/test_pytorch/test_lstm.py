@@ -40,7 +40,6 @@ def test_torch_lstm_with_deep_supervision(
                         **model_dimensions)
 
     # -- Compile the model --
-    # TODO! remvoe criterion = nn.BCEWithLogitsLoss()
     criterion = NETWORK_CRITERIONS[task_name]
     optimizer = optim.Adam(model.parameters(), lr=0.001)
     model.compile(optimizer=optimizer, loss=criterion, metrics=NETWORK_METRICS[task_name])
@@ -154,7 +153,7 @@ if __name__ == "__main__":
     import shutil
     disc_reader = dict()
     for i in range(10):
-        for task_name in ["PHENO"]:  # ["IHM", "DECOMP", "PHENO", "LOS"]:
+        for task_name in ["DECOMP"]:  # ["PHENO"]:  # ["IHM", "DECOMP", "PHENO", "LOS"]:
             """
             if Path(SEMITEMP_DIR, "discretized", task_name).exists():
                 shutil.rmtree(Path(SEMITEMP_DIR, "discretized", task_name))

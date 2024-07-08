@@ -33,9 +33,10 @@ def read_timeseries(X_df: pd.DataFrame,
                     one_hot=False,
                     dtype=np.ndarray):
     if bining == "log":
-        y_df = y_df.apply(lambda x: LogBins.get_bin_log(x, one_hot=one_hot))
+        y_df = y_df.apply(lambda x: LogBins.get_bin_log(x, one_hot=one_hot)).to_frame()
     elif bining == "custom":
-        y_df = y_df.apply(lambda x: CustomBins.get_bin_custom(x, one_hot=one_hot))
+        y_df = y_df.apply(lambda x: CustomBins.get_bin_custom(x, one_hot=one_hot),
+                          axis=1).to_frame()
     else:
         y_df = y_df.astype(np.float32)
 
@@ -49,8 +50,11 @@ def read_timeseries(X_df: pd.DataFrame,
             X_df.loc[:timestamp].values if dtype in [np.ndarray, np.array] else X_df.loc[:timestamp]
             for timestamp in y_df.index
         ]
+    if isinstance(y_df, pd.DataFrame):
+        ys = y_df.squeeze(axis=1)
+    elif isinstance(y_df, np.ndarray):
+        ys = y_df.squeeze(axis=1).values
 
-    ys = y_df.squeeze(axis=1).values
     ts = y_df.index.tolist()
 
     return Xs, ys, ts
