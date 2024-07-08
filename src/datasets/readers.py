@@ -1076,12 +1076,12 @@ class ProcessedSetReader(AbstractReader):
                                                    one_hot=one_hot,
                                                    dtype=pd.DataFrame)
                 buffer_dataset["X"].extend(X_dfs)
-                buffer_dataset["y"].extend(y_dfs)
+                buffer_dataset["y"].extend(y_dfs.values)
+            dataset = buffer_dataset
+            del buffer_dataset
         else:
-            raise NotImplementedError("apply bining here")
-
-        dataset = buffer_dataset
-        del buffer_dataset
+            pass
+            # raise NotImplementedError("apply bining here")
 
         # Normalize lengths on the smallest times stamp
         if normalize_inputs:
@@ -1108,7 +1108,11 @@ class ProcessedSetReader(AbstractReader):
 
         for prefix in deepcopy(list(dataset.keys())):
             if len(dataset[prefix]) and is_iterable(dataset[prefix][0]):
+                # if deep_supervision or not prefix.startswith("y"):
                 dataset[prefix] = zeropad_samples(dataset[prefix])
+                # TODO! potentially needed to differentiate between deep supervision and multilabel
+                # else:
+                #     dataset[prefix] = np.expand_dims(np.array(dataset[prefix]), 1)
             else:
                 dataset[prefix] = np.array(dataset["y"]).reshape(-1, 1, 1)
         if return_ids:

@@ -1,6 +1,22 @@
 import numpy as np
-import bisect
 from settings import *
+
+
+def is_iterable(obj):
+    """
+    Check if an object is iterable.
+
+    Parameters
+    ----------
+    obj : object
+        The object to check.
+
+    Returns
+    -------
+    bool
+        True if the object is iterable, False otherwise.
+    """
+    return hasattr(obj, '__iter__')
 
 
 class CustomBins:
@@ -18,11 +34,15 @@ class CustomBins:
 
     @staticmethod
     def get_bin_custom(x, one_hot=False):
-        index = bisect.bisect_right(CustomBins.lower_bounds, x) - 1
+        index = np.digitize(x, CustomBins.lower_bounds) - 1
         if one_hot:
-            ret = np.zeros((CustomBins.nbins,), dtype=np.int8)
-            ret[index] = 1
-            return ret
+            if is_iterable(index):
+                ret = np.zeros((x.size, CustomBins.nbins), dtype=np.int8)
+                ret[np.arange(x.size), index] = 1
+            else:
+                ret = np.zeros((CustomBins.nbins,), dtype=np.int8)
+                ret[index] = 1
+            return ret.squeeze()
         return np.int8(index)
 
 

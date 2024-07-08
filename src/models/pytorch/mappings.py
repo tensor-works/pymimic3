@@ -43,6 +43,8 @@ metric_mapping = {
     "mape": torchmetrics.MeanAbsolutePercentageError,
     "confusion_matrix": torchmetrics.ConfusionMatrix,
     "cohen_kappa": torchmetrics.CohenKappa,
+    "roc_auc": lambda *args, **kwargs: AUROC(*args, **kwargs),
+    "pr_auc": lambda *args, **kwargs: AUPRC(*args, **kwargs),
     "micro_roc_auc": lambda *args, **kwargs: AUROC(*args, average="micro", **kwargs),
     "macro_roc_auc": lambda *args, **kwargs: AUROC(*args, average="macro", **kwargs),
     "micro_pr_auc": lambda *args, **kwargs: AUPRC(*args, average="micro", **kwargs),

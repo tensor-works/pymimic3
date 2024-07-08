@@ -9,6 +9,7 @@ from tests.tsettings import *
 from preprocessing.scalers import MinMaxScaler
 from generators.tf2 import TFGenerator
 from models.tf2.lstm import LSTMNetwork
+from tests.msettings import *
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.metrics import AUC
 
@@ -29,16 +30,22 @@ def test_tf2_lstm_with_deep_supvervision(
     scaler = MinMaxScaler().fit_reader(reader)
 
     # -- Create the model --
-    model = LSTMNetwork(128,
-                        59,
+    # Parameters
+    output_dim = OUTPUT_DIMENSIONS[task_name]
+    final_activation = FINAL_ACTIVATIONS[task_name]
+    model_dimensions = STANDARD_LSTM_DS_PARAMS[task_name]["model"]
+    # Obj
+    model = LSTMNetwork(input_dim=59,
                         recurrent_dropout=0.,
-                        output_dim=1,
+                        output_dim=output_dim,
                         deep_supervision=True,
-                        final_activation='sigmoid')
+                        final_activation=final_activation,
+                        **model_dimensions)
 
     # -- Compile the model --
+    criterion = NETWORK_CRITERIONS[task_name]
     optimizer = Adam(learning_rate=0.001, clipvalue=1.0)
-    model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=["roc_auc", "pr_auc"])
+    model.compile(optimizer=optimizer, loss=criterion, metrics=NETWORK_METRICS[task_name])
     tests_io("Succeeded in creating the model")
 
     # -- fit --
@@ -80,22 +87,21 @@ def test_tf2_lstm(
     scaler = MinMaxScaler().fit_reader(reader)
 
     # -- Create the model --
-    if task_name in ["IHM", "DECOMP"]:
-        output_dim = 1
-    elif task_name == "LOS":
-        output_dim = 10
-    elif task_name == "PHENO":
-        output_dim = 25
-    model = LSTMNetwork(128, 59, recurrent_dropout=0., output_dim=output_dim)
+    # Parameters
+    output_dim = OUTPUT_DIMENSIONS[task_name]
+    final_activation = FINAL_ACTIVATIONS[task_name]
+    model_dimensions = STANDARD_LSTM_PARAMS[task_name]["model"]
+    # Obj
+    model = LSTMNetwork(input_dim=59,
+                        recurrent_dropout=0.,
+                        output_dim=output_dim,
+                        final_activation=final_activation,
+                        **model_dimensions)
 
     # -- Compile the model --
-    if task_name in ["IHM", "DECOMP"]:
-        loss = "binary_crossentropy"
-    elif task_name in ["LOS", "PHENO"]:
-        loss = "categorical_crossentropy"
-
+    criterion = NETWORK_CRITERIONS[task_name]
     optimizer = Adam(learning_rate=0.001, clipvalue=1.0)
-    model.compile(optimizer=optimizer, loss=loss, metrics=["roc_auc", "pr_auc"])
+    model.compile(optimizer=optimizer, loss=criterion, metrics=NETWORK_METRICS[task_name])
     tests_io("Succeeded in creating the model")
 
     # -- fit --
@@ -112,8 +118,8 @@ def test_tf2_lstm(
         tests_io("Loading the numpy dataset...", end="\r")
         # Binned with custom bins one LOS task
         dataset = reader.to_numpy(scaler=scaler,
-                                  bining="custom" if task_name == "LOS" else "none",
-                                  one_hot=task_name == "LOS")
+                                  one_hot=task_name == "LOS",
+                                  **GENERATOR_OPTIONS[task_name])
         tests_io("Done loading the numpy dataset")
 
         # -- Fitting the model --
@@ -132,14 +138,14 @@ if __name__ == "__main__":
     disc_reader = dict()
     for i in range(10):
         for task_name in ["LOS"]:
-            # reader = datasets.load_data(chunksize=75836,
-            #                             source_path=TEST_DATA_DEMO,
-            #                             storage_path=SEMITEMP_DIR,
-            #                             discretize=True,
-            #                             time_step_size=1.0,
-            #                             start_at_zero=True,
-            #                             impute_strategy='previous',
-            #                             task=task_name)
+            reader = datasets.load_data(chunksize=75836,
+                                        source_path=TEST_DATA_DEMO,
+                                        storage_path=SEMITEMP_DIR,
+                                        discretize=True,
+                                        time_step_size=1.0,
+                                        start_at_zero=True,
+                                        impute_strategy='previous',
+                                        task=task_name)
 
             # reader = datasets.load_data(chunksize=75836,
             #                             source_path=TEST_DATA_DEMO,
