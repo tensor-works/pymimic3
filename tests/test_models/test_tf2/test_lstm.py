@@ -93,7 +93,6 @@ def test_tf2_lstm(
     model_dimensions = STANDARD_LSTM_PARAMS[task_name]["model"]
     # Obj
     model = LSTMNetwork(input_dim=59,
-                        recurrent_dropout=0.,
                         output_dim=output_dim,
                         final_activation=final_activation,
                         **model_dimensions)
@@ -147,15 +146,15 @@ if __name__ == "__main__":
                                         impute_strategy='previous',
                                         task=task_name)
 
-            # reader = datasets.load_data(chunksize=75836,
-            #                             source_path=TEST_DATA_DEMO,
-            #                             storage_path=SEMITEMP_DIR,
-            #                             discretize=True,
-            #                             time_step_size=1.0,
-            #                             start_at_zero=True,
-            #                             deep_supervision=True,
-            #                             impute_strategy='previous',
-            #                             task=task_name)
+            reader = datasets.load_data(chunksize=75836,
+                                        source_path=TEST_DATA_DEMO,
+                                        storage_path=SEMITEMP_DIR,
+                                        discretize=True,
+                                        time_step_size=1.0,
+                                        start_at_zero=True,
+                                        deep_supervision=True,
+                                        impute_strategy='previous',
+                                        task=task_name)
 
             reader = ProcessedSetReader(Path(SEMITEMP_DIR, "discretized", task_name))
             dataset = reader.to_numpy()

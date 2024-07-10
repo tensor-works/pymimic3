@@ -1,7 +1,7 @@
 import torch.optim as optim
 import torch.nn as nn
 import torchmetrics
-from metrics.pytorch import AUPRC, AUROC
+from metrics.pytorch import AUPRC, AUROC, BinedMAE
 
 __all__ = ["optimizer_mapping", "loss_mapping", "metric_mapping", "activation_mapping"]
 
@@ -43,6 +43,8 @@ metric_mapping = {
     "mape": torchmetrics.MeanAbsolutePercentageError,
     "confusion_matrix": torchmetrics.ConfusionMatrix,
     "cohen_kappa": torchmetrics.CohenKappa,
+    "log_mae": BinedMAE("log"),
+    "custom_mae": BinedMAE("custom"),
     "roc_auc": lambda *args, **kwargs: AUROC(*args, **kwargs),
     "pr_auc": lambda *args, **kwargs: AUPRC(*args, **kwargs),
     "micro_roc_auc": lambda *args, **kwargs: AUROC(*args, average="micro", **kwargs),

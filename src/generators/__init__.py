@@ -7,12 +7,13 @@ import logging
 from copy import deepcopy
 from pathlib import Path
 from utils.IO import *
-from typing import List
+from typing import List, Tuple, Union
 from utils import zeropad_samples, read_timeseries
 from preprocessing.scalers import AbstractScaler
 from datasets.trackers import PreprocessingTracker
 from datasets.readers import ProcessedSetReader
-from pathos import multiprocessing as mp
+import multiprocessing as mp
+from pathos.multiprocessing import Pool, cpu_count
 
 
 class AbstractGenerator:
@@ -22,6 +23,7 @@ class AbstractGenerator:
                  scaler: AbstractScaler,
                  num_cpus: int = None,
                  batch_size: int = 8,
+                 n_samples: int = None,
                  shuffle: bool = True,
                  bining: str = "none",
                  deep_supervision: bool = False,
@@ -33,12 +35,21 @@ class AbstractGenerator:
         self._columns = None
         self._deep_supervision = deep_supervision
         self._tracker = PreprocessingTracker(storage_path=Path(reader.root_path, "progress"))
-        self._steps = self._count_batches()
         self._subject_ids = reader.subject_ids
         self._scaler = scaler
-        self._random_ids = deepcopy(self._reader.subject_ids)
+
+        # n_samples
+        self._n_samples = n_samples
+        if n_samples is not None:
+            self._random_ids, _ = self._subjects_for_samples(self._n_samples)
+
+        else:
+            self._random_ids = deepcopy(self._reader.subject_ids)
+        self._steps = self._count_batches(self._random_ids)
         random.shuffle(self._random_ids)
         self._row_only = False
+
+        # MP setup
         if num_cpus:
             if not ray.is_initialized():
                 ray.init(ignore_reinit_error=True, num_cpus=mp.cpu_count() - 1)
@@ -55,6 +66,7 @@ class AbstractGenerator:
         if bining not in ["none", "log", "custom"]:
             raise ValueError("Bining must be one of ['none', 'log', 'custom']")
 
+        # State vars
         self._bining = bining
         self._counter = 0
         self._remainder_X = np.array([])
@@ -80,7 +92,7 @@ class AbstractGenerator:
                     M = self._stack_batches((M, m_res)) if m_res.size else M
                 y = self._stack_batches((y, y_res)) if y_res.size else y
             else:
-                y = np.concatenate((y, y_res), axis=0, dtype=np.float32) if y_res.size else y
+                y = np.concatenate((y, y_res), axis=0) if y_res.size else y
             if X.shape[0] < self._batch_size:
                 self._remainder_X, \
                 self._remainder_y, \
@@ -111,12 +123,14 @@ class AbstractGenerator:
             return X, y, M
         return X, y
 
-    def _count_batches(self):
+    def _count_batches(self, subject_ids):
+        # Call this only
         if self._deep_supervision:
-            return max(len(self._tracker.stay_ids) // self._batch_size, 1)
-        return sum([
-            self._tracker.subjects[subject_id]["total"] for subject_id in self._reader.subject_ids
-        ]) // self._batch_size
+            return max(sum([len(self._tracker.subjects[subject_id] - 1 \
+                       for subject_id in subject_ids)]) \
+                       // self._batch_size, 1)
+        return sum([self._tracker.subjects[subject_id]["total"] for subject_id in subject_ids
+                   ]) // self._batch_size
 
     def __len__(self):
         'Denotes the number of batches per epoch'
@@ -227,6 +241,82 @@ class AbstractGenerator:
         ]
         return np.concatenate(data, axis=0, dtype=np.float32)
 
+    def _subjects_for_samples(self,
+                              target_size: int,
+                              max_iter: int = 20) -> Tuple[List[float], int]:
+        """
+        Selects subjects to match the target number of samples.
+        """
+        assert self._tracker.subject_ids
+        # Init tracking vars
+        best_diff = float('inf')
+        iter = 0
+
+        # Init subject counts
+        subject_df = pd.DataFrame(deepcopy(self._tracker.subjects)).T["total"]
+
+        def compute_samples(random_state):
+            np.random.seed(random_state)
+            current_size = 0
+            remaining_subjects = subjects_df_pr
+            subjects = []
+
+            while current_size < target_size_pr and len(remaining_subjects):
+                remaining_subjects = remaining_subjects[remaining_subjects <= target_size_pr -
+                                                        current_size]
+                if remaining_subjects.empty:
+                    break
+                next_subject = np.random.choice(remaining_subjects.index)
+                with lock_pr:
+                    subject_samples = tracker_pr.subjects[next_subject]['total']
+
+                if current_size + subject_samples <= target_size_pr:
+                    current_size += subject_samples
+                    subjects.append(next_subject)
+                    remaining_subjects.drop(next_subject)
+
+            diff = abs(target_size_pr - current_size)
+            return diff, current_size, subjects
+
+        # MP global vares
+        def init(subject_df: pd.DataFrame, target_size: int, tracker: PreprocessingTracker,
+                 lock: mp.Lock):
+            global subjects_df_pr, target_size_pr, tracker_pr, lock_pr
+            subjects_df_pr = subject_df
+            target_size_pr = target_size
+            tracker_pr = tracker
+            lock_pr = lock
+
+        # Mp lock
+        lock = mp.Lock()
+        # Mp count
+        n_cpus = cpu_count() - 1
+        # Mp Pool
+        with Pool(n_cpus, initializer=init,
+                  initargs=(subject_df, target_size, self._tracker, lock)) as pool:
+            # Try max_iter times and fetch best result
+            res = pool.imap_unordered(compute_samples,
+                                      range(max_iter),
+                                      chunksize=int(np.ceil(max_iter / n_cpus)))
+
+            for diff, current_size, subjects in res:
+                iter += 1
+                # Fetch best result
+                if diff < best_diff:
+                    best_subjects, best_size, best_diff = subjects, current_size, diff
+
+                # Break if no diff
+                if best_diff == 0 or iter >= max_iter:
+                    break
+            pool.close()
+            pool.join()
+
+        # Always get smallest best, so if no best found target size is too small
+        if not best_subjects:
+            return subject_df.min(), subject_df.argmin()
+
+        return best_subjects, best_size
+
 
 # TODO! these worker functions must go somewhere else
 
@@ -293,8 +383,8 @@ def process_subject_deep_supervision(args, reader: ProcessedSetReader, scaler: A
                 X = zeropad_samples(X_batch)
                 y = zeropad_samples(y_batch)
                 m = zeropad_samples(m_batch)
-                y = np.array(y, dtype=np.float32)
-                m = np.array(m, dtype=np.float32)
+                y = np.array(y)
+                m = np.array(m)
                 X_batch.clear()
                 y_batch.clear()
                 m_batch.clear()
@@ -305,8 +395,8 @@ def process_subject_deep_supervision(args, reader: ProcessedSetReader, scaler: A
         X = zeropad_samples(X_batch)
         y = zeropad_samples(y_batch)
         m = zeropad_samples(m_batch)
-        y = np.array(y, dtype=np.float32)
-        m = np.array(m, dtype=np.float32)
+        y = np.array(y)
+        m = np.array(m)
         X_batch.clear()
         y_batch.clear()
         m_batch.clear()
@@ -348,7 +438,7 @@ def process_subject(args, reader: ProcessedSetReader, scaler: AbstractScaler, ro
                     if target_replication:
                         y = zeropad_samples(y_batch)
                     else:
-                        y = np.array(y_batch, dtype=np.float32)
+                        y = np.array(y_batch)
                     t = np.array(t_batch, dtype=np.float32)
                     X_batch.clear()
                     y_batch.clear()
@@ -362,7 +452,7 @@ def process_subject(args, reader: ProcessedSetReader, scaler: AbstractScaler, ro
         if target_replication:
             y = zeropad_samples(y_batch)
         else:
-            y = np.array(y_batch, dtype=np.float32)
+            y = np.array(y_batch)
         t = np.array(t_batch, dtype=np.float32)
         X_batch.clear()
         y_batch.clear()

@@ -1,9 +1,8 @@
 import os
 import tensorflow as tf
-from typing import Literal
-
-import tensorflow as tf
 import tensorflow_addons as tfa
+from typing import Literal
+from metrics import CustomBins, LogBins
 
 
 class DynamicCohenKappa(tfa.metrics.CohenKappa):
@@ -22,6 +21,28 @@ class DynamicCohenKappa(tfa.metrics.CohenKappa):
             super().__init__(num_classes=int(num_classes), **self._init_args)
             self._num_classes_set = True
         return super().update_state(y_true, y_pred, sample_weight)
+
+
+class BinedMAE(tf.keras.metrics.MeanAbsoluteError):
+
+    def __init__(self, binning: Literal["log", "custom"], *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._binning = binning
+        if self._binning == "custom":
+            self._means = tf.constant(CustomBins.means, dtype=tf.float32)
+        elif self._binning == "log":
+            self._means = tf.constant(LogBins.means, dtype=tf.float32)
+        else:
+            raise ValueError(f"Binning must be one of 'log' or 'custom' but is {binning}.")
+
+    def update_state(self, y_true, y_pred, sample_weight=None):
+        prediction_means = tf.gather(self._means, tf.argmax(y_pred, axis=1))
+
+        if len(tf.shape(y_true)) > 1:
+            y_true = tf.argmax(y_true, axis=1)
+        target_means = tf.gather(self._means, y_true)
+
+        return super().update_state(target_means, prediction_means, sample_weight)
 
 
 class AUC(tf.keras.metrics.AUC):
@@ -80,6 +101,30 @@ if __name__ == "__main__":
     import numpy as np
     from sklearn.metrics import roc_auc_score
     from sklearn.metrics import cohen_kappa_score
+
+    # -- Testing the binned MAE --
+    metric = BinedMAE(binning="custom")
+
+    # Create some test data
+    y_true = tf.constant([0, 2, 4, 1, 3])  # True labels (indices)
+    y_pred = tf.constant([
+        [0.9, 0.1, 0.0, 0.0, 0.0],  # Predicted as class 0
+        [0.1, 0.1, 0.7, 0.1, 0.0],  # Predicted as class 2
+        [0.0, 0.0, 0.1, 0.2, 0.7],  # Predicted as class 4
+        [0.6, 0.3, 0.1, 0.0, 0.0],  # Predicted as class 0
+        [0.1, 0.1, 0.1, 0.6, 0.1],  # Predicted as class 3
+    ])
+
+    # Update the metric
+    metric.update_state(y_true, y_pred)
+
+    # Compute the result
+    result = metric.result().numpy()
+
+    print(f"BinnedMAE result: {result}")
+
+    # Reset the metric
+    metric.reset_state()
 
     # Ground truth labels (one-hot encoded)
     y_true_multi = torch.Tensor([

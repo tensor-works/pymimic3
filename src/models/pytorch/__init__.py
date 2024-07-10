@@ -5,7 +5,7 @@ import numpy as np
 import pickle
 import warnings
 from types import FunctionType
-from typing import List, Tuple
+from typing import List, Tuple, Literal
 from copy import deepcopy
 from typing import Union, Dict, overload, Optional
 from models.trackers import ModelHistory, LocalModelHistory
@@ -22,7 +22,11 @@ from models.pytorch.mappings import *
 
 class AbstractTorchNetwork(nn.Module):
 
-    def __init__(self, final_activation, output_dim: int, model_path: Path = None):
+    def __init__(self,
+                 final_activation,
+                 output_dim: int,
+                 model_path: Path = None,
+                 task: Literal["multilabel", "multiclass", "binary"] = None):
         super(AbstractTorchNetwork, self).__init__()
         self._model_path = model_path
         if final_activation is None:
@@ -42,7 +46,10 @@ class AbstractTorchNetwork(nn.Module):
             self._history = LocalModelHistory()
 
         # This needs to be known for torch metrics
-        if output_dim == 1:
+        if task is not None:
+            self._task = task
+            self._num_classes = output_dim
+        elif output_dim == 1:
             self._task = "binary"
             self._num_classes = 1
         elif isinstance(self._final_activation, nn.Softmax):
@@ -51,6 +58,9 @@ class AbstractTorchNetwork(nn.Module):
         elif isinstance(self._final_activation, nn.Sigmoid):
             self._task = "multilabel"
             self._num_classes = output_dim
+        else:
+            raise ValueError("Task not specified and could not be inferred from "
+                             "output_dim and final_activation! Provide task on initialization.")
 
     @property
     def optimizer(self):
@@ -127,7 +137,10 @@ class AbstractTorchNetwork(nn.Module):
     def _init_metrics(self,
                       metrics,
                       prefices: list = ["train", "val", "test"]) -> Dict[str, Metric]:
-        settings = {"task": self._task, "num_labels": self._num_classes}
+        settings = {
+            "task": self._task,
+            "num_labels" if self._task == "multilabel" else "num_classes": self._num_classes
+        }
         return_metrics = {"loss": {"obj": None, "value": 0.0}}
 
         # Creat the base metric dict
@@ -327,7 +340,7 @@ class AbstractTorchNetwork(nn.Module):
                 self._epoch_progbar.target if prefix == "val" else self._batch_count,
                 values=self._prefixed_metrics(self._get_metrics(self._metrics[prefix]),
                                               prefix=prefix if prefix != "train" else None),
-                finalize=finalize)
+                finalize=finalize)  # and self._batch_count == self._epoch_progbar.target)
 
     def _prefixed_metrics(self, metrics: List[Tuple[str, float]],
                           prefix: str) -> List[Tuple[str, float]]:
@@ -388,30 +401,22 @@ class AbstractTorchNetwork(nn.Module):
             if len(input.shape) < 3:
                 input = input.unsqueeze(0)
 
-            # if len(label.shape) < 3:
-            #     label = label.unsqueeze(0)
-
-            # labels = labels * masks
             output = self(input, masks=mask)
             if masking_flag:
-                output = torch.masked_select(output, mask)
-                label = torch.masked_select(label, mask)
+                # output = torch.masked_select(output, mask)
+                output = output[:, mask.squeeze()]
+                # label = torch.masked_select(label, mask)
+                label = label[mask.squeeze(), :]
             # Accumulate outputs and labels either flat or with dim of multilabel
             aggr_outputs.append(output)
             aggr_labels.append(label)
-            #aggr_outputs.append(
-            #    output.view(*(-1,) if self._num_classes == 1 else (-1, self._num_classes),))
-            #aggr_labels.append(
-            #    label.view(
-            #        *(-1,) if self._num_classes == 1 or self._final_activation == "softmax" else
-            #        (-1, self._num_classes),))
 
             # Optimizer network on abtch
             aggr_outputs, \
             aggr_labels = self._optimize_batch(outputs=aggr_outputs, labels=aggr_labels, finalize=(not has_val and sample_idx == iter_len))
 
             # Miss inclomplete batch
-            if sample_idx == self._sample_size:
+            if sample_idx == iter_len:
                 break
 
         self._on_epoch_end(epoch, prefix="train")
@@ -456,8 +461,8 @@ class AbstractTorchNetwork(nn.Module):
                 output = torch.masked_select(output, mask)
                 label = torch.masked_select(label, mask)
             # Accumulate outputs and labels
-            aggr_outputs.append(output.view(-1, self._num_classes))
-            aggr_labels.append(label.view(-1))
+            aggr_outputs.append(output)
+            aggr_labels.append(label)
 
             # Optimizer network on abtch
             aggr_outputs, \
@@ -475,13 +480,22 @@ class AbstractTorchNetwork(nn.Module):
 
         if self._sample_count >= self._batch_size:
             # Concatenate accumulated outputs and labels
-            outputs = torch.cat(outputs)
+            if self._task == "binary":
+                # T
+                outputs = torch.cat(outputs, axis=outputs[0].dim() - 1).view(-1)
+            else:
+                # T, N or B, T, N
+                outputs = torch.cat(outputs, axis=outputs[0].dim() - 2).squeeze()
 
             # If multilabel, labels are one-hot, else they are sparse
             if self._task == "multilabel":
-                labels = torch.cat(labels, axis=1).T
+                # T, N
+                labels = torch.stack(labels)
             else:
-                labels = torch.cat(labels)
+                # T
+                # label_shape = [outputs.shape[0]]
+                # label_shape.extend([1] * (len(outputs.shape) - 1))
+                labels = torch.cat(labels).view(-1)  #.reshape(*label_shape)
 
             # Compute loss
             loss = self._loss(outputs, labels)
