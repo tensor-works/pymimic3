@@ -94,9 +94,16 @@ class LSTMNetwork(AbstractTorchNetwork):
             for ts in range(x.shape[1]):
                 outputs.append(self._output_layer(x[:, ts, :]))
             # Cat to vector
-            x = torch.cat(outputs, dim=1)
-            if len(x.shape) < 3:
-                x = x.unsqueeze(-1)
+            if self._task == "binary":
+                # Along time vector
+                x = torch.cat(outputs, dim=1)
+                # if len(x.shape) < 3:
+                #     x = x.unsqueeze(-1)
+            else:
+                # Stacking
+                x = torch.cat(outputs, dim=0)
+                if len(x.shape) < 3:
+                    x = x.unsqueeze(0)
 
         else:
             # Only return the last prediction

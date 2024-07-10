@@ -15,7 +15,48 @@ __all__ = [
     'CHANNEL_WISE_LSTM_DS_PARAMS',
     'MULTITASK_STANDARD_LSTM_PARAMS',
     'MULTITASK_CHANNEL_WISE_LSTM_PARAMS',
+    'OVERFIT_SETTINGS',
+    'OVERFIT_SETTINGS_DS',
 ]
+# ------------------------- test settings -------------------------
+# -> Overfit testing
+OVERFIT_SETTINGS = {
+    "IHM": {
+        "epochs": 20,
+        "num_samples": None
+    },
+    "DECOMP": {
+        "epochs": 20,
+        "num_samples": 200
+    },
+    "LOS": {
+        "epochs": 20,
+        "num_samples": 200
+    },
+    "PHENO": {
+        "epochs": 20,
+        "num_samples": None
+    }
+}
+
+OVERFIT_SETTINGS_DS = {
+    "IHM": {
+        "epochs": 20,
+        "num_samples": None
+    },
+    "DECOMP": {
+        "epochs": 20,
+        "num_samples": 50
+    },
+    "LOS": {
+        "epochs": 20,
+        "num_samples": 50
+    },
+    "PHENO": {
+        "epochs": 20,
+        "num_samples": None
+    }
+}
 
 # ------------------------- metric settings -------------------------
 # -> Metrics do with task
@@ -25,7 +66,7 @@ NETWORK_METRICS = {
         "roc_auc",
         "pr_auc",
     ],
-    "LOS": ["cohen_kappa", "mae"],
+    "LOS": ["cohen_kappa", "custom_mae"],
     "PHENO": ["micro_roc_auc", "macro_roc_auc"]
 }
 

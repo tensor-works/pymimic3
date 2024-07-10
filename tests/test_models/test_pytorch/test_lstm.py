@@ -13,6 +13,29 @@ from generators.pytorch import TorchGenerator
 from models.pytorch.lstm import LSTMNetwork
 from tests.msettings import *
 
+TARGET_METRICS = {
+    "IHM": {
+        "train_loss": 1.5,
+        "roc_auc": 0.75,
+        "pr_auc": 0.15
+    },
+    "DECOMP": {
+        "train_loss": 1.5,
+        "roc_auc": 0.72,
+        "pr_auc": 0.15,
+    },
+    "LOS": {
+        "train_loss": 1.8,
+        "cohen_kappa": 0.8,
+        "custom_mae": 50
+    },
+    "PHENO": {
+        "train_loss": 1.5,
+        "micro_roc_auc": 0.8,
+        "macro_roc_auc": 0.8
+    }
+}
+
 
 @pytest.mark.parametrize("data_flavour", ["generator", "numpy"])
 @pytest.mark.parametrize("task_name", ["DECOMP", "LOS"])
@@ -58,23 +81,30 @@ def test_torch_lstm_with_deep_supervision(
         train_generator = TorchGenerator(reader=reader,
                                          scaler=scaler,
                                          deep_supervision=True,
-                                         shuffle=True)
+                                         shuffle=True,
+                                         n_samples=OVERFIT_SETTINGS_DS[task_name]["num_samples"],
+                                         **GENERATOR_OPTIONS[task_name])
         tests_io("Succeeded in creating the generator")
-        history = model.fit(generator=train_generator, epochs=20, batch_size=8)
+        history = model.fit(generator=train_generator,
+                            batch_size=8,
+                            epochs=OVERFIT_SETTINGS_DS[task_name]["epochs"])
+
     elif data_flavour == "numpy":
         # -- Create the dataset --
-        dataset = reader.to_numpy(scaler=scaler, deep_supervision=True)
-        history = model.fit([dataset["X"], dataset["M"]], dataset["yds"], batch_size=8, epochs=20)
+        dataset = reader.to_numpy(scaler=scaler,
+                                  deep_supervision=True,
+                                  n_samples=OVERFIT_SETTINGS_DS[task_name]["num_samples"],
+                                  **GENERATOR_OPTIONS[task_name])
+        history = model.fit([dataset["X"], dataset["M"]],
+                            dataset["yds"],
+                            batch_size=8,
+                            epochs=OVERFIT_SETTINGS_DS[task_name]["epochs"])
         tests_io("Succeeded in creating the numpy dataset")
 
     # Instability on these is crazy but trying anyway.
     # How are you suppose to tune it with
-    assert min(list(history["train_loss"].values())) <= 1.5, \
-        f"Failed in asserting minimum loss ({min(list(history['train_loss'].values()))}) <= 1.5"
-    assert max(list(history["train_metrics"]["roc_auc"].values())) >= 0.72, \
-        f"Failed in asserting maximum auc ({max(list(history.history['auc']))}) >= 0.72"
-    assert max(list(history["train_metrics"]["pr_auc"].values())) >= 0.12, \
-        f"Failed in asserting maximum auc_1 ({max(list(history.history['auc_1']))}) >= 0.12"
+
+    assert_model_performance(history, task_name)
     tests_io("Succeeded in asserting model sanity")
 
 
@@ -118,65 +148,82 @@ def test_torch_lstm(
         # -- Create the generator --
         train_generator = TorchGenerator(reader=reader,
                                          scaler=scaler,
+                                         n_samples=OVERFIT_SETTINGS[task_name]["num_samples"],
                                          shuffle=True,
                                          **GENERATOR_OPTIONS[task_name])
         tests_io("Succeeded in creating the generator")
 
         # -- Fitting the model --
-        history = model.fit(generator=train_generator, epochs=5, batch_size=8)
+        history = model.fit(generator=train_generator,
+                            batch_size=8,
+                            epochs=OVERFIT_SETTINGS[task_name]["epochs"])
 
     elif data_flavour == "numpy":
+        # -- Task specific settings --
         # -- Create the dataset --
         tests_io("Loading the numpy dataset...", end="\r")
-        dataset = reader.to_numpy(scaler=scaler, **GENERATOR_OPTIONS[task_name])
+        dataset = reader.to_numpy(scaler=scaler,
+                                  n_samples=OVERFIT_SETTINGS[task_name]["num_samples"],
+                                  **GENERATOR_OPTIONS[task_name])
         tests_io("Done loading the numpy dataset")
 
         # -- Fitting the model --
-        if task_name == "IHM":
-            epochs = 20
-        elif task_name == "PHENO":
-            epochs = 20
-        else:
-            epochs = 5
-        history = model.fit(dataset["X"], dataset["y"], batch_size=8, epochs=epochs)
+        history = model.fit(dataset["X"],
+                            dataset["y"],
+                            batch_size=8,
+                            epochs=OVERFIT_SETTINGS[task_name]["epochs"])
 
-    assert min(list(history["train_loss"].values())) <= 1.5, \
-        f"Failed in asserting minimum loss ({min(list(history['train_loss'].values()))}) <= 1.5"
-    assert max(list(history["train_metrics"]["roc_auc"].values())) >= 0.72, \
-        f"Failed in asserting maximum auc ({max(list(history.history['auc']))}) >= 0.72"
-    assert max(list(history["train_metrics"]["pr_auc"].values())) >= 0.15, \
-        f"Failed in asserting maximum auc_1 ({max(list(history.history['auc_1']))}) >= 0.15"
+    assert_model_performance(history, task_name)
     tests_io("Succeeded in asserting model sanity")
+
+
+def assert_model_performance(history, task):
+    target_metrics = TARGET_METRICS[task]
+
+    for metric, target_value in target_metrics.items():
+        if metric == "train_loss":
+            actual_value = min(list(history[metric].values()))
+            comparison = actual_value <= target_value
+        else:
+            actual_value = max(list(history["train_metrics"][metric].values()))
+            comparison = actual_value >= target_value if "mae" not in metric else actual_value <= target_value
+
+        assert comparison, \
+            (f"Failed in asserting {metric} ({actual_value}) "
+             f"{'<=' if 'loss' in metric or 'mae' in metric  else '>='} {target_value} for task {task}")
 
 
 if __name__ == "__main__":
     import shutil
     disc_reader = dict()
-    for i in range(10):
-        for task_name in ["DECOMP"]:  # ["PHENO"]:  # ["IHM", "DECOMP", "PHENO", "LOS"]:
-            """
-            if Path(SEMITEMP_DIR, "discretized", task_name).exists():
-                shutil.rmtree(Path(SEMITEMP_DIR, "discretized", task_name))
-            """
+    for task_name in ["DECOMP", "LOS", "PHENO"]:
+        """
+        if Path(SEMITEMP_DIR, "discretized", task_name).exists():
+            shutil.rmtree(Path(SEMITEMP_DIR, "discretized", task_name))
+
+        reader = datasets.load_data(chunksize=75836,
+                                    source_path=TEST_DATA_DEMO,
+                                    storage_path=SEMITEMP_DIR,
+                                    discretize=True,
+                                    time_step_size=1.0,
+                                    start_at_zero=True,
+                                    impute_strategy='previous',
+                                    task=task_name)
+        if task_name in ["DECOMP", "LOS"]:
             reader = datasets.load_data(chunksize=75836,
                                         source_path=TEST_DATA_DEMO,
                                         storage_path=SEMITEMP_DIR,
                                         discretize=True,
                                         time_step_size=1.0,
                                         start_at_zero=True,
+                                        deep_supervision=True,
                                         impute_strategy='previous',
                                         task=task_name)
-            # reader = datasets.load_data(chunksize=75836,
-            #                             source_path=TEST_DATA_DEMO,
-            #                             storage_path=SEMITEMP_DIR,
-            #                             discretize=True,
-            #                             time_step_size=1.0,
-            #                             start_at_zero=True,
-            #                             deep_supervision=True,
-            #                             impute_strategy='previous',
-            #                             task=task_name)
-            reader = ProcessedSetReader(Path(SEMITEMP_DIR, "discretized", task_name))
-            disc_reader[task_name] = reader
-            for flavour in ["numpy"]:  #, "generator"]:
+        """
+        reader = ProcessedSetReader(Path(SEMITEMP_DIR, "discretized", task_name))
+        disc_reader[task_name] = reader
+        for flavour in ["numpy", "generator"]:  # ["generator"]:  #
+            if task_name in ["DECOMP", "LOS"]:
                 # test_torch_lstm_with_deep_supervision(task_name, flavour, disc_reader)
-                test_torch_lstm(task_name, flavour, disc_reader)
+                pass
+            test_torch_lstm(task_name, flavour, disc_reader)

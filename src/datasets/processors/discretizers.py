@@ -183,6 +183,8 @@ class MIMICDiscretizer(AbstractProcessor):
         self._y = dict()
         self._M = dict()
 
+        self._dtype = np.int64 if self._task == 'DECOMP' else np.float32
+
     @property
     def tracker(self) -> PreprocessingTracker:
         """
@@ -282,7 +284,7 @@ class MIMICDiscretizer(AbstractProcessor):
                 if self._deep_supervision:
                     y_reindexed = y_df.reindex(self._X[subject_id][stay_id].index)
                     self._y[subject_id][stay_id] = y_reindexed.fillna(0).astype(np.float32)
-                    self._M[subject_id][stay_id] = (~y_reindexed.isna()).astype(np.int8)
+                    self._M[subject_id][stay_id] = (~y_reindexed.isna()).astype(np.float32)
                 else:
                     self._y[subject_id][stay_id] = y_df.astype(np.float32)
 

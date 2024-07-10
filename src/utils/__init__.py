@@ -9,21 +9,40 @@ import re
 import json
 import numpy as np
 import pandas as pd
-from typing import Dict, Union
+from typing import Dict, Union, Iterable
 from metrics import CustomBins, LogBins
 from utils.IO import *
 from pathlib import Path
 
 
+def get_iterable_dtype(iterable: Iterable):
+    if not len(iterable):
+        return None
+    if isinstance(iterable[0], (float, np.float32, np.float64)):
+        dtype = np.float32
+    elif isinstance(iterable[0], (int, np.int64, np.int32, bool)):
+        dtype = np.int64
+    elif isinstance(iterable[0], np.ndarray):
+        dtype = iterable[0].dtype
+    elif isinstance(iterable[0], (list, tuple)):
+        dtype = get_iterable_dtype(iterable[0])
+    elif isinstance(iterable[0], pd.DataFrame):
+        dtype = iterable[0].dtypes.iloc[0]
+    else:
+        raise RuntimeError(f"Could not resolve iterable dtypes! Iterable is {iterable}")
+    return dtype
+
+
 def zeropad_samples(data: np.ndarray, length: int = None) -> np.ndarray:
     if length is None:
         length = max([x.shape[0] for x in data])
+    dtype = get_iterable_dtype(data)
     ret = [
-        np.concatenate([x, np.zeros((length - x.shape[0],) + x.shape[1:])],
+        np.concatenate([x, np.zeros((length - x.shape[0],) + x.shape[1:], dtype=dtype)],
                        axis=0,
-                       dtype=np.float32) for x in data
+                       dtype=dtype) for x in data
     ]
-    return np.atleast_3d(np.array(ret, dtype=np.float32))
+    return np.atleast_3d(np.array(ret, dtype=dtype))
 
 
 def read_timeseries(X_df: pd.DataFrame,
@@ -37,8 +56,6 @@ def read_timeseries(X_df: pd.DataFrame,
     elif bining == "custom":
         y_df = y_df.apply(lambda x: CustomBins.get_bin_custom(x, one_hot=one_hot),
                           axis=1).to_frame()
-    else:
-        y_df = y_df.astype(np.float32)
 
     if row_only:
         Xs = [
@@ -51,7 +68,8 @@ def read_timeseries(X_df: pd.DataFrame,
             for timestamp in y_df.index
         ]
     if isinstance(y_df, pd.DataFrame):
-        ys = y_df.squeeze(axis=1)
+        # ys = [y_df.squeeze(axis=1) if dtype == pd.DataFrame else y_df.squeeze(axis=1).v<]
+        ys = list(y_df.squeeze(axis=1).values)
     elif isinstance(y_df, np.ndarray):
         ys = y_df.squeeze(axis=1).values
 

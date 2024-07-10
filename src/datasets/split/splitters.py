@@ -12,14 +12,13 @@ from typing import List, Dict
 from pathlib import Path
 from utils.IO import *
 from datasets.readers import ProcessedSetReader, SplitSetReader
-from sklearn import model_selection
 from pathlib import Path
 from datasets.trackers import DataSplitTracker, PreprocessingTracker
 from pathos.multiprocessing import Pool, cpu_count
 from utils import dict_subset
 from collections import OrderedDict
 from itertools import chain
-from abc import ABC, abstractmethod
+from abc import ABC
 
 
 class AbstractSplitter(ABC):

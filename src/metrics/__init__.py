@@ -1,4 +1,6 @@
 import numpy as np
+import pandas as pd
+from typing import Union
 from settings import *
 
 
@@ -33,7 +35,11 @@ class CustomBins:
     lower_bounds = [a * 24.0 for a, b in bins]
 
     @staticmethod
-    def get_bin_custom(x, one_hot=False):
+    def get_bin_custom(x: Union[np.ndarray, pd.DataFrame, pd.Series, int, float],
+                       one_hot: bool = False) -> Union[np.ndarray, int, float]:
+        if isinstance(x, (pd.Series, pd.DataFrame)):
+            x = x.values.squeeze()
+
         index = np.digitize(x, CustomBins.lower_bounds) - 1
         if one_hot:
             if is_iterable(index):
@@ -42,8 +48,8 @@ class CustomBins:
             else:
                 ret = np.zeros((CustomBins.nbins,), dtype=np.int8)
                 ret[index] = 1
-            return ret.squeeze()
-        return np.int8(index)
+            return np.int64(ret.squeeze())
+        return np.int64(index)
 
 
 class LogBins:
@@ -53,15 +59,22 @@ class LogBins:
         810.964040, 1715.702848
     ]
 
-    def get_bin_log(x, nbins=10, one_hot=False):
-        binid = int(np.log(x + 1) / 8.0 * nbins)
-        if binid < 0:
-            binid = 0
-        if binid >= nbins:
-            binid = nbins - 1
+    def get_bin_log(x: Union[np.ndarray, pd.DataFrame, pd.Series, int, float],
+                    nbins: int = 10,
+                    one_hot: bool = False) -> Union[np.ndarray, int, float]:
+
+        if isinstance(x, (pd.Series, pd.DataFrame)):
+            x = x.values.squeeze()
+
+        binid = np.round(np.log(x + 1) / 8.0 * nbins).astype(int)
+        binid = np.clip(binid, 0, nbins - 1)
 
         if one_hot:
-            ret = np.zeros((LogBins.nbins,), dtype=np.int8)
-            ret[binid] = 1
-            return ret
-        return binid
+            if is_iterable(binid):
+                ret = np.zeros((x.size, CustomBins.nbins), dtype=np.int8)
+                ret[np.arange(x.size), binid] = 1
+            else:
+                ret = np.zeros((CustomBins.nbins,), dtype=np.int8)
+                ret[binid] = 1
+            return np.int64(ret.squeeze())
+        return np.int64(binid)

@@ -16,12 +16,14 @@ class RiverGenerator(AbstractGenerator, Dataset):
                  reader: ProcessedSetReader,
                  scaler: AbstractScaler,
                  shuffle: bool = True,
+                 n_samples: int = None,
                  num_cpus: int = 0,
                  bining: str = "none"):
         AbstractGenerator.__init__(self,
                                    reader=reader,
                                    scaler=scaler,
                                    batch_size=1,
+                                   n_samples=n_samples,
                                    num_cpus=num_cpus,
                                    shuffle=shuffle,
                                    bining=bining)

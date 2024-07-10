@@ -40,7 +40,7 @@ from pathlib import Path
 import multiprocessing as mp
 from collections.abc import Iterable
 from copy import deepcopy
-from utils import NoopLock
+from utils import NoopLock, get_iterable_dtype, CustomBins, LogBins
 from collections import defaultdict
 from utils.IO import *
 from settings import *
@@ -1039,6 +1039,7 @@ class ProcessedSetReader(AbstractReader):
         ValueError
             If `data_type` is not one of the possible data types (pd.DataFrame, np.ndarray, None).
         """
+        # TODO! fix num samples
         if one_hot and bining == "none":
             warn_io("One hot encoding is specified but no bining is applied."
                     " Ignoring one hot encoding.")
@@ -1066,21 +1067,32 @@ class ProcessedSetReader(AbstractReader):
                     dataset[prefix] = dataset[prefix][:min(n_samples, len(dataset[prefix]))]
 
         buffer_dataset = dict(zip(prefices, [[] for _ in range(len(prefices))]))
-        n_samples = len(dataset["X"])
         if not deep_supervision:
-            for sample in range(n_samples):
-                X_df, y_df = dataset["X"][sample], dataset["y"][sample]
+            sample_count = 0
+            for idx in range(len(dataset["X"])):
+                X_df, y_df = dataset["X"][idx], dataset["y"][idx]
                 X_dfs, y_dfs, ts = read_timeseries(X_df,
                                                    y_df,
                                                    bining=bining,
                                                    one_hot=one_hot,
                                                    dtype=pd.DataFrame)
+                if n_samples is not None:
+                    X_dfs = X_dfs[:n_samples - sample_count]
+                    y_dfs = y_dfs[:n_samples - sample_count]
                 buffer_dataset["X"].extend(X_dfs)
-                buffer_dataset["y"].extend(y_dfs.values)
+                buffer_dataset["y"].extend(y_dfs)
+                sample_count += len(y_dfs)
+                if n_samples is not None and sample_count >= n_samples:
+                    break
             dataset = buffer_dataset
             del buffer_dataset
         else:
-            pass
+            if bining == "custom":
+                dataset["yds"] = [
+                    CustomBins.get_bin_custom(x, one_hot=one_hot) for x in dataset["yds"]
+                ]
+            elif bining == "log":
+                dataset["yds"] = [LogBins.get_bin_log(x, one_hot=one_hot) for x in dataset["yds"]]
             # raise NotImplementedError("apply bining here")
 
         # Normalize lengths on the smallest times stamp
@@ -1108,13 +1120,11 @@ class ProcessedSetReader(AbstractReader):
 
         for prefix in deepcopy(list(dataset.keys())):
             if len(dataset[prefix]) and is_iterable(dataset[prefix][0]):
-                # if deep_supervision or not prefix.startswith("y"):
                 dataset[prefix] = zeropad_samples(dataset[prefix])
-                # TODO! potentially needed to differentiate between deep supervision and multilabel
-                # else:
-                #     dataset[prefix] = np.expand_dims(np.array(dataset[prefix]), 1)
             else:
-                dataset[prefix] = np.array(dataset["y"]).reshape(-1, 1, 1)
+                dataset[prefix] = np.array(dataset[prefix],
+                                           dtype=get_iterable_dtype(dataset[prefix])).reshape(
+                                               -1, 1, 1)
         if return_ids:
             return dataset, subject_ids
         return dataset

@@ -14,6 +14,7 @@ class TorchGenerator(DataLoader):
                  reader: ProcessedSetReader,
                  scaler: AbstractScaler = None,
                  shuffle: bool = True,
+                 n_samples: int = None,
                  num_cpus: int = 0,
                  target_replication: bool = False,
                  deep_supervision: bool = False,
@@ -22,6 +23,7 @@ class TorchGenerator(DataLoader):
         self._dataset = TorchDataset(reader=reader,
                                      scaler=scaler,
                                      num_cpus=num_cpus,
+                                     n_samples=n_samples,
                                      batch_size=1,
                                      deep_supervision=deep_supervision,
                                      target_replication=target_replication,
@@ -61,6 +63,7 @@ class TorchDataset(AbstractGenerator, Dataset):
                  scaler: AbstractScaler = None,
                  batch_size: int = 8,
                  num_cpus: int = 0,
+                 n_samples: int = None,
                  deep_supervision: bool = False,
                  target_replication: bool = False,
                  shuffle: bool = True,
@@ -69,6 +72,7 @@ class TorchDataset(AbstractGenerator, Dataset):
                                    reader=reader,
                                    scaler=scaler,
                                    num_cpus=num_cpus,
+                                   n_samples=n_samples,
                                    batch_size=batch_size,
                                    deep_supervision=deep_supervision,
                                    target_replication=target_replication,
@@ -88,9 +92,9 @@ class TorchDataset(AbstractGenerator, Dataset):
             y = y.copy()
         if self._deep_supervision:
             return torch.from_numpy(X).to(torch.float32), \
-                   torch.from_numpy(y).to(torch.float32), \
-                   torch.from_numpy(m).to(torch.int8)
-        return torch.from_numpy(X).to(torch.float32), torch.from_numpy(y).to(torch.float32)
+                   torch.from_numpy(y), \
+                   torch.from_numpy(m)
+        return torch.from_numpy(X).to(torch.float32), torch.from_numpy(y)
 
     def close(self):
         AbstractGenerator.__del__(self)
