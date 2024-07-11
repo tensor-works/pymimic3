@@ -3,6 +3,60 @@ import tensorflow as tf
 import tensorflow_addons as tfa
 from typing import Literal
 from metrics import CustomBins, LogBins
+import logging
+import pdb
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+
+
+class CohenKappa(tfa.metrics.CohenKappa):
+
+    def __init__(self, num_classes, sparse_labels=True, **kwargs):
+        super().__init__(num_classes=num_classes,
+                         name='cohen_kappa',
+                         sparse_labels=sparse_labels,
+                         **kwargs)
+        self._sparse_labels = sparse_labels
+
+    def update_state(self, y_true, y_pred, sample_weight=None, **kwargs):
+        y_true = tf.convert_to_tensor(y_true)
+        y_pred = tf.convert_to_tensor(y_pred)
+
+        # Apply masking
+        if sample_weight is not None:
+            mask = tf.cast(sample_weight, dtype=tf.bool)
+            y_true = tf.boolean_mask(y_true, mask)
+            y_pred = tf.boolean_mask(y_pred, mask)
+
+        # Check if inputs are one-hot encoded
+        if len(y_true.shape) > 1 and y_true.shape[-1] == 1 and self._sparse_labels:
+            # Convert one-hot to ordinal
+            y_true = tf.argmax(y_true, axis=-1)
+
+        # Squeeze last dimension if it's 1
+        if y_true.shape[-1] == 1:
+            y_true = tf.squeeze(y_true, axis=-1)
+        if y_pred.shape[-1] == 1:
+            y_pred = tf.squeeze(y_pred, axis=-1)
+        # pdb.set_trace()
+        '''
+        # Call the parent class's update_state method
+        tf.print("y_true shape:", kwargs)
+        tf.print("y_true shape:", tf.shape(y_true))
+        tf.print("y_pred shape:", tf.shape(y_pred))
+        tf.print("sample_weight shape:", tf.shape(sample_weight))
+        tf.print("y_true unique:", tf.sort(tf.unique(tf.reshape(y_true, [-1])).y))
+        tf.print("y_pred unique:", tf.sort(tf.unique(tf.reshape(y_pred, [-1])).y))
+        tf.print("sample_weight unique:",
+                 tf.sort(tf.unique(tf.reshape(tf.cast(sample_weight, tf.float32), [-1])).y))
+        tf.print("y_true max:", tf.reduce_max(tf.reshape(y_true, [-1])))
+        tf.print("y_pred max:", tf.reduce_max(tf.reshape(y_pred, [-1])))
+        tf.print("sample_weight max:",
+                 tf.reduce_max(tf.reshape(tf.cast(sample_weight, tf.float32), [-1])))
+        '''
+
+        super().update_state(y_true, y_pred)
 
 
 class DynamicCohenKappa(tfa.metrics.CohenKappa):
@@ -25,8 +79,7 @@ class DynamicCohenKappa(tfa.metrics.CohenKappa):
 
 class BinedMAE(tf.keras.metrics.MeanAbsoluteError):
 
-    def __init__(self, binning: Literal["log", "custom"], *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, binning: Literal["log", "custom", ""] = "", *args, **kwargs):
         self._binning = binning
         if self._binning == "custom":
             self._means = tf.constant(CustomBins.means, dtype=tf.float32)
@@ -34,10 +87,16 @@ class BinedMAE(tf.keras.metrics.MeanAbsoluteError):
             self._means = tf.constant(LogBins.means, dtype=tf.float32)
         else:
             raise ValueError(f"Binning must be one of 'log' or 'custom' but is {binning}.")
+        super().__init__(name=f'{binning}_mae', *args, **kwargs)
 
     def update_state(self, y_true, y_pred, sample_weight=None):
-        prediction_means = tf.gather(self._means, tf.argmax(y_pred, axis=1))
+        # Call the parent class's update_state method
+        if sample_weight is not None:
+            mask = tf.cast(sample_weight, dtype=tf.bool)
+            y_true = tf.boolean_mask(y_true, mask)
+            y_pred = tf.boolean_mask(y_pred, mask)
 
+        prediction_means = tf.gather(self._means, tf.argmax(y_pred, axis=1))
         if len(tf.shape(y_true)) > 1:
             y_true = tf.argmax(y_true, axis=1)
         target_means = tf.gather(self._means, y_true)
@@ -66,7 +125,8 @@ class AUC(tf.keras.metrics.AUC):
                 kwargs.pop("multi_label")
         super().__init__(num_thresholds=num_thresholds,
                          curve=curve,
-                         name=f'{average.lower()}_{curve.lower()}_auc',
+                         name=(f'{average.lower()}_' if multi_label or average == 'micro' else '') +
+                         f'{curve.lower()}_auc',
                          multi_label=multi_label,
                          **kwargs)
         # Correct average
@@ -78,10 +138,12 @@ class AUC(tf.keras.metrics.AUC):
         self._num_thresholds = num_thresholds
         self._curve = curve
 
-    def update_state(self, y_true, y_pred, sample_weight=None):
-        if self._average != "micro" and self._multi_label == False and len(
-                y_pred.shape) > 1 and y_pred.shape[1] > 1:
-            raise ValueError("Specified single lable prediction but got multi-label pred.")
+    def update_state(self, y_true: tf.Tensor, y_pred: tf.Tensor, sample_weight: tf.Tensor = None):
+        if self._multi_label == False:
+            if y_true.shape[-1] == 1:
+                y_true = tf.squeeze(y_true, axis=-1)
+            if y_pred.shape[-1] == 1:
+                y_pred = tf.squeeze(y_pred, axis=-1)
         super().update_state(y_true, y_pred, sample_weight)
 
     def get_config(self):

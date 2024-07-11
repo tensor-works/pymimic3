@@ -44,10 +44,9 @@ def test_torch_lstm_with_deep_supervision(
     data_flavour: str,
     discretized_readers: Dict[str, ProcessedSetReader],
 ):
-    tests_io(
-        f"Test case torch LSTM with deep supervision using {data_flavour} "
-        f"dataset for task {task_name}",
-        level=0)
+    tests_io(f"Test case torch LSTM with deep supervision for task {task_name}", level=0)
+    tests_io(f"Using {data_flavour} dataset.")
+
     reader = discretized_readers[task_name]
     scaler = MinMaxScaler().fit_reader(reader)
 
@@ -115,7 +114,9 @@ def test_torch_lstm(
     data_flavour: str,
     discretized_readers: Dict[str, ProcessedSetReader],
 ):
-    tests_io(f"Test case torch LSTM using {data_flavour} dataset for task {task_name}", level=0)
+    tests_io(f"Test case torch LSTM for task {task_name}", level=0)
+    tests_io(f"Using {data_flavour} dataset.")
+
     reader = discretized_readers[task_name]
     scaler = MinMaxScaler().fit_reader(reader)
 

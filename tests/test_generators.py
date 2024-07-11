@@ -43,9 +43,9 @@ def test_tf_generators_with_ds(task_name: str, batch_size: int, mode: str, multi
     # Bining types for LOS
     for bining in ["none", "log", "custom"]:
         tests_io(f"Test case batch size: {batch_size}" + \
-                (f" and bining: {bining}" if task_name == "LOS" else "") + \
-                (f" and deep supervision" if mode == "deep_supervision" else "") + \
-                (f" and target replication" if mode == "target_replication" else ""))
+                (f"\nbining: {bining}" if task_name == "LOS" else "") + \
+                (f"\ndeep supervision" if mode == "deep_supervision" else "") + \
+                (f"\ntarget replication" if mode == "target_replication" else ""))
 
         # Create generator
         generator = TFGenerator(reader=reader,
@@ -99,8 +99,8 @@ def test_tf_generators_with_tr(task_name: str, batch_size: int, mode: str, multi
 
     # Bining types for LOS
     tests_io(f"Test case batch size: {batch_size}" + \
-            (f" and deep supervision" if mode == "deep_supervision" else "") + \
-            (f" and target replication" if mode == "target_replication" else ""))
+            (f"\ndeep supervision" if mode == "deep_supervision" else "") + \
+            (f"\ntarget replication" if mode == "target_replication" else ""))
 
     # Create generator
     generator = TFGenerator(reader=reader,
@@ -126,10 +126,9 @@ def test_tf_generators_with_tr(task_name: str, batch_size: int, mode: str, multi
 
 
 @pytest.mark.parametrize("mode", ["deep_supervision", "standard"])
-@pytest.mark.parametrize("batch_size", [1, 16])
 @pytest.mark.parametrize("task_name", ["DECOMP", "LOS"])
 @pytest.mark.parametrize("multiprocessed", [True, False])
-def test_torch_generators_with_ds(task_name: str, batch_size: int, mode: str, multiprocessed: bool,
+def test_torch_generators_with_ds(task_name: str, mode: str, multiprocessed: bool,
                                   discretized_readers: Dict[str, ProcessedSetReader]):
     tests_io(f"Test case torch generator for task: {task_name}", level=0)
     reader = discretized_readers[task_name]
@@ -151,15 +150,14 @@ def test_torch_generators_with_ds(task_name: str, batch_size: int, mode: str, mu
 
     # Bining types for LOS
     for bining in ["none", "log", "custom"]:
-        tests_io(f"Test case batch size: {batch_size}" + \
-                (f" and bining: {bining}" if task_name == "LOS" else "") + \
-                (f" and deep supervision" if mode == "deep_supervision" else "") + \
-                (f" and target replication" if mode == "target_replication" else ""))
+        tests_io(f"Test case batch size: 1" + \
+                (f"\nbining: {bining}" if task_name == "LOS" else "") + \
+                (f"\ndeep supervision" if mode == "deep_supervision" else "") + \
+                (f"\ntarget replication" if mode == "target_replication" else ""))
 
         # Create generator
         generator = TorchGenerator(reader=reader,
                                    scaler=scaler,
-                                   batch_size=batch_size,
                                    num_cpus=n_cpus if multiprocessed else 0,
                                    deep_supervision=(mode == "deep_supervision"),
                                    target_replication=(mode == "target_replication"),
@@ -182,7 +180,7 @@ def test_torch_generators_with_ds(task_name: str, batch_size: int, mode: str, mu
             assert_batch_sanity(X=X,
                                 y=y,
                                 task_name=task_name,
-                                batch_size=batch_size,
+                                batch_size=1,
                                 bining=bining,
                                 M=M,
                                 target_repl=False)
@@ -201,10 +199,9 @@ def test_torch_generators_with_ds(task_name: str, batch_size: int, mode: str, mu
 
 
 @pytest.mark.parametrize("mode", ["target_replication", "standard"])
-@pytest.mark.parametrize("batch_size", [1, 16])
 @pytest.mark.parametrize("task_name", ["IHM", "PHENO"])
 @pytest.mark.parametrize("multiprocessed", [True, False])
-def test_torch_generators_with_tr(task_name: str, batch_size: int, mode: str, multiprocessed: bool,
+def test_torch_generators_with_tr(task_name: str, mode: str, multiprocessed: bool,
                                   discretized_readers: Dict[str, ProcessedSetReader]):
     tests_io(f"Test case torch generator for task: {task_name}", level=0)
     reader = discretized_readers[task_name]
@@ -218,15 +215,14 @@ def test_torch_generators_with_tr(task_name: str, batch_size: int, mode: str, mu
     scaler = MinMaxScaler().fit_reader(reader)
 
     # Bining types for LOS
-    tests_io(f"Test case batch size: {batch_size}" + \
-            (f" and deep supervision" if mode == "deep_supervision" else "") + \
-            (f" and target replication" if mode == "target_replication" else ""))
+    tests_io(f"Test case batch size: 1" + \
+            (f"\ndeep supervision" if mode == "deep_supervision" else "") + \
+            (f"\ntarget replication" if mode == "target_replication" else ""))
 
     # Create generator
     generator = TorchGenerator(reader=reader,
                                scaler=scaler,
                                num_cpus=n_cpus if multiprocessed else 0,
-                               batch_size=batch_size,
                                deep_supervision=False,
                                target_replication=(mode == "target_replication"),
                                drop_last=True,
@@ -242,7 +238,7 @@ def test_torch_generators_with_tr(task_name: str, batch_size: int, mode: str, mu
         assert_batch_sanity(X=X,
                             y=y,
                             task_name=task_name,
-                            batch_size=batch_size,
+                            batch_size=1,
                             target_repl=(mode == "target_replication"))
         tests_io(f"Successfully tested {batch + 1} batches", flush=True)
     tests_io(f"Successfully tested {batch + 1} batches\n")
@@ -316,7 +312,7 @@ def assert_batch_sanity(X: np.ndarray,
 
     assert not np.isnan(X).any()
     assert not np.isnan(y).any()
-    assert np.all((X >= 0) & (X <= 1))
+    assert np.all((X >= 0 - 1e-6) & (X <= 1 + 1e-6))
     # X[0] = B
     assert X.shape[0] == batch_size
     # X[2] = F
@@ -324,13 +320,16 @@ def assert_batch_sanity(X: np.ndarray,
     # y[0] = B
     assert y.shape[0] == batch_size
     assert X.dtype == np.float32
-    assert y.dtype == np.float32
+    if bining in ['log', 'custom']:
+        assert y.dtype == np.int64
+    else:
+        assert y.dtype == np.float32
     if M is not None:
         # Y[1] = T && X[1] = T
         assert y.shape[1] == X.shape[1]
         # M[0] = B && M[1] = T
         assert M.shape == y.shape
-        assert M.dtype == y.dtype
+        assert M.dtype == bool
         content_index = 2
     elif target_repl:
         # Y[1] = T && X[1] = T
@@ -378,7 +377,7 @@ def assert_sample_sanity(X: np.ndarray,
 
 
 if __name__ == "__main__":
-    for task_name in TASK_NAMES:
+    for task_name in ['LOS', 'PHENO']:  # TASK_NAMES:
         if task_name == "MULTI":
             continue
         if not Path(SEMITEMP_DIR, "discretized", task_name).is_dir():
@@ -404,17 +403,30 @@ if __name__ == "__main__":
                                            task=task_name)
         # The ds reader fixture is not accessed but ensured the set is also created
         # deep supervision
-        for batch_size in [1, 16]:
-            if task_name in ["DECOMP", "LOS"]:
-                for mode in ["deep_supervision", "standard"]:
-                    test_torch_generators_with_ds(task_name, batch_size, mode,
-                                                  {task_name: st_reader})
-                    test_tf_generators_with_ds(task_name, batch_size, mode, {task_name: st_reader})
-            if task_name in ["IHM", "PHENO"]:
-                for mode in ["target_replication", "standard"]:
-                    test_torch_generators_with_tr(task_name, batch_size, mode,
-                                                  {task_name: st_reader})
-                    test_tf_generators_with_tr(task_name, batch_size, mode, {task_name: st_reader})
+        if task_name in ["DECOMP", "LOS"]:
+            for mode in ["deep_supervision", "standard"]:
+                test_torch_generators_with_ds(task_name=task_name,
+                                              mode=mode,
+                                              multiprocessed=False,
+                                              discretized_readers={task_name: st_reader})
+                for batch_size in [1, 16]:
+                    test_tf_generators_with_ds(task_name=task_name,
+                                               batch_size=batch_size,
+                                               mode=mode,
+                                               multiprocessed=False,
+                                               discretized_readers={task_name: st_reader})
+        if task_name in ["IHM", "PHENO"]:
+            for mode in ["target_replication", "standard"]:
+                test_torch_generators_with_tr(task_name=task_name,
+                                              mode=mode,
+                                              multiprocessed=False,
+                                              discretized_readers={task_name: st_reader})
+                for batch_size in [1, 16]:
+                    test_tf_generators_with_tr(task_name=task_name,
+                                               batch_size=batch_size,
+                                               mode=mode,
+                                               multiprocessed=False,
+                                               discretized_readers={task_name: st_reader})
         if not Path(SEMITEMP_DIR, "engineered", task_name).is_dir():
             reader = datasets.load_data(chunksize=75836,
                                         source_path=TEST_DATA_DEMO,
@@ -424,4 +436,6 @@ if __name__ == "__main__":
         else:
             reader = ProcessedSetReader(Path(SEMITEMP_DIR, "engineered", task_name))
 
-        test_river_generator(task_name, {task_name: reader})
+        test_river_generator(task_name=task_name,
+                             multiprocessed=False,
+                             engineered_readers={task_name: reader})

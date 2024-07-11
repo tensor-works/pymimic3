@@ -46,11 +46,11 @@ OVERFIT_SETTINGS_DS = {
     },
     "DECOMP": {
         "epochs": 20,
-        "num_samples": 50
+        "num_samples": 400
     },
     "LOS": {
         "epochs": 20,
-        "num_samples": 50
+        "num_samples": 200
     },
     "PHENO": {
         "epochs": 20,
@@ -73,7 +73,7 @@ NETWORK_METRICS = {
 NETWORK_CRITERIONS = {
     "IHM": "binary_crossentropy",
     "DECOMP": "binary_crossentropy",
-    "LOS": "categorical_crossentropy",  # Is multilabel
+    "LOS": "sparse_categorical_crossentropy",  # Is multilabel
     "PHENO": "binary_crossentropy"  # Is multiclass
 }
 

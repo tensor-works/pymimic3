@@ -19,6 +19,7 @@ class TorchGenerator(DataLoader):
                  target_replication: bool = False,
                  deep_supervision: bool = False,
                  drop_last: bool = False,
+                 one_hot: bool = False,
                  bining: str = "none"):
         self._dataset = TorchDataset(reader=reader,
                                      scaler=scaler,
@@ -28,6 +29,7 @@ class TorchGenerator(DataLoader):
                                      deep_supervision=deep_supervision,
                                      target_replication=target_replication,
                                      shuffle=shuffle,
+                                     one_hot=one_hot,
                                      bining=bining)
         super().__init__(dataset=self._dataset,
                          batch_size=1,
@@ -67,6 +69,7 @@ class TorchDataset(AbstractGenerator, Dataset):
                  deep_supervision: bool = False,
                  target_replication: bool = False,
                  shuffle: bool = True,
+                 one_hot: bool = False,
                  bining: str = "none"):
         AbstractGenerator.__init__(self,
                                    reader=reader,
@@ -77,6 +80,7 @@ class TorchDataset(AbstractGenerator, Dataset):
                                    deep_supervision=deep_supervision,
                                    target_replication=target_replication,
                                    shuffle=shuffle,
+                                   one_hot=one_hot,
                                    bining=bining)
 
     def __getitem__(self, index=None):

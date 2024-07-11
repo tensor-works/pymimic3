@@ -284,7 +284,7 @@ class MIMICDiscretizer(AbstractProcessor):
                 if self._deep_supervision:
                     y_reindexed = y_df.reindex(self._X[subject_id][stay_id].index)
                     self._y[subject_id][stay_id] = y_reindexed.fillna(0).astype(np.float32)
-                    self._M[subject_id][stay_id] = (~y_reindexed.isna()).astype(np.float32)
+                    self._M[subject_id][stay_id] = (~y_reindexed.isna()).astype(bool)
                 else:
                     self._y[subject_id][stay_id] = y_df.astype(np.float32)
 

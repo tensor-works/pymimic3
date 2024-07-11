@@ -52,10 +52,13 @@ def read_timeseries(X_df: pd.DataFrame,
                     one_hot=False,
                     dtype=np.ndarray):
     if bining == "log":
-        y_df = y_df.apply(lambda x: LogBins.get_bin_log(x, one_hot=one_hot)).to_frame()
+        y_df = y_df.apply(lambda x: LogBins.get_bin_log(x, one_hot=one_hot))
+        if not isinstance(y_df, pd.DataFrame):
+            y_df = y_df.to_frame()
     elif bining == "custom":
-        y_df = y_df.apply(lambda x: CustomBins.get_bin_custom(x, one_hot=one_hot),
-                          axis=1).to_frame()
+        y_df = y_df.apply(lambda x: CustomBins.get_bin_custom(x, one_hot=one_hot), axis=1)
+        if not isinstance(y_df, pd.DataFrame):
+            y_df = y_df.to_frame()
 
     if row_only:
         Xs = [
