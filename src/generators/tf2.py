@@ -16,6 +16,7 @@ class TFGenerator(AbstractGenerator, Sequence):
                  deep_supervision: bool = False,
                  target_replication: bool = False,
                  shuffle: bool = True,
+                 one_hot: bool = False,
                  bining: str = "none"):
         AbstractGenerator.__init__(self,
                                    reader=reader,
@@ -26,6 +27,7 @@ class TFGenerator(AbstractGenerator, Sequence):
                                    target_replication=target_replication,
                                    deep_supervision=deep_supervision,
                                    shuffle=shuffle,
+                                   one_hot=one_hot,
                                    bining=bining)
         self._deep_supervision = deep_supervision
 

@@ -18,6 +18,7 @@ class RiverGenerator(AbstractGenerator, Dataset):
                  shuffle: bool = True,
                  n_samples: int = None,
                  num_cpus: int = 0,
+                 one_hot: bool = False,
                  bining: str = "none"):
         AbstractGenerator.__init__(self,
                                    reader=reader,
@@ -26,6 +27,7 @@ class RiverGenerator(AbstractGenerator, Dataset):
                                    n_samples=n_samples,
                                    num_cpus=num_cpus,
                                    shuffle=shuffle,
+                                   one_hot=one_hot,
                                    bining=bining)
         self._names: List[str] = None
         self._labels: List[str] = None
