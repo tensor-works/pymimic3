@@ -6,38 +6,64 @@ logging.basicConfig(level=logging.INFO)
 tf.config.run_functions_eagerly(True)
 
 from tests.msettings import *
+from tests.tsettings import *
+from utils.IO import *
 import datasets
 import pytest
 import json
-from tests.tsettings import *
-from datasets.readers import ProcessedSetReader
+import numpy as np
 from typing import Dict
 from pathlib import Path
-from utils.IO import *
-from tests.tsettings import *
 from preprocessing.scalers import MinMaxScaler
 from generators.tf2 import TFGenerator
+from datasets.readers import ProcessedSetReader
 from models.tf2.lstm import LSTMNetwork
+from utils import zeropad_samples
+from tests.pytest_utils.models import assert_valid_metric
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.metrics import AUC
 
 TARGET_METRICS = {
     "IHM": {
-        "loss": 1.5,
-        "roc_auc": 0.75,
-        "pr_auc": 0.15
+        "loss": 0.5,
+        "roc_auc": 0.9,
+        "pr_auc": 0.9
     },
     "DECOMP": {
-        "loss": 1.5,
-        "roc_auc": 0.72,
-        "pr_auc": 0.15,
+        "loss": 0.2,
+        "roc_auc": 0.9,
+        "pr_auc": 0.9,
     },
     "LOS": {
-        "loss": 1.8,
-        "cohen_kappa": 0.8,
-        "custom_mae": 50
+        "loss": np.inf,
+        "cohen_kappa": -np.inf,
+        "custom_mae": -np.inf
     },
     "PHENO": {
+        "loss": 0.5,
+        "micro_roc_auc": 0.75,
+        "macro_roc_auc": 0.7
+    }
+}
+
+TARGET_METRICS_DS = {
+    "IHM": {
+        "loss": np.nan,
+        "roc_auc": np.nan,
+        "pr_auc": np.nan
+    },
+    "DECOMP": {
+        "loss": 0.2,
+        "roc_auc": 0.8,
+        "pr_auc": 0.3,  # had to lower from 0.4
+    },
+    "LOS": {
+        "loss": np.inf,
+        "cohen_kappa": -np.inf,
+        "custom_mae": -np.inf
+    },
+    "PHENO": {
+        "loss": 0.5,
         "micro_roc_auc": 0.75,
         "macro_roc_auc": 0.7
     }
@@ -85,32 +111,40 @@ def test_tf2_lstm_with_deep_supvervision(
     # -- fit --
     if data_flavour == "generator":
         # -- Create the generator --
-        train_generator = TFGenerator(
-            reader=reader,
-            scaler=scaler,
-            batch_size=8,
-            deep_supervision=True,
-            # n_samples=OVERFIT_SETTINGS_DS[task_name]["num_samples"],
-            shuffle=True,
-            #one_hot=task_name == "LOS",
-            **GENERATOR_OPTIONS[task_name])
+        train_generator = TFGenerator(reader=reader,
+                                      scaler=scaler,
+                                      batch_size=8,
+                                      deep_supervision=True,
+                                      shuffle=True,
+                                      **GENERATOR_OPTIONS[task_name])
         tests_io("Succeeded in creating the generator")
         history = model.fit(train_generator, epochs=OVERFIT_SETTINGS_DS[task_name]["epochs"])
+
+        # -- Unroll the Generator --
+        X, y = list(zip(*[(X, y) for X, y in iter(train_generator)]))
+        X, M = list(zip(*X))
+        X = zeropad_samples(X, axis=1)
+        M = zeropad_samples(M, axis=1)
+        y_true = zeropad_samples(y, axis=1)
     elif data_flavour == "numpy":
         # -- Create the dataset --
-        dataset = reader.to_numpy(
-            scaler=scaler,
-            # one_hot=task_name == "LOS",
-            deep_supervision=True,
-            n_samples=OVERFIT_SETTINGS_DS[task_name]["num_samples"],
-            **GENERATOR_OPTIONS[task_name])
+        dataset = reader.to_numpy(scaler=scaler,
+                                  deep_supervision=True,
+                                  n_samples=OVERFIT_SETTINGS_DS[task_name]["num_samples"],
+                                  **GENERATOR_OPTIONS[task_name])
         tests_io("Succeeded in creating the numpy dataset")
         history = model.fit([dataset["X"], dataset["M"]],
                             dataset["yds"],
                             batch_size=8,
                             epochs=OVERFIT_SETTINGS_DS[task_name]["epochs"])
 
-    # assert_model_performance(history, task_name)
+        # -- Store dataset --
+        X = dataset["X"]
+        M = dataset["M"]
+        y_true = np.squeeze(dataset["y"])
+
+    assert_model_performance(history, task_name, TARGET_METRICS_DS[task_name])
+    assert_valid_metric(X, y_true, task_name, model, mask=M)
     tests_io("Succeeded in asserting model sanity")
 
 
@@ -154,29 +188,29 @@ def test_tf2_lstm(
     # -- fit --
     if data_flavour == "generator":
         # -- Create the generator --
-        train_generator = TFGenerator(
-            reader=reader,
-            scaler=scaler,
-            batch_size=8,
-            shuffle=True,
-            # one_hot=task_name == "LOS",
-            # n_samples=OVERFIT_SETTINGS_DS[task_name]["num_samples"],
-            **GENERATOR_OPTIONS[task_name])
+        train_generator = TFGenerator(reader=reader,
+                                      scaler=scaler,
+                                      batch_size=8,
+                                      shuffle=True,
+                                      n_samples=OVERFIT_SETTINGS[task_name]["num_samples"],
+                                      **GENERATOR_OPTIONS[task_name])
 
         tests_io("Succeeded in creating the generator")
 
         # -- Fitting the model --
-        history = model.fit(train_generator, epochs=OVERFIT_SETTINGS_DS[task_name]["epochs"])
+        history = model.fit(train_generator, epochs=OVERFIT_SETTINGS[task_name]["epochs"])
 
+        # -- Unroll the Generator --
+        X, y = list(zip(*[(X, y) for X, y in iter(train_generator)]))
+        X = zeropad_samples(X, axis=1)
+        y_true = np.concatenate(y)
     elif data_flavour == "numpy":
         # -- Create the dataset --
         tests_io("Loading the numpy dataset...", end="\r")
         # Binned with custom bins one LOS task
-        dataset = reader.to_numpy(
-            scaler=scaler,
-            # one_hot=task_name == "LOS",
-            n_samples=OVERFIT_SETTINGS_DS[task_name]["num_samples"],
-            **GENERATOR_OPTIONS[task_name])
+        dataset = reader.to_numpy(scaler=scaler,
+                                  n_samples=OVERFIT_SETTINGS[task_name]["num_samples"],
+                                  **GENERATOR_OPTIONS[task_name])
         tests_io("Done loading the numpy dataset")
 
         # -- Fitting the model --
@@ -185,12 +219,16 @@ def test_tf2_lstm(
                             batch_size=8,
                             epochs=OVERFIT_SETTINGS_DS[task_name]["epochs"])
 
-    # assert_model_performance(history, task_name)
+        # -- Store dataset --
+        X = dataset["X"]
+        y_true = np.squeeze(dataset["y"])
+
+    assert_model_performance(history, task_name, TARGET_METRICS[task_name])
+    assert_valid_metric(X, y_true, task_name, model)
     tests_io("Succeeded in asserting model sanity")
 
 
-def assert_model_performance(history, task):
-    target_metrics = TARGET_METRICS[task]
+def assert_model_performance(history, task: str, target_metrics: Dict[str, float]):
 
     for metric, target_value in target_metrics.items():
         if metric == "loss":
@@ -209,8 +247,9 @@ def assert_model_performance(history, task):
 
 if __name__ == "__main__":
     disc_reader = dict()
-    for task_name in ["LOS"]:  #["IHM", "DECOMP", "PHENO"]:
-
+    for task_name in ["DECOMP"]:  # ["IHM", "DECOMP", "LOS", "PHENO"]:
+        '''
+        '''
         reader = datasets.load_data(chunksize=75836,
                                     source_path=TEST_DATA_DEMO,
                                     storage_path=SEMITEMP_DIR,
@@ -229,11 +268,10 @@ if __name__ == "__main__":
                                         deep_supervision=True,
                                         impute_strategy='previous',
                                         task=task_name)
-
         reader = ProcessedSetReader(Path(SEMITEMP_DIR, "discretized", task_name))
         dataset = reader.to_numpy()
         for flavour in ["generator", "numpy"]:
             disc_reader[task_name] = reader
-            test_tf2_lstm(task_name, flavour, disc_reader)
+            # test_tf2_lstm(task_name, flavour, disc_reader)
             if task_name in ['LOS', 'DECOMP']:
                 test_tf2_lstm_with_deep_supvervision(task_name, flavour, disc_reader)

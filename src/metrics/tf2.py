@@ -20,6 +20,7 @@ class CohenKappa(tfa.metrics.CohenKappa):
         self._sparse_labels = sparse_labels
 
     def update_state(self, y_true, y_pred, sample_weight=None, **kwargs):
+        debug = False
         y_true = tf.convert_to_tensor(y_true)
         y_pred = tf.convert_to_tensor(y_pred)
 
@@ -29,32 +30,38 @@ class CohenKappa(tfa.metrics.CohenKappa):
             y_true = tf.boolean_mask(y_true, mask)
             y_pred = tf.boolean_mask(y_pred, mask)
 
+        # Get the shapes
+        y_true_shape = tf.shape(y_true)
+        y_pred_shape = tf.shape(y_pred)
+
+        # Use tf.cond for more explicit control flow
+        y_true = tf.cond(tf.equal(y_true_shape[-1], 1), lambda: tf.squeeze(y_true, axis=-1),
+                         lambda: y_true)
+
+        y_pred = tf.cond(tf.equal(y_pred_shape[-1], 1), lambda: tf.squeeze(y_pred, axis=-1),
+                         lambda: y_pred)
+
         # Check if inputs are one-hot encoded
-        if len(y_true.shape) > 1 and y_true.shape[-1] == 1 and self._sparse_labels:
+        if len(y_true.shape) > 1 and tf.shape(y_true)[-1] != 1 and self._sparse_labels:
             # Convert one-hot to ordinal
             y_true = tf.argmax(y_true, axis=-1)
-
-        # Squeeze last dimension if it's 1
-        if y_true.shape[-1] == 1:
-            y_true = tf.squeeze(y_true, axis=-1)
-        if y_pred.shape[-1] == 1:
-            y_pred = tf.squeeze(y_pred, axis=-1)
-        # pdb.set_trace()
-        '''
-        # Call the parent class's update_state method
-        tf.print("y_true shape:", kwargs)
-        tf.print("y_true shape:", tf.shape(y_true))
-        tf.print("y_pred shape:", tf.shape(y_pred))
-        tf.print("sample_weight shape:", tf.shape(sample_weight))
-        tf.print("y_true unique:", tf.sort(tf.unique(tf.reshape(y_true, [-1])).y))
-        tf.print("y_pred unique:", tf.sort(tf.unique(tf.reshape(y_pred, [-1])).y))
-        tf.print("sample_weight unique:",
-                 tf.sort(tf.unique(tf.reshape(tf.cast(sample_weight, tf.float32), [-1])).y))
-        tf.print("y_true max:", tf.reduce_max(tf.reshape(y_true, [-1])))
-        tf.print("y_pred max:", tf.reduce_max(tf.reshape(y_pred, [-1])))
-        tf.print("sample_weight max:",
-                 tf.reduce_max(tf.reshape(tf.cast(sample_weight, tf.float32), [-1])))
-        '''
+        if debug:
+            # Call the parent class's update_state method
+            tf.print("y_true shape:", kwargs)
+            tf.print("y_true shape:", tf.shape(y_true))
+            tf.print("y_pred shape:", tf.shape(y_pred))
+            # tf.print("sample_weight shape:", tf.shape(sample_weight))
+            tf.print("y_true unique:", tf.sort(tf.unique(tf.reshape(y_true, [-1])).y))
+            tf.print("y_pred unique:", tf.sort(tf.unique(tf.reshape(y_pred, [-1])).y))
+            # tf.print("sample_weight unique:",
+            #          tf.sort(tf.unique(tf.reshape(tf.cast(sample_weight, tf.float32), [-1])).y))
+            tf.print("y_true max:", tf.reduce_max(tf.reshape(y_true, [-1])))
+            tf.print("y_pred max:", tf.reduce_max(tf.reshape(y_pred, [-1])))
+            # tf.print("sample_weight max:",
+            #          tf.reduce_max(tf.reshape(tf.cast(sample_weight, tf.float32), [-1])))
+            '''
+            pdb.set_trace()
+            '''
 
         super().update_state(y_true, y_pred)
 
@@ -91,23 +98,74 @@ class BinedMAE(tf.keras.metrics.MeanAbsoluteError):
 
     def update_state(self, y_true, y_pred, sample_weight=None):
         # Call the parent class's update_state method
+        debug = False
+        trace = False
+        if debug:
+            tf.print("---- raw inputs ----")
+            tf.print("y_true shape:", tf.shape(y_true))
+            tf.print("y_pred shape:", tf.shape(y_pred))
+            tf.print("y_true unique:", tf.sort(tf.unique(tf.reshape(y_true, [-1])).y))
+            tf.print("y_pred unique:", tf.sort(tf.unique(tf.reshape(y_pred, [-1])).y))
+            tf.print("y_true max:", tf.reduce_max(tf.reshape(y_true, [-1])))
+            tf.print("y_pred max:", tf.reduce_max(tf.reshape(y_pred, [-1])))
+
         if sample_weight is not None:
             mask = tf.cast(sample_weight, dtype=tf.bool)
             y_true = tf.boolean_mask(y_true, mask)
             y_pred = tf.boolean_mask(y_pred, mask)
+        if debug:
+            tf.print("---- after mask ----")
+            tf.print("y_true shape:", tf.shape(y_true))
+            tf.print("y_pred shape:", tf.shape(y_pred))
+            tf.print("y_true unique:", tf.sort(tf.unique(tf.reshape(y_true, [-1])).y))
+            tf.print("y_pred unique:", tf.sort(tf.unique(tf.reshape(y_pred, [-1])).y))
+            tf.print("y_true max:", tf.reduce_max(tf.reshape(y_true, [-1])))
+            tf.print("y_pred max:", tf.reduce_max(tf.reshape(y_pred, [-1])))
 
-        prediction_means = tf.gather(self._means, tf.argmax(y_pred, axis=1))
+        # Get the shapes
+        y_true_shape = tf.shape(y_true)
+        y_pred_shape = tf.shape(y_pred)
+
+        # Use tf.cond for more explicit control flow
+        y_true = tf.cond(tf.equal(y_true_shape[-1], 1), lambda: tf.squeeze(y_true, axis=-1),
+                         lambda: y_true)
+
+        y_pred = tf.cond(tf.equal(y_pred_shape[-1], 1), lambda: tf.squeeze(y_pred, axis=-1),
+                         lambda: y_pred)
+
+        if debug:
+            tf.print("---- after squeeze ----")
+            tf.print("y_true shape:", tf.shape(y_true))
+            tf.print("y_pred shape:", tf.shape(y_pred))
+            tf.print("y_true unique:", tf.sort(tf.unique(tf.reshape(y_true, [-1])).y))
+            tf.print("y_pred unique:", tf.sort(tf.unique(tf.reshape(y_pred, [-1])).y))
+            tf.print("y_true max:", tf.reduce_max(tf.reshape(y_true, [-1])))
+            tf.print("y_pred max:", tf.reduce_max(tf.reshape(y_pred, [-1])))
+
+        y_pred = tf.gather(self._means, tf.argmax(y_pred, axis=1))
         if len(tf.shape(y_true)) > 1:
             y_true = tf.argmax(y_true, axis=1)
-        target_means = tf.gather(self._means, y_true)
+        y_true = tf.gather(self._means, y_true)
 
-        return super().update_state(target_means, prediction_means, sample_weight)
+        if debug:
+            tf.print("---- after gathering ----")
+            tf.print("y_true shape:", tf.shape(y_true))
+            tf.print("y_pred shape:", tf.shape(y_pred))
+            tf.print("y_true unique:", tf.sort(tf.unique(tf.reshape(y_true, [-1])).y))
+            tf.print("y_pred unique:", tf.sort(tf.unique(tf.reshape(y_pred, [-1])).y))
+            tf.print("y_true max:", tf.reduce_max(tf.reshape(y_true, [-1])))
+            tf.print("y_pred max:", tf.reduce_max(tf.reshape(y_pred, [-1])))
+
+        if trace:
+            pdb.set_trace()
+
+        return super().update_state(y_true, y_pred, sample_weight)
 
 
 class AUC(tf.keras.metrics.AUC):
 
     def __init__(self,
-                 num_thresholds=50,
+                 num_thresholds=200,
                  multi_label=False,
                  num_labels=None,
                  curve: Literal["PR", "ROC"] = 'ROC',
@@ -139,11 +197,17 @@ class AUC(tf.keras.metrics.AUC):
         self._curve = curve
 
     def update_state(self, y_true: tf.Tensor, y_pred: tf.Tensor, sample_weight: tf.Tensor = None):
+        debug = False
         if self._multi_label == False:
             if y_true.shape[-1] == 1:
                 y_true = tf.squeeze(y_true, axis=-1)
             if y_pred.shape[-1] == 1:
                 y_pred = tf.squeeze(y_pred, axis=-1)
+        if debug:
+            tf.print(f"y_true {y_true.shape}")
+            tf.print(f"y_pred {y_pred.shape}")
+            tf.print(f"y_true {y_true[:3]}")
+            tf.print(f"y_pred {y_pred[:3]}")
         super().update_state(y_true, y_pred, sample_weight)
 
     def get_config(self):
@@ -164,11 +228,11 @@ if __name__ == "__main__":
     from sklearn.metrics import roc_auc_score
     from sklearn.metrics import cohen_kappa_score
 
-    # -- Testing the binned MAE --
+    # ------------------------ Testing the binned MAE ------------------------
     metric = BinedMAE(binning="custom")
 
     # Create some test data
-    y_true = tf.constant([0, 2, 4, 1, 3])  # True labels (indices)
+    y_true = tf.constant([[0], [2], [4], [1], [3]])  # True labels (indices)
     y_pred = tf.constant([
         [0.9, 0.1, 0.0, 0.0, 0.0],  # Predicted as class 0
         [0.1, 0.1, 0.7, 0.1, 0.0],  # Predicted as class 2
@@ -182,10 +246,7 @@ if __name__ == "__main__":
 
     # Compute the result
     result = metric.result().numpy()
-
     print(f"BinnedMAE result: {result}")
-
-    # Reset the metric
     metric.reset_state()
 
     # Ground truth labels (one-hot encoded)
@@ -216,15 +277,22 @@ if __name__ == "__main__":
         [0.7, 0.2, 0.1],
     ])
 
-    dynamic = DynamicCohenKappa()
-    dynamic.update_state(y_true_multi, y_pred_multi)
-    print(f'Dynamic (tf2): {dynamic.result()}')
-
+    # ------------------------ Testing the Dynamic Cohen Kappa ------------------------
     y_true = y_true_multi.argmax(dim=1).numpy()
     y_pred = y_pred_multi.argmax(dim=1).numpy()
-    kappa = cohen_kappa_score(y_true, y_pred)
-    print(f"Cohen's Kappa: {kappa}")
 
+    dynamic = DynamicCohenKappa()
+    dynamic.update_state(y_true_multi, y_pred_multi)
+    print(f'Dynamic cohen kappa (tf2): {dynamic.result()}')
+
+    dynamic = CohenKappa(num_classes=5)
+    dynamic.update_state(y_true, y_pred_multi)
+    print(f'Cohen kappa (tf2): {dynamic.result()}')
+
+    kappa = cohen_kappa_score(y_true, y_pred)
+    print(f"Cohen kappa (sklearn): {kappa}")
+
+    # ------------------------ Testing the AUC's ------------------------
     # Compute ours: micro
     micro_rocauc = AUC(curve='ROC', average="micro")
     micro_rocauc.update_state(y_true_multi, y_pred_multi)
