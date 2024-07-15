@@ -41,7 +41,7 @@ def test_tf_generators_with_ds(task_name: str, batch_size: int, mode: str, multi
     scaler = MinMaxScaler().fit_reader(reader)
 
     # Bining types for LOS
-    for bining in ["none", "log", "custom"]:
+    for bining in ["log", "custom", "none"]:
         tests_io(f"Test case batch size: {batch_size}" + \
                 (f"\nbining: {bining}" if task_name == "LOS" else "") + \
                 (f"\ndeep supervision" if mode == "deep_supervision" else "") + \
@@ -377,7 +377,7 @@ def assert_sample_sanity(X: np.ndarray,
 
 
 if __name__ == "__main__":
-    for task_name in ['LOS', 'PHENO']:  # TASK_NAMES:
+    for task_name in ['LOS']:  # TASK_NAMES:
         if task_name == "MULTI":
             continue
         if not Path(SEMITEMP_DIR, "discretized", task_name).is_dir():
@@ -405,16 +405,16 @@ if __name__ == "__main__":
         # deep supervision
         if task_name in ["DECOMP", "LOS"]:
             for mode in ["deep_supervision", "standard"]:
-                test_torch_generators_with_ds(task_name=task_name,
-                                              mode=mode,
-                                              multiprocessed=False,
-                                              discretized_readers={task_name: st_reader})
                 for batch_size in [1, 16]:
                     test_tf_generators_with_ds(task_name=task_name,
                                                batch_size=batch_size,
                                                mode=mode,
                                                multiprocessed=False,
                                                discretized_readers={task_name: st_reader})
+                test_torch_generators_with_ds(task_name=task_name,
+                                              mode=mode,
+                                              multiprocessed=False,
+                                              discretized_readers={task_name: st_reader})
         if task_name in ["IHM", "PHENO"]:
             for mode in ["target_replication", "standard"]:
                 test_torch_generators_with_tr(task_name=task_name,

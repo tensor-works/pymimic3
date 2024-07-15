@@ -33,15 +33,19 @@ def get_iterable_dtype(iterable: Iterable):
     return dtype
 
 
-def zeropad_samples(data: np.ndarray, length: int = None) -> np.ndarray:
+def zeropad_samples(data: np.ndarray, length: int = None, axis: int = 0) -> np.ndarray:
     if length is None:
-        length = max([x.shape[0] for x in data])
+        length = max([x.shape[axis] for x in data])
     dtype = get_iterable_dtype(data)
-    ret = [
-        np.concatenate([x, np.zeros((length - x.shape[0],) + x.shape[1:], dtype=dtype)],
-                       axis=0,
-                       dtype=dtype) for x in data
-    ]
+    ret = [np.concatenate([
+           x,
+           np.zeros(x.shape[:axis] + (length - x.shape[axis],) + x.shape[axis + 1:],\
+                dtype=dtype)
+           ],
+           axis=axis,
+           dtype=dtype) for x in data]
+    if len(data[0].shape) == 3:
+        return np.concatenate(ret)
     return np.atleast_3d(np.array(ret, dtype=dtype))
 
 

@@ -124,7 +124,7 @@ class MIMICDiscretizer(AbstractProcessor):
         self._save_file_type = "hdf5"
         self._storage_path = storage_path
         if deep_supervision and not task in ["DECOMP", "LOS"]:
-            raise ValueError(f"Deep supervision not implemented for {self._task}")
+            raise ValueError(f"Deep supervision not implemented for {task}")
 
         self._deep_supervision = deep_supervision
         self._writer = (None if storage_path is None else DataSetWriter(self._storage_path))

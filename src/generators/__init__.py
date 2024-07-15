@@ -43,12 +43,9 @@ class AbstractGenerator:
 
         # n_samples
         self._n_samples = n_samples
-        if n_samples is not None and deep_supervision:
-            self._random_ids = np.random.choice(self._reader.subject_ids,
-                                                min(len(self._reader.subject_ids), n_samples),
-                                                replace=False)
         if n_samples is not None:
-            self._random_ids, _ = self._subjects_for_samples(self._n_samples)
+            self._random_ids, _ = self._subjects_for_samples(self._n_samples,
+                                                             deep_supervision=deep_supervision)
 
         else:
             self._random_ids = deepcopy(self._reader.subject_ids)
@@ -136,10 +133,14 @@ class AbstractGenerator:
         # Call this only
         if self._deep_supervision:
             return max(sum([len(self._tracker.subjects[subject_id]) - 1 \
-                       for subject_id in subject_ids]) \
+                       for subject_id in subject_ids \
+                       if subject_id in self._tracker.subjects]) \
                        // self._batch_size, 1)
-        return sum([self._tracker.subjects[subject_id]["total"] for subject_id in subject_ids
-                   ]) // self._batch_size
+        return sum([
+            self._tracker.subjects[subject_id]["total"]
+            for subject_id in subject_ids
+            if subject_id in self._tracker.subjects
+        ]) // self._batch_size
 
     def __len__(self):
         'Denotes the number of batches per epoch'
@@ -245,26 +246,45 @@ class AbstractGenerator:
     @staticmethod
     def _stack_batches(data):
         max_len = max([x.shape[1] for x in data])
+        dtype = get_iterable_dtype(data)
         data = [
-            np.concatenate([x, np.zeros([x.shape[0], max_len - x.shape[1], x.shape[2]])],
-                           axis=1,
-                           dtype=np.float32) if max_len - x.shape[1] else x for x in data
+            np.concatenate(
+                [x, np.zeros([x.shape[0], max_len - x.shape[1], x.shape[2]]).astype(dtype)],
+                axis=1,
+                dtype=dtype) if max_len - x.shape[1] else x for x in data
         ]
-        return np.concatenate(data, axis=0, dtype=np.float32)
+        return np.concatenate(data, axis=0, dtype=dtype)
 
     def _subjects_for_samples(self,
                               target_size: int,
-                              max_iter: int = 20) -> Tuple[List[float], int]:
+                              max_iter: int = 20,
+                              deep_supervision: bool = False) -> Tuple[List[float], int]:
         """
         Selects subjects to match the target number of samples.
         """
         assert self._tracker.subject_ids
         # Init tracking vars
         best_diff = float('inf')
-        iter = 0
+        iteration = 0
 
         # Init subject counts
-        subject_df = pd.DataFrame(deepcopy(self._tracker.subjects)).T["total"]
+        if deep_supervision:
+            index_tuples = [
+                (outer_key, inner_key, value)
+                for outer_key, inner_dict in deepcopy(dict(self._tracker.subjects)).items()
+                if not outer_key == "total" for inner_key, value in inner_dict.items()
+            ]
+            index = pd.MultiIndex.from_tuples(index_tuples,
+                                              names=['subject_id', 'stay_id', 'values'])
+            df = pd.DataFrame(index=index)
+            df['value'] = df.index.get_level_values(2)
+            df = df.droplevel(2).sort_index()
+            df = df.drop(df.index[df.index.get_level_values('stay_id') == 'total'])
+            # Now, group by the first index level and count entries
+            subject_df = df.groupby(level='subject_id').size()
+        else:
+            subject_df = pd.DataFrame(deepcopy(dict(self._tracker.subjects))).T["total"]
+            subject_df = subject_df.drop("total")
 
         def compute_samples(random_state):
             np.random.seed(random_state)
@@ -279,12 +299,11 @@ class AbstractGenerator:
                     break
                 next_subject = np.random.choice(remaining_subjects.index)
                 with lock_pr:
-                    subject_samples = tracker_pr.subjects[next_subject]['total']
+                    subject_samples = remaining_subjects.loc[next_subject]
 
-                if current_size + subject_samples <= target_size_pr:
-                    current_size += subject_samples
-                    subjects.append(next_subject)
-                    remaining_subjects.drop(next_subject)
+                current_size += subject_samples
+                subjects.append(next_subject)
+                remaining_subjects = remaining_subjects.drop(next_subject)
 
             diff = abs(target_size_pr - current_size)
             return diff, current_size, subjects
@@ -311,13 +330,13 @@ class AbstractGenerator:
                                       chunksize=int(np.ceil(max_iter / n_cpus)))
 
             for diff, current_size, subjects in res:
-                iter += 1
+                iteration += 1
                 # Fetch best result
                 if diff < best_diff:
                     best_subjects, best_size, best_diff = subjects, current_size, diff
 
                 # Break if no diff
-                if best_diff == 0 or iter >= max_iter:
+                if best_diff == 0 or iteration >= max_iter:
                     break
             pool.close()
             pool.join()
@@ -472,11 +491,11 @@ def process_subject(args: Tuple[List[int], int],
         return np.random.choice(avail_gen_indices, n_samples, replace=True).tolist()
 
     while subject_ids or subject_generators:
-        indices = sample_generator_index(batch_size)
+        indices = sample_generator_index(batch_size - len(X_batch))
         while indices:
             idx = indices.pop()
             try:
-                X, y, t = next(subject_generators[idx])
+                X_sample, y_sample, t_sample = next(subject_generators[idx])
             except IndexError:
                 # Fill generator buffer
                 for _ in range(min(idx + 1 - len(subject_generators), len(subject_ids))):
@@ -505,15 +524,12 @@ def process_subject(args: Tuple[List[int], int],
                 indices.extend(sample_generator_index(1))
                 continue
 
-            if bining == 'log':
-                y = LogBins.get_bin_log(y, one_hot=one_hot)
-            elif bining == 'custom':
-                y = CustomBins.get_bin_custom(y, one_hot=one_hot)
             if target_replication:
-                y = np.atleast_2d(y).repeat(X.shape[0], axis=0)
-            X_batch.append(X)
-            y_batch.append(y)
-            t_batch.append(t)
+                y_sample = np.atleast_2d(y_sample).repeat(X_sample.shape[0], axis=0)
+            X_batch.append(X_sample)
+            y_batch.append(y_sample)
+            t_batch.append(t_sample)
+
         if len(X_batch) == batch_size:
             # Shuffle the inside of the batch again
             X_batch, y_batch, t_batch = shuffled_data(X_batch, y_batch, t_batch)
@@ -522,7 +538,7 @@ def process_subject(args: Tuple[List[int], int],
                 y = zeropad_samples(y_batch)
             else:
                 y = np.array(y_batch)
-            t = np.array(t_batch, dtype=np.float32)
+            t = np.array(t_batch)
             X_batch.clear()
             y_batch.clear()
             t_batch.clear()
@@ -536,7 +552,7 @@ def process_subject(args: Tuple[List[int], int],
             y = zeropad_samples(y_batch)
         else:
             y = np.array(y_batch)
-        t = np.array(t_batch, dtype=np.float32)
+        t = np.array(t_batch)
         X_batch.clear()
         y_batch.clear()
         t_batch.clear()
