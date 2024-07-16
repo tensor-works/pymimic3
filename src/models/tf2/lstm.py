@@ -3,8 +3,7 @@ import pdb
 import tensorflow as tf
 from typing import List, Union
 from models.tf2.layers import ExtendMask
-from tensorflow.keras import Model
-from tensorflow.keras import layers
+from keras.api._v2.keras import layers
 from utils.IO import *
 from models.tf2.mappings import activation_names
 
@@ -24,10 +23,11 @@ class LSTMNetwork(AbstractTf2Model):
                  depth: int = 1):
         """
         """
-        self.layer_size = layer_size
-        self.dropout_rate = dropout
-        self.recurrent_dropout = recurrent_dropout
-        self.depth = depth
+        self._layer_size = layer_size
+        self._dropout_rate = dropout
+        self._recurrent_dropout = recurrent_dropout
+        self._depth = depth
+        self._deep_supervision = deep_supervision
 
         if final_activation is None:
             if output_dim == 1:

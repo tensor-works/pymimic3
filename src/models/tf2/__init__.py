@@ -1,5 +1,8 @@
 from tensorflow import config
-from tensorflow.keras import Model
+from keras.api._v2.keras import Model
+from tensorflow.python.keras.engine import data_adapter
+from tensorflow.python.keras.engine import training
+# from tensorflow.python.keras.engine.compile_utils
 from utils.IO import *
 
 import tensorflow as tf
@@ -31,6 +34,10 @@ class AbstractTf2Model(Model):
             for metric in metrics:
                 if metric in metric_mapping:
                     metrics[metrics.index(metric)] = metric_mapping[metric]
+        if weighted_metrics is not None:
+            for metric in weighted_metrics:
+                if metric in metric_mapping:
+                    weighted_metrics[weighted_metrics.index(metric)] = metric_mapping[metric]
         super().compile(optimizer=optimizer,
                         loss=loss,
                         metrics=metrics,
@@ -41,3 +48,49 @@ class AbstractTf2Model(Model):
                         jit_compile=jit_compile,
                         pss_evaluation_shards=pss_evaluation_shards,
                         **kwargs)
+
+    @tf.function
+    def train_step(self, data):
+        data = data_adapter.expand_1d(data)
+        x, y, sample_weight = data_adapter.unpack_x_y_sample_weight(data)
+
+        if hasattr(self, 'deep_supervision') and self._deep_supervision:
+            mask = x[-1]
+        else:
+            mask = None
+
+        if sample_weight is not None:
+            sample_weight = sample_weight * mask
+        else:
+            sample_weight = mask
+
+        with tf.GradientTape() as tape:
+            y_pred = self(x, training=True)
+            loss = self.compiled_loss(y,
+                                      y_pred,
+                                      sample_weight=sample_weight,
+                                      regularization_losses=self.losses)
+
+        gradients = tape.gradient(loss, self.trainable_variables)
+        self.optimizer.apply_gradients(zip(gradients, self.trainable_variables))
+        self.compiled_metrics.update_state(y, y_pred, sample_weight=sample_weight)
+
+        return {m.name: m.result() for m in self.metrics}
+
+    def test_step(self, data):
+        x, y, sample_weight = data_adapter.unpack_x_y_sample_weight(data)
+
+        if hasattr(self, 'deep_supervision') and self._deep_supervision:
+            mask = x[-1]
+        else:
+            mask = None
+
+        if sample_weight is not None:
+            sample_weight = sample_weight * mask
+        else:
+            sample_weight = mask
+
+        y_pred = self(x, training=False)
+        # Updates stateful loss metrics.
+        self.compute_loss(x, y, y_pred, sample_weight)
+        return self.compute_metrics(x, y, y_pred, sample_weight)

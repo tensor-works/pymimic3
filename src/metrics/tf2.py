@@ -5,6 +5,7 @@ from typing import Literal
 from metrics import CustomBins, LogBins
 import logging
 import pdb
+from keras.api._v2.keras import metrics
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -162,7 +163,7 @@ class BinedMAE(tf.keras.metrics.MeanAbsoluteError):
         return super().update_state(y_true, y_pred, sample_weight)
 
 
-class AUC(tf.keras.metrics.AUC):
+class AUC(metrics.AUC):
 
     def __init__(self,
                  num_thresholds=200,
@@ -204,11 +205,31 @@ class AUC(tf.keras.metrics.AUC):
             if y_pred.shape[-1] == 1:
                 y_pred = tf.squeeze(y_pred, axis=-1)
         if debug:
+            tf.print(f"-- after squeeze --")
             tf.print(f"y_true {y_true.shape}")
             tf.print(f"y_pred {y_pred.shape}")
-            tf.print(f"y_true {y_true[:3]}")
-            tf.print(f"y_pred {y_pred[:3]}")
-        super().update_state(y_true, y_pred, sample_weight)
+            # tf.print(f"y_true {y_true[:3]}")
+            # tf.print(f"y_pred {y_pred[:3]}")
+
+        # Apply masking
+        if sample_weight is not None:
+            if sample_weight.shape[-1] == 1:
+                sample_weight = tf.squeeze(sample_weight, axis=-1)
+            if debug:
+                tf.print(f"sample_weight.shape: {sample_weight.shape}")
+                tf.print(f"sample_weight: {sample_weight}")
+            mask = tf.cast(sample_weight, dtype=tf.bool)
+            y_true = tf.boolean_mask(y_true, mask)
+            y_pred = tf.boolean_mask(y_pred, mask)
+
+        if debug:
+            tf.print(f"-- after mask --")
+            tf.print(f"y_true {y_true.shape}")
+            tf.print(f"y_pred {y_pred.shape}")
+            # tf.print(f"y_true {y_true[:3]}")
+            # tf.print(f"y_pred {y_pred[:3]}")
+
+        super().update_state(y_true, y_pred)
 
     def get_config(self):
         config = super().get_config()
