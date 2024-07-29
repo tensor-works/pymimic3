@@ -4,59 +4,11 @@ from settings import *
 load_dotenv(verbose=False)
 
 __all__ = [
-    'NETWORK_METRICS',
-    'NETWORK_CRITERIONS',
-    'GENERATOR_OPTIONS',
-    'FINAL_ACTIVATIONS',
-    'OUTPUT_DIMENSIONS',
-    'STANDARD_LSTM_PARAMS',
-    'STANDARD_LSTM_DS_PARAMS',
-    'CHANNEL_WISE_LSTM_PARAMS',
-    'CHANNEL_WISE_LSTM_DS_PARAMS',
-    'MULTITASK_STANDARD_LSTM_PARAMS',
-    'MULTITASK_CHANNEL_WISE_LSTM_PARAMS',
-    'OVERFIT_SETTINGS',
-    'OVERFIT_SETTINGS_DS',
+    'NETWORK_METRICS', 'NETWORK_CRITERIONS_TF2', 'NETWORK_CRITERIONS_TORCH', 'GENERATOR_OPTIONS',
+    'FINAL_ACTIVATIONS', 'OUTPUT_DIMENSIONS', 'STANDARD_LSTM_PARAMS', 'STANDARD_LSTM_DS_PARAMS',
+    'CHANNEL_WISE_LSTM_PARAMS', 'CHANNEL_WISE_LSTM_DS_PARAMS', 'MULTITASK_STANDARD_LSTM_PARAMS',
+    'MULTITASK_CHANNEL_WISE_LSTM_PARAMS'
 ]
-# ------------------------- test settings -------------------------
-# -> Overfit testing
-OVERFIT_SETTINGS = {
-    "IHM": {
-        "epochs": 20,
-        "num_samples": None
-    },
-    "DECOMP": {
-        "epochs": 20,
-        "num_samples": 200
-    },
-    "LOS": {
-        "epochs": 20,
-        "num_samples": 200
-    },
-    "PHENO": {
-        "epochs": 20,
-        "num_samples": None
-    }
-}
-
-OVERFIT_SETTINGS_DS = {
-    "IHM": {
-        "epochs": 20,
-        "num_samples": None
-    },
-    "DECOMP": {
-        "epochs": 20,
-        "num_samples": 400
-    },
-    "LOS": {
-        "epochs": 20,
-        "num_samples": 200
-    },
-    "PHENO": {
-        "epochs": 20,
-        "num_samples": None
-    }
-}
 
 # ------------------------- metric settings -------------------------
 # -> Metrics do with task
@@ -70,10 +22,17 @@ NETWORK_METRICS = {
     "PHENO": ["micro_roc_auc", "macro_roc_auc"]
 }
 
-NETWORK_CRITERIONS = {
+NETWORK_CRITERIONS_TF2 = {
     "IHM": "binary_crossentropy",
     "DECOMP": "binary_crossentropy",
     "LOS": "sparse_categorical_crossentropy",  # Is multilabel
+    "PHENO": "binary_crossentropy"  # Is multiclass
+}
+
+NETWORK_CRITERIONS_TORCH = {
+    "IHM": "binary_crossentropy",
+    "DECOMP": "binary_crossentropy",
+    "LOS": "categorical_crossentropy",  # Is multilabel
     "PHENO": "binary_crossentropy"  # Is multiclass
 }
 
@@ -135,9 +94,9 @@ STANDARD_LSTM_PARAMS = {
 
 # ------------------------- standard lstm with deep supervision settings --------------------
 STANDARD_LSTM_DS_PARAMS = {
-    "PHENO": {
+    "IHM": {
         "model": {
-            "layer_size": 256,
+            "layer_size": 32,
             "depth": 1,
             "target_repl_coef": 0.5
         }
@@ -148,17 +107,17 @@ STANDARD_LSTM_DS_PARAMS = {
             "depth": 1,
         }
     },
-    "IHM": {
-        "model": {
-            "layer_size": 32,
-            "depth": 1,
-            "target_repl_coef": 0.5
-        }
-    },
     "LOS": {
         "model": {
             "layer_size": 128,
             "depth": 1
+        }
+    },
+    "PHENO": {
+        "model": {
+            "layer_size": 256,
+            "depth": 1,
+            "target_repl_coef": 0.5
         }
     }
 }

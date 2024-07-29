@@ -15,6 +15,7 @@ from torchmetrics import Metric
 from keras.utils import Progbar
 from utils import to_snake_case
 from torch.optim import Optimizer
+from utils import zeropad_samples
 from utils.IO import *
 from settings import *
 from models.pytorch.mappings import *
@@ -199,12 +200,15 @@ class AbstractTorchNetwork(nn.Module):
             self._optimizer = optimizer
 
         if isinstance(loss, str):
+            self._apply_activation = loss != "categorical_crossentropy"
+
             if loss in loss_mapping:
                 self._loss = loss_mapping[loss](weight=class_weight)
             else:
                 raise ValueError(f"Loss {loss} not supported."
                                  f"Supported losses are {loss_mapping.keys()}")
         else:
+            self._apply_activation = not isinstance(loss, nn.CrossEntropyLoss)
             self._loss = loss
         self._metrics = self._init_metrics(metrics)
 
@@ -249,8 +253,8 @@ class AbstractTorchNetwork(nn.Module):
         ...
 
     def _train(self, *args, **kwargs):
-        if ((len(args) >= 1 and isinstance(args[0], (np.ndarray, list, tuple))) or "x" in kwargs) \
-            and (len(args) >= 2 and isinstance(args[1], np.ndarray) or "y" in kwargs):
+        if ((len(args) >= 1 and isinstance(args[0], (np.ndarray, torch.Tensor, list, tuple))) or "x" in kwargs) \
+            and (len(args) >= 2 and isinstance(args[1], (np.ndarray, torch.Tensor)) or "y" in kwargs):
             return self._train_with_arrays(*args, **kwargs)
         elif (len(args) >= 1 and isinstance(args[0], DataLoader) or "generator" in kwargs):
             return self._train_with_dataloader(*args, **kwargs)
@@ -348,7 +352,7 @@ class AbstractTorchNetwork(nn.Module):
             return metrics
         return [(f"{prefix}_{metric}", value) for metric, value in metrics]
 
-    def remove_end_padding(self, tensor):
+    def _remove_end_padding(self, tensor):
         return tensor[:torch.max(torch.nonzero((tensor != 0).long().sum(1))) + 1, :]
 
     def _train_with_arrays(self,
@@ -374,10 +378,13 @@ class AbstractTorchNetwork(nn.Module):
 
         # Dimension variables
         data_size = x.shape[0]
+
+        # Shuffled data
         idx = np.random.permutation(len(x))
         x = torch.tensor(x[idx, :, :], dtype=torch.float32).to(self._device)
         y = torch.tensor(y[idx, :, :]).to(self._device)
 
+        # Init counter epoch variables
         self._on_epoch_start(data_size, batch_size, has_val)
 
         # Batch iter variables
@@ -396,17 +403,21 @@ class AbstractTorchNetwork(nn.Module):
             else:
                 # TODO! Is there a better way. What if there is an actual patient with all zero across
                 # TODO! 59 columns? Am I paranoid. Maybe adding the discretizer masking can alleviat
-                input = self.remove_end_padding(input)
+                input = self._remove_end_padding(input)
                 mask = None
+
+            # Adjust dimensions
             if len(input.shape) < 3:
                 input = input.unsqueeze(0)
 
+            # Create predictions
             output = self(input, masks=mask)
+
+            # Apply masking
             if masking_flag:
-                # output = torch.masked_select(output, mask)
                 output = output[:, mask.squeeze()]
-                # label = torch.masked_select(label, mask)
                 label = label[mask.squeeze(), :]
+
             # Accumulate outputs and labels either flat or with dim of multilabel
             aggr_outputs.append(output)
             aggr_labels.append(label)
@@ -453,13 +464,14 @@ class AbstractTorchNetwork(nn.Module):
             else:
                 input = input.to(self._device)
                 mask = None
-            label = label.to(self._device)
 
-            # labels = labels * masks
+            label = label.to(self._device).T
             output = self(input, masks=mask)
+
             if masking_flag:
-                output = torch.masked_select(output, mask)
-                label = torch.masked_select(label, mask)
+                output = output[:, mask.squeeze()]
+                label = label[mask.squeeze(-1), :]
+
             # Accumulate outputs and labels
             aggr_outputs.append(output)
             aggr_labels.append(label)
@@ -491,11 +503,11 @@ class AbstractTorchNetwork(nn.Module):
             if self._task == "multilabel":
                 # T, N
                 labels = torch.stack(labels)
+                if labels.shape[-1] == 1:
+                    labels = labels.squeeze(-1)
             else:
                 # T
-                # label_shape = [outputs.shape[0]]
-                # label_shape.extend([1] * (len(outputs.shape) - 1))
-                labels = torch.cat(labels).view(-1)  #.reshape(*label_shape)
+                labels = torch.cat(labels).view(-1)
 
             # Compute loss
             loss = self._loss(outputs, labels)
@@ -505,7 +517,7 @@ class AbstractTorchNetwork(nn.Module):
             loss.backward()
             self._optimizer.step()
             if self._clip_value is not None:
-                torch.nn.utils.clip_grad_norm_(self.parameters(), max_norm=1.0)
+                torch.nn.utils.clip_grad_norm_(self.parameters(), max_norm=self._clip_value)
 
             # Reset count
             self._update_metrics(loss,
@@ -525,63 +537,93 @@ class AbstractTorchNetwork(nn.Module):
     def _evaluate_with_arrays(self,
                               x: np.ndarray,
                               y: np.ndarray,
-                              val_frequency: int,
-                              epoch: int,
-                              is_test: bool = False):
-        prefix = "test" if is_test else "val"
-        self._on_epoch_start()
+                              batch_size: int = None,
+                              val_frequency: int = 1,
+                              epoch: int = 0,
+                              is_test: bool = False,
+                              **kwargs):
+        # Don't exectue if not specified or not correct frequency to epoch
+        if val_frequency is None:
+            return
+        elif epoch is None:
+            return
+        elif not len(x) or not len(y):
+            return
+        elif (epoch) % val_frequency != 0:
+            return
+
+        # Handle masking
         if isinstance(x, (list, tuple)):
-            x, y = x
+            x, masks = x
+            masks = torch.tensor(masks, dtype=torch.float32).bool().to(self._device)
             masking_flag = True
         else:
             masking_flag = False
+
+        # Dimension variables
+        if len(y.shape) < 3:
+            y = np.expand_dims(y, axis=-1)
+        x = torch.tensor(x, dtype=torch.float32).to(self._device)
+        y = torch.tensor(y).to(self._device)
+
+        # Init counter epoch variables
+        self._on_epoch_start(generator_size=len(y),
+                             batch_size=batch_size if batch_size is not None else len(y))
+
         # Evaluate only if necessary
-        if (val_frequency is not  None and epoch is not None) \
-            and len(x) and len(y) and (epoch) % val_frequency == 0:
-            self.eval()
-            val_losses = []
-            with torch.no_grad():
-                x = torch.tensor(x, dtype=torch.float32).to(self._device)
-                y = torch.tensor(y, dtype=torch.float32).to(self._device)
-                last_iter = len(x) - 1
-                for idx, (val_inputs, val_labels) in enumerate(zip(x, y)):
-                    if masking_flag:
-                        val_inputs, val_masks = val_inputs
-                        if len(val_masks.shape) < 3:
-                            val_masks: torch.Tensor = val_masks.unsqueeze(0)
-                    else:
-                        val_masks = None
+        self.eval()
 
+        # Batch iter variables
+        aggr_outputs = []
+        aggr_labels = []
+
+        with torch.no_grad():
+            iter_len = len(x) - 1
+            for sample_idx, (val_inputs, val_labels) in enumerate(zip(x, y)):
+                if masking_flag:
+                    # Set labels to zero when masking since forward does the same
+                    mask = masks[sample_idx]
                     if len(val_inputs.shape) < 3:
-                        val_inputs: torch.Tensor = val_inputs.unsqueeze(0)
-                    if len(val_labels.shape) < 3:
-                        val_labels: torch.Tensor = val_labels.unsqueeze(0)
+                        mask = mask.unsqueeze(0)
+                    mask = mask
+                else:
+                    # TODO! Is there a better way. What if there is an actual patient with all zero across
+                    # TODO! 59 columns? Am I paranoid. Maybe adding the discretizer masking can alleviat
+                    val_inputs = self._remove_end_padding(val_inputs)
+                    mask = None
 
-                    if masking_flag:
-                        val_outputs = torch.masked_select(val_outputs, val_masks)
-                        val_labels = torch.masked_select(val_labels, val_masks)
+                # Adjust dimensions
+                if len(val_inputs.shape) < 3:
+                    val_inputs = val_inputs.unsqueeze(0)
 
-                    val_outputs = self(val_inputs, masks=val_masks)
-                    val_loss = self._loss(val_outputs.view(-1), val_labels.view(-1))
-                    val_losses.append(val_loss.item())
-                    self._update_metrics(val_loss,
-                                         val_outputs,
-                                         val_labels,
-                                         prefix=prefix,
-                                         update_progbar=(idx == last_iter) and prefix == "val")
-                    self._batch_count += 1
+                # Create predictions
+                val_outputs = self(val_inputs, masks=mask)
 
-            avg_val_loss = np.mean(val_losses)
-            # Only update history if test
-            if is_test:
-                self._on_epoch_end(epoch, prefix="test")
-            # Also complete progbar if eval
-            else:
-                self._on_epoch_end(epoch, prefix="val")
-            return avg_val_loss
+                # Apply masking
+                if masking_flag:
+                    val_outputs = val_outputs[:, mask.squeeze()]
+                    val_labels = val_labels[mask.squeeze(), :]
+
+                # Accumulate outputs and labels either flat or with dim of multilabel
+                aggr_outputs.append(val_outputs)
+                aggr_labels.append(val_labels)
+
+                aggr_outputs, aggr_labels = self._evaluate_batch(aggr_outputs,
+                                                                 aggr_labels,
+                                                                 is_test=is_test,
+                                                                 finalize=iter_len == sample_idx)
+
+        # Only update history if test
+        if is_test:
+            self._on_epoch_end(epoch, prefix="test")
+            return list(dict(self._get_metrics(self._metrics["test"])).values())
+        # Also complete progbar if eval
+        self._on_epoch_end(epoch, prefix="val")
+        return list(dict(self._get_metrics(self._metrics["val"])).values())
 
     def _evaluate_with_generators(self,
                                   generator: DataLoader,
+                                  batch_size: int = None,
                                   val_frequency: int = 0,
                                   epoch: int = 0,
                                   is_test: bool = False):
@@ -601,14 +643,14 @@ class AbstractTorchNetwork(nn.Module):
                         # Most efficient way to set this I could think of
                         masking_flag = isinstance(val_inputs, (list, tuple))
                     if masking_flag:
-                        val_inputs, val_masks = val_inputs
+                        val_inputs, masks = val_inputs
                         val_inputs = val_inputs.to(self._device)
-                        val_masks = val_masks.to(self._device)
+                        masks = masks.to(self._device)
                     else:
                         val_inputs = val_inputs.to(self._device)
-                        val_masks = None
+                        masks = None
                     val_labels = val_labels.to(self._device)
-                    val_outputs = self(val_inputs, masks=val_masks)
+                    val_outputs = self(val_inputs, masks=masks)
                     val_loss = self._loss(val_outputs, val_labels)
                     val_losses.append(val_loss.item())
                     self._update_metrics(val_loss,
@@ -626,6 +668,51 @@ class AbstractTorchNetwork(nn.Module):
                 self._on_epoch_end(epoch, prefix="val")
             return avg_val_loss
 
+    def _evaluate_batch(self,
+                        outputs: list,
+                        labels: list,
+                        is_test: bool = False,
+                        finalize: bool = False):
+        # This encapsulation creates me a lot of trouble by adding members that are hard to trace
+        self._sample_count += 1
+
+        if self._sample_count >= self._batch_size:
+            # Concatenate accumulated outputs and labels
+            if self._task == "binary":
+                # T
+                outputs = torch.cat(outputs, axis=outputs[0].dim() - 1).view(-1)
+            else:
+                # T, N or B, T, N
+                outputs = torch.cat(outputs, axis=outputs[0].dim() - 2).squeeze()
+
+            # If multilabel, labels are one-hot, else they are sparse
+            if self._task == "multilabel":
+                # T, N
+                labels = torch.stack(labels)
+                if labels.shape[-1] == 1:
+                    labels = labels.squeeze(-1)
+            else:
+                # T
+                labels = torch.cat(labels).view(-1)
+
+            # Compute loss
+            loss = self._loss(outputs, labels)
+            # Reset count
+            # TODO! update this logic
+            self._update_metrics(loss,
+                                 outputs,
+                                 labels,
+                                 prefix="test" if is_test else "val",
+                                 update_progbar=finalize and not is_test,
+                                 finalize=finalize)
+            self._sample_count = 0
+            self._batch_count += 1
+
+            # Reset aggregator vars
+            outputs = []
+            labels = []
+        return outputs, labels
+
     @overload
     def evaluate(self, x: np.ndarray, y: np.ndarray):
         ...
@@ -635,37 +722,11 @@ class AbstractTorchNetwork(nn.Module):
         ...
 
     def evaluate(self, *args, **kwargs):
-        return self._evaluate(*args, is_test=True, epoch=None, val_frequency=None, **kwargs)
 
-    def _evaluate(self, *args, **kwargs):
-        # Array evaluation
-        if (len(args) >= 1 and isinstance(args[0], (list, tuple))):
-            # Unpack and pass individual
-            x, y = args[0]
-            return self._evaluate_with_arrays(x, y, *args, **kwargs)
-        elif "validation_data" in kwargs and isinstance(kwargs["validation_data"], (list, tuple)):
-            x, y = kwargs.pop("validation_data")
-            return self._evaluate_with_arrays(x, y, *args, **kwargs)
-        # Generator evaluation
-        elif len(args) >= 1 and isinstance(args[0], DataLoader):
-            return self._evaluate_with_generators(*args, **kwargs)
-        elif "validation_data" in kwargs and isinstance(kwargs["validation_data"], DataLoader):
-            kwargs["generator"] = kwargs.pop("validation_data")
-            return self._evaluate_with_generators(*args, **kwargs)
-        else:
-            if len(args) >= 1 and isinstance(args[0], np.ndarray):
-                x = args[0]
-            elif "x" in kwargs:
-                x = kwargs["x"]
-
-            if len(args) >= 2 and isinstance(args[1], np.ndarray):
-                y = args[1]
-            elif "y" in kwargs:
-                y = kwargs["y"]
-            try:
-                return self._evaluate_with_arrays(x, y, **kwargs)
-            except TypeError as e:
-                raise TypeError("Invalid arguments")
+        eval_data, is_array, args, kwargs = self._get_generator_or_array(*args, **kwargs)
+        if is_array:
+            return self._evaluate_with_arrays(*eval_data, is_test=True, *args, **kwargs)
+        return self._evaluate_with_generators(*eval_data, is_test=True, *args, **kwargs)
 
     @overload
     def fit(self,
@@ -707,31 +768,8 @@ class AbstractTorchNetwork(nn.Module):
             validation_data: Union[DataLoader, tuple, list] = None,
             model_path: Path = None,
             **kwargs):
-        is_array = False
-        if len(args) >= 1 and isinstance(args[0], DataLoader):
-            train_data = (args[0],)
-        elif "generator" in kwargs:
-            train_data = (kwargs["generator"],)
-        else:
-            if len(args) >= 1 and isinstance(args[0], (np.ndarray, torch.Tensor, list, tuple)):
-                x = args[0]
-                is_array = True
-            elif "x" in kwargs:
-                x = kwargs["x"]
-                is_array = True
-            else:
-                raise TypeError("Invalid arguments")
 
-            if len(args) >= 2 and isinstance(args[1], (np.ndarray, torch.Tensor)):
-                y = args[1]
-                is_array = True
-            elif "y" in kwargs:
-                y = kwargs["y"]
-                is_array = True
-            else:
-                raise TypeError("Invalid arguments")
-        if is_array:
-            train_data = (x, y)
+        train_data, _, _, _ = self._get_generator_or_array(*args, **kwargs)
 
         if model_path is not None:
             self._model_path = model_path
@@ -754,9 +792,9 @@ class AbstractTorchNetwork(nn.Module):
                         sample_weights=sample_weights,
                         has_val=validation_data is not None)
             if validation_data is not None:
-                self._evaluate(validation_data=validation_data,
-                               val_frequency=validation_freq,
-                               epoch=epoch)
+                self.evaluate(validation_data=validation_data,
+                              val_frequency=validation_freq,
+                              epoch=epoch)
 
             if validation_data is not None:
                 best_epoch = self._history.best_val["epoch"]
@@ -770,6 +808,125 @@ class AbstractTorchNetwork(nn.Module):
                                 patience=patience):
                 break
         return self._history.to_json()
+
+    @overload
+    def predict(self, x: np.ndarray, batch_size=None, verbose="auto", steps=None):
+        ...
+
+    @overload
+    def predict(self, generator: DataLoader, batch_size=None, verbose="auto", steps=None):
+        ...
+
+    def predict(self, *args, batch_size=None, verbose="auto", steps=None, **kwargs):
+        predict_data, is_array, args, kwargs = self._get_generator_or_array(*args,
+                                                                            **kwargs,
+                                                                            has_y=False)
+        if is_array:
+            return self._predict_numpy(*predict_data, batch_size=batch_size, verbose=verbose)
+        return self._predict_dataloader(*predict_data, batch_size=batch_size, verbose=verbose)
+
+    def _predict_dataloader(self,
+                            generator: DataLoader,
+                            batch_size=None,
+                            verbose="auto",
+                            steps=None,
+                            **kwargs):
+        self.eval()
+
+        aggr_outputs = []
+
+        with torch.no_grad():
+            for idx, (inputs, label) in enumerate(generator):
+                if masking_flag == None:
+                    # Most efficient way to set this I could think of
+                    masking_flag = isinstance(inputs, (list, tuple))
+
+                if masking_flag:
+                    inputs, mask = inputs
+                    inputs = inputs.to(self._device)
+                    # Set labels to zero when masking since forward does the same
+                    mask = mask.to(self._device).bool()
+                else:
+                    inputs = inputs.to(self._device)
+                    mask = None
+
+                label = label.to(self._device).T
+                output = self(inputs, masks=mask)
+
+                # Accumulate outputs and labels
+                aggr_outputs.append(output.to("cpu").numpy())
+        return zeropad_samples(aggr_outputs)
+
+    def _predict_numpy(self, x, batch_size=None, verbose="auto", steps=None, **kwargs):
+        self.eval()
+        # Handle masking
+        if isinstance(x, (list, tuple)):
+            x, masks = x
+            masks = torch.tensor(masks, dtype=torch.float32).bool().to(self._device)
+            masking_flag = True
+        else:
+            masking_flag = False
+
+        # On device data
+        x = torch.tensor(x, dtype=torch.float32).to(self._device)
+
+        aggr_outputs = []
+
+        with torch.no_grad():
+            for sample_idx, inputs, in enumerate(x):
+                if masking_flag:
+                    # Set labels to zero when masking since forward does the same
+                    mask = masks[sample_idx]
+                    if len(inputs.shape) < 3:
+                        mask = mask.unsqueeze(0)
+                    mask = mask
+                else:
+                    # TODO! Is there a better way. What if there is an actual patient with all zero across
+                    # TODO! 59 columns? Am I paranoid. Maybe adding the discretizer masking can alleviat
+                    inputs = self._remove_end_padding(inputs)
+                    mask = None
+
+                # Adjust dimensions
+                if len(inputs.shape) < 3:
+                    inputs = inputs.unsqueeze(0)
+
+                # Create predictions
+                output = self(inputs, masks=mask)
+                aggr_outputs.append(output.to("cpu").numpy())
+
+        return zeropad_samples(aggr_outputs)
+
+    def _get_generator_or_array(self, *args, has_y=True, **kwargs):
+        args = list(args)
+        is_array = False
+        if len(args) >= 1 and isinstance(args[0], DataLoader):
+            data = (args.pop(0),)
+        elif "generator" in kwargs:
+            data = (kwargs.pop("generator"),)
+        else:
+            if len(args) >= 2 and isinstance(args[1], (np.ndarray, torch.Tensor)):
+                y = deepcopy(args.pop(1))
+                is_array = True
+            elif "y" in kwargs:
+                y = deepcopy(kwargs.pop("y"))
+                is_array = True
+            elif has_y:
+                raise TypeError("Invalid arguments")
+
+            if len(args) >= 1 and isinstance(args[0], (np.ndarray, torch.Tensor, list, tuple)):
+                x = deepcopy(args.pop(0))
+                is_array = True
+            elif "x" in kwargs:
+                x = deepcopy(kwargs.pop("x"))
+                is_array = True
+            else:
+                raise TypeError("Invalid arguments")
+
+        if is_array and has_y:
+            data = (x, y)
+        elif is_array:
+            data = (x,)
+        return data, is_array, args, kwargs
 
     def _checkpoint(self, save_best_only, restore_best_weights, epoch, epochs, best_epoch,
                     patience):

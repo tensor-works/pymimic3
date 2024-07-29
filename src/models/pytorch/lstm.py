@@ -110,7 +110,7 @@ class LSTMNetwork(AbstractTorchNetwork):
             x = x[:, -1, :]
             x = self._output_layer(x)
 
-        if self._final_activation:
+        if self._final_activation and self._apply_activation:
             x = self._final_activation(x)
 
         return x

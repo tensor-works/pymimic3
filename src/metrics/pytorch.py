@@ -12,15 +12,15 @@ from metrics import CustomBins, LogBins
 
 class BinedMAE(MeanAbsoluteError):
 
-    def __init__(self, binning: Literal["log", "custom"], *args, **kwargs):
+    def __init__(self, bining: Literal["log", "custom"], *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._binning = binning
+        self._binning = bining
         if self._binning == "custom":
             self._means = torch.tensor(CustomBins.means, dtype=torch.float32)
         elif self._binning == "log":
             self._means = torch.tensor(LogBins.means, dtype=torch.float32)
         else:
-            raise ValueError(f"Binning must be one of 'log' or 'custom' but is {binning}.")
+            raise ValueError(f"Binning must be one of 'log' or 'custom' but is {bining}.")
 
     def update(self, preds: torch.Tensor, target: torch.Tensor) -> None:
         prediction_means = self._means[torch.argmax(preds, axis=1)]

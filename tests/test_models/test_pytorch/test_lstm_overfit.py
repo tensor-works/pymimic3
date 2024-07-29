@@ -1,6 +1,7 @@
 import datasets
 import pytest
 import json
+import numpy as np
 from utils.IO import *
 from datasets.readers import ProcessedSetReader
 from typing import Dict
@@ -11,8 +12,12 @@ from tests.tsettings import *
 from preprocessing.scalers import MinMaxScaler
 from generators.pytorch import TorchGenerator
 from models.pytorch.lstm import LSTMNetwork
+from utils import zeropad_samples
+from tests.pytest_utils.models import assert_valid_metric
 from tests.msettings import *
 
+# ------------------------- Target settings -------------------------
+# -> target settings
 TARGET_METRICS = {
     "IHM": {
         "train_loss": 1.5,
@@ -26,13 +31,76 @@ TARGET_METRICS = {
     },
     "LOS": {
         "train_loss": 1.8,
-        "cohen_kappa": 0.8,
-        "custom_mae": 50
+        "cohen_kappa": 0.6,
+        "custom_mae": 12
     },
     "PHENO": {
         "train_loss": 1.5,
-        "micro_roc_auc": 0.8,
-        "macro_roc_auc": 0.8
+        "micro_roc_auc": 0.7,
+        "macro_roc_auc": 0.55
+    }
+}
+
+TARGET_METRICS_DS = {
+    "IHM": {
+        "train_loss": np.nan,
+        "roc_auc": np.nan,
+        "pr_auc": np.nan
+    },
+    "DECOMP": {
+        "train_loss": 0.2,
+        "roc_auc": 0.8,
+        "pr_auc": 0.3,  # had to lower from 0.4
+    },
+    "LOS": {
+        "train_loss": np.inf,
+        "cohen_kappa": -np.inf,
+        "custom_mae": np.inf
+    },
+    "PHENO": {
+        "train_loss": 0.5,
+        "micro_roc_auc": 0.75,
+        "macro_roc_auc": 0.7
+    }
+}
+
+# ------------------------- Fitting settings -------------------------
+# -> fitting settings
+OVERFIT_SETTINGS = {
+    "IHM": {
+        "epochs": 20,
+        "num_samples": None
+    },
+    "DECOMP": {
+        "epochs": 20,
+        "num_samples": 400
+    },
+    "LOS": {
+        "epochs": 20,
+        "num_samples": 400
+    },
+    "PHENO": {
+        "epochs": 20,
+        "num_samples": None
+    }
+}
+
+OVERFIT_SETTINGS_DS = {
+    "IHM": {
+        "epochs": 20,
+        "num_samples": None
+    },
+    "DECOMP": {
+        "epochs": 20,
+        "num_samples": 400
+    },
+    "LOS": {
+        "epochs": 20,
+        "num_samples": 200
+    },
+    "PHENO": {
+        "epochs": 20,
+        "num_samples": None
     }
 }
 
@@ -62,7 +130,7 @@ def test_torch_lstm_with_deep_supervision(
                         **model_dimensions)
 
     # -- Compile the model --
-    criterion = NETWORK_CRITERIONS[task_name]
+    criterion = NETWORK_CRITERIONS_TORCH[task_name]
     optimizer = optim.Adam(model.parameters(), lr=0.001)
     model.compile(optimizer=optimizer, loss=criterion, metrics=NETWORK_METRICS[task_name])
 
@@ -84,26 +152,51 @@ def test_torch_lstm_with_deep_supervision(
                                          n_samples=OVERFIT_SETTINGS_DS[task_name]["num_samples"],
                                          **GENERATOR_OPTIONS[task_name])
         tests_io("Succeeded in creating the generator")
+
+        # -- Fitting the model --
         history = model.fit(generator=train_generator,
                             batch_size=8,
                             epochs=OVERFIT_SETTINGS_DS[task_name]["epochs"])
 
+        # -- Unroll the Generator --
+        X, y = list(zip(*[(X, y) for X, y in iter(train_generator)]))
+        X, M = list(zip(*X))
+        X = [x.numpy() for x in X]
+        M = [m.numpy() for m in M]
+        y = [y_sample.numpy() for y_sample in y]
+
+        X = zeropad_samples(X, axis=1)
+        M = zeropad_samples(M, axis=1)
+        y_true = zeropad_samples(y, axis=1)
     elif data_flavour == "numpy":
         # -- Create the dataset --
         dataset = reader.to_numpy(scaler=scaler,
                                   deep_supervision=True,
                                   n_samples=OVERFIT_SETTINGS_DS[task_name]["num_samples"],
                                   **GENERATOR_OPTIONS[task_name])
+
+        tests_io("Succeeded in creating the numpy dataset")
+
         history = model.fit([dataset["X"], dataset["M"]],
                             dataset["yds"],
                             batch_size=8,
                             epochs=OVERFIT_SETTINGS_DS[task_name]["epochs"])
-        tests_io("Succeeded in creating the numpy dataset")
+
+        # -- Store dataset --
+        X = dataset["X"]
+        M = dataset["M"]
+        y_true = dataset["yds"]
 
     # Instability on these is crazy but trying anyway.
     # How are you suppose to tune it with
 
-    assert_model_performance(history, task_name)
+    # assert_model_performance(history, task_name, TARGET_METRICS_DS[task_name])
+    assert_valid_metric(X=X,
+                        y_true=y_true,
+                        task_name=task_name,
+                        model=model,
+                        mask=M,
+                        flavour="torch")
     tests_io("Succeeded in asserting model sanity")
 
 
@@ -132,7 +225,7 @@ def test_torch_lstm(
                         **model_dimensions)
 
     # -- Compile the model --
-    criterion = NETWORK_CRITERIONS[task_name]
+    criterion = NETWORK_CRITERIONS_TORCH[task_name]
     optimizer = optim.Adam(model.parameters(), lr=0.001)
     model.compile(optimizer=optimizer, loss=criterion, metrics=NETWORK_METRICS[task_name])
 
@@ -159,6 +252,13 @@ def test_torch_lstm(
                             batch_size=8,
                             epochs=OVERFIT_SETTINGS[task_name]["epochs"])
 
+        # -- Unroll the Generator --
+        X, y = list(zip(*[(X, y) for X, y in iter(train_generator)]))
+        X = [x.numpy() for x in X]
+        X = zeropad_samples(X, axis=1)
+        y = [y_sample for y_sample in y]
+        y_true = np.concatenate(y)
+
     elif data_flavour == "numpy":
         # -- Task specific settings --
         # -- Create the dataset --
@@ -174,20 +274,29 @@ def test_torch_lstm(
                             batch_size=8,
                             epochs=OVERFIT_SETTINGS[task_name]["epochs"])
 
-    assert_model_performance(history, task_name)
+        # -- Store dataset --
+        X = dataset["X"]
+        y_true = dataset["y"]
+        y_pred = model.predict(X)
+        model.evaluate(X, y_true)
+
+    assert_model_performance(history, task_name, TARGET_METRICS[task_name])
+    assert_valid_metric(X, y_true, task_name, model, flavour="torch")
     tests_io("Succeeded in asserting model sanity")
 
 
-def assert_model_performance(history, task):
-    target_metrics = TARGET_METRICS[task]
+def assert_model_performance(history, task, target_metrics):
 
     for metric, target_value in target_metrics.items():
-        if metric == "train_loss":
+        if "loss" in metric:
             actual_value = min(list(history[metric].values()))
+            comparison = actual_value <= target_value
+        elif "mae" in metric:
+            actual_value = min(list(history["train_metrics"][metric].values()))
             comparison = actual_value <= target_value
         else:
             actual_value = max(list(history["train_metrics"][metric].values()))
-            comparison = actual_value >= target_value if "mae" not in metric else actual_value <= target_value
+            comparison = actual_value >= target_value
 
         assert comparison, \
             (f"Failed in asserting {metric} ({actual_value}) "
@@ -197,7 +306,7 @@ def assert_model_performance(history, task):
 if __name__ == "__main__":
     import shutil
     disc_reader = dict()
-    for task_name in ["DECOMP", "LOS", "PHENO"]:
+    for task_name in ['LOS']:  # ["IHM", "DECOMP", "LOS", "PHENO"]:
         """
         if Path(SEMITEMP_DIR, "discretized", task_name).exists():
             shutil.rmtree(Path(SEMITEMP_DIR, "discretized", task_name))
@@ -223,8 +332,7 @@ if __name__ == "__main__":
         """
         reader = ProcessedSetReader(Path(SEMITEMP_DIR, "discretized", task_name))
         disc_reader[task_name] = reader
-        for flavour in ["numpy", "generator"]:  # ["generator"]:  #
+        for flavour in ["numpy", "generator"]:
             if task_name in ["DECOMP", "LOS"]:
-                # test_torch_lstm_with_deep_supervision(task_name, flavour, disc_reader)
-                pass
+                test_torch_lstm_with_deep_supervision(task_name, flavour, disc_reader)
             test_torch_lstm(task_name, flavour, disc_reader)

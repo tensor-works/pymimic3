@@ -123,16 +123,14 @@ class BinedMAE(tf.keras.metrics.MeanAbsoluteError):
             tf.print("y_true max:", tf.reduce_max(tf.reshape(y_true, [-1])))
             tf.print("y_pred max:", tf.reduce_max(tf.reshape(y_pred, [-1])))
 
-        # Get the shapes
-        y_true_shape = tf.shape(y_true)
-        y_pred_shape = tf.shape(y_pred)
+        def squeeze_equal_one(tensor):
+            shape = tf.shape(tensor)
+            is_one = tf.equal(shape, 1)
+            axes_to_squeeze = tf.where(is_one)[:, 0]
+            return tf.squeeze(tensor, axis=axes_to_squeeze.numpy().tolist())
 
-        # Use tf.cond for more explicit control flow
-        y_true = tf.cond(tf.equal(y_true_shape[-1], 1), lambda: tf.squeeze(y_true, axis=-1),
-                         lambda: y_true)
-
-        y_pred = tf.cond(tf.equal(y_pred_shape[-1], 1), lambda: tf.squeeze(y_pred, axis=-1),
-                         lambda: y_pred)
+        y_true = squeeze_equal_one(y_true)
+        y_pred = squeeze_equal_one(y_pred)
 
         if debug:
             tf.print("---- after squeeze ----")
