@@ -23,6 +23,8 @@ from tests.pytest_utils.models import assert_valid_metric
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.metrics import AUC
 
+# ------------------------- Target settings -------------------------
+# -> target settings
 TARGET_METRICS = {
     "IHM": {
         "loss": 0.5,
@@ -58,14 +60,54 @@ TARGET_METRICS_DS = {
         "pr_auc": 0.3,  # had to lower from 0.4
     },
     "LOS": {
-        "loss": np.inf,
-        "cohen_kappa": -np.inf,
+        "loss": -np.inf,
+        "cohen_kappa": np.inf,
         "custom_mae": -np.inf
     },
     "PHENO": {
         "loss": 0.5,
         "micro_roc_auc": 0.75,
         "macro_roc_auc": 0.7
+    }
+}
+
+# ------------------------- Fitting settings -------------------------
+# -> fitting settings
+OVERFIT_SETTINGS = {
+    "IHM": {
+        "epochs": 20,
+        "num_samples": None
+    },
+    "DECOMP": {
+        "epochs": 20,
+        "num_samples": 400
+    },
+    "LOS": {
+        "epochs": 20,
+        "num_samples": 200
+    },
+    "PHENO": {
+        "epochs": 20,
+        "num_samples": None
+    }
+}
+
+OVERFIT_SETTINGS_DS = {
+    "IHM": {
+        "epochs": 20,
+        "num_samples": None
+    },
+    "DECOMP": {
+        "epochs": 20,
+        "num_samples": 400
+    },
+    "LOS": {
+        "epochs": 20,
+        "num_samples": 200
+    },
+    "PHENO": {
+        "epochs": 20,
+        "num_samples": None
     }
 }
 
@@ -97,7 +139,7 @@ def test_tf2_lstm_with_deep_supvervision(
                         **model_dimensions)
 
     # -- Compile the model --
-    criterion = NETWORK_CRITERIONS[task_name]
+    criterion = NETWORK_CRITERIONS_TF2[task_name]
     optimizer = Adam(learning_rate=0.001, clipvalue=1.0)
     model.compile(optimizer=optimizer, loss=criterion, metrics=NETWORK_METRICS[task_name])
     # Let them know
@@ -141,7 +183,7 @@ def test_tf2_lstm_with_deep_supvervision(
         # -- Store dataset --
         X = dataset["X"]
         M = dataset["M"]
-        y_true = np.squeeze(dataset["y"])
+        y_true = dataset["yds"]
 
     assert_model_performance(history, task_name, TARGET_METRICS_DS[task_name])
     assert_valid_metric(X, y_true, task_name, model, mask=M)
@@ -175,7 +217,7 @@ def test_tf2_lstm(
                         **model_dimensions)
 
     # -- Compile the model --
-    criterion = NETWORK_CRITERIONS[task_name]
+    criterion = NETWORK_CRITERIONS_TF2[task_name]
     optimizer = Adam(learning_rate=0.001, clipvalue=1.0)
     model.compile(optimizer=optimizer, loss=criterion, metrics=NETWORK_METRICS[task_name])
     # Let them know
@@ -221,7 +263,7 @@ def test_tf2_lstm(
 
         # -- Store dataset --
         X = dataset["X"]
-        y_true = np.squeeze(dataset["y"])
+        y_true = dataset["y"]
 
     assert_model_performance(history, task_name, TARGET_METRICS[task_name])
     assert_valid_metric(X, y_true, task_name, model)
@@ -231,7 +273,7 @@ def test_tf2_lstm(
 def assert_model_performance(history, task: str, target_metrics: Dict[str, float]):
 
     for metric, target_value in target_metrics.items():
-        if metric == "loss":
+        if metric in ["loss", "custom_mae"]:
             actual_value = min(history.history[metric])
             comparison = actual_value <= target_value
         else:
@@ -247,7 +289,7 @@ def assert_model_performance(history, task: str, target_metrics: Dict[str, float
 
 if __name__ == "__main__":
     disc_reader = dict()
-    for task_name in ["DECOMP"]:  # ["IHM", "DECOMP", "LOS", "PHENO"]:
+    for task_name in ["IHM", "DECOMP", "LOS", "PHENO"]:
         '''
         '''
         reader = datasets.load_data(chunksize=75836,
@@ -272,6 +314,6 @@ if __name__ == "__main__":
         dataset = reader.to_numpy()
         for flavour in ["generator", "numpy"]:
             disc_reader[task_name] = reader
-            # test_tf2_lstm(task_name, flavour, disc_reader)
+            test_tf2_lstm(task_name, flavour, disc_reader)
             if task_name in ['LOS', 'DECOMP']:
                 test_tf2_lstm_with_deep_supvervision(task_name, flavour, disc_reader)

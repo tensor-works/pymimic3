@@ -147,7 +147,7 @@ class AbstractGenerator:
         return self._steps
 
     def __del__(self):
-        if self._cpu_count:
+        if hasattr(self, '_cpu_count') and self._cpu_count:
             self._close()
 
     def _create_workers(self):

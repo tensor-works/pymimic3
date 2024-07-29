@@ -3,7 +3,9 @@ from keras.api._v2.keras import Model
 from tensorflow.python.keras.engine import data_adapter
 from tensorflow.python.keras.engine import training
 # from tensorflow.python.keras.engine.compile_utils
+from abc import abstractmethod
 from utils.IO import *
+from utils import is_iterable
 
 import tensorflow as tf
 
@@ -38,6 +40,14 @@ class AbstractTf2Model(Model):
             for metric in weighted_metrics:
                 if metric in metric_mapping:
                     weighted_metrics[weighted_metrics.index(metric)] = metric_mapping[metric]
+        if hasattr(self, "_deep_supervision") and self._deep_supervision:
+            if is_iterable(metrics):
+                if is_iterable(weighted_metrics):
+                    weighted_metrics = list(weighted_metrics) + list(metrics)
+                else:
+                    weighted_metrics = metrics
+            metrics = None
+
         super().compile(optimizer=optimizer,
                         loss=loss,
                         metrics=metrics,
@@ -54,15 +64,15 @@ class AbstractTf2Model(Model):
         data = data_adapter.expand_1d(data)
         x, y, sample_weight = data_adapter.unpack_x_y_sample_weight(data)
 
-        if hasattr(self, 'deep_supervision') and self._deep_supervision:
+        if hasattr(self, '_deep_supervision') and self._deep_supervision:
             mask = x[-1]
         else:
             mask = None
 
         if sample_weight is not None:
             sample_weight = sample_weight * mask
-        else:
-            sample_weight = mask
+        elif mask is not None:
+            sample_weight = tf.cast(mask, dtype=tf.float32)
 
         with tf.GradientTape() as tape:
             y_pred = self(x, training=True)
@@ -80,15 +90,16 @@ class AbstractTf2Model(Model):
     def test_step(self, data):
         x, y, sample_weight = data_adapter.unpack_x_y_sample_weight(data)
 
-        if hasattr(self, 'deep_supervision') and self._deep_supervision:
+        if hasattr(self, '_deep_supervision') and self._deep_supervision:
             mask = x[-1]
+            # tf.print("test step with deep supervision")
         else:
             mask = None
 
         if sample_weight is not None:
-            sample_weight = sample_weight * mask
-        else:
-            sample_weight = mask
+            sample_weight = sample_weight * tf.cast(mask, dtype=tf.float32)
+        elif mask is not None:
+            sample_weight = tf.cast(mask, dtype=tf.float32)
 
         y_pred = self(x, training=False)
         # Updates stateful loss metrics.
