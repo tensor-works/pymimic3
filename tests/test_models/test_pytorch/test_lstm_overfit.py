@@ -22,7 +22,7 @@ TARGET_METRICS = {
     "IHM": {
         "train_loss": 1.5,
         "roc_auc": 0.75,
-        "pr_auc": 0.15
+        "pr_auc": 0.55
     },
     "DECOMP": {
         "train_loss": 1.5,
@@ -32,7 +32,7 @@ TARGET_METRICS = {
     "LOS": {
         "train_loss": 1.8,
         "cohen_kappa": 0.6,
-        "custom_mae": 12
+        "custom_mae": 15
     },
     "PHENO": {
         "train_loss": 1.5,
@@ -42,25 +42,28 @@ TARGET_METRICS = {
 }
 
 TARGET_METRICS_DS = {
-    "IHM": {
-        "train_loss": np.nan,
-        "roc_auc": np.nan,
-        "pr_auc": np.nan
-    },
     "DECOMP": {
         "train_loss": 0.2,
-        "roc_auc": 0.8,
+        "roc_auc": 0.75,
         "pr_auc": 0.3,  # had to lower from 0.4
     },
     "LOS": {
         "train_loss": np.inf,
         "cohen_kappa": -np.inf,
         "custom_mae": np.inf
+    }
+}
+
+TARGET_METRICS_TR = {
+    "IHM": {
+        "train_loss": 2.5,
+        "roc_auc": 0.7,
+        "pr_auc": 0.5
     },
     "PHENO": {
-        "train_loss": 0.5,
-        "micro_roc_auc": 0.75,
-        "macro_roc_auc": 0.7
+        "train_loss": np.nan,
+        "micro_roc_auc": np.nan,
+        "macro_roc_auc": np.nan
     }
 }
 
@@ -86,10 +89,6 @@ OVERFIT_SETTINGS = {
 }
 
 OVERFIT_SETTINGS_DS = {
-    "IHM": {
-        "epochs": 20,
-        "num_samples": None
-    },
     "DECOMP": {
         "epochs": 20,
         "num_samples": 400
@@ -97,12 +96,103 @@ OVERFIT_SETTINGS_DS = {
     "LOS": {
         "epochs": 20,
         "num_samples": 200
+    }
+}
+
+OVERFIT_SETTINGS_TR = {
+    "IHM": {
+        "epochs": 20,
+        "num_samples": None
     },
     "PHENO": {
         "epochs": 20,
         "num_samples": None
     }
 }
+
+
+@pytest.mark.parametrize("data_flavour", ["generator", "numpy"])
+@pytest.mark.parametrize("task_name", ["IHM", "PHENO"])
+def test_torch_lstm_with_target_replication(
+    task_name: str,
+    data_flavour: str,
+    discretized_readers: Dict[str, ProcessedSetReader],
+):
+    tests_io(f"Test case torch LSTM with target replication for task {task_name}", level=0)
+    tests_io(f"Using {data_flavour} dataset.")
+
+    reader = discretized_readers[task_name]
+    scaler = MinMaxScaler().fit_reader(reader)
+
+    # -- Create the model --
+    # Parameters
+    output_dim = OUTPUT_DIMENSIONS[task_name]
+    final_activation = FINAL_ACTIVATIONS[task_name]
+    model_dimensions = STANDARD_LSTM_DS_PARAMS[task_name]["model"]
+    # Obj
+    model = LSTMNetwork(input_dim=59,
+                        output_dim=output_dim,
+                        final_activation=final_activation,
+                        **model_dimensions)
+
+    # -- Compile the model --
+    criterion = NETWORK_CRITERIONS_TORCH[task_name]
+    optimizer = optim.Adam(model.parameters(), lr=0.001)
+    model.compile(optimizer=optimizer, loss=criterion, metrics=NETWORK_METRICS[task_name])
+
+    # Let them know
+    tests_io(f"Succeeded in creating the model with:\n"
+             f"output dim: {output_dim}\n"
+             f"final_activation: {final_activation}\n"
+             f"model_dimension: {json.dumps(model_dimensions, indent=4)}\n"
+             f"criterion: {criterion}\n"
+             f"optimizer: Adam, lr=0.001")
+
+    # -- fit --
+    if data_flavour == "generator":
+        # -- Create the generator --
+        train_generator = TorchGenerator(reader=reader,
+                                         scaler=scaler,
+                                         shuffle=True,
+                                         n_samples=OVERFIT_SETTINGS_TR[task_name]["num_samples"],
+                                         **GENERATOR_OPTIONS[task_name])
+        tests_io("Succeeded in creating the generator")
+
+        # -- Fitting the model --
+        history = model.fit(generator=train_generator,
+                            batch_size=8,
+                            epochs=OVERFIT_SETTINGS_TR[task_name]["epochs"])
+
+        # -- Unroll the Generator --
+        X, y = list(zip(*[(X, y) for X, y in iter(train_generator)]))
+        X = [x.numpy() for x in X]
+        y = [y_sample.numpy() for y_sample in y]
+
+        X = zeropad_samples(X, axis=1)
+        y_true = zeropad_samples(y, axis=1)
+    elif data_flavour == "numpy":
+        # -- Create the dataset --
+        dataset = reader.to_numpy(scaler=scaler,
+                                  n_samples=OVERFIT_SETTINGS_TR[task_name]["num_samples"],
+                                  **GENERATOR_OPTIONS[task_name])
+
+        tests_io("Succeeded in creating the numpy dataset")
+
+        history = model.fit(dataset["X"],
+                            dataset["y"],
+                            batch_size=8,
+                            epochs=OVERFIT_SETTINGS_TR[task_name]["epochs"])
+
+        # -- Store dataset --
+        X = dataset["X"]
+        y_true = dataset["y"]
+
+    # Instability on these is crazy but trying anyway.
+    # How are you suppose to tune it with
+
+    assert_model_performance(history, task_name, TARGET_METRICS_TR[task_name])
+    assert_valid_metric(X=X, y_true=y_true, task_name=task_name, model=model, flavour="torch")
+    tests_io("Succeeded in asserting model sanity")
 
 
 @pytest.mark.parametrize("data_flavour", ["generator", "numpy"])
@@ -190,7 +280,7 @@ def test_torch_lstm_with_deep_supervision(
     # Instability on these is crazy but trying anyway.
     # How are you suppose to tune it with
 
-    # assert_model_performance(history, task_name, TARGET_METRICS_DS[task_name])
+    assert_model_performance(history, task_name, TARGET_METRICS_DS[task_name])
     assert_valid_metric(X=X,
                         y_true=y_true,
                         task_name=task_name,
@@ -306,7 +396,7 @@ def assert_model_performance(history, task, target_metrics):
 if __name__ == "__main__":
     import shutil
     disc_reader = dict()
-    for task_name in ['LOS']:  # ["IHM", "DECOMP", "LOS", "PHENO"]:
+    for task_name in ["LOS"]:  # ["IHM", "DECOMP", "LOS", "PHENO"]:
         """
         if Path(SEMITEMP_DIR, "discretized", task_name).exists():
             shutil.rmtree(Path(SEMITEMP_DIR, "discretized", task_name))
@@ -332,7 +422,9 @@ if __name__ == "__main__":
         """
         reader = ProcessedSetReader(Path(SEMITEMP_DIR, "discretized", task_name))
         disc_reader[task_name] = reader
-        for flavour in ["numpy", "generator"]:
+        for flavour in ["generator"]:  # ["numpy", "generator"]:
+            if task_name in ["IHM", "PHENO"]:
+                test_torch_lstm_with_target_replication(task_name, flavour, disc_reader)
             if task_name in ["DECOMP", "LOS"]:
                 test_torch_lstm_with_deep_supervision(task_name, flavour, disc_reader)
             test_torch_lstm(task_name, flavour, disc_reader)

@@ -21,8 +21,12 @@ class LSTMNetwork(AbstractTorchNetwork):
                  final_activation: str = None,
                  output_dim: int = 1,
                  depth: int = 1,
+                 target_repl_coef: float = 0.,
                  model_path: Path = None):
-        super().__init__(final_activation, output_dim, model_path)
+        super().__init__(final_activation=final_activation,
+                         output_dim=output_dim,
+                         model_path=model_path,
+                         target_repl_coef=target_repl_coef)
 
         self._layer_size = layer_size
         self._dropout_rate = dropout
@@ -97,18 +101,17 @@ class LSTMNetwork(AbstractTorchNetwork):
             if self._task == "binary":
                 # Along time vector
                 x = torch.cat(outputs, dim=1)
-                # if len(x.shape) < 3:
-                #     x = x.unsqueeze(-1)
+                if len(x.shape) < 3:
+                    x = x.unsqueeze(-1)
             else:
                 # Stacking
                 x = torch.cat(outputs, dim=0)
                 if len(x.shape) < 3:
                     x = x.unsqueeze(0)
-
         else:
             # Only return the last prediction
             x = x[:, -1, :]
-            x = self._output_layer(x)
+            x = self._output_layer(x).unsqueeze(-1)
 
         if self._final_activation and self._apply_activation:
             x = self._final_activation(x)

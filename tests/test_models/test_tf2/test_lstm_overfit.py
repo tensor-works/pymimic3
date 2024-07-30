@@ -93,10 +93,6 @@ OVERFIT_SETTINGS = {
 }
 
 OVERFIT_SETTINGS_DS = {
-    "IHM": {
-        "epochs": 20,
-        "num_samples": None
-    },
     "DECOMP": {
         "epochs": 20,
         "num_samples": 400
@@ -104,8 +100,15 @@ OVERFIT_SETTINGS_DS = {
     "LOS": {
         "epochs": 20,
         "num_samples": 200
+    }
+}
+
+OVERFIT_SETTINGS_TR = {
+    "IHM": {
+        "epochs": 20,
+        "num_samples": None
     },
-    "PHENO": {
+    "PENO": {
         "epochs": 20,
         "num_samples": None
     }
