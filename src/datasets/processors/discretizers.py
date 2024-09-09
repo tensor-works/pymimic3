@@ -281,12 +281,21 @@ class MIMICDiscretizer(AbstractProcessor):
                         X_df = self._impute_data(X_df)
                     # Torch friendly dtype
                     self._X[subject_id][stay_id] = X_df.astype(np.float32)
-                if self._deep_supervision:
-                    y_reindexed = y_df.reindex(self._X[subject_id][stay_id].index)
-                    self._y[subject_id][stay_id] = y_reindexed.fillna(0).astype(np.float32)
-                    self._M[subject_id][stay_id] = (~y_reindexed.isna()).astype(bool)
+                if self._task == "MULTI":
+                    # TODO! other conversions might be necessary
+                    # TODO! implement ds for this
+                    self._y[subject_id][stay_id] = y_df
                 else:
-                    self._y[subject_id][stay_id] = y_df.astype(np.float32)
+                    if self._deep_supervision:
+                        try:
+                            y_reindexed = y_df.reindex(self._X[subject_id][stay_id].index)
+                        except:
+                            print(y_df)
+                            print(self._X[subject_id][stay_id].index)
+                        self._y[subject_id][stay_id] = y_reindexed.fillna(0).astype(np.float32)
+                        self._M[subject_id][stay_id] = (~y_reindexed.isna()).astype(bool)
+                    else:
+                        self._y[subject_id][stay_id] = y_df.astype(np.float32)
 
                 # Based on y_dict not self._y so supervision mode agnostic
                 n_samples = len(y_df)

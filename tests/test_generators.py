@@ -57,6 +57,7 @@ def test_tf_generators_with_ds(task_name: str, batch_size: int, mode: str, multi
                                 bining=bining,
                                 shuffle=True)
         assert len(generator)
+
         for batch in range(len(generator)):
             # Get batch
             X, y = generator.__getitem__()
@@ -321,9 +322,9 @@ def assert_batch_sanity(X: np.ndarray,
     assert y.shape[0] == batch_size
     assert X.dtype == np.float32
     if bining in ['log', 'custom']:
-        assert y.dtype == np.int64
+        assert y.dtype == np.int64, f"Erroneous target dtype! Expected int64 but found {y.dtype}."
     else:
-        assert y.dtype == np.float32
+        assert y.dtype == np.float32, f"Erroneous target dtype! Expected int32 but found {y.dtype}."
     if M is not None:
         # Y[1] = T && X[1] = T
         assert y.shape[1] == X.shape[1]
@@ -377,9 +378,11 @@ def assert_sample_sanity(X: np.ndarray,
 
 
 if __name__ == "__main__":
-    for task_name in ['LOS']:  # TASK_NAMES:
-        if task_name == "MULTI":
-            continue
+    if SEMITEMP_DIR.is_dir():
+        import shutil
+        shutil.rmtree(SEMITEMP_DIR)
+    for task_name in TASK_NAMES:
+
         if not Path(SEMITEMP_DIR, "discretized", task_name).is_dir():
             st_reader = datasets.load_data(chunksize=75836,
                                            source_path=TEST_DATA_DEMO,
@@ -401,6 +404,19 @@ if __name__ == "__main__":
                                            deep_supervision=True,
                                            impute_strategy='previous',
                                            task=task_name)
+
+        if task_name == "MULTI":
+            continue
+
+        if not Path(SEMITEMP_DIR, "engineered", task_name).is_dir():
+            reader = datasets.load_data(chunksize=75836,
+                                        source_path=TEST_DATA_DEMO,
+                                        storage_path=SEMITEMP_DIR,
+                                        engineer=True,
+                                        task=task_name)
+        else:
+            reader = ProcessedSetReader(Path(SEMITEMP_DIR, "engineered", task_name))
+
         # The ds reader fixture is not accessed but ensured the set is also created
         # deep supervision
         if task_name in ["DECOMP", "LOS"]:
@@ -427,14 +443,6 @@ if __name__ == "__main__":
                                                mode=mode,
                                                multiprocessed=False,
                                                discretized_readers={task_name: st_reader})
-        if not Path(SEMITEMP_DIR, "engineered", task_name).is_dir():
-            reader = datasets.load_data(chunksize=75836,
-                                        source_path=TEST_DATA_DEMO,
-                                        storage_path=SEMITEMP_DIR,
-                                        engineer=True,
-                                        task=task_name)
-        else:
-            reader = ProcessedSetReader(Path(SEMITEMP_DIR, "engineered", task_name))
 
         test_river_generator(task_name=task_name,
                              multiprocessed=False,
