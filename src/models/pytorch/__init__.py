@@ -403,9 +403,7 @@ class AbstractTorchNetwork(nn.Module):
             if masking_flag:
                 # Set labels to zero when masking since forward does the same
                 mask = masks[sample_idx]
-                if len(input.shape) < 3:
-                    mask = mask.unsqueeze(0)
-                mask = mask
+                mask = mask.unsqueeze(0)
             else:
                 # TODO! Is there a better way. What if there is an actual patient with all zero across
                 # TODO! 59 columns? Am I paranoid. Maybe adding the discretizer masking can alleviat
@@ -416,19 +414,16 @@ class AbstractTorchNetwork(nn.Module):
                 mask = torch.ones(1, input.shape[1], 1)
 
             # Adjust dimensions
-            if len(input.shape) < 3:
-                input = input.unsqueeze(0)
+            input = input.unsqueeze(0)
+            label = label.unsqueeze(0)
 
             # Create predictions
             output = self(input, masks=mask)
-            label = label.T
 
-            # Apply masking
             if masking_flag:
+                # Apply mask to T (B, T, N)
                 output = output[:, mask.squeeze()]
-                if len(label.shape) < 3:
-                    label = label.unsqueeze(-1)
-                label = label[mask]
+                label = label[:, mask.squeeze()]
 
             # Accumulate outputs and labels either flat or with dim of multilabel
             aggr_outputs.append(output)
@@ -483,9 +478,9 @@ class AbstractTorchNetwork(nn.Module):
             output = self(input, masks=mask)
 
             if masking_flag:
-                # Keep N class dimension intact
-                output = output[mask.squeeze(-1), :]
-                label = label[mask.squeeze(-1), :]
+                # Apply mask to T (B, T, N)
+                output = output[:, mask.squeeze()]
+                label = label[:, mask.squeeze()]
 
             # Accumulate outputs and labels
             aggr_outputs.append(output)
@@ -510,7 +505,7 @@ class AbstractTorchNetwork(nn.Module):
         if self._sample_count >= self._batch_size:
             # Concatenate accumulated outputs and labels
             if self._target_repl_coef:
-                # T
+                # Replication weight tensor
                 replication_weights = [
                     torch.cat([
                         torch.ones(output.shape[1] - 1, output.shape[2]) * self._target_repl_coef,
@@ -520,18 +515,16 @@ class AbstractTorchNetwork(nn.Module):
 
                 replication_weights = torch.cat(replication_weights,
                                                 axis=0).to(self._device).squeeze()
+                # Replicate targets along T
                 labels = [
-                    label.unsqueeze(1).expand(-1, output.shape[1], -1)
-                    for label, output in zip(labels, outputs)
+                    label.expand(-1, output.shape[1], -1) for label, output in zip(labels, outputs)
                 ]
+                # Cat along T
                 labels = torch.cat(labels, axis=1).squeeze()
                 outputs = torch.cat(outputs, axis=1).squeeze()
-            elif self._task == "binary":
-                # T
-                outputs = torch.cat(outputs, axis=1).view(-1)
             else:
-                # T, N or B, T, N
-                outputs = torch.cat(outputs, axis=0).squeeze()
+                # Cat along T
+                outputs = torch.cat(outputs, axis=1).squeeze()
 
             # If multilabel, labels are one-hot, else they are sparse
             if not self._target_repl_coef:
@@ -539,12 +532,13 @@ class AbstractTorchNetwork(nn.Module):
                     # T, N
                     labels = torch.stack(labels).squeeze()
                 else:
-                    # T
-                    labels = torch.cat(labels).view(-1)
+                    # Cat along T then squeeze
+                    labels = torch.cat(labels, axis=1).squeeze()
 
             # Compute loss
             if self._target_repl_coef:
                 # Apply target replication loss here
+
                 loss = self._loss(outputs, labels)
                 loss = (loss * replication_weights).mean()
             else:
@@ -622,18 +616,18 @@ class AbstractTorchNetwork(nn.Module):
                 if masking_flag:
                     # Set labels to zero when masking since forward does the same
                     mask = masks[sample_idx]
-                    if len(val_inputs.shape) < 3:
-                        mask = mask.unsqueeze(0)
-                    mask = mask
+                    mask = mask.unsqueeze(0)
                 else:
                     # TODO! Is there a better way. What if there is an actual patient with all zero across
                     # TODO! 59 columns? Am I paranoid. Maybe adding the discretizer masking can alleviat
                     val_inputs = self._remove_end_padding(val_inputs)
                     mask = None
 
+                # TODO! add target replication here
+
                 # Adjust dimensions
-                if len(val_inputs.shape) < 3:
-                    val_inputs = val_inputs.unsqueeze(0)
+                val_inputs = val_inputs.unsqueeze(0)
+                val_labels = val_labels.unsqueeze(0)
 
                 # Create predictions
                 val_outputs = self(val_inputs, masks=mask)
@@ -641,7 +635,10 @@ class AbstractTorchNetwork(nn.Module):
                 # Apply masking
                 if masking_flag:
                     val_outputs = val_outputs[:, mask.squeeze()]
-                    val_labels = val_labels[mask.squeeze(), :]
+                    # The mask of the same shape will flatten the array
+                    if len(val_labels.shape) < 3:
+                        val_labels = val_labels.unsqueeze(-1)
+                    val_labels = val_labels[mask]
 
                 # Accumulate outputs and labels either flat or with dim of multilabel
                 aggr_outputs.append(val_outputs)
@@ -651,6 +648,9 @@ class AbstractTorchNetwork(nn.Module):
                                                                  aggr_labels,
                                                                  is_test=is_test,
                                                                  finalize=iter_len == sample_idx)
+
+                if sample_idx == iter_len:
+                    break
 
         # Only update history if test
         if is_test:
@@ -718,7 +718,7 @@ class AbstractTorchNetwork(nn.Module):
         if self._sample_count >= self._batch_size:
             # Concatenate accumulated outputs and labels
             if self._target_repl_coef:
-                # T
+                #
                 replication_weights = [
                     torch.cat([
                         torch.ones(output.shape[1] - 1, output.shape[2]) * self._target_repl_coef,
@@ -728,25 +728,22 @@ class AbstractTorchNetwork(nn.Module):
 
                 replication_weights = torch.cat(replication_weights,
                                                 axis=0).to(self._device).squeeze()
+                # Replicate along T
                 labels = [
-                    label.unsqueeze(1).expand(-1, output.shape[1], -1)
-                    for label, output in zip(labels, outputs)
+                    label.expand(-1, output.shape[1], -1) for label, output in zip(labels, outputs)
                 ]
+
+                # Cat along T
                 labels = torch.cat(labels, axis=1).squeeze()
                 outputs = torch.cat(outputs, axis=1).squeeze()
-            elif self._task == "binary":
-                # T
-                outputs = torch.cat(outputs, axis=outputs[0].dim() - 1).view(-1)
             else:
-                # T, N or B, T, N
-                outputs = torch.cat(outputs, axis=0).squeeze()
+                # Cat along T
+                outputs = torch.cat(outputs, axis=1).squeeze()
 
             # If multilabel, labels are one-hot, else they are sparse
             if self._task == "multilabel":
                 # T, N
                 labels = torch.stack(labels).squeeze()
-                # if labels.shape[-1] == 1:
-                #     labels = labels.squeeze(-1)
             elif not self._target_repl_coef:
                 # T
                 labels = torch.cat(labels).view(-1)

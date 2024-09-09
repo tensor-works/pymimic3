@@ -63,10 +63,10 @@ class LSTMNetwork(AbstractTorchNetwork):
                                    batch_first=True)
 
         self._dropout = nn.Dropout(dropout)
-        self._output_layer = nn.Linear(
-            last_layer_size,
-            self._output_dim)  # TimeDistributedDense(last_layer_size, self._output_dim)
-        #
+        # Output layer
+        self._output_layer = nn.Linear(last_layer_size, self._output_dim)
+
+        # Initialize the network with same methods as in TF2
         for name, p in self.named_parameters():
             if 'lstm' in name:
                 if 'weight_ih' in name:
@@ -92,27 +92,24 @@ class LSTMNetwork(AbstractTorchNetwork):
             x, _ = lstm(x)
         x, _ = self._lstm_final(x)
 
+        # Case 1: deep supervision
         if masking_falg:
             outputs = list()
-            # Apply the linear to teach timestep
+            # Apply the linear layer to each LSTM output at each timestep (ts)
             for ts in range(x.shape[1]):
-                outputs.append(self._output_layer(x[:, ts, :]))
-            # Cat to vector
-            if self._task == "binary":
-                # Along time vector
-                x = torch.cat(outputs, dim=1)
-                if len(x.shape) < 3:
-                    x = x.unsqueeze(-1)
-            else:
-                # Stacking
-                x = torch.cat(outputs, dim=0)
-                if len(x.shape) < 3:
-                    x = x.unsqueeze(0)
+                cur_output = self._output_layer(x[:, ts, :])
+                cur_output = cur_output.reshape(cur_output.shape[0], 1, cur_output.shape[1])
+                outputs.append(cur_output)
+                # Cat along T
+            x = torch.cat(outputs, dim=1)
+        # Case 2: standard LSTM or target replication
         else:
-            # Only return the last prediction
+            # Apply linear layer only to the last output of the LSTM
             x = x[:, -1, :]
-            x = self._output_layer(x).unsqueeze(-1)
+            x = x.reshape(x.shape[0], 1, x.shape[1])
+            x = self._output_layer(x)
 
+        # Apply final activation if specified
         if self._final_activation and self._apply_activation:
             x = self._final_activation(x)
 

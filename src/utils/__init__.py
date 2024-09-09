@@ -49,6 +49,24 @@ def zeropad_samples(data: np.ndarray, length: int = None, axis: int = 0) -> np.n
     return np.atleast_3d(np.array(ret, dtype=dtype))
 
 
+def _transform_array(arr: np.ndarray):
+    """Listifies an array only along the first dimension
+
+    Args:
+        arr (np.ndarray): The array to listify
+
+    Returns:
+        List[Union[np.array, int]]
+    """
+    # Check the shape of the array
+    if arr.shape[1] == 1 or len(arr.shape) < 2:
+        # If second dimension is 1, convert it to a list of integers
+        return arr.flatten().tolist()
+    else:
+        # If second dimension is greater than 1, convert to a list of NumPy arrays
+        return [row for row in arr]
+
+
 def read_timeseries(X_df: pd.DataFrame,
                     y_df: pd.DataFrame,
                     row_only=False,
@@ -76,9 +94,9 @@ def read_timeseries(X_df: pd.DataFrame,
         ]
     if isinstance(y_df, pd.DataFrame):
         # ys = [y_df.squeeze(axis=1) if dtype == pd.DataFrame else y_df.squeeze(axis=1).v<]
-        ys = list(y_df.squeeze(axis=1).values)
+        ys = _transform_array(y_df.values)
     elif isinstance(y_df, np.ndarray):
-        ys = y_df.squeeze(axis=1).values
+        ys = _transform_array(y_df.values)
 
     ts = y_df.index.tolist()
 

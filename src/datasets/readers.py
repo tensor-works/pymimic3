@@ -1045,6 +1045,7 @@ class ProcessedSetReader(AbstractReader):
                     " Ignoring one hot encoding.")
 
         if subject_ids:
+            # read only specified subject ids
             if n_samples:
                 warn_io("Both n_samples and subject_ids are specified. Ignoring n_samples.")
 
@@ -1054,7 +1055,7 @@ class ProcessedSetReader(AbstractReader):
                                         data_type=data_type)
             prefices = deepcopy(list(dataset.keys()))
         else:
-
+            # read all episodes limited by n_samples
             dataset, subject_ids = self.random_samples(n_subjects=len(self.subject_ids),
                                                        read_timestamps=read_timestamps,
                                                        data_type=data_type,
@@ -1066,8 +1067,16 @@ class ProcessedSetReader(AbstractReader):
                 for prefix in prefices:
                     dataset[prefix] = dataset[prefix][:min(n_samples, len(dataset[prefix]))]
 
-        buffer_dataset = dict(zip(prefices, [[] for _ in range(len(prefices))]))
-        if not deep_supervision:
+        if deep_supervision:
+            if bining == "custom":
+                dataset["yds"] = [
+                    CustomBins.get_bin_custom(x, one_hot=one_hot) for x in dataset["yds"]
+                ]
+            elif bining == "log":
+                dataset["yds"] = [LogBins.get_bin_log(x, one_hot=one_hot) for x in dataset["yds"]]
+        else:
+            # Buffer dataset to allow for iteration
+            buffer_dataset = dict(zip(prefices, [[] for _ in range(len(prefices))]))
             sample_count = 0
             for idx in range(len(dataset["X"])):
                 X_df, y_df = dataset["X"][idx], dataset["y"][idx]
@@ -1076,24 +1085,22 @@ class ProcessedSetReader(AbstractReader):
                                                    bining=bining,
                                                    one_hot=one_hot,
                                                    dtype=pd.DataFrame)
-                if n_samples is not None:
+
+                # Cut tail dataset
+                if n_samples is not None and sample_count + len(X_df) > sample_count:
                     X_dfs = X_dfs[:n_samples - sample_count]
                     y_dfs = y_dfs[:n_samples - sample_count]
+
+                # Add samples to buffer
                 buffer_dataset["X"].extend(X_dfs)
                 buffer_dataset["y"].extend(y_dfs)
                 sample_count += len(y_dfs)
+
+                # Early stop on n_samples
                 if n_samples is not None and sample_count >= n_samples:
                     break
             dataset = buffer_dataset
             del buffer_dataset
-        else:
-            if bining == "custom":
-                dataset["yds"] = [
-                    CustomBins.get_bin_custom(x, one_hot=one_hot) for x in dataset["yds"]
-                ]
-            elif bining == "log":
-                dataset["yds"] = [LogBins.get_bin_log(x, one_hot=one_hot) for x in dataset["yds"]]
-            # raise NotImplementedError("apply bining here")
 
         # Normalize lengths on the smallest times stamp
         if normalize_inputs:
@@ -1111,6 +1118,7 @@ class ProcessedSetReader(AbstractReader):
                     dataset["y"][idx] = y_reindex_df.fillna(0)
                     dataset["M"].append((~y_reindex_df.isna()).astype(int))
 
+        # Apply transformations on load (impute, scale) if specified
         if imputer is not None:
             dataset["X"] = [imputer.transform(sample) for sample in dataset["X"]]
         if scaler is not None:
@@ -1118,9 +1126,15 @@ class ProcessedSetReader(AbstractReader):
         if scaler is None and imputer is None:
             dataset["X"] = [sample.values for sample in dataset["X"]]
 
+        # Zeropad and concat the dataset
         for prefix in deepcopy(list(dataset.keys())):
-            if len(dataset[prefix]) and is_iterable(dataset[prefix][0]):
+            if len(dataset[prefix]) \
+               and is_iterable(dataset[prefix][0]) \
+               and len(dataset[prefix][0].shape) > 1:
                 dataset[prefix] = zeropad_samples(dataset[prefix])
+            elif len(dataset[prefix]) and is_iterable(dataset[prefix][0]):
+                dataset[prefix] = np.stack(dataset['y'])
+                dataset[prefix] = np.expand_dims(dataset[prefix], 1)
             else:
                 dataset[prefix] = np.array(dataset[prefix],
                                            dtype=get_iterable_dtype(dataset[prefix])).reshape(

@@ -577,7 +577,7 @@ def test_to_numpy(task_name: str, reader_flavour: str,
     tests_io(f"Test case for to_numpy for task {task_name}", level=0)
     scaler = MinMaxScaler(imputer=imputer).fit_reader(reader)
 
-    dataset = reader.to_numpy(10, scaler=scaler, imputer=imputer)
+    dataset = reader.to_numpy(10, scaler=scaler, imputer=imputer, bining="custom")
     for prefix in dataset:
         # Assert 10 samples
         assert dataset[prefix].shape[0] == 10
@@ -739,7 +739,7 @@ if __name__ == "__main__":
     proc_reader_dict = dict()
     eng_reader_dict = dict()
     disc_reader_dict = dict()
-    for task_name in TASK_NAMES:
+    for task_name in ["PHENO"]:  # TASK_NAMES:
         proc_reader = datasets.load_data(chunksize=75835,
                                          source_path=TEST_DATA_DEMO,
                                          storage_path=SEMITEMP_DIR,
