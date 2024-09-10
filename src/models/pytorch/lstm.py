@@ -82,9 +82,9 @@ class LSTMNetwork(AbstractTorchNetwork):
                     p.data.fill_(0)
 
     def forward(self, x, masks=None) -> torch.Tensor:
-        if masks is not None:
-            masks = masks.to(self._device)
         masking_falg = masks is not None
+        if masking_falg:
+            masks = masks.to(self._device)
         x = x.to(self._device)
 
         # Masking is not natively supported in PyTorch LSTM, assume x is already preprocessed if necessary
@@ -94,14 +94,12 @@ class LSTMNetwork(AbstractTorchNetwork):
 
         # Case 1: deep supervision
         if masking_falg:
-            outputs = list()
             # Apply the linear layer to each LSTM output at each timestep (ts)
-            for ts in range(x.shape[1]):
-                cur_output = self._output_layer(x[:, ts, :])
-                cur_output = cur_output.reshape(cur_output.shape[0], 1, cur_output.shape[1])
-                outputs.append(cur_output)
-                # Cat along T
-            x = torch.cat(outputs, dim=1)
+            B, T, hidden_size = x.shape
+            x = x.reshape(B * T, hidden_size)
+            x = self._output_layer(x)
+            x = x.reshape(B, T, -1)
+
         # Case 2: standard LSTM or target replication
         else:
             # Apply linear layer only to the last output of the LSTM

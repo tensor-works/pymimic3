@@ -76,7 +76,7 @@ OVERFIT_SETTINGS = {
     },
     "DECOMP": {
         "epochs": 20,
-        "num_samples": 400
+        "num_samples": 200
     },
     "LOS": {
         "epochs": 20,
@@ -90,7 +90,7 @@ OVERFIT_SETTINGS = {
 
 OVERFIT_SETTINGS_DS = {
     "DECOMP": {
-        "epochs": 20,
+        "epochs": 30,
         "num_samples": 400
     },
     "LOS": {
@@ -159,16 +159,12 @@ def test_torch_lstm_with_target_replication(
         tests_io("Succeeded in creating the generator")
 
         # -- Fitting the model --
-        history = model.fit(generator=train_generator, batch_size=8,
-                            epochs=1)  # OVERFIT_SETTINGS_TR[task_name]["epochs"])
+        history = model.fit(generator=train_generator,
+                            batch_size=8,
+                            epochs=OVERFIT_SETTINGS_TR[task_name]["epochs"])
 
         # -- Unroll the Generator --
-        X, y = list(zip(*[(X, y) for X, y in iter(train_generator)]))
-        X = [x.numpy() for x in X]
-        y = [y_sample.numpy() for y_sample in y]
-
-        X = zeropad_samples(X, axis=1)
-        y_true = zeropad_samples(y, axis=1)
+        X, y_true = unroll_generator(train_generator)
     elif data_flavour == "numpy":
         # -- Create the dataset --
         dataset = reader.to_numpy(scaler=scaler,
@@ -177,8 +173,10 @@ def test_torch_lstm_with_target_replication(
 
         tests_io("Succeeded in creating the numpy dataset")
 
-        history = model.fit(dataset["X"], dataset["y"], batch_size=8,
-                            epochs=1)  #OVERFIT_SETTINGS_TR[task_name]["epochs"])
+        history = model.fit(dataset["X"],
+                            dataset["y"],
+                            batch_size=8,
+                            epochs=OVERFIT_SETTINGS_TR[task_name]["epochs"])
 
         # -- Store dataset --
         X = dataset["X"]
@@ -187,8 +185,7 @@ def test_torch_lstm_with_target_replication(
     # Instability on these is crazy but trying anyway.
     # How are you suppose to tune it with
 
-    # TODO! unblock
-    # assert_model_performance(history, task_name, TARGET_METRICS_TR[task_name])
+    assert_model_performance(history, task_name, TARGET_METRICS_TR[task_name])
     assert_valid_metric(X=X, y_true=y_true, task_name=task_name, model=model, flavour="torch")
     tests_io("Succeeded in asserting model sanity")
 
@@ -239,22 +236,16 @@ def test_torch_lstm_with_deep_supervision(
                                          shuffle=True,
                                          n_samples=OVERFIT_SETTINGS_DS[task_name]["num_samples"],
                                          **GENERATOR_OPTIONS[task_name])
+
         tests_io("Succeeded in creating the generator")
 
         # -- Fitting the model --
-        history = model.fit(generator=train_generator, batch_size=8,
-                            epochs=1)  #OVERFIT_SETTINGS_DS[task_name]["epochs"])
+        history = model.fit(generator=train_generator,
+                            batch_size=8,
+                            epochs=OVERFIT_SETTINGS_DS[task_name]["epochs"])
 
         # -- Unroll the Generator --
-        X, y = list(zip(*[(X, y) for X, y in iter(train_generator)]))
-        X, M = list(zip(*X))
-        X = [x.numpy() for x in X]
-        M = [m.numpy() for m in M]
-        y = [y_sample.numpy() for y_sample in y]
-
-        X = zeropad_samples(X, axis=1)
-        M = zeropad_samples(M, axis=1)
-        y_true = zeropad_samples(y, axis=1)
+        X, M, y_true = unroll_generator(train_generator, deep_supervision=True)
     elif data_flavour == "numpy":
         # -- Create the dataset --
         dataset = reader.to_numpy(scaler=scaler,
@@ -264,8 +255,10 @@ def test_torch_lstm_with_deep_supervision(
 
         tests_io("Succeeded in creating the numpy dataset")
 
-        history = model.fit([dataset["X"], dataset["M"]], dataset["yds"], batch_size=8,
-                            epochs=1)  #OVERFIT_SETTINGS_DS[task_name]["epochs"])
+        history = model.fit([dataset["X"], dataset["M"]],
+                            dataset["yds"],
+                            batch_size=8,
+                            epochs=OVERFIT_SETTINGS_DS[task_name]["epochs"])
 
         # -- Store dataset --
         X = dataset["X"]
@@ -275,7 +268,6 @@ def test_torch_lstm_with_deep_supervision(
     # Instability on these is crazy but trying anyway.
     # How are you suppose to tune it with
 
-    # TODO! unblock
     # assert_model_performance(history, task_name, TARGET_METRICS_DS[task_name])
     assert_valid_metric(X=X,
                         y_true=y_true,
@@ -334,15 +326,12 @@ def test_torch_lstm(
         tests_io("Succeeded in creating the generator")
 
         # -- Fitting the model --
-        history = model.fit(generator=train_generator, batch_size=8,
-                            epochs=1)  #OVERFIT_SETTINGS[task_name]["epochs"])
+        history = model.fit(generator=train_generator,
+                            batch_size=8,
+                            epochs=OVERFIT_SETTINGS[task_name]["epochs"])
 
         # -- Unroll the Generator --
-        X, y = list(zip(*[(X, y) for X, y in iter(train_generator)]))
-        X = [x.numpy() for x in X]
-        X = zeropad_samples(X, axis=1)
-        y = [y_sample for y_sample in y]
-        y_true = np.concatenate(y)
+        X, y_true = unroll_generator(train_generator)
 
     elif data_flavour == "numpy":
         # -- Task specific settings --
@@ -354,18 +343,37 @@ def test_torch_lstm(
         tests_io("Done loading the numpy dataset")
 
         # -- Fitting the model --
-        history = model.fit(dataset["X"], dataset["y"], batch_size=8,
-                            epochs=1)  #OVERFIT_SETTINGS[task_name]["epochs"])
+        history = model.fit(dataset["X"],
+                            dataset["y"],
+                            batch_size=8,
+                            epochs=OVERFIT_SETTINGS[task_name]["epochs"])
 
         # -- Store dataset --
         X = dataset["X"]
         y_true = dataset["y"]
         y_pred = model.predict(X)
         model.evaluate(X, y_true)
-    # TODO! unblock
-    # assert_model_performance(history, task_name, TARGET_METRICS[task_name])
+
+    assert_model_performance(history, task_name, TARGET_METRICS[task_name])
     assert_valid_metric(X, y_true, task_name, model, flavour="torch")
     tests_io("Succeeded in asserting model sanity")
+
+
+def unroll_generator(generator: TorchGenerator, deep_supervision: bool = False):
+    X, y = list(zip(*[(X, y) for X, y in iter(generator)]))
+    if deep_supervision:
+        X, M = list(zip(*X))
+        M = [m.unsqueeze(0).numpy() for m in M]
+        M = zeropad_samples(M, axis=1)
+    X = [x.unsqueeze(0).numpy() for x in X]
+    X = zeropad_samples(X, axis=1)
+    if deep_supervision:
+        y = [y_sample.unsqueeze(0).numpy() for y_sample in y]
+        y = zeropad_samples(y, axis=1)
+        return X, M, y
+    y = [y_sample.unsqueeze(0) for y_sample in y]
+    y = np.concatenate(y)
+    return X, y
 
 
 def assert_model_performance(history, task, target_metrics):
@@ -389,11 +397,10 @@ def assert_model_performance(history, task, target_metrics):
 if __name__ == "__main__":
     import shutil
     disc_reader = dict()
-    for task_name in ["PHENO"]:  #["IHM", "DECOMP", "LOS", "PHENO"]:
+    for task_name in ["DECOMP", "LOS", "PHENO"]:  #  ["IHM", "DECOMP", "LOS", "PHENO"]:
         """
         if Path(SEMITEMP_DIR, "discretized", task_name).exists():
             shutil.rmtree(Path(SEMITEMP_DIR, "discretized", task_name))
-        """
         reader = datasets.load_data(chunksize=75836,
                                     source_path=TEST_DATA_DEMO,
                                     storage_path=SEMITEMP_DIR,
@@ -412,6 +419,7 @@ if __name__ == "__main__":
                                         deep_supervision=True,
                                         impute_strategy='previous',
                                         task=task_name)
+        """
         reader = ProcessedSetReader(Path(SEMITEMP_DIR, "discretized", task_name))
         disc_reader[task_name] = reader
         for flavour in ["numpy", "generator"]:

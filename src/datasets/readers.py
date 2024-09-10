@@ -1070,10 +1070,14 @@ class ProcessedSetReader(AbstractReader):
         if deep_supervision:
             if bining == "custom":
                 dataset["yds"] = [
-                    CustomBins.get_bin_custom(x, one_hot=one_hot) for x in dataset["yds"]
+                    CustomBins.get_bin_custom(x, one_hot=one_hot).reshape(*x.shape)
+                    for x in dataset["yds"]
                 ]
             elif bining == "log":
-                dataset["yds"] = [LogBins.get_bin_log(x, one_hot=one_hot) for x in dataset["yds"]]
+                dataset["yds"] = [
+                    LogBins.get_bin_log(x, one_hot=one_hot).reshape(*x.shape)
+                    for x in dataset["yds"]
+                ]
         else:
             # Buffer dataset to allow for iteration
             buffer_dataset = dict(zip(prefices, [[] for _ in range(len(prefices))]))
@@ -1133,7 +1137,7 @@ class ProcessedSetReader(AbstractReader):
                and len(dataset[prefix][0].shape) > 1:
                 dataset[prefix] = zeropad_samples(dataset[prefix])
             elif len(dataset[prefix]) and is_iterable(dataset[prefix][0]):
-                dataset[prefix] = np.stack(dataset['y'])
+                dataset[prefix] = np.stack(dataset[prefix])
                 dataset[prefix] = np.expand_dims(dataset[prefix], 1)
             else:
                 dataset[prefix] = np.array(dataset[prefix],

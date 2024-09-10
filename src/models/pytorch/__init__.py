@@ -371,6 +371,7 @@ class AbstractTorchNetwork(nn.Module):
                            has_val: bool = False):
         # TODO! while keeping the generator at single sample maybe using padded squences from torch ist still
         # TODO! more efficient
+        # TODO! if the array is 2D does that mean B, T or B, N?
         print(f'\nEpoch {epoch}/{epochs}')
         self.train()
 
@@ -403,6 +404,7 @@ class AbstractTorchNetwork(nn.Module):
             if masking_flag:
                 # Set labels to zero when masking since forward does the same
                 mask = masks[sample_idx]
+                input = input[mask.squeeze(), :]
                 mask = mask.unsqueeze(0)
             else:
                 # TODO! Is there a better way. What if there is an actual patient with all zero across
@@ -422,7 +424,7 @@ class AbstractTorchNetwork(nn.Module):
 
             if masking_flag:
                 # Apply mask to T (B, T, N)
-                output = output[:, mask.squeeze()]
+                # output = output[:, mask.squeeze()]
                 label = label[:, mask.squeeze()]
 
             # Accumulate outputs and labels either flat or with dim of multilabel
@@ -467,6 +469,7 @@ class AbstractTorchNetwork(nn.Module):
 
             if masking_flag:
                 input, mask = input
+                input = input[mask.squeeze(), :]
                 input = input.to(self._device)
                 # Set labels to zero when masking since forward does the same
                 mask = mask.to(self._device).bool()
@@ -474,12 +477,18 @@ class AbstractTorchNetwork(nn.Module):
                 input = input.to(self._device)
                 mask = None
 
+            label = label.unsqueeze(0)
+            input = input.unsqueeze(0)
+
+            # On device label
             label = label.to(self._device)
+
+            # Prediction
             output = self(input, masks=mask)
 
             if masking_flag:
                 # Apply mask to T (B, T, N)
-                output = output[:, mask.squeeze()]
+                # output = output[:, mask.squeeze()]
                 label = label[:, mask.squeeze()]
 
             # Accumulate outputs and labels
@@ -616,6 +625,7 @@ class AbstractTorchNetwork(nn.Module):
                 if masking_flag:
                     # Set labels to zero when masking since forward does the same
                     mask = masks[sample_idx]
+                    val_inputs = val_inputs[mask.squeeze(), :]
                     mask = mask.unsqueeze(0)
                 else:
                     # TODO! Is there a better way. What if there is an actual patient with all zero across
@@ -634,11 +644,8 @@ class AbstractTorchNetwork(nn.Module):
 
                 # Apply masking
                 if masking_flag:
-                    val_outputs = val_outputs[:, mask.squeeze()]
-                    # The mask of the same shape will flatten the array
-                    if len(val_labels.shape) < 3:
-                        val_labels = val_labels.unsqueeze(-1)
-                    val_labels = val_labels[mask]
+                    # val_outputs = val_outputs[:, mask.squeeze()]
+                    val_labels = val_labels[:, mask.squeeze()]
 
                 # Accumulate outputs and labels either flat or with dim of multilabel
                 aggr_outputs.append(val_outputs)
@@ -660,7 +667,7 @@ class AbstractTorchNetwork(nn.Module):
         self._on_epoch_end(epoch, prefix="val")
         return list(dict(self._get_metrics(self._metrics["val"])).values())
 
-    def _evaluate_with_generators(self,
+    def _evaluate_with_dataloader(self,
                                   generator: DataLoader,
                                   batch_size: int = None,
                                   val_frequency: int = 0,
@@ -682,14 +689,15 @@ class AbstractTorchNetwork(nn.Module):
                         # Most efficient way to set this I could think of
                         masking_flag = isinstance(val_inputs, (list, tuple))
                     if masking_flag:
-                        val_inputs, masks = val_inputs
+                        val_inputs, mask = val_inputs
+                        val_inputs = val_inputs[mask.squeeze(), :]
                         val_inputs = val_inputs.to(self._device)
-                        masks = masks.to(self._device)
+                        mask = mask.to(self._device)
                     else:
                         val_inputs = val_inputs.to(self._device)
-                        masks = None
+                        mask = None
                     val_labels = val_labels.to(self._device)
-                    val_outputs = self(val_inputs, masks=masks)
+                    val_outputs = self(val_inputs, masks=mask)
                     val_loss = self._loss(val_outputs, val_labels)
                     val_losses.append(val_loss.item())
                     self._update_metrics(val_loss,
@@ -741,21 +749,22 @@ class AbstractTorchNetwork(nn.Module):
                 outputs = torch.cat(outputs, axis=1).squeeze()
 
             # If multilabel, labels are one-hot, else they are sparse
-            if self._task == "multilabel":
-                # T, N
-                labels = torch.stack(labels).squeeze()
-            elif not self._target_repl_coef:
-                # T
-                labels = torch.cat(labels).view(-1)
+            if not self._target_repl_coef:
+                if self._task == "multilabel":
+                    # T, N
+                    labels = torch.stack(labels).squeeze()
+                else:
+                    # Cat along T then squeeze
+                    labels = torch.cat(labels, axis=1).squeeze()
 
             # Compute loss
-            self._optimizer.zero_grad()
             if self._target_repl_coef:
                 # Apply target replication loss here
                 loss = self._loss(outputs, labels)
                 loss = (loss * replication_weights).mean()
             else:
                 loss = self._loss(outputs, labels)
+
             # Reset count
             # TODO! update this logic
             self._update_metrics(loss,
@@ -782,10 +791,10 @@ class AbstractTorchNetwork(nn.Module):
 
     def evaluate(self, *args, **kwargs):
 
-        eval_data, is_array, args, kwargs = self._get_generator_or_array(*args, **kwargs)
+        eval_data, is_array, args, kwargs = self._get_dataloader_or_array(*args, **kwargs)
         if is_array:
             return self._evaluate_with_arrays(*eval_data, is_test=True, *args, **kwargs)
-        return self._evaluate_with_generators(*eval_data, is_test=True, *args, **kwargs)
+        return self._evaluate_with_dataloader(*eval_data, is_test=True, *args, **kwargs)
 
     @overload
     def fit(self,
@@ -828,7 +837,7 @@ class AbstractTorchNetwork(nn.Module):
             model_path: Path = None,
             **kwargs):
 
-        train_data, _, _, _ = self._get_generator_or_array(*args, **kwargs)
+        train_data, _, _, _ = self._get_dataloader_or_array(*args, **kwargs)
 
         if model_path is not None:
             self._model_path = model_path
@@ -877,9 +886,9 @@ class AbstractTorchNetwork(nn.Module):
         ...
 
     def predict(self, *args, batch_size=None, verbose="auto", steps=None, **kwargs):
-        predict_data, is_array, args, kwargs = self._get_generator_or_array(*args,
-                                                                            **kwargs,
-                                                                            has_y=False)
+        predict_data, is_array, args, kwargs = self._get_dataloader_or_array(*args,
+                                                                             **kwargs,
+                                                                             has_y=False)
         if is_array:
             return self._predict_numpy(*predict_data, batch_size=batch_size, verbose=verbose)
         return self._predict_dataloader(*predict_data, batch_size=batch_size, verbose=verbose)
@@ -955,7 +964,7 @@ class AbstractTorchNetwork(nn.Module):
 
         return zeropad_samples(aggr_outputs)
 
-    def _get_generator_or_array(self, *args, has_y=True, **kwargs):
+    def _get_dataloader_or_array(self, *args, has_y=True, **kwargs):
         args = list(args)
         is_array = False
         if len(args) >= 1 and isinstance(args[0], DataLoader):

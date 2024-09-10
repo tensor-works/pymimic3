@@ -378,10 +378,12 @@ def assert_sample_sanity(X: np.ndarray,
 
 
 if __name__ == "__main__":
+    """
     if SEMITEMP_DIR.is_dir():
         import shutil
         shutil.rmtree(SEMITEMP_DIR)
-    for task_name in TASK_NAMES:
+    """
+    for task_name in ["IHM"]:  # TASK_NAMES:
 
         if not Path(SEMITEMP_DIR, "discretized", task_name).is_dir():
             st_reader = datasets.load_data(chunksize=75836,
