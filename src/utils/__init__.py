@@ -9,7 +9,7 @@ import re
 import json
 import numpy as np
 import pandas as pd
-from typing import Dict, Union, Iterable
+from typing import Dict, List, Tuple, Union, Iterable
 from metrics import CustomBins, LogBins
 from utils.IO import *
 from pathlib import Path
@@ -49,30 +49,57 @@ def zeropad_samples(data: np.ndarray, length: int = None, axis: int = 0) -> np.n
     return np.atleast_3d(np.array(ret, dtype=dtype))
 
 
-def _transform_array(arr: np.ndarray):
+def _transform_array(arr: np.ndarray, preserve_dtype=True):
     """Listifies an array only along the first dimension
 
     Args:
         arr (np.ndarray): The array to listify
+        preserve_dtype (bool, optional): Whether to preserve the dtype of the array in the array elements. 
+            Defaults to True.
 
     Returns:
         List[Union[np.array, int]]
     """
     # Check the shape of the array
-    if arr.shape[1] == 1 or len(arr.shape) < 2:
+    if (len(arr.shape) > 1 and arr.shape[1] == 1) or len(arr.shape) < 2:
         # If second dimension is 1, convert it to a list of integers
+        if preserve_dtype:
+            return list(arr.flatten())
         return arr.flatten().tolist()
     else:
         # If second dimension is greater than 1, convert to a list of NumPy arrays
         return [row for row in arr]
 
 
-def read_timeseries(X_df: pd.DataFrame,
-                    y_df: pd.DataFrame,
-                    row_only=False,
-                    bining="none",
-                    one_hot=False,
-                    dtype=np.ndarray):
+def read_timeseries(
+    X_df: pd.DataFrame,
+    y_df: pd.DataFrame,
+    row_only=False,
+    bining="none",
+    one_hot=False,
+    dtype=np.ndarray,
+    preserve_dtype: bool = True
+) -> Tuple[List[Union[np.ndarray, pd.DataFrame]], \
+           List[Union[np.ndarray, pd.DataFrame]], \
+           List[Union[np.ndarray, pd.DataFrame]]]:
+    """Read sample and label frames time step by time step and return as list.
+
+    Args:
+        X_df (pd.DataFrame): Sample df or array.
+        y_df (pd.DataFrame): Target df or array
+        row_only (bool, optional): Return only the current sample row vs. the entire preceding data frame. 
+            Defaults to False.
+        bining (str, optional): Bining mode to apply to the labels. Can be "none", "custom" or "log". 
+            Defaults to "none".
+        one_hot (bool, optional): One-hot encode categorical labels. Defaults to False.
+        dtype (_type_, optional): Type of the data contained in the returned list. 
+            Defaults to np.ndarray.
+        preserve_dtype (bool, optional): Wether to preserve the numpy dtypes in the target primitives. 
+            Defaults to True.
+
+    Returns:
+        _type_: _description_
+    """
     if bining == "log":
         y_df = y_df.apply(lambda x: LogBins.get_bin_log(x, one_hot=one_hot))
         if not isinstance(y_df, pd.DataFrame):
@@ -92,13 +119,10 @@ def read_timeseries(X_df: pd.DataFrame,
             X_df.loc[:timestamp].values if dtype in [np.ndarray, np.array] else X_df.loc[:timestamp]
             for timestamp in y_df.index
         ]
-    if isinstance(y_df, pd.DataFrame):
-        # ys = [y_df.squeeze(axis=1) if dtype == pd.DataFrame else y_df.squeeze(axis=1).v<]
-        ys = _transform_array(y_df.values)
-    elif isinstance(y_df, np.ndarray):
-        ys = _transform_array(y_df.values)
 
-    ts = y_df.index.tolist()
+    ys = _transform_array(y_df.values, preserve_dtype=preserve_dtype)
+    ts = _transform_array(y_df.index.values, preserve_dtype=preserve_dtype)
+    # ts = y_df.index.tolist()
 
     return Xs, ys, ts
 

@@ -1,4 +1,5 @@
 import torch
+from numpy import atleast_3d
 from torch.utils.data.dataloader import _BaseDataLoaderIter
 from preprocessing.scalers import AbstractScaler
 from datasets.readers import ProcessedSetReader
@@ -94,11 +95,12 @@ class TorchDataset(AbstractGenerator, Dataset):
             X = X.copy()
         if not y.flags.writeable:
             y = y.copy()
+        # We squeeze so that everything is 2D since there is always only one sample
         if self._deep_supervision:
-            return torch.from_numpy(X).to(torch.float32), \
-                   torch.from_numpy(y), \
-                   torch.from_numpy(m)
-        return torch.from_numpy(X).to(torch.float32), torch.from_numpy(y)
+            return torch.from_numpy(X).squeeze(0).to(torch.float32), \
+                   torch.from_numpy(y).squeeze(0), \
+                   torch.from_numpy(m).squeeze(0)
+        return torch.from_numpy(X).squeeze(0).to(torch.float32), torch.from_numpy(y)
 
     def close(self):
         AbstractGenerator.__del__(self)
