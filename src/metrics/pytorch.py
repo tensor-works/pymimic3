@@ -11,8 +11,31 @@ from metrics import CustomBins, LogBins
 
 
 class BinedMAE(MeanAbsoluteError):
+    """
+    Compute the Mean Absolute Error (MAE) for length of stay (LOS) from binned predictions and targets.
+    
+    The function computes the MAE between the bin means of the predictions and targets. The inputs and
+    targets can be either one-hot encoded or ordinal, and the MAE is calculated based on either custom or
+    logarithmic (log) binning methods.
+    
+    Parameters
+    ----------
+    bining : str
+        The binning method to use. Must be one of {'log', 'custom'}.
+    
+    Returns
+    -------
+    float
+        The computed MAE as a numeric value.
+    
+    Notes
+    -----
+    The MAE is computed between the bin means of the inputs and targets. The specific binning method
+    ('log' or 'custom') is applied to calculate the means before computing the error.
+    """
 
     def __init__(self, bining: Literal["log", "custom"], *args, **kwargs):
+
         super().__init__(*args, **kwargs)
         self._binning = bining
         if self._binning == "custom":
@@ -22,12 +45,20 @@ class BinedMAE(MeanAbsoluteError):
         else:
             raise ValueError(f"Binning must be one of 'log' or 'custom' but is {bining}.")
 
-    def update(self, preds: torch.Tensor, target: torch.Tensor) -> None:
-        prediction_means = self._means[torch.argmax(preds, axis=1)]
+    def update(self, input: torch.Tensor, target: torch.Tensor) -> None:
+        # TODO! test this on model
+        # Input is one-hot
+        if input.dim() > 1:
+            input = torch.argmax(input, axis=-1)
+
+        input_means = self._means[input]
+
+        # Target is one-hot
         if target.dim() > 1:
-            target = torch.argmax(target, axis=1)
+            target = torch.argmax(target, axis=-1)
+
         target_means = self._means[target]
-        super().update(prediction_means, target_means)
+        super().update(input_means, target_means)
 
     def to(self, *args, **kwargs):
         self._means = self._means.to(*args, **kwargs)
@@ -36,28 +67,51 @@ class BinedMAE(MeanAbsoluteError):
 
 class BinaryAUPRC(_BinaryAUPRC):
 
-    def update(self, predictions, labels):
+    def update(self, input: torch.Tensor, target: torch.Tensor):
         # Reshape predictions and labels to handle the batch dimension
-        predictions = predictions.view(-1)
-        labels = labels.view(-1)
-        super().update(predictions, labels)
+        input = input.view(-1)
+        target = target.view(-1)
+        super().update(input, target)
 
 
 class MulticlassAUPRC(_MulticlassAUPRC):
 
-    def update(self, predictions, labels):
+    def update(self, input: torch.Tensor, target: torch.Tensor):
         # Reshape predictions and labels to handle the batch dimension
-        labels = labels.view(-1)
-        super().update(predictions, labels)
+        target = target.view(-1)
+        super().update(input, target)
 
 
 class AUPRC(metric.Metric[torch.Tensor]):
+    """
+    A metric class that wraps the Area Under Precision-Recall Curve (AUPRC) from `torcheval`.
+
+    This class provides a way to instantiate the AUPRC metric with a task type and the required number of labels or classes.
+    It behaves similarly to the metric implementations in the base torch packages.
+
+    Parameters
+    ----------
+    task : {'binary', 'multiclass', 'multilabel'}
+        The type of task for which the AUPRC metric is being calculated.
+    num_labels : int, optional
+        The number of labels for multilabel tasks. Defaults to 1.
+    num_classes : int, optional
+        The number of classes for multiclass tasks. Defaults to 1.
+    average : {'macro', 'weighted', 'none', 'micro'}, optional
+        The method to average the precision-recall scores across different classes. Defaults to 'macro'.
+
+    Notes
+    -----
+    This class provides a wrapper around the `torcheval` implementation of AUPRC, allowing the metric to be easily used in 
+    binary, multiclass, or multilabel tasks with flexible options for handling multiple classes or labels.
+    """
 
     def __new__(cls,
                 task: Literal["binary", "multiclass", "multilabel"],
                 num_labels: int = 1,
                 num_classes: int = 1,
                 average: Literal["macro", "weighted", "none", "micro"] = "macro"):
+
         if average not in ["macro", "micro", "none"]:
             raise ValueError("Average must be one of 'macro', 'micro', or 'none'"
                              f" but is {average}")
@@ -72,6 +126,7 @@ class AUPRC(metric.Metric[torch.Tensor]):
             metric = MultilabelAUPRC(num_labels=num_labels, average=average)
         else:
             raise ValueError("Unsupported task type or activation function")
+
         metric._task = task
         metric._average = average
 
@@ -79,6 +134,31 @@ class AUPRC(metric.Metric[torch.Tensor]):
 
 
 class AUROC(_AUROC):
+    """
+    Computes the Area Under the Receiver Operating Characteristic Curve (AUROC) metric.
+
+    This class is a subclass of `_AUROC` and extends it to handle binary, multiclass, and multilabel tasks. 
+    It supports thresholding, averaging methods, and options for specifying the number of labels or classes.
+
+    Parameters
+    ----------
+    task : {'binary', 'multiclass', 'multilabel'}
+        The type of task for which the AUROC is being computed.
+    thresholds : int or list of float or torch.Tensor, optional
+        The number of thresholds or specific threshold values to compute AUROC. If `None`, the metric will be calculated without thresholds.
+    num_labels : int, optional
+        The number of labels in the multilabel case. Required if `task="multilabel"`.
+    num_classes : int, optional
+        The number of classes in the multiclass case. Required if `task="multiclass"`.
+    average : {'macro', 'weighted', 'none', 'micro'}, optional
+        The averaging method for the AUROC across multiple classes or labels. Defaults to 'macro'.
+    max_fpr : float, optional
+        The maximum false positive rate. If specified, only the AUROC up to this value is computed. Defaults to `None`.
+    ignore_index : int, optional
+        Specifies a target value that should be ignored. Defaults to `None`.
+    validate_args : bool, optional
+        If `True`, validates the inputs and arguments for correctness. Defaults to `True`.
+    """
 
     def __new__(
         cls: Type["_AUROC"],
@@ -91,13 +171,18 @@ class AUROC(_AUROC):
         ignore_index: Optional[int] = None,
         validate_args: bool = True,
     ):
+
         if average == "micro" and task == "multilabel":
             task = "binary"
+
         kwargs = {}
+
         if num_classes is not None:
             kwargs["num_classes"] = num_classes
+
         if num_labels is not None:
             kwargs["num_labels"] = num_labels
+
         metric = super().__new__(cls,
                                  task=task,
                                  thresholds=thresholds,
@@ -116,9 +201,11 @@ class AUROC(_AUROC):
                weight: torch.Tensor = None,
                *args,
                **kwargs) -> None:
+
         if self._average == "micro":
             target = target.view(-1)
             input = input.view(-1)
+
         return self.update(input, target, weight, *args, **kwargs)
 
     def compute(self) -> torch.Tensor:
@@ -126,115 +213,4 @@ class AUROC(_AUROC):
 
 
 if __name__ == "__main__":
-    # Multi-class classification data
-    import torch
-    # Compute precision-recall curve
-    import numpy as np
-    from sklearn.metrics import roc_auc_score, precision_recall_curve, auc
-
-    # -- Testing the MAE --
-    y_true_mc = torch.torch.Tensor([[1, 0, 0], [0, 1, 0], [0, 0, 1], [1, 0, 0], [0, 1, 0],
-                                    [0, 0, 1], [1, 0, 0], [0, 0, 1], [1, 0, 0], [0, 0, 1]]).int()
-    y_pred_mc = torch.torch.Tensor([0, 1, 0, 0, 2, 2, 0, 2, 0, 2]).int()
-
-    mae_log = BinedMAE("log")
-    mae_log.update(y_pred_mc, y_true_mc)
-    mae_custom = BinedMAE("custom")
-    mae_custom.update(y_pred_mc, y_true_mc)
-    print("Log MAE:", mae_log.compute())
-    print("Custom MAE:", mae_custom.compute())
-
-    #
-    y_true_multi = torch.torch.Tensor([[1, 0, 0], [0, 1, 0], [0, 0, 1], [1, 0, 0], [0, 1, 0],
-                                       [0, 0, 1], [1, 0, 0], [0, 0, 1], [1, 0, 0], [1, 0,
-                                                                                    1]]).int()
-    y_pred_multi = torch.torch.Tensor([[0.8, 0.1, 0.1], [0.2, 0.7, 0.1], [0.1, 0.3, 0.6],
-                                       [0.7, 0.2, 0.1], [0.1, 0.6, 0.3], [0.2, 0.1, 0.7],
-                                       [0.6, 0.3, 0.1], [0.3, 0.5, 0.2], [0.2, 0.1, 0.7],
-                                       [0.7, 0.2, 0.1]])
-
-    # ---------------- Comparing Micro-Macro PR AUC using torch with sklearn --------------------
-    print("--- Comparing Micro-Macro ROC AUC ---")
-
-    # Compute ours: micro
-    micro_rocauc = AUROC(task="multilabel", average="micro", num_labels=3)
-    micro_rocauc.update(y_pred_multi, y_true_multi)
-    print("Micro AUCROC (torch):", micro_rocauc.compute())
-
-    # Compute ours: macro
-    macro_rocauc = AUROC(task="multilabel", average="macro", num_labels=3)
-    macro_rocauc.update(y_pred_multi, y_true_multi)
-    print("Micro AUCPRC (torch):", macro_rocauc.compute())
-
-    # Compute theirs
-    # Flatten y_true_multi as numpy
-    y_true_multi_flat = y_true_multi.numpy().flatten()
-    y_pred_multi_flat = y_pred_multi.numpy().flatten()
-
-    # Compute micro-average ROC AUC using sklearn
-    micro_rocauc_sklearn = roc_auc_score(y_true_multi,
-                                         y_pred_multi,
-                                         average='micro',
-                                         multi_class='ovr')
-    print(f'Micro-average auc-roc (sklearn): {micro_rocauc_sklearn:.4f}')
-
-    # Compute macro-average ROC AUC using sklearn
-    macro_rocauc_sklearn = roc_auc_score(y_true_multi,
-                                         y_pred_multi,
-                                         average='macro',
-                                         multi_class='ovr')
-    print(f'Macro-average auc-roc (sklearn): {macro_rocauc_sklearn:.4f}')
-
-    # ---------------- Comparing Micro-Macro PR AUC using torch with sklearn --------------------
-    print("--- Comparing Micro-Macro PR AUC ---")
-    micro_prauc = AUPRC(task="multilabel", num_labels=3, average="micro")
-    macro_prauc = AUPRC(task="multilabel", num_labels=3, average="macro")
-
-    # Compute ours
-    for idx in range(len(y_true_multi)):
-        yt = y_true_multi[idx, :].unsqueeze(0)
-        yp = y_pred_multi[idx, :].unsqueeze(0)
-        micro_prauc.update(yp, yt)
-        macro_prauc.update(yp, yt)
-
-    print("Micro AUCPR (torch):", micro_prauc.compute())
-    print("Macro AUCPR (torch):", macro_prauc.compute())
-
-    # Compute theirs
-    roc_pr_list = []
-    roc_auc_list = []
-
-    # Iterate over each class
-    for i in range(y_true_multi.shape[1]):
-        y_true = y_true_multi[:, i]
-        y_pred = y_pred_multi[:, i]
-
-        # Compute precision-recall curve
-        precision, recall, _ = precision_recall_curve(y_true, y_pred)
-        roc_pr_list.append(auc(recall, precision))
-
-        # Compute ROC AUC score
-        roc_auc = roc_auc_score(y_true, y_pred)
-        roc_auc_list.append(roc_auc)
-
-    print(f"PR AUC macro Score (sklearn): {np.mean(roc_pr_list)}")
-
-    precision, recall, _ = precision_recall_curve(y_true_multi_flat, y_pred_multi_flat)
-    pr_auc = auc(recall, precision)
-
-    # Print results
-    print(f"PR AUC micro Score (sklearn): {pr_auc}")
-    print()
-    # ---------------- Comparing Binary PR AUC using torch with sklearn --------------------
-    prauc = AUPRC(task="binary")
-    prauc.update(y_pred_multi.flatten(), y_true_multi.flatten())
-
-    print("Binary AUCPR (torch):", prauc.compute())
-    from torcheval.metrics.functional import binary_auprc
-    binary_auprc(y_pred_multi.flatten(), y_true_multi.flatten())
-    print("Binary AUCPR functional (torch):", prauc.compute())
-    precision, recall, _ = precision_recall_curve(y_true_multi_flat, y_pred_multi_flat)
-    pr_auc = auc(recall, precision)
-
-    # Print results
-    print(f"Binary PRAUC Score (sklearn): {pr_auc}")
+    ...
