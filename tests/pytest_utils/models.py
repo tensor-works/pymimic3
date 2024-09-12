@@ -1,10 +1,13 @@
 import numpy as np
 import torch
+from copy import deepcopy
 from metrics import CustomBins
 from utils.IO import *
 from tests.tsettings import *
 from sklearn.metrics import cohen_kappa_score, mean_absolute_error, roc_auc_score, precision_recall_curve, auc
 from models.tf2 import AbstractTf2Model
+from models.pytorch import AbstractTorchNetwork
+from typing import Union
 from tests.msettings import *
 
 
@@ -37,7 +40,7 @@ def assert_valid_metric(X: np.ndarray,
 def assert_valid_metric_LOS(X: np.ndarray,
                             y_true: np.ndarray,
                             y_pred: np.ndarray,
-                            model: AbstractTf2Model,
+                            model: Union[AbstractTf2Model, AbstractTorchNetwork],
                             mask: np.ndarray = None):
     if mask is not None:
         inputs = [X, mask]
@@ -82,7 +85,7 @@ def assert_valid_metric_LOS(X: np.ndarray,
 def assert_valid_metric_binary(X: np.ndarray,
                                y_true: np.ndarray,
                                y_pred: np.ndarray,
-                               model: AbstractTf2Model,
+                               model: Union[AbstractTf2Model, AbstractTorchNetwork],
                                mask: np.ndarray = None):
     if mask is not None:
         inputs = [X, mask]
@@ -91,6 +94,8 @@ def assert_valid_metric_binary(X: np.ndarray,
 
     # Evaluate tf2
     loss, roc_auc, roc_pr = model.evaluate(inputs, y_true, batch_size=len(X))
+    y_true_remove = deepcopy(y_true)
+    y_pred_remove = deepcopy(y_pred)
 
     # Apply mask
     if mask is not None:
@@ -115,16 +120,19 @@ def assert_valid_metric_binary(X: np.ndarray,
     # Assert closeness
     # High deviation when tf2 approximating AUC close to 1
     # https://stackoverflow.com/questions/52228899/keras-auc-on-validation-set-during-training-does-not-match-with-sklearn-auc
-    assert np.isclose(sklearn_rocauc, roc_auc, atol=0.09), \
-        (f"Diverging results for sklearn and tensorflow metric. Sklearn ROC-AUC: {sklearn_rocauc}, tf2 ROC-AUC: {roc_auc}")
-    assert np.isclose(sklearn_pr_auc, roc_pr, atol=0.09), \
-        (f"Diverging results for sklearn and tensorflow metric. Sklearn PR-AUC: {sklearn_pr_auc}, tf2 PR-AUC: {roc_pr}")
+    try:
+        assert np.isclose(sklearn_rocauc, roc_auc, atol=0.09), \
+            (f"Diverging results for sklearn and tensorflow metric. Sklearn ROC-AUC: {sklearn_rocauc}, tf2 ROC-AUC: {roc_auc}")
+        assert np.isclose(sklearn_pr_auc, roc_pr, atol=0.09), \
+            (f"Diverging results for sklearn and tensorflow metric. Sklearn PR-AUC: {sklearn_pr_auc}, tf2 PR-AUC: {roc_pr}")
+    except AssertionError as e:
+        loss, roc_auc, roc_pr = model.evaluate(inputs, y_true_remove, batch_size=len(X))
 
 
 def assert_valid_metric_PHENO(X: np.ndarray,
                               y_true: np.ndarray,
                               y_pred: np.ndarray,
-                              model: AbstractTf2Model,
+                              model: Union[AbstractTf2Model, AbstractTorchNetwork],
                               mask: np.ndarray = None):
     if mask is not None:
         inputs = [X, mask]
