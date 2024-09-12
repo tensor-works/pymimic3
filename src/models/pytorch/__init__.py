@@ -4,6 +4,7 @@ import torch.optim as optim
 import numpy as np
 import pickle
 import warnings
+from utils.numeric import RunningAvg
 from types import FunctionType
 from typing import List, Tuple, Literal
 from copy import deepcopy
@@ -68,6 +69,9 @@ class AbstractTorchNetwork(nn.Module):
         # TODO! this is for debugging remove:
         self._labels = list()
         self._outputs = list()
+
+    def __call__(self, *args, **kwargs):
+        raise TypeError(f"'{self.__class__.__name__}' object is not callable")
 
     @property
     def optimizer(self):
@@ -138,7 +142,8 @@ class AbstractTorchNetwork(nn.Module):
 
     def _get_metrics(self, metrics: Dict[str, Metric]) -> List[Tuple[str, float]]:
         keys = list([metric for metric in metrics.keys() if self._allowed_key(metric)])
-        values = [metrics[key]["value"] for key in keys]
+        values = [metrics[key].compute() for key in keys]
+        values = [value.item() if isinstance(value, torch.Tensor) else value for value in values]
         return list(zip(keys, values))
 
     def _init_metrics(self,
@@ -148,7 +153,7 @@ class AbstractTorchNetwork(nn.Module):
             "task": self._task,
             "num_labels" if self._task == "multilabel" else "num_classes": self._num_classes
         }
-        return_metrics = {"loss": {"obj": None, "value": 0.0}}
+        return_metrics = {"loss": RunningAvg()}
 
         # Creat the base metric dict
         for metric in metrics:
@@ -166,15 +171,25 @@ class AbstractTorchNetwork(nn.Module):
             if isinstance(metric, (type, FunctionType)):
                 metric = metric(**settings)
 
-            return_metrics[metric_name] = {"obj": metric.to(self._device), "value": 0.0}
+            return_metrics[metric_name] = metric.to(self._device)
 
-        # Create metric dict for each prefix and add to the return dict
+        # metrics -> ""
+        #        |-> "train"
+        #        |-> "val"
+        #        °-> "test"
+        # or the specified prefices
+
+        # Create metric dict for each prefix and add to the return dict and history
         prefixed_metrics = dict()
         prefixed_metrics[""] = return_metrics
         for prefix in prefices:
+            # Add current prefix
             prefixed_metric = dict()
             for metric_name, metric in return_metrics.items():
+                # Ensure deepcopy
                 prefixed_metric[metric_name] = deepcopy(metric)
+
+                # Add to history
                 metric_history: dict = getattr(self._history, f"{prefix}_metrics")
                 # If the metric is not yet in history, then add
                 if not metric_name in metric_history:
@@ -271,7 +286,11 @@ class AbstractTorchNetwork(nn.Module):
         else:
             raise TypeError("Invalid arguments")
 
-    def _on_epoch_start(self, generator_size: int = 0, batch_size: int = 0, has_val: bool = False):
+    def _on_epoch_start(self,
+                        prefix: str,
+                        generator_size: int = 0,
+                        batch_size: int = 0,
+                        has_val: bool = False):
         # Insecure about consistency of these here
         self._current_metrics = dict()
         if generator_size:
@@ -284,6 +303,13 @@ class AbstractTorchNetwork(nn.Module):
         self._generator_size = generator_size
         self._batch_size = batch_size
         self._has_val = has_val
+
+        # Reset metric values
+        for metric in self._metrics[prefix].values():
+            metric.reset()
+
+        self._labels = list()
+        self._outputs = list()
 
     def _on_epoch_end(self, epoch: int, prefix: str = ""):
         # Update loss history
@@ -306,11 +332,7 @@ class AbstractTorchNetwork(nn.Module):
         if hasattr(self._history, f"{prefix}_metrics"):
             metric_history = getattr(self._history, f"{prefix}_metrics")
             for key, metric in self._metrics[prefix].items():
-                metric_history[key][epoch] = metric["value"]
-
-        # Reset metric values
-        for metric in self._metrics[prefix].values():
-            metric["value"] = 0.0
+                metric_history[key][epoch] = metric.compute()
 
         self._current_metrics = dict()
         self._sample_count = 0
@@ -327,9 +349,6 @@ class AbstractTorchNetwork(nn.Module):
         precision, recall, _ = precision_recall_curve(labels, outputs)
         print(f"PR AUC: {auc(recall, precision)}")
         print(f"ROC AUC: {roc_auc_score(labels, outputs)}")
-
-        self._labels = list()
-        self._outputs = list()
         '''
 
     def _update_metrics(self,
@@ -344,36 +363,28 @@ class AbstractTorchNetwork(nn.Module):
             # https://torchmetrics.readthedocs.io/en/v0.8.0/pages/classification.html
             # What do we need?
             with warnings.catch_warnings():
-                warnings.filterwarnings(
-                    "ignore",
-                    message=
-                    "No positive samples in targets, true positive value should be meaningless. "
-                    "Returning zero tensor in true positive score")
+                warnings.filterwarnings("ignore",
+                                        category=UserWarning,
+                                        module="torchmetrics.utilities.prints")
+
                 for name, metric in self._metrics[prefix].items():
                     if name == "loss":
-                        runing_avg = metric["value"] + (loss.item() -
-                                                        metric["value"]) / (self._batch_count)
-                        # Extra step necessary for actually updating the value
-                        metric.update({"value": runing_avg})
+                        metric.update(loss.item())
                     else:
-                        metric["obj"].update(
+                        metric.update(
                             outputs,
                             labels.int() if hasattr(labels, "int") else labels.astype(int))
-                        new_value = metric["obj"].compute().item()
-                        runing_avg = metric["value"] + (new_value -
-                                                        metric["value"]) / (self._batch_count)
-                        # Extra step necessary for actually updating the value
-                        metric.update({"value": runing_avg})
-        # Reset accumulators and count
-        self._current_metrics["loss"] = loss.item()
-        self._current_metrics.update(dict(self._get_metrics(self._metrics[prefix])))
 
-        if update_progbar:
-            self._epoch_progbar.update(
-                self._epoch_progbar.target if prefix == "val" else self._batch_count,
-                values=self._prefixed_metrics(self._get_metrics(self._metrics[prefix]),
-                                              prefix=prefix if prefix != "train" else None),
-                finalize=finalize)  # and self._batch_count == self._epoch_progbar.target)
+                # Reset accumulators and count
+                self._current_metrics["loss"] = loss.item()
+                self._current_metrics.update(dict(self._get_metrics(self._metrics[prefix])))
+
+                if update_progbar:
+                    self._epoch_progbar.update(
+                        self._epoch_progbar.target if prefix == "val" else self._batch_count,
+                        values=self._prefixed_metrics(self._get_metrics(self._metrics[prefix]),
+                                                      prefix=prefix if prefix != "train" else None),
+                        finalize=finalize)  # and self._batch_count == self._epoch_progbar.target)
 
     def _prefixed_metrics(self, metrics: List[Tuple[str, float]],
                           prefix: str) -> List[Tuple[str, float]]:
@@ -415,14 +426,14 @@ class AbstractTorchNetwork(nn.Module):
         y = torch.tensor(y[idx, :, :]).to(self._device)
 
         # Init counter epoch variables
-        self._on_epoch_start(data_size, batch_size, has_val)
+        self._on_epoch_start("train", data_size, batch_size, has_val)
 
         # Batch iter variables
         aggr_outputs = []
         aggr_labels = []
 
         # Main loop
-        iter_len = len(x) - 1
+        iter_len = (len(x) // batch_size) * batch_size - 1
         for sample_idx, (input, label) in enumerate(zip(x, y)):
             if masking_flag:
                 # Set labels to zero when masking since forward does the same
@@ -443,7 +454,7 @@ class AbstractTorchNetwork(nn.Module):
             label = label.unsqueeze(0)
 
             # Create predictions
-            output = self(input, masks=mask)
+            output = self.forward(input, masks=mask)
 
             if masking_flag:
                 # Apply mask to T (B, T, N)
@@ -476,18 +487,24 @@ class AbstractTorchNetwork(nn.Module):
                                epochs: int = 1,
                                sample_weights: dict = None,
                                has_val: bool = False):
+        # Epoch verbosity
         print(f'\nEpoch {epoch}/{epochs}')
+
+        # Train mode
         self.train()
         masking_flag = None
 
-        #Tracking variables
+        # Tracking variables
         generator_size = len(generator)
-        self._on_epoch_start(generator_size, batch_size, has_val)
+        self._on_epoch_start("train",
+                             generator_size=generator_size,
+                             batch_size=batch_size,
+                             has_val=has_val)
         aggr_outputs = []
         aggr_labels = []
 
         # Main loop
-        iter_len = len(generator) - 1
+        iter_len = (len(generator) // batch_size) * batch_size - 1
         for idx, (input, label) in enumerate(generator):
             if masking_flag == None:
                 # Most efficient way to set this I could think of
@@ -510,7 +527,7 @@ class AbstractTorchNetwork(nn.Module):
             label = label.to(self._device)
 
             # Prediction
-            output = self(input, masks=mask)
+            output = self.forward(input, masks=mask)
 
             if masking_flag:
                 # Apply mask to T (B, T, N)
@@ -610,6 +627,8 @@ class AbstractTorchNetwork(nn.Module):
                               epoch: int = 0,
                               is_test: bool = False,
                               **kwargs):
+        # Evaluation can be on validation or test set
+        prefix = "test" if is_test else "val"
         # Don't exectue if not specified or not correct frequency to epoch
         if val_frequency is None:
             return
@@ -635,7 +654,8 @@ class AbstractTorchNetwork(nn.Module):
         y = torch.tensor(y).to(self._device)
 
         # Init counter epoch variables
-        self._on_epoch_start(generator_size=len(y),
+        self._on_epoch_start(prefix,
+                             generator_size=len(y),
                              batch_size=batch_size if batch_size is not None else len(y))
 
         # Evaluate only if necessary
@@ -645,6 +665,7 @@ class AbstractTorchNetwork(nn.Module):
         aggr_outputs = []
         aggr_labels = []
 
+        # TODO! nothing about respecting validation frequency in here
         with torch.no_grad():
             iter_len = len(x) - 1
             for sample_idx, (val_inputs, val_labels) in enumerate(zip(x, y)):
@@ -666,7 +687,7 @@ class AbstractTorchNetwork(nn.Module):
                 val_labels = val_labels.unsqueeze(0)
 
                 # Create predictions
-                val_outputs = self(val_inputs, masks=mask)
+                val_outputs = self.forward(val_inputs, masks=mask)
 
                 # Apply masking
                 if masking_flag:
@@ -701,47 +722,90 @@ class AbstractTorchNetwork(nn.Module):
                                   val_frequency: int = 0,
                                   epoch: int = 0,
                                   is_test: bool = False):
+        # Eval mode
+        self.eval()
+
+        # Evaluation can be on validation or test set
         prefix = "test" if is_test else "val"
-        self._on_epoch_start()
-        if generator is not None and (not val_frequency or (epoch) % val_frequency == 0):
-            masking_flag = None
-            val_losses = []
+        # Don't exectue if not specified or not correct frequency to epoch
+        if val_frequency is None:
+            return
+        elif epoch is None:
+            return
+        elif not len(generator) or not len(generator):
+            return
+        elif (epoch) % val_frequency != 0:
+            return
 
-            # Execute with no grad and eval mode
-            self.eval()
-            with torch.no_grad():
-                # Unroll generator
-                last_iter = len(generator) - 1
-                for idx, (val_inputs, val_labels) in enumerate(generator):
-                    if masking_flag == None:
-                        # Most efficient way to set this I could think of
-                        masking_flag = isinstance(val_inputs, (list, tuple))
-                    if masking_flag:
-                        val_inputs, mask = val_inputs
-                        val_inputs = val_inputs[mask.squeeze(), :]
-                        val_inputs = val_inputs.to(self._device)
-                        mask = mask.to(self._device)
-                    else:
-                        val_inputs = val_inputs.to(self._device)
-                        mask = None
-                    val_labels = val_labels.to(self._device)
-                    val_outputs = self(val_inputs, masks=mask)
-                    val_loss = self._loss(val_outputs, val_labels)
-                    val_losses.append(val_loss.item())
-                    self._update_metrics(val_loss,
-                                         val_outputs,
-                                         val_labels,
-                                         prefix=prefix,
-                                         update_progbar=(idx == last_iter) and prefix == "val")
-                    self._batch_count += 1
+        # Handle masking
+        masking_flag = None
 
-            avg_val_loss = np.mean(val_losses)
-            if is_test:
-                self._test_counter += 1
-                self._on_epoch_end(self._test_counter, prefix="test")
-            else:
-                self._on_epoch_end(epoch, prefix="val")
-            return avg_val_loss
+        # Init counter epoch variables
+        generator_size = len(generator)
+        self._on_epoch_start(prefix,
+                             generator_size=generator_size,
+                             batch_size=batch_size if batch_size is not None else len(y))
+
+        # Batch iter variables
+        aggr_outputs = []
+        aggr_labels = []
+
+        # Execute with no grad and eval mode
+        self.eval()
+        with torch.no_grad():
+            # Unroll generator
+            iter_len = len(generator) - 1
+            for sample_idx, (val_inputs, val_labels) in enumerate(generator):
+                if masking_flag == None:
+                    # Most efficient way to set this I could think of
+                    masking_flag = isinstance(val_input, (list, tuple))
+
+                if masking_flag:
+                    val_input, mask = val_input
+                    val_input = val_input[mask.squeeze(), :]
+                    val_input = val_input.to(self._device)
+                    # Set labels to zero when masking since forward does the same
+                    mask = mask.to(self._device).bool()
+                else:
+                    input = input.to(self._device)
+                    mask = None
+
+                # Adjust dimensions
+                val_inputs = val_inputs.unsqueeze(0)
+                val_labels = val_labels.unsqueeze(0)
+
+                # On device label
+                val_labels = val_labels.to(self._device)
+
+                # Create predictions
+                val_outputs = self.forward(val_inputs, masks=mask)
+
+                # Apply masking
+                if masking_flag:
+                    # val_outputs = val_outputs[:, mask.squeeze()]
+                    val_labels = val_labels[:, mask.squeeze()]
+
+                # Accumulate outputs and labels either flat or with dim of multilabel
+                aggr_outputs.append(val_outputs)
+                aggr_labels.append(val_labels)
+
+                aggr_outputs, aggr_labels = self._evaluate_batch(aggr_outputs,
+                                                                 aggr_labels,
+                                                                 is_test=is_test,
+                                                                 finalize=iter_len == sample_idx)
+
+                if sample_idx == iter_len:
+                    break
+
+        # Only update history if test
+        if is_test:
+            self._on_epoch_end(epoch, prefix="test")
+            return_metrics = list(dict(self._get_metrics(self._metrics["test"])).values())
+            return return_metrics
+        # Also complete progbar if eval
+        self._on_epoch_end(epoch, prefix="val")
+        return_metrics = list(dict(self._get_metrics(self._metrics["val"])).values())
+        return return_metrics
 
     def _evaluate_batch(self,
                         outputs: list,
@@ -906,11 +970,11 @@ class AbstractTorchNetwork(nn.Module):
         return self._history.to_json()
 
     @overload
-    def predict(self, x: np.ndarray, batch_size=None, verbose="auto", steps=None):
+    def predict(self, x: np.ndarray):
         ...
 
     @overload
-    def predict(self, generator: DataLoader, batch_size=None, verbose="auto", steps=None):
+    def predict(self, generator: DataLoader):
         ...
 
     def predict(self, *args, batch_size=None, verbose="auto", steps=None, **kwargs):
@@ -921,40 +985,41 @@ class AbstractTorchNetwork(nn.Module):
             return self._predict_numpy(*predict_data, batch_size=batch_size, verbose=verbose)
         return self._predict_dataloader(*predict_data, batch_size=batch_size, verbose=verbose)
 
-    def _predict_dataloader(self,
-                            generator: DataLoader,
-                            batch_size=None,
-                            verbose="auto",
-                            steps=None,
-                            **kwargs):
+    def _predict_dataloader(self, generator: DataLoader, **kwargs):
         self.eval()
 
         aggr_outputs = []
 
         with torch.no_grad():
-            for idx, (inputs, label) in enumerate(generator):
+            for idx, (input, label) in enumerate(generator):
                 if masking_flag == None:
                     # Most efficient way to set this I could think of
-                    masking_flag = isinstance(inputs, (list, tuple))
+                    masking_flag = isinstance(input, (list, tuple))
 
                 if masking_flag:
-                    inputs, mask = inputs
-                    inputs = inputs.to(self._device)
+                    input, mask = input
+                    input = input.to(self._device)
                     # Set labels to zero when masking since forward does the same
                     mask = mask.to(self._device).bool()
                 else:
-                    inputs = inputs.to(self._device)
+                    input = input.to(self._device)
                     mask = None
 
                 label = label.to(self._device).T
-                output = self(inputs, masks=mask)
+                output = self.forward(input, masks=mask)
 
-                # Accumulate outputs and labels
-                aggr_outputs.append(output.to("cpu").numpy())
-        return zeropad_samples(aggr_outputs)
+                # Accumulate outputs and labels either flat or with dim of multilabel
+                if masking_flag:
+                    placeholder = -torch.ones(*mask.shape[:2], output.shape[2])
+                    placeholder[:, mask.cpu().squeeze()] = output.cpu()
+                    output = placeholder
+                aggr_outputs.append(output.cpu().numpy())
 
-    def _predict_numpy(self, x, batch_size=None, verbose="auto", steps=None, **kwargs):
-        self.eval()
+        return np.concatenate(aggr_outputs)
+
+    def _predict_numpy(self, x: np.ndarray, **kwargs):
+        # Some transformations are applied to inputs during prediction, therefore the model should not be
+        # called directly
         # Handle masking
         if isinstance(x, (list, tuple)):
             x, masks = x
@@ -963,10 +1028,42 @@ class AbstractTorchNetwork(nn.Module):
         else:
             masking_flag = False
 
-        # On device data
         x = torch.tensor(x, dtype=torch.float32).to(self._device)
+        # Evaluate only if necessary
+        self.eval()
+
+        # Batch iter variables
+        aggr_outputs = []
+
         with torch.no_grad():
-            return self(x, masks=masks).to("cpu").detach().numpy()
+            iter_len = len(x) - 1
+            for sample_idx, input in enumerate(x):
+                if masking_flag:
+                    # Set labels to zero when masking since forward does the same
+                    mask = masks[sample_idx]
+                    input = input[mask.squeeze(), :]
+                    mask = mask.unsqueeze(0)
+                else:
+                    input = self._remove_end_padding(input)
+                    mask = None
+
+                # Adjust dimensions
+                input = input.unsqueeze(0)
+
+                # Create predictions
+                output = self.forward(input, masks=mask)
+
+                # Accumulate outputs and labels either flat or with dim of multilabel
+                if masking_flag:
+                    placeholder = -torch.ones(*mask.shape[:2], output.shape[2])
+                    placeholder[:, mask.cpu().squeeze()] = output.cpu()
+                    output = placeholder
+                aggr_outputs.append(output.cpu().numpy())
+
+                if sample_idx == iter_len:
+                    break
+
+        return np.concatenate(aggr_outputs)
 
     def _get_dataloader_or_array(self, *args, has_y=True, **kwargs):
         args = list(args)

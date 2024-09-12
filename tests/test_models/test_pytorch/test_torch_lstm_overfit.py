@@ -76,7 +76,7 @@ OVERFIT_SETTINGS = {
     },
     "DECOMP": {
         "epochs": 20,
-        "num_samples": 200
+        "num_samples": 400
     },
     "LOS": {
         "epochs": 20,
@@ -397,7 +397,7 @@ def assert_model_performance(history, task, target_metrics):
 if __name__ == "__main__":
     import shutil
     disc_reader = dict()
-    for task_name in ["DECOMP", "LOS", "PHENO"]:  #  ["IHM", "DECOMP", "LOS", "PHENO"]:
+    for task_name in ["IHM", "DECOMP", "LOS", "PHENO"]:
         """
         if Path(SEMITEMP_DIR, "discretized", task_name).exists():
             shutil.rmtree(Path(SEMITEMP_DIR, "discretized", task_name))
