@@ -527,6 +527,8 @@ def process_subject(args: Tuple[List[int], int],
             if target_replication:
                 y_sample = np.atleast_2d(y_sample).repeat(X_sample.shape[0], axis=0)
                 # .astype(np.int64 if isinstance(y_sample, int) else np.float32)
+            else:
+                y_sample = np.atleast_1d(y_sample)
             X_batch.append(X_sample)
             y_batch.append(y_sample)
             t_batch.append(t_sample)

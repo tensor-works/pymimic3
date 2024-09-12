@@ -69,6 +69,7 @@ class AbstractTorchNetwork(nn.Module):
         # TODO! this is for debugging remove:
         self._labels = list()
         self._outputs = list()
+        self._inputs = list()
 
     def __call__(self, *args, **kwargs):
         raise TypeError(f"'{self.__class__.__name__}' object is not callable")
@@ -631,20 +632,20 @@ class AbstractTorchNetwork(nn.Module):
         with torch.no_grad():
             iter_len = len(x) - 1
             for sample_idx, (val_inputs, val_labels) in enumerate(zip(x, y)):
+                val_labels: torch.Tensor
+                val_inputs: torch.Tensor
+
+                # Adjust dimensions
+                val_labels = val_labels.unsqueeze(0)
+                val_inputs = val_inputs.unsqueeze(0)
+
                 if masking_flag:
                     # Set labels to zero when masking since forward does the same
                     mask = masks[sample_idx]
-                    val_inputs = val_inputs[mask.squeeze(), :]
-                    mask = mask.unsqueeze(0)
+                    val_inputs = val_inputs[:, mask.squeeze()]
                 else:
                     val_inputs = self._remove_end_padding(val_inputs)
                     mask = None
-
-                # TODO! add target replication here
-
-                # Adjust dimensions
-                val_inputs = val_inputs.unsqueeze(0)
-                val_labels = val_labels.unsqueeze(0)
 
                 # Create predictions
                 val_outputs = self.forward(val_inputs, masks=mask)
@@ -657,6 +658,10 @@ class AbstractTorchNetwork(nn.Module):
                 # Accumulate outputs and labels either flat or with dim of multilabel
                 aggr_outputs.append(val_outputs)
                 aggr_labels.append(val_labels)
+
+                # TODO! remove:
+                self._labels.append(val_labels)
+                self._outputs.append(val_outputs)
 
                 aggr_outputs, aggr_labels = self._evaluate_batch(aggr_outputs,
                                                                  aggr_labels,
@@ -722,23 +727,20 @@ class AbstractTorchNetwork(nn.Module):
             # Unroll generator
             iter_len = len(generator) - 1
             for sample_idx, (val_inputs, val_labels) in enumerate(generator):
+
                 if masking_flag == None:
                     # Most efficient way to set this I could think of
                     masking_flag = isinstance(val_input, (list, tuple))
 
                 if masking_flag:
                     val_input, mask = val_input
-                    val_input = val_input[mask.squeeze(), :]
+                    val_input = val_input[:, mask.squeeze()]
                     val_input = val_input.to(self._device)
                     # Set labels to zero when masking since forward does the same
                     mask = mask.to(self._device).bool()
                 else:
                     input = input.to(self._device)
                     mask = None
-
-                # Adjust dimensions
-                val_inputs = val_inputs.unsqueeze(0)
-                val_labels = val_labels.unsqueeze(0)
 
                 # On device label
                 val_labels = val_labels.to(self._device)
@@ -983,6 +985,7 @@ class AbstractTorchNetwork(nn.Module):
 
         self._labels = list()
         self._outputs = list()
+        self._inputs = list()
 
     def _on_epoch_end(self, epoch: int, prefix: str = ""):
         """Updates the history and resets counter variables
@@ -1015,10 +1018,13 @@ class AbstractTorchNetwork(nn.Module):
         self._generator_size = 0
         self._batch_size = 0
         self._has_val = False
+
+        for input in self._inputs:
+            print(input.shape)
         '''
         # TODO! remove
-        labels = torch.cat(self._labels, axis=1).to("cpu").detach().squeeze().numpy()
-        outputs = torch.cat(self._outputs, axis=1).to("cpu").detach().squeeze().numpy()
+        labels = torch.cat(model._labels, axis=1).to("cpu").detach().squeeze().numpy()
+        outputs = torch.cat(model._outputs, axis=1).to("cpu").detach().squeeze().numpy()
 
         from sklearn.metrics import roc_auc_score, precision_recall_curve, auc
         precision, recall, _ = precision_recall_curve(labels, outputs)
@@ -1166,17 +1172,19 @@ class AbstractTorchNetwork(nn.Module):
         with torch.no_grad():
             iter_len = len(x) - 1
             for sample_idx, input in enumerate(x):
+                input: torch.Tensor
+                input = input.unsqueeze(0)
+
                 if masking_flag:
                     # Set labels to zero when masking since forward does the same
                     mask = masks[sample_idx]
-                    input = input[mask.squeeze(), :]
+                    input = input[:, mask.squeeze()]
                     mask = mask.unsqueeze(0)
                 else:
                     input = self._remove_end_padding(input)
                     mask = None
 
                 # Adjust dimensions
-                input = input.unsqueeze(0)
 
                 # Create predictions
                 output = self.forward(input, masks=mask)
@@ -1194,7 +1202,7 @@ class AbstractTorchNetwork(nn.Module):
         return np.concatenate(aggr_outputs)
 
     def _remove_end_padding(self, tensor) -> torch.Tensor:
-        return tensor[:torch.max(torch.nonzero((tensor != 0).long().sum(1))) + 1, :]
+        return tensor[:, :torch.max(torch.nonzero((tensor != 0).long().sum(1))) + 1, :]
 
     @overload
     def _train(self,
@@ -1268,13 +1276,18 @@ class AbstractTorchNetwork(nn.Module):
 
         # Main loop
         iter_len = (len(x) // batch_size) * batch_size - 1
-        for sample_idx, (input, label) in enumerate(zip(x, y)):
-            label: torch.Tensor
+        for sample_idx in range(x.shape[0]):
+            label: torch.Tensor = y[sample_idx]
+            input: torch.Tensor = x[sample_idx]
+
+            # Adjust dimensions
+            label = label.unsqueeze(0)
+            input = input.unsqueeze(0)
+
             if masking_flag:
                 # Set labels to zero when masking since forward does the same
                 mask = masks[sample_idx]
-                input = input[mask.squeeze(), :]
-                mask = mask.unsqueeze(0)
+                input = input[:, mask.squeeze()]
             else:
                 # TODO! Is there a better way. What if there is an actual patient with all zero across
                 # TODO! 59 columns? Am I paranoid. Maybe adding the discretizer masking can alleviat
@@ -1284,26 +1297,23 @@ class AbstractTorchNetwork(nn.Module):
             if self._target_repl_coef:
                 mask = torch.ones(1, input.shape[1], 1)
 
-            # Adjust dimensions
-            input = input.unsqueeze(0)
-            label = label.unsqueeze(0)
-
             # Create predictions
             output = self.forward(input, masks=mask)
 
             if masking_flag:
                 # Apply mask to T (B, T, N)
-                # output = output[:, mask.squeeze()]
                 label = label[:, mask.squeeze()]
 
             # Accumulate outputs and labels either flat or with dim of multilabel
             aggr_outputs.append(output)
             aggr_labels.append(label)
 
-            # Optimizer network on abtch
+            #TODO! remove:
             self._labels.append(label)
             self._outputs.append(output)
+            self._inputs.append(input)
 
+            # Optimizer network on abtch
             aggr_outputs, \
             aggr_labels = self._optimize_batch(outputs=aggr_outputs, \
                                                labels=aggr_labels, \
@@ -1343,22 +1353,20 @@ class AbstractTorchNetwork(nn.Module):
         for idx, (input, label) in enumerate(generator):
             input: torch.Tensor
             label: torch.Tensor
+
             if masking_flag == None:
                 # Most efficient way to set this I could think of
                 masking_flag = isinstance(input, (list, tuple))
 
             if masking_flag:
                 input, mask = input
-                input = input[mask.squeeze(), :]
+                input = input[:, mask.squeeze()]
                 input = input.to(self._device)
                 # Set labels to zero when masking since forward does the same
                 mask = mask.to(self._device).bool()
             else:
                 input = input.to(self._device)
                 mask = None
-
-            label = label.unsqueeze(0)
-            input = input.unsqueeze(0)
 
             # On device label
             label = label.to(self._device)
@@ -1368,8 +1376,12 @@ class AbstractTorchNetwork(nn.Module):
 
             if masking_flag:
                 # Apply mask to T (B, T, N)
-                # output = output[:, mask.squeeze()]
                 label = label[:, mask.squeeze()]
+
+            # TODO! remove:
+            self._labels.append(label)
+            self._inputs.append(input)
+            self._outputs.append(output)
 
             # Accumulate outputs and labels
             aggr_outputs.append(output)
