@@ -1193,7 +1193,7 @@ class AbstractTorchNetwork(nn.Module):
 
         return np.concatenate(aggr_outputs)
 
-    def _remove_end_padding(self, tensor):
+    def _remove_end_padding(self, tensor) -> torch.Tensor:
         return tensor[:torch.max(torch.nonzero((tensor != 0).long().sum(1))) + 1, :]
 
     @overload
@@ -1269,6 +1269,7 @@ class AbstractTorchNetwork(nn.Module):
         # Main loop
         iter_len = (len(x) // batch_size) * batch_size - 1
         for sample_idx, (input, label) in enumerate(zip(x, y)):
+            label: torch.Tensor
             if masking_flag:
                 # Set labels to zero when masking since forward does the same
                 mask = masks[sample_idx]
@@ -1340,6 +1341,8 @@ class AbstractTorchNetwork(nn.Module):
         # Main loop
         iter_len = (len(generator) // batch_size) * batch_size - 1
         for idx, (input, label) in enumerate(generator):
+            input: torch.Tensor
+            label: torch.Tensor
             if masking_flag == None:
                 # Most efficient way to set this I could think of
                 masking_flag = isinstance(input, (list, tuple))

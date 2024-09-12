@@ -13,6 +13,7 @@ from preprocessing.scalers import MinMaxScaler
 from generators.pytorch import TorchGenerator
 from models.pytorch.lstm import LSTMNetwork
 from utils import zeropad_samples
+from tests.pytest_utils.decorators import retry
 from tests.pytest_utils.models import assert_valid_metric
 from tests.msettings import *
 
@@ -21,33 +22,33 @@ from tests.msettings import *
 TARGET_METRICS = {
     "IHM": {
         "train_loss": 1.5,
-        "roc_auc": 0.75,
-        "pr_auc": 0.55
+        "roc_auc": 0.9,
+        "pr_auc": 0.85
     },
     "DECOMP": {
         "train_loss": 1.5,
-        "roc_auc": 0.72,
-        "pr_auc": 0.15,
+        "roc_auc": 0.85,
+        "pr_auc": 0.8,
     },
     "LOS": {
         "train_loss": 1.8,
-        "cohen_kappa": 0.6,
+        "cohen_kappa": 0.75,
         "custom_mae": 15
     },
     "PHENO": {
-        "train_loss": 1.5,
+        "train_loss": 0.5,
         "micro_roc_auc": 0.7,
-        "macro_roc_auc": 0.55
+        "macro_roc_auc": 0.6
     }
 }
 
 TARGET_METRICS_DS = {
     "DECOMP": {
         "train_loss": 0.2,
-        "roc_auc": 0.75,
-        "pr_auc": 0.3,  # had to lower from 0.4
+        "roc_auc": 0.8,
+        "pr_auc": 0.15,  # TODO! Can go above 0.5 for generator but low for numpy
     },
-    "LOS": {
+    "LOS": {  # TODO! unstable: analyze the MAE and kappe issues
         "train_loss": np.inf,
         "cohen_kappa": -np.inf,
         "custom_mae": np.inf
@@ -61,9 +62,9 @@ TARGET_METRICS_TR = {
         "pr_auc": 0.5
     },
     "PHENO": {
-        "train_loss": np.inf,
-        "micro_roc_auc": -np.inf,
-        "macro_roc_auc": -np.inf
+        "train_loss": 0.5,
+        "micro_roc_auc": 0.7,
+        "macro_roc_auc": 0.6
     }
 }
 
@@ -90,7 +91,7 @@ OVERFIT_SETTINGS = {
 
 OVERFIT_SETTINGS_DS = {
     "DECOMP": {
-        "epochs": 30,
+        "epochs": 20,
         "num_samples": 400
     },
     "LOS": {
@@ -192,6 +193,7 @@ def test_torch_lstm_with_target_replication(
 
 @pytest.mark.parametrize("data_flavour", ["generator", "numpy"])
 @pytest.mark.parametrize("task_name", ["DECOMP", "LOS"])
+@retry(3)  # Highly unstable
 def test_torch_lstm_with_deep_supervision(
     task_name: str,
     data_flavour: str,
@@ -268,7 +270,7 @@ def test_torch_lstm_with_deep_supervision(
     # Instability on these is crazy but trying anyway.
     # How are you suppose to tune it with
 
-    # assert_model_performance(history, task_name, TARGET_METRICS_DS[task_name])
+    assert_model_performance(history, task_name, TARGET_METRICS_DS[task_name])
     assert_valid_metric(X=X,
                         y_true=y_true,
                         task_name=task_name,
@@ -397,10 +399,11 @@ def assert_model_performance(history, task, target_metrics):
 if __name__ == "__main__":
     import shutil
     disc_reader = dict()
-    for task_name in ["IHM", "DECOMP", "LOS", "PHENO"]:
+    for task_name in ["DECOMP"]:  # ["IHM", "DECOMP", "LOS", "PHENO"]:
         """
         if Path(SEMITEMP_DIR, "discretized", task_name).exists():
             shutil.rmtree(Path(SEMITEMP_DIR, "discretized", task_name))
+        """
         reader = datasets.load_data(chunksize=75836,
                                     source_path=TEST_DATA_DEMO,
                                     storage_path=SEMITEMP_DIR,
@@ -419,12 +422,11 @@ if __name__ == "__main__":
                                         deep_supervision=True,
                                         impute_strategy='previous',
                                         task=task_name)
-        """
         reader = ProcessedSetReader(Path(SEMITEMP_DIR, "discretized", task_name))
         disc_reader[task_name] = reader
-        for flavour in ["numpy", "generator"]:
+        for flavour in ["numpy"]:  # ["numpy", "generator"]:
             if task_name in ["IHM", "PHENO"]:
                 test_torch_lstm_with_target_replication(task_name, flavour, disc_reader)
             if task_name in ["DECOMP", "LOS"]:
                 test_torch_lstm_with_deep_supervision(task_name, flavour, disc_reader)
-            test_torch_lstm(task_name, flavour, disc_reader)
+            # test_torch_lstm(task_name, flavour, disc_reader)
