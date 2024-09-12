@@ -6,7 +6,7 @@ from pathlib import Path
 from datasets.readers import ExtractedSetReader
 from utils.IO import *
 from tests.pytest_utils import copy_dataset
-from tests.decorators import repeat
+from tests.pytest_utils.decorators import repeat
 from tests.tsettings import *
 from settings import *
 from tests.pytest_utils.general import assert_file_creation

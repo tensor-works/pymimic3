@@ -34,7 +34,7 @@ def assert_valid_metric(X: np.ndarray,
         assert_valid_metric_PHENO(X=X, y_true=y_true, y_pred=y_pred, model=model, mask=mask)
     else:
         raise ValueError(f"Unknown task name: {task_name}")
-    print(f'Succeeded in comparing {flavour} to sklearn metrics!')
+    tests_io(f'Succeeded in comparing {flavour} to sklearn metrics!')
 
 
 def assert_valid_metric_LOS(X: np.ndarray,
@@ -69,11 +69,11 @@ def assert_valid_metric_LOS(X: np.ndarray,
     y_true_binned = np.array(CustomBins.means)[y_true]
     y_pred_binned = np.array(CustomBins.means)[y_pred]
     sklearn_mae = mean_absolute_error(y_true_binned, y_pred_binned)
-    info_io(f'Kappa: {kappa}\nMAE: {mae}\n'
-            f'Cohen Kappa (sklearn): {sklearn_kappa:.4f}\n'
-            f'Binned MAE (sklearn): {sklearn_mae:.4f}\n'
-            f'Diff Kappa (sklearn-tf2): {sklearn_kappa - kappa}\n'
-            f'Diff MAE (sklearn-tf2): {sklearn_mae - mae}')
+    tests_io(f'Kappa: {kappa}\nMAE: {mae}\n'
+             f'Cohen Kappa (sklearn): {sklearn_kappa:.4f}\n'
+             f'Binned MAE (sklearn): {sklearn_mae:.4f}\n'
+             f'Diff Kappa (sklearn-tf2): {sklearn_kappa - kappa}\n'
+             f'Diff MAE (sklearn-tf2): {sklearn_mae - mae}')
 
     # Assert closeness
     assert np.isclose(sklearn_mae, mae, atol=0.09), \
@@ -111,11 +111,11 @@ def assert_valid_metric_binary(X: np.ndarray,
     precision, recall, _ = precision_recall_curve(y_true, y_pred)
     sklearn_pr_auc = auc(recall, precision)
 
-    info_io(f'ROC AUC: {roc_auc}\nROC PR: {roc_pr}\n'
-            f'ROC AUC (sklearn): {sklearn_rocauc:.4f}\n'
-            f'PR AUC (sklearn): {sklearn_pr_auc:.4f}\n'
-            f'Diff ROC (sklearn-tf2): {sklearn_rocauc - roc_auc}\n'
-            f'Diff PR (sklearn-tf2): {sklearn_pr_auc - roc_pr}')
+    tests_io(f'ROC AUC: {roc_auc}\nROC PR: {roc_pr}\n'
+             f'ROC AUC (sklearn): {sklearn_rocauc:.4f}\n'
+             f'PR AUC (sklearn): {sklearn_pr_auc:.4f}\n'
+             f'Diff ROC (sklearn-tf2): {sklearn_rocauc - roc_auc}\n'
+             f'Diff PR (sklearn-tf2): {sklearn_pr_auc - roc_pr}')
 
     # Assert closeness
     # High deviation when tf2 approximating AUC close to 1
@@ -150,11 +150,11 @@ def assert_valid_metric_PHENO(X: np.ndarray,
     micro_rocauc_sklearn = roc_auc_score(y_true, y_pred, average='micro', multi_class='ovr')
     macro_rocauc_sklearn = roc_auc_score(y_true, y_pred, average='macro', multi_class='ovr')
 
-    info_io(f'Micro ROC AUC: {micro_roc_auc}\nMacro ROC AUC: {macro_roc_auc}\n'
-            f'Micro-average auc-roc (sklearn): {micro_rocauc_sklearn:.4f}\n'
-            f'Macro-average auc-roc (sklearn): {macro_rocauc_sklearn:.4f}\n'
-            f'Diff Micro ROC AUC Score: {micro_rocauc_sklearn - micro_roc_auc}\n'
-            f'Diff Macro ROC AUC Score: {macro_rocauc_sklearn - macro_roc_auc}')
+    tests_io(f'Micro ROC AUC: {micro_roc_auc}\nMacro ROC AUC: {macro_roc_auc}\n'
+             f'Micro-average auc-roc (sklearn): {micro_rocauc_sklearn:.4f}\n'
+             f'Macro-average auc-roc (sklearn): {macro_rocauc_sklearn:.4f}\n'
+             f'Diff Micro ROC AUC Score: {micro_rocauc_sklearn - micro_roc_auc}\n'
+             f'Diff Macro ROC AUC Score: {macro_rocauc_sklearn - macro_roc_auc}')
 
     # Assert closeness
     assert np.isclose(micro_rocauc_sklearn, micro_roc_auc, atol=0.05), \

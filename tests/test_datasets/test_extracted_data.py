@@ -4,7 +4,7 @@
 import datasets
 import shutil
 import pandas as pd
-from tests.decorators import repeat
+from tests.pytest_utils.decorators import repeat
 from datasets.readers import ExtractedSetReader
 from pathlib import Path
 from utils.IO import *
