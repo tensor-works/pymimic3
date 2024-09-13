@@ -1019,8 +1019,10 @@ class AbstractTorchNetwork(nn.Module):
         self._batch_size = 0
         self._has_val = False
 
-        for input in self._inputs:
-            print(input.shape)
+        # if self._inputs:
+        #     shapes = [torch.tensor(input.shape).unsqueeze(0) for input in self._inputs]
+        #     shapes = torch.cat(shapes)
+        #     print(shapes[:, 1].sort().values)
         '''
         # TODO! remove
         labels = torch.cat(model._labels, axis=1).to("cpu").detach().squeeze().numpy()
@@ -1202,7 +1204,11 @@ class AbstractTorchNetwork(nn.Module):
         return np.concatenate(aggr_outputs)
 
     def _remove_end_padding(self, tensor) -> torch.Tensor:
-        return tensor[:, :torch.max(torch.nonzero((tensor != 0).long().sum(1))) + 1, :]
+        # tensor shape: (B, T, N)
+        mask = (tensor != 0).int().sum(2) > 0
+        seq_positions = torch.nonzero(mask)[:, 1]
+        max_len = seq_positions.max().item() + 1
+        return tensor[:, :max_len, :]
 
     @overload
     def _train(self,

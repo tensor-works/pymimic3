@@ -117,7 +117,7 @@ OVERFIT_SETTINGS_TR = {
 
 @pytest.mark.parametrize("data_flavour", ["generator", "numpy"])
 @pytest.mark.parametrize("task_name", ["IHM", "PHENO"])
-@retry(3)
+# @retry(3)
 def test_torch_lstm_with_target_replication(
     task_name: str,
     data_flavour: str,
@@ -197,7 +197,7 @@ def test_torch_lstm_with_target_replication(
 
 @pytest.mark.parametrize("data_flavour", ["generator", "numpy"])
 @pytest.mark.parametrize("task_name", ["DECOMP", "LOS"])
-@retry(3)  # Highly unstable
+# @retry(3)  # Highly unstable
 def test_torch_lstm_with_deep_supervision(
     task_name: str,
     data_flavour: str,
@@ -404,7 +404,7 @@ def assert_model_performance(history, task, target_metrics):
 if __name__ == "__main__":
     import shutil
     disc_reader = dict()
-    for task_name in ["LOS"]:
+    for task_name in ["IHM", "DECOMP", "LOS", "PHENO"]:
         """
         if Path(SEMITEMP_DIR, "discretized", task_name).exists():
             shutil.rmtree(Path(SEMITEMP_DIR, "discretized", task_name))
@@ -433,6 +433,5 @@ if __name__ == "__main__":
             if task_name in ["IHM", "PHENO"]:
                 test_torch_lstm_with_target_replication(task_name, flavour, disc_reader)
             if task_name in ["DECOMP", "LOS"]:
-                # test_torch_lstm_with_deep_supervision(task_name, flavour, disc_reader)
-                ...
+                test_torch_lstm_with_deep_supervision(task_name, flavour, disc_reader)
             test_torch_lstm(task_name, flavour, disc_reader)

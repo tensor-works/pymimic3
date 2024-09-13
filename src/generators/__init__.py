@@ -8,16 +8,13 @@ from copy import deepcopy
 from pathlib import Path
 from utils.IO import *
 from typing import List, Tuple, Union
-from utils.timeseries import read_timeseries
+from utils.timeseries import read_timeseries, subjects_for_samples
 from metrics import CustomBins, LogBins
 from preprocessing.scalers import AbstractScaler
 from datasets.trackers import PreprocessingTracker
 from datasets.readers import ProcessedSetReader
 import multiprocessing as mp
-from pathos.multiprocessing import Pool, cpu_count
-
 from utils.arrays import get_iterable_dtype, zeropad_samples
-from utils.types import NoopLock
 
 
 class AbstractGenerator:
@@ -47,8 +44,9 @@ class AbstractGenerator:
         # n_samples
         self._n_samples = n_samples
         if n_samples is not None:
-            self._random_ids, _ = self._subjects_for_samples(self._n_samples,
-                                                             deep_supervision=deep_supervision)
+            self._random_ids, _ = subjects_for_samples(tracker=self._tracker,
+                                                       target_size=self._n_samples,
+                                                       deep_supervision=deep_supervision)
 
         else:
             self._random_ids = deepcopy(self._reader.subject_ids)
@@ -257,98 +255,6 @@ class AbstractGenerator:
                 dtype=dtype) if max_len - x.shape[1] else x for x in data
         ]
         return np.concatenate(data, axis=0, dtype=dtype)
-
-    def _subjects_for_samples(self,
-                              target_size: int,
-                              max_iter: int = 20,
-                              deep_supervision: bool = False) -> Tuple[List[float], int]:
-        """
-        Selects subjects to match the target number of samples.
-        """
-        assert self._tracker.subject_ids
-        # Init tracking vars
-        best_diff = float('inf')
-        iteration = 0
-
-        # Init subject counts
-        if deep_supervision:
-            index_tuples = [
-                (outer_key, inner_key, value)
-                for outer_key, inner_dict in deepcopy(dict(self._tracker.subjects)).items()
-                if not outer_key == "total" for inner_key, value in inner_dict.items()
-            ]
-            index = pd.MultiIndex.from_tuples(index_tuples,
-                                              names=['subject_id', 'stay_id', 'values'])
-            df = pd.DataFrame(index=index)
-            df['value'] = df.index.get_level_values(2)
-            df = df.droplevel(2).sort_index()
-            df = df.drop(df.index[df.index.get_level_values('stay_id') == 'total'])
-            # Now, group by the first index level and count entries
-            subject_df = df.groupby(level='subject_id').size()
-        else:
-            subject_df = pd.DataFrame(deepcopy(dict(self._tracker.subjects))).T["total"]
-            subject_df = subject_df.drop("total")
-
-        def compute_samples(random_state):
-            np.random.seed(random_state)
-            current_size = 0
-            remaining_subjects = subjects_df_pr
-            subjects = []
-
-            while current_size < target_size_pr and len(remaining_subjects):
-                remaining_subjects = remaining_subjects[remaining_subjects <= target_size_pr -
-                                                        current_size]
-                if remaining_subjects.empty:
-                    break
-                next_subject = np.random.choice(remaining_subjects.index)
-                with lock_pr:
-                    subject_samples = remaining_subjects.loc[next_subject]
-
-                current_size += subject_samples
-                subjects.append(next_subject)
-                remaining_subjects = remaining_subjects.drop(next_subject)
-
-            diff = abs(target_size_pr - current_size)
-            return diff, current_size, subjects
-
-        # MP global vares
-        def init(subject_df: pd.DataFrame, target_size: int, tracker: PreprocessingTracker,
-                 lock: mp.Lock):
-            global subjects_df_pr, target_size_pr, tracker_pr, lock_pr
-            subjects_df_pr = subject_df
-            target_size_pr = target_size
-            tracker_pr = tracker
-            lock_pr = lock
-
-        # Mp lock
-        lock = mp.Lock()
-        # Mp count
-        n_cpus = cpu_count() - 1
-        # Mp Pool
-        with Pool(n_cpus, initializer=init,
-                  initargs=(subject_df, target_size, self._tracker, lock)) as pool:
-            # Try max_iter times and fetch best result
-            res = pool.imap_unordered(compute_samples,
-                                      range(max_iter),
-                                      chunksize=int(np.ceil(max_iter / n_cpus)))
-
-            for diff, current_size, subjects in res:
-                iteration += 1
-                # Fetch best result
-                if diff < best_diff:
-                    best_subjects, best_size, best_diff = subjects, current_size, diff
-
-                # Break if no diff
-                if best_diff == 0 or iteration >= max_iter:
-                    break
-            pool.close()
-            pool.join()
-
-        # Always get smallest best, so if no best found target size is too small
-        if not best_subjects:
-            return subject_df.min(), subject_df.argmin()
-
-        return best_subjects, best_size
 
 
 # TODO! these worker functions must go somewhere else
