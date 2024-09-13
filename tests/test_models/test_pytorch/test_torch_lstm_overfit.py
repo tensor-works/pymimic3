@@ -12,7 +12,7 @@ from tests.tsettings import *
 from preprocessing.scalers import MinMaxScaler
 from generators.pytorch import TorchGenerator
 from models.pytorch.lstm import LSTMNetwork
-from utils import zeropad_samples
+from utils.arrays import zeropad_samples
 from tests.pytest_utils.decorators import retry
 from tests.pytest_utils.models import assert_valid_metric
 from tests.msettings import *

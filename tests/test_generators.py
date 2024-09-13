@@ -331,27 +331,23 @@ def assert_batch_sanity(X: np.ndarray,
         # M[0] = B && M[1] = T
         assert M.shape == y.shape
         assert M.dtype == bool
-        content_index = 2
     elif target_repl:
         # Y[1] = T && X[1] = T
         assert y.shape[1] == X.shape[1]
-        content_index = 2
-    else:
-        content_index = 1
 
-    # y[2] = N or y[1] = N
+    # y[2] = N
     if task_name in ["PHENO"]:
-        assert y.shape[content_index] == 25
+        assert y.shape[2] == 25
     elif task_name in ["DECOMP"]:
-        assert y.shape[content_index] == 1
+        assert y.shape[2] == 1
     elif task_name in ["IHM"]:
-        assert y.shape[content_index] == 1
+        assert y.shape[2] == 1
     elif task_name in ["LOS"]:
         # Depending on the binning this changes
         if bining == "none":
-            assert y.shape[content_index] == 1
+            assert y.shape[2] == 1
         elif bining in ["log", "custom"] and one_hot:
-            assert y.shape[content_index] == 10
+            assert y.shape[2] == 10
 
 
 def assert_sample_sanity(X: np.ndarray,
@@ -383,7 +379,7 @@ if __name__ == "__main__":
         import shutil
         shutil.rmtree(SEMITEMP_DIR)
     """
-    for task_name in ["IHM"]:  # TASK_NAMES:
+    for task_name in TASK_NAMES:
 
         if not Path(SEMITEMP_DIR, "discretized", task_name).is_dir():
             st_reader = datasets.load_data(chunksize=75836,
@@ -421,6 +417,7 @@ if __name__ == "__main__":
 
         # The ds reader fixture is not accessed but ensured the set is also created
         # deep supervision
+
         if task_name in ["DECOMP", "LOS"]:
             for mode in ["deep_supervision", "standard"]:
                 for batch_size in [1, 16]:
@@ -433,6 +430,7 @@ if __name__ == "__main__":
                                               mode=mode,
                                               multiprocessed=False,
                                               discretized_readers={task_name: st_reader})
+
         if task_name in ["IHM", "PHENO"]:
             for mode in ["target_replication", "standard"]:
                 test_torch_generators_with_tr(task_name=task_name,

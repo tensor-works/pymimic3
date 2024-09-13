@@ -6,7 +6,7 @@ import pdb
 import seaborn as sn
 import tensorflow as tf
 from pathlib import Path
-from utils import make_prediction_vector
+from utils.timeseries import make_prediction_vector
 
 
 def plot_fourier_transform(series, years):

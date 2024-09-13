@@ -16,7 +16,7 @@ from torchmetrics import Metric
 from keras.utils import Progbar
 from utils import to_snake_case
 from torch.optim import Optimizer
-from utils import zeropad_samples
+from utils.arrays import zeropad_samples
 from utils.IO import *
 from settings import *
 from models.pytorch.mappings import *

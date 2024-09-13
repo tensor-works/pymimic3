@@ -50,7 +50,7 @@ Examples
 
 import pandas as pd
 from pathlib import Path
-from utils import NoopLock
+from utils.types import NoopLock
 from utils.IO import *
 from multiprocess import Process, JoinableQueue, Lock
 from .extraction_functions import extract_subject_events

@@ -3,9 +3,11 @@ import numpy as np
 import tensorflow as tf
 from pathlib import Path
 from utils.IO import *
-from utils import load_json, update_json
+from utils.jsons import update_json
 from tensorflow import keras
 from keras import Model
+
+from utils.jsons import load_json
 
 
 class AbstractCheckpointManager(object):

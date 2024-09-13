@@ -34,7 +34,7 @@ The following table describes the input and tracking details for each tracker in
 from typing import List
 from utils.IO import *
 from storable import storable
-from utils import write_json
+from utils.jsons import write_json
 from pathlib import Path
 
 

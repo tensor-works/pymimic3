@@ -1,6 +1,6 @@
+import pandas as pd
 import torch
 import numpy as np
-from torcheval.metrics import metric
 
 
 class RunningAvg():
@@ -26,3 +26,30 @@ class RunningAvg():
 
 if __name__ == "__main__":
     ...
+
+
+def is_numerical(df: pd.DataFrame) -> bool:
+    """
+    Check if a DataFrame contains only numerical data.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        The DataFrame to check.
+
+    Returns
+    -------
+    bool
+        True if the DataFrame is numerical, False otherwise.
+    """
+    # This is the worst implementation but what works works
+    try:
+        df.astype(float)
+        return True
+    except:
+        pass
+    if (df.dtypes == object).any() or\
+       (df.dtypes == "category").any() or\
+       (df.dtypes == "datetime64[ns]").any():
+        return False
+    return True

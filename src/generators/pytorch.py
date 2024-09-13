@@ -100,7 +100,7 @@ class TorchDataset(AbstractGenerator, Dataset):
             return torch.from_numpy(X).to(torch.float32), \
                    torch.from_numpy(y), \
                    torch.from_numpy(m)
-        return torch.from_numpy(X).to(torch.float32), torch.from_numpy(y).unsqueeze(0)
+        return torch.from_numpy(X).to(torch.float32), torch.from_numpy(y)
 
     def close(self):
         AbstractGenerator.__del__(self)

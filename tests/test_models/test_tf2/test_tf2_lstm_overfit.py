@@ -18,7 +18,7 @@ from preprocessing.scalers import MinMaxScaler
 from generators.tf2 import TFGenerator
 from datasets.readers import ProcessedSetReader
 from models.tf2.lstm import LSTMNetwork
-from utils import zeropad_samples
+from utils.arrays import zeropad_samples
 from tests.pytest_utils.models import assert_valid_metric
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.metrics import AUC

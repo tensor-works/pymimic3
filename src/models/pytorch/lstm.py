@@ -7,7 +7,7 @@ from utils.IO import *
 from settings import *
 from models.pytorch.mappings import *
 from models.pytorch import AbstractTorchNetwork
-from utils import is_iterable
+from utils.arrays import is_iterable
 import torch.nn as nn
 
 

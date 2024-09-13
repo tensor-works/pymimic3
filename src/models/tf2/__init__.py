@@ -5,7 +5,7 @@ from tensorflow.python.keras.engine import training
 # from tensorflow.python.keras.engine.compile_utils
 from abc import abstractmethod
 from utils.IO import *
-from utils import is_iterable
+from utils.arrays import is_iterable
 
 import tensorflow as tf
 
