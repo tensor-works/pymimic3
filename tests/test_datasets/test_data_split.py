@@ -16,7 +16,7 @@ from tests.tsettings import *
 from datasets.readers import ProcessedSetReader, SplitSetReader
 from pathlib import Path
 from datasets.trackers import PreprocessingTracker
-from pytest_utils.decorators import retry
+from tests.pytest_utils.decorators import retry
 from utils.jsons import dict_subset
 from utils.numeric import is_numerical
 
