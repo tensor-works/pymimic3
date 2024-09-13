@@ -44,11 +44,11 @@ from metrics import CustomBins, LogBins
 from collections import defaultdict
 from utils.IO import *
 from settings import *
-from utils.timeseries import read_timeseries
+from utils.timeseries import read_timeseries, subjects_for_samples
 from utils.arrays import get_iterable_dtype, is_iterable, zeropad_samples
 from utils.types import NoopLock
 from .mimic_utils import upper_case_column_names, convert_dtype_dict, read_varmap_csv
-from .trackers import ExtractionTracker
+from .trackers import ExtractionTracker, PreprocessingTracker
 from typing import List, Union, Dict
 
 __all__ = ["ExtractedSetReader", "ProcessedSetReader", "EventReader", "SplitSetReader"]
@@ -1055,7 +1055,17 @@ class ProcessedSetReader(AbstractReader):
                                         read_timestamps=read_timestamps,
                                         read_masks=deep_supervision,
                                         data_type=data_type)
-            prefices = deepcopy(list(dataset.keys()))
+
+        elif n_samples:
+            tracker = PreprocessingTracker(storage_path=Path(self._root_path, "progress"))
+            subject_ids, _ = subjects_for_samples(tracker,
+                                                  target_size=n_samples,
+                                                  deep_supervision=deep_supervision)
+            dataset = self.read_samples(subject_ids,
+                                        read_timestamps=read_timestamps,
+                                        read_masks=deep_supervision,
+                                        data_type=data_type)
+
         else:
             # read all episodes limited by n_samples
             dataset, subject_ids = self.random_samples(n_subjects=len(self.subject_ids),
@@ -1064,10 +1074,8 @@ class ProcessedSetReader(AbstractReader):
                                                        return_ids=True,
                                                        read_masks=deep_supervision,
                                                        seed=seed)
-            prefices = deepcopy(list(dataset.keys()))
-            if n_samples is not None:
-                for prefix in prefices:
-                    dataset[prefix] = dataset[prefix][:min(n_samples, len(dataset[prefix]))]
+
+        prefices = deepcopy(list(dataset.keys()))
 
         if deep_supervision:
             if bining == "custom":
@@ -1092,19 +1100,11 @@ class ProcessedSetReader(AbstractReader):
                                                    one_hot=one_hot,
                                                    dtype=pd.DataFrame)
 
-                # Cut tail dataset
-                if n_samples is not None and sample_count + len(X_df) > sample_count:
-                    X_dfs = X_dfs[:n_samples - sample_count]
-                    y_dfs = y_dfs[:n_samples - sample_count]
-
                 # Add samples to buffer
                 buffer_dataset["X"].extend(X_dfs)
                 buffer_dataset["y"].extend(y_dfs)
                 sample_count += len(y_dfs)
 
-                # Early stop on n_samples
-                if n_samples is not None and sample_count >= n_samples:
-                    break
             dataset = buffer_dataset
             del buffer_dataset
 

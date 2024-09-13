@@ -577,10 +577,10 @@ def test_to_numpy(task_name: str, reader_flavour: str,
     tests_io(f"Test case for to_numpy for task {task_name}", level=0)
     scaler = MinMaxScaler(imputer=imputer).fit_reader(reader)
 
-    dataset = reader.to_numpy(10, scaler=scaler, imputer=imputer, bining="custom")
+    dataset = reader.to_numpy(200, scaler=scaler, imputer=imputer, bining="custom")
     for prefix in dataset:
         # Assert 10 samples
-        assert dataset[prefix].shape[0] == 10
+        assert dataset[prefix].shape[0] == 200
     tests_io(f"Succeeded in testing retriving limited amount of samples"
              f" to_numpy for {reader_flavour} for task {task_name}")
     for prefix in dataset:
@@ -740,7 +740,7 @@ if __name__ == "__main__":
     proc_reader_dict = dict()
     eng_reader_dict = dict()
     disc_reader_dict = dict()
-    for task_name in TASK_NAMES:
+    for task_name in ["DECOMP"]:  # TASK_NAMES:
         proc_reader = datasets.load_data(chunksize=75835,
                                          source_path=TEST_DATA_DEMO,
                                          storage_path=SEMITEMP_DIR,
@@ -762,13 +762,13 @@ if __name__ == "__main__":
                                             engineer=True,
                                             task=task_name)
             eng_reader_dict[task_name] = eng_reader
+            '''
             test_random_samples_with_ts(task_name, eng_reader_dict)
             test_read_sample_with_ts(task_name, eng_reader_dict)
             test_read_samples_with_ts(task_name, eng_reader_dict)
+            '''
         else:
             eng_reader_dict[task_name] = None
-        '''
-        '''
         if task_name in ["DECOMP", "LOS"]:
             disc_reader = datasets.load_data(chunksize=75835,
                                              source_path=TEST_DATA_DEMO,
@@ -776,9 +776,12 @@ if __name__ == "__main__":
                                              discretize=True,
                                              deep_supervision=True,
                                              task=task_name)
+            '''
             test_random_samples_with_ds(task_name, disc_reader_dict)
             test_read_sample_with_ds(task_name, disc_reader_dict)
             test_read_samples_with_ds(task_name, disc_reader_dict)
+            '''
+        '''
         for flavour in ["preprocessed", "engineered", "discretized"]:
             test_random_samples(task_name, flavour, proc_reader_dict, eng_reader_dict,
                                 disc_reader_dict)
@@ -787,6 +790,7 @@ if __name__ == "__main__":
             test_read_samples(task_name, flavour, proc_reader_dict, eng_reader_dict,
                               disc_reader_dict)
             ...
+        '''
         for flavour in ["engineered", "discretized"]:
             test_to_numpy(task_name, flavour, disc_reader_dict, eng_reader_dict)
 
