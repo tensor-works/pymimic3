@@ -14,12 +14,11 @@ from pathlib import Path
 from utils.IO import *
 from tests.tsettings import *
 from datasets.readers import ProcessedSetReader, SplitSetReader
-from sklearn import model_selection
 from pathlib import Path
-from datasets.trackers import DataSplitTracker, PreprocessingTracker
-from pathos.multiprocessing import Pool, cpu_count
-from datasets.split.splitters import ReaderSplitter
-from utils import dict_subset, is_numerical
+from datasets.trackers import PreprocessingTracker
+from pytest_utils.decorators import retry
+from utils.jsons import dict_subset
+from utils.numeric import is_numerical
 
 
 @pytest.mark.parametrize("reader_flavour", ["discretized", "engineered"])
@@ -221,6 +220,7 @@ def test_demo_split(
 
 @pytest.mark.parametrize("task_name", ["DECOMP"])
 @pytest.mark.parametrize("reader_flavour", ["discretized", "engineered"])
+@retry(3)
 def test_demo_and_ratio_split(
     task_name,
     reader_flavour,

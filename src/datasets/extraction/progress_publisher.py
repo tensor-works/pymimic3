@@ -57,7 +57,7 @@ from utils.IO import *
 from pathlib import Path
 from multiprocess import JoinableQueue, Process
 from ..trackers import ExtractionTracker
-from utils import NoopLock
+from utils.types import NoopLock
 
 
 class ProgressPublisher(Process):

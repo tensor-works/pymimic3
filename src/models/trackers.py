@@ -2,7 +2,7 @@ import numpy as np
 from pathlib import Path
 from utils.IO import *
 from storable import storable
-from utils import update_json
+from utils.jsons import update_json
 from settings import *
 
 

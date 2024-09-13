@@ -20,7 +20,7 @@ import numpy as np
 from pathos.helpers import mp
 import operator
 from pathlib import Path
-from utils import NoopLock
+from utils.types import NoopLock
 from utils.IO import *
 from functools import reduce
 

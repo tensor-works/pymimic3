@@ -4,7 +4,8 @@ import re
 from typing import List
 from pathlib import Path
 from utils.IO import *
-from utils import is_numerical, is_colwise_numerical
+from utils.arrays import is_colwise_numerical
+from utils.numeric import is_numerical
 
 
 def assert_file_creation(

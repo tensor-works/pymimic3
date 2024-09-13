@@ -60,7 +60,7 @@ from typing import Dict, Tuple
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import OneHotEncoder
 from pandas.api.types import is_datetime64_any_dtype as is_datetime
-from utils import dict_subset
+from utils.jsons import dict_subset
 
 from settings import *
 from utils.IO import *
@@ -287,11 +287,7 @@ class MIMICDiscretizer(AbstractProcessor):
                     self._y[subject_id][stay_id] = y_df
                 else:
                     if self._deep_supervision:
-                        try:
-                            y_reindexed = y_df.reindex(self._X[subject_id][stay_id].index)
-                        except:
-                            print(y_df)
-                            print(self._X[subject_id][stay_id].index)
+                        y_reindexed = y_df.reindex(self._X[subject_id][stay_id].index)
                         self._y[subject_id][stay_id] = y_reindexed.fillna(0).astype(np.float32)
                         self._M[subject_id][stay_id] = (~y_reindexed.isna()).astype(bool)
                     else:
@@ -355,15 +351,14 @@ class MIMICDiscretizer(AbstractProcessor):
             else:
                 ts = list(X.index - start_timestamp)
 
-            # TODO! Here you make X continue until los
-
             # Maps sample_periods to discretization bins
             tsid_to_bins = list(map(lambda x: int(x / self._time_step_size - self._eps), ts))
+
             # Tentative solution
             if self._start_at_zero:
-                N_bins = int(max(tsid_to_bins[-1], y.index[-1])) + 1
+                N_bins = int(tsid_to_bins[-1]) + 1
             else:
-                N_bins = int(max(tsid_to_bins[-1] - tsid_to_bins[0], y.index[-1])) + 1
+                N_bins = int(tsid_to_bins[-1] - tsid_to_bins[0]) + 1
 
             # Reduce DataFrame to bins, keep original channels
             X['bins'] = tsid_to_bins

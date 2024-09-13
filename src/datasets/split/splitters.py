@@ -15,7 +15,7 @@ from datasets.readers import ProcessedSetReader, SplitSetReader
 from pathlib import Path
 from datasets.trackers import DataSplitTracker, PreprocessingTracker
 from pathos.multiprocessing import Pool, cpu_count
-from utils import dict_subset
+from utils.jsons import dict_subset
 from collections import OrderedDict
 from itertools import chain
 from abc import ABC

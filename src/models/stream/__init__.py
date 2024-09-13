@@ -13,10 +13,11 @@ from models.stream.mappings import metric_mapping
 from generators.stream import RiverGenerator
 from models.trackers import RiverHistory, LocalRiverHistory
 from keras.utils import Progbar
-from utils import to_snake_case, dict_subset
+from utils import to_snake_case
 from abc import ABC
 from copy import deepcopy
 from settings import *
+from utils.jsons import dict_subset
 
 
 class AbstractRiverModel(ABC):

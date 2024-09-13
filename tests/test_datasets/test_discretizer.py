@@ -228,7 +228,7 @@ if __name__ == "__main__":
 
     if TEMP_DIR.is_dir():
         shutil.rmtree(str(TEMP_DIR))
-    for task_name in set(TASK_NAMES) - set(["MULTI"]):
+    for task_name in ["IHM", "DECOMP", "LOS", "PHENO"]:
         # Simulate semi_temp fixture
 
         if Path(SEMITEMP_DIR, "processed", task_name).is_dir():
@@ -246,7 +246,7 @@ if __name__ == "__main__":
         if discretizer_dir.is_dir():
             shutil.rmtree(str(discretizer_dir))
 
-        if task_name == "IHM":
+        if task_name == "DECOMP":
             test_discretizer_state_persistence()
 
         readers[task_name] = reader

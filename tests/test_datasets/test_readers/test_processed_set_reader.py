@@ -690,19 +690,20 @@ def check_pd(X_sample: pd.DataFrame, Y_sample: pd.DataFrame, t_sample: pd.DataFr
                ]) == set(X_sample)
 
     if flavour in ["engineered", "discretized"]:
-        assert all(X_sample.dtypes == "float")
+        assert all(X_sample.dtypes.apply(pd.api.types.is_float_dtype))
         if task_name == "MULTI":
             ...
             # TODO!
             # assert all(Y_sample.dtypes == pd.Series(MULTI_DTYPES))
         else:
-            assert all((Y_sample.dtypes == "float") | (Y_sample.dtypes == "int"))
+            assert all(Y_sample.dtypes.apply(pd.api.types.is_float_dtype)) | \
+                   all(Y_sample.dtypes.apply(pd.api.types.is_integer_dtype))
         if isinstance(M_sample, pd.DataFrame):
-            assert all(M_sample.dtypes == "int")
+            assert all(M_sample.dtypes.apply(pd.api.types.is_bool_dtype))
 
             assert len(Y_sample) == len(M_sample)
         if isinstance(t_sample, pd.DataFrame):
-            assert all(t_sample.dtypes == "float")
+            assert all(t_sample.dtypes.apply(pd.api.types.is_float_dtype))
 
             assert len(Y_sample) == len(t_sample)
     else:
@@ -739,7 +740,7 @@ if __name__ == "__main__":
     proc_reader_dict = dict()
     eng_reader_dict = dict()
     disc_reader_dict = dict()
-    for task_name in ["PHENO"]:  # TASK_NAMES:
+    for task_name in TASK_NAMES:
         proc_reader = datasets.load_data(chunksize=75835,
                                          source_path=TEST_DATA_DEMO,
                                          storage_path=SEMITEMP_DIR,
@@ -761,11 +762,12 @@ if __name__ == "__main__":
                                             engineer=True,
                                             task=task_name)
             eng_reader_dict[task_name] = eng_reader
-            # test_random_samples_with_ts(task_name, eng_reader_dict)
-            # test_read_sample_with_ts(task_name, eng_reader_dict)
-            # test_read_samples_with_ts(task_name, eng_reader_dict)
+            test_random_samples_with_ts(task_name, eng_reader_dict)
+            test_read_sample_with_ts(task_name, eng_reader_dict)
+            test_read_samples_with_ts(task_name, eng_reader_dict)
         else:
             eng_reader_dict[task_name] = None
+        '''
         '''
         if task_name in ["DECOMP", "LOS"]:
             disc_reader = datasets.load_data(chunksize=75835,
@@ -774,17 +776,16 @@ if __name__ == "__main__":
                                              discretize=True,
                                              deep_supervision=True,
                                              task=task_name)
-            # test_random_samples_with_ds(task_name, disc_reader_dict)
-            # test_read_sample_with_ds(task_name, disc_reader_dict)
-            # test_read_samples_with_ds(task_name, disc_reader_dict)
-        '''
+            test_random_samples_with_ds(task_name, disc_reader_dict)
+            test_read_sample_with_ds(task_name, disc_reader_dict)
+            test_read_samples_with_ds(task_name, disc_reader_dict)
         for flavour in ["preprocessed", "engineered", "discretized"]:
-            # test_random_samples(task_name, flavour, proc_reader_dict, eng_reader_dict,
-            #                     disc_reader_dict)
-            # test_read_sample(task_name, flavour, proc_reader_dict, eng_reader_dict,
-            #                  disc_reader_dict)
-            # test_read_samples(task_name, flavour, proc_reader_dict, eng_reader_dict,
-            #                   disc_reader_dict)
+            test_random_samples(task_name, flavour, proc_reader_dict, eng_reader_dict,
+                                disc_reader_dict)
+            test_read_sample(task_name, flavour, proc_reader_dict, eng_reader_dict,
+                             disc_reader_dict)
+            test_read_samples(task_name, flavour, proc_reader_dict, eng_reader_dict,
+                              disc_reader_dict)
             ...
         for flavour in ["engineered", "discretized"]:
             test_to_numpy(task_name, flavour, disc_reader_dict, eng_reader_dict)

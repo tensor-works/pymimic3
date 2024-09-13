@@ -33,7 +33,7 @@ import logging
 from copy import deepcopy
 from itertools import chain
 from typing import Dict, List, Tuple, Union
-from utils import dict_subset
+from utils.jsons import dict_subset
 from pathlib import Path
 from abc import ABC, abstractmethod
 from pathos.multiprocessing import cpu_count, Pool

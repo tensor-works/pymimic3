@@ -58,7 +58,7 @@ from numpy import random
 from multiprocess import Manager
 from datasets.readers import ProcessedSetReader
 from datasets.writers import DataSetWriter
-from utils import dict_subset
+from utils.jsons import dict_subset
 from utils.IO import *
 from pathlib import Path
 from datasets.trackers import PreprocessingTracker

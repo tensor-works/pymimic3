@@ -7,7 +7,7 @@ import warnings
 from pathlib import Path
 from sklearn.impute import SimpleImputer
 from utils.IO import *
-from utils import is_allnan
+from utils.arrays import is_allnan
 from preprocessing import AbstractScikitProcessor as AbstractImputer
 
 

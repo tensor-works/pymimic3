@@ -64,7 +64,7 @@ from datasets.readers import ExtractedSetReader, ProcessedSetReader
 from datasets.trackers import PreprocessingTracker
 from datasets.processors import AbstractProcessor
 from datasets.mimic_utils import copy_subject_info
-from utils import dict_subset
+from utils.jsons import dict_subset
 from utils.IO import *
 from settings import *
 
