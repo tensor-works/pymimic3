@@ -46,7 +46,6 @@ class BinedMAE(MeanAbsoluteError):
             raise ValueError(f"Binning must be one of 'log' or 'custom' but is {bining}.")
 
     def update(self, input: torch.Tensor, target: torch.Tensor) -> None:
-        # TODO! test this on model
         # Input is one-hot
         if input.dim() > 1:
             input = torch.argmax(input, axis=-1)

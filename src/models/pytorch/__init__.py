@@ -66,11 +66,6 @@ class AbstractTorchNetwork(nn.Module):
             raise ValueError("Task not specified and could not be inferred from "
                              "output_dim and final_activation! Provide task on initialization.")
 
-        # TODO! this is for debugging remove:
-        self._labels = list()
-        self._outputs = list()
-        self._inputs = list()
-
     def __call__(self, *args, **kwargs):
         raise TypeError(f"'{self.__class__.__name__}' object is not callable")
 
@@ -659,10 +654,6 @@ class AbstractTorchNetwork(nn.Module):
                 aggr_outputs.append(val_outputs)
                 aggr_labels.append(val_labels)
 
-                # TODO! remove:
-                self._labels.append(val_labels)
-                self._outputs.append(val_outputs)
-
                 aggr_outputs, aggr_labels = self._evaluate_batch(aggr_outputs,
                                                                  aggr_labels,
                                                                  is_test=is_test,
@@ -1019,21 +1010,6 @@ class AbstractTorchNetwork(nn.Module):
         self._batch_size = 0
         self._has_val = False
 
-        # if self._inputs:
-        #     shapes = [torch.tensor(input.shape).unsqueeze(0) for input in self._inputs]
-        #     shapes = torch.cat(shapes)
-        #     print(shapes[:, 1].sort().values)
-        '''
-        # TODO! remove
-        labels = torch.cat(model._labels, axis=1).to("cpu").detach().squeeze().numpy()
-        outputs = torch.cat(model._outputs, axis=1).to("cpu").detach().squeeze().numpy()
-
-        from sklearn.metrics import roc_auc_score, precision_recall_curve, auc
-        precision, recall, _ = precision_recall_curve(labels, outputs)
-        print(f"PR AUC: {auc(recall, precision)}")
-        print(f"ROC AUC: {roc_auc_score(labels, outputs)}")
-        '''
-
     def _optimize_batch(self, outputs: list, labels: list, finalize: bool = False):
         """Applies optimizer to the concatenated outputs and labels, handed down by the higher level
            train_with_dataloader or train_with_array methods and returns updated list of outputs
@@ -1203,12 +1179,12 @@ class AbstractTorchNetwork(nn.Module):
 
         return np.concatenate(aggr_outputs)
 
-    def _remove_end_padding(self, tensor) -> torch.Tensor:
+    def _remove_end_padding(self, input) -> torch.Tensor:
         # tensor shape: (B, T, N)
-        mask = (tensor != 0).int().sum(2) > 0
+        mask = (input != 0).int().sum(2) > 0
         seq_positions = torch.nonzero(mask)[:, 1]
         max_len = seq_positions.max().item() + 1
-        return tensor[:, :max_len, :]
+        return input[:, :max_len, :]
 
     @overload
     def _train(self,
@@ -1260,7 +1236,6 @@ class AbstractTorchNetwork(nn.Module):
         # Handle masking
         if isinstance(x, (list, tuple)):
             x, masks = x
-            masks = torch.tensor(masks, dtype=torch.float32).bool().to(self._device)
             masking_flag = True
         else:
             masking_flag = False
@@ -1270,8 +1245,10 @@ class AbstractTorchNetwork(nn.Module):
 
         # Shuffled data
         idx = np.random.permutation(len(x))
-        x = torch.tensor(x[idx, :, :], dtype=torch.float32).to(self._device)
-        y = torch.tensor(y[idx, :, :]).to(self._device)
+        x = torch.tensor(x, dtype=torch.float32)[idx].to(self._device)
+        y = torch.tensor(y)[idx].to(self._device)
+        if masking_flag:
+            masks = torch.tensor(masks, dtype=torch.float32)[idx].bool().to(self._device)
 
         # Init counter epoch variables
         self._on_epoch_start("train", data_size, batch_size, has_val)
@@ -1295,13 +1272,8 @@ class AbstractTorchNetwork(nn.Module):
                 mask = masks[sample_idx]
                 input = input[:, mask.squeeze()]
             else:
-                # TODO! Is there a better way. What if there is an actual patient with all zero across
-                # TODO! 59 columns? Am I paranoid. Maybe adding the discretizer masking can alleviat
                 input = self._remove_end_padding(input)
                 mask = None
-
-            if self._target_repl_coef:
-                mask = torch.ones(1, input.shape[1], 1)
 
             # Create predictions
             output = self.forward(input, masks=mask)
@@ -1313,11 +1285,6 @@ class AbstractTorchNetwork(nn.Module):
             # Accumulate outputs and labels either flat or with dim of multilabel
             aggr_outputs.append(output)
             aggr_labels.append(label)
-
-            #TODO! remove:
-            self._labels.append(label)
-            self._outputs.append(output)
-            self._inputs.append(input)
 
             # Optimizer network on abtch
             aggr_outputs, \
@@ -1356,7 +1323,7 @@ class AbstractTorchNetwork(nn.Module):
 
         # Main loop
         iter_len = (len(generator) // batch_size) * batch_size - 1
-        for idx, (input, label) in enumerate(generator):
+        for sample_idx, (input, label) in enumerate(generator):
             input: torch.Tensor
             label: torch.Tensor
 
@@ -1384,11 +1351,6 @@ class AbstractTorchNetwork(nn.Module):
                 # Apply mask to T (B, T, N)
                 label = label[:, mask.squeeze()]
 
-            # TODO! remove:
-            self._labels.append(label)
-            self._inputs.append(input)
-            self._outputs.append(output)
-
             # Accumulate outputs and labels
             aggr_outputs.append(output)
             aggr_labels.append(label)
@@ -1397,10 +1359,10 @@ class AbstractTorchNetwork(nn.Module):
             aggr_outputs, \
             aggr_labels = self._optimize_batch(outputs=aggr_outputs, \
                                                labels=aggr_labels, \
-                                               finalize=not has_val and iter_len == idx)
+                                               finalize=not has_val and iter_len == sample_idx)
 
             # Miss inclomplete batch
-            if idx == self._sample_size:
+            if sample_idx == iter_len:
                 break
 
         self._on_epoch_end(epoch, prefix="train")

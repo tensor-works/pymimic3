@@ -44,6 +44,7 @@ class AbstractGenerator:
         # n_samples
         self._n_samples = n_samples
         if n_samples is not None:
+            n_samples = (n_samples // batch_size) * batch_size  # Ensure minimize remainders
             self._random_ids, _ = subjects_for_samples(tracker=self._tracker,
                                                        target_size=self._n_samples,
                                                        deep_supervision=deep_supervision)
@@ -209,6 +210,10 @@ class AbstractGenerator:
                                                                     bining=self._bining,
                                                                     one_hot=self._one_hot):
                         yield X, y, M
+                    # TODO! added because remainders seem to destabilize training
+                    self._remainder_M = np.array([])
+                    self._remainder_X = np.array([])
+                    self._remainder_y = np.array([])
                 else:
                     for X, y, t in process_subject(args=(self._random_ids, self._batch_size),
                                                    reader=self._reader,

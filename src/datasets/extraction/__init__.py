@@ -335,7 +335,6 @@ def iterative_extraction(source_path: Path,
         subject_info_df = make_subject_infos(patients_df, admission_info_df, icustays_df)
         icu_history_df = make_icu_history(patients_df, admissions_df, icustays_df)
 
-        # TODO! encapsualte in function
         icu_history_df.to_csv(Path(storage_path, "icu_history.csv"), index=False)
         subject_info_df.to_csv(Path(storage_path, "subject_info.csv"), index=False)
         tracker.has_icu_history = True
