@@ -58,6 +58,10 @@ class TorchGenerator(DataLoader):
     def close(self):
         self._dataset.__del__()
 
+    @property
+    def channels(self):
+        return self._dataset.channels
+
 
 class TorchDataset(AbstractGenerator, Dataset):
 

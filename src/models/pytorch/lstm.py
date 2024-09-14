@@ -1,14 +1,15 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import torch.nn as nn
 from pathlib import Path
 from typing import Union, List, Dict
 from utils.IO import *
 from settings import *
+from collections import OrderedDict
 from models.pytorch.mappings import *
 from models.pytorch import AbstractTorchNetwork
 from utils.arrays import isiterable
-import torch.nn as nn
 
 
 class LSTMNetwork(AbstractTorchNetwork):
@@ -120,6 +121,7 @@ class CWLSTMNetwork(AbstractTorchNetwork):
                  clayer_size: Union[List[int], int],
                  layer_size: Union[List[int], int],
                  input_dim: int,
+                 channels: List[str],
                  dropout: float = 0.,
                  recurrent_dropout: float = 0.,
                  final_activation: str = None,
@@ -140,13 +142,26 @@ class CWLSTMNetwork(AbstractTorchNetwork):
         self._recurrent_dropout = recurrent_dropout
         self._output_dim = output_dim
 
+        # Channels without masking and one-hot encoding
+        channels_names = set([channel.split("->")[0].strip(" ") \
+                              for channel in channels \
+                              if not "mask" in channel])
+
+        # Channel name to index mapping
+        indices = range(input_dim)
+        self._channels = OrderedDict({
+            channel: list(filter(lambda i: channels[i].find(channel) != -1, indices))
+            for channel in channels_names
+        })
+
         # Block 1: Channel wise LSTM layers
-        self._lstm_per_channel = nn.ModuleList()
-        for _ in range(input_dim):
+        self._lstm_per_channel = nn.ModuleDict()
+        for channel_names, channel_indices in self._channels.items():
             channel_lstms = nn.ModuleList()
             if isiterable(clayer_size):
                 for i, size in enumerate(clayer_size):
-                    lstm = nn.LSTM(input_size=1 if i == 0 else clayer_size[i - 1],
+                    lstm = nn.LSTM(input_size=len(channel_indices) if i == 0 else clayer_size[i -
+                                                                                              1],
                                    hidden_size=size,
                                    num_layers=1,
                                    batch_first=True,
@@ -154,18 +169,18 @@ class CWLSTMNetwork(AbstractTorchNetwork):
                     channel_lstms.append(lstm)
             else:
                 for i in range(depth):
-                    lstm = nn.LSTM(input_size=1 if i == 0 else clayer_size,
+                    lstm = nn.LSTM(input_size=len(channel_indices) if i == 0 else clayer_size,
                                    hidden_size=clayer_size,
                                    num_layers=1,
                                    batch_first=True,
                                    dropout=recurrent_dropout if i < depth - 1 else 0)
                     channel_lstms.append(lstm)
-            self._lstm_per_channel.append(channel_lstms)
+            self._lstm_per_channel[channel_names] = channel_lstms
 
         # Block 1: Concatenated LSTM layers
         self._concat_lstm_layers = nn.ModuleList()
         if isiterable(layer_size):
-            input_size = clayer_size[-1] * input_dim
+            input_size = clayer_size[-1] * len(self._channels)
             for i, size in enumerate(layer_size[-1]):
 
                 lstm = nn.LSTM(input_size=input_size if i == 0 else layer_size[i - 1],
@@ -176,7 +191,7 @@ class CWLSTMNetwork(AbstractTorchNetwork):
                 self._concat_lstm_layers.append(lstm)
             final_input_size = layer_size[-2] if len(layer_size) > 1 else input_size
         else:
-            input_size = clayer_size * input_dim
+            input_size = clayer_size * len(self._channels)
             for i in range(depth - 1):
                 lstm = nn.LSTM(input_size=input_size if i == 0 else layer_size,
                                hidden_size=layer_size,
@@ -222,8 +237,8 @@ class CWLSTMNetwork(AbstractTorchNetwork):
 
         # Block 1: Channel wise forward (clayers)
         channel_outputs = list()
-        for i, channel_lstm in enumerate(self._lstm_per_channel):
-            cw_x = x[:, :, i:i + 1]
+        for channel_name, channel_lstm in self._lstm_per_channel.items():
+            cw_x = x[:, :, self._channels[channel_name]]
             for lstm in channel_lstm:
                 cw_x, _ = lstm(cw_x)
             channel_outputs.append(cw_x)

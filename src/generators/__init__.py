@@ -40,6 +40,7 @@ class AbstractGenerator:
         self._tracker = PreprocessingTracker(storage_path=Path(reader.root_path, "progress"))
         self._subject_ids = reader.subject_ids
         self._scaler = scaler
+        self._channels = None
 
         # n_samples
         self._n_samples = n_samples
@@ -128,6 +129,12 @@ class AbstractGenerator:
         if self._deep_supervision:
             return X, y, M
         return X, y
+
+    @property
+    def channels(self):
+        if self._channels is None:
+            self._channels = self._reader.channels
+        return self._channels
 
     def _count_batches(self, subject_ids):
         if subject_ids is None:

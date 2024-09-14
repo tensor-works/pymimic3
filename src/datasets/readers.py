@@ -741,6 +741,7 @@ class ProcessedSetReader(AbstractReader):
         self._random_ids = deepcopy(self.subject_ids)
         self._convert_datetime = ["INTIME", "CHARTTIME", "OUTTIME"]
         self._possibgle_datatypes = [pd.DataFrame, np.ndarray, np.array, None]
+        self._channels = None
 
     @staticmethod
     def _read_csv(path: Path, dtypes: tuple = None) -> pd.DataFrame:
@@ -763,6 +764,21 @@ class ProcessedSetReader(AbstractReader):
         if 'bins' in df.columns:
             df = df.set_index('bins')
         return df
+
+    @property
+    def channels(self):
+        """
+        Get the channels for the timeseries data.
+
+        Returns
+        -------
+        list
+            List of channels for the timeseries data.
+        """
+        if self._channels is None:
+            X = self.random_samples()["X"][0]
+            self._channels = X.columns.tolist()
+        return self._channels
 
     def read_samples(self,
                      subject_ids: Union[List[str], List[int]] = None,
@@ -1145,6 +1161,8 @@ class ProcessedSetReader(AbstractReader):
                 dataset[prefix] = np.array(dataset[prefix],
                                            dtype=get_iterable_dtype(dataset[prefix])).reshape(
                                                -1, 1, 1)
+
+        dataset["channels"] = self.channels
         if return_ids:
             return dataset, subject_ids
         return dataset

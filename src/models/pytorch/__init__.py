@@ -33,6 +33,7 @@ class AbstractTorchNetwork(nn.Module):
         super(AbstractTorchNetwork, self).__init__()
         self._model_path = model_path
         self._target_repl_coef = target_repl_coef
+
         if final_activation is None:
             if output_dim == 1:
                 self._final_activation = nn.Sigmoid()

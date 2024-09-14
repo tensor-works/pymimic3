@@ -135,6 +135,7 @@ def test_torch_lstm_with_target_replication(
     model = CWLSTMNetwork(input_dim=59,
                           output_dim=output_dim,
                           final_activation=final_activation,
+                          channels=reader.channels,
                           **model_dimensions)
 
     # -- Compile the model --
@@ -215,6 +216,7 @@ def test_torch_lstm_with_deep_supervision(
     model = CWLSTMNetwork(input_dim=59,
                           output_dim=output_dim,
                           final_activation=final_activation,
+                          channels=reader.channels,
                           **model_dimensions)
 
     # -- Compile the model --
@@ -251,21 +253,11 @@ def test_torch_lstm_with_deep_supervision(
         X, M, y_true = unroll_generator(train_generator, deep_supervision=True)
     elif data_flavour == "numpy":
         # -- Create the dataset --
-        '''
         dataset = reader.to_numpy(scaler=scaler,
                                   deep_supervision=True,
                                   n_samples=OVERFIT_SETTINGS_DS[task_name]["num_samples"],
                                   **GENERATOR_OPTIONS[task_name])
-        '''
-        train_generator = TorchGenerator(reader=reader,
-                                         scaler=scaler,
-                                         deep_supervision=True,
-                                         shuffle=True,
-                                         n_samples=OVERFIT_SETTINGS_DS[task_name]["num_samples"],
-                                         **GENERATOR_OPTIONS[task_name])
 
-        X, M, y_true = unroll_generator(train_generator, deep_supervision=True)
-        dataset = {"X": X, "M": M, "yds": y_true}
         tests_io("Succeeded in creating the numpy dataset")
 
         history = model.fit([dataset["X"], dataset["M"]],
@@ -314,6 +306,7 @@ def test_torch_lstm(
     model = CWLSTMNetwork(input_dim=59,
                           output_dim=output_dim,
                           final_activation=final_activation,
+                          channels=reader.channels,
                           **model_dimensions)
 
     # -- Compile the model --
