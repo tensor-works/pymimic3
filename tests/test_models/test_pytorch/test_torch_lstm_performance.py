@@ -439,8 +439,7 @@ if __name__ == "__main__":
         disc_reader[task_name] = reader
         for flavour in ["numpy", "generator"]:
             if task_name in ["IHM", "PHENO"]:
-                # test_torch_lstm_with_target_replication(task_name, flavour, disc_reader)
-                ...
+                test_torch_lstm_with_target_replication(task_name, flavour, disc_reader)
             if task_name in ["DECOMP", "LOS"]:
                 test_torch_lstm_with_deep_supervision(task_name, flavour, disc_reader)
-            # test_torch_lstm(task_name, flavour, disc_reader)
+            test_torch_lstm(task_name, flavour, disc_reader)

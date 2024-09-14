@@ -126,30 +126,30 @@ STANDARD_LSTM_DS_PARAMS = {
 CHANNEL_WISE_LSTM_PARAMS = {
     "IHM": {  # Settings for the in-hospital mortality task
         "model": {
-            "layer_size": 8,
-            "depth": 1,
-            "size_coef": 4.0
+            "clayer_size": 8,
+            "layer_size": 32,
+            "depth": 1
         }
     },
     "DECOMP": {  # Settings for the decompensation task
         "model": {
-            "layer_size": 16,
-            "depth": 1,
-            "size_coef": 4.0
+            "clayer_size": 16,
+            "layer_size": 64,
+            "depth": 1
         }
     },
     "LOS": {  # Settings for the length of stay task
         "model": {
-            "layer_size": 16,
-            "depth": 1,
-            "size_coef": 8.0
+            "clayer_size": 16,
+            "layer_size": 512,
+            "depth": 1
         }
     },
     "PHENO": {  # Settings for the phenotyping task
         "model": {
-            "layer_size": 16,
-            "depth": 1,
-            "size_coef": 8.0
+            "clayer_size": 16,
+            "layer_size": 512,
+            "depth": 1
         }
     }
 }
@@ -159,33 +159,27 @@ CHANNEL_WISE_LSTM_DS_PARAMS = {
     "PHENO": {
         "model": {
             "layer_size": 16,
-            "depth": 1,
-            "size_coef": 8.0,
+            "clayer_size": 128,
             "target_repl_coef": 0.5
         }
     },
     "DECOMP": {
         "model": {
             "layer_size": 16,
-            "depth": 1,
-            "size_coef": 8.0,
-            "deep_supervision": True
+            "clayer_size": 128,
         }
     },
     "IHM": {
         "model": {
             "layer_size": 16,
-            "depth": 1,
-            "size_coef": 4.0,
+            "clayer_size": 64,
             "target_repl_coef": 0.5
         }
     },
     "LOS": {
         "model": {
             "layer_size": 16,
-            "depth": 1,
-            "size_coef": 8.0,
-            "deep_supervision": True
+            "clayer_size": 128,
         }
     }
 }

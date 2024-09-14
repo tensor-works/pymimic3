@@ -5,7 +5,7 @@ from tensorflow.python.keras.engine import training
 # from tensorflow.python.keras.engine.compile_utils
 from abc import abstractmethod
 from utils.IO import *
-from utils.arrays import is_iterable
+from utils.arrays import isiterable
 
 import tensorflow as tf
 
@@ -41,8 +41,8 @@ class AbstractTf2Model(Model):
                 if metric in metric_mapping:
                     weighted_metrics[weighted_metrics.index(metric)] = metric_mapping[metric]
         if hasattr(self, "_deep_supervision") and self._deep_supervision:
-            if is_iterable(metrics):
-                if is_iterable(weighted_metrics):
+            if isiterable(metrics):
+                if isiterable(weighted_metrics):
                     weighted_metrics = list(weighted_metrics) + list(metrics)
                 else:
                     weighted_metrics = metrics

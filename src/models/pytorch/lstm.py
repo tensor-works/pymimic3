@@ -7,7 +7,7 @@ from utils.IO import *
 from settings import *
 from models.pytorch.mappings import *
 from models.pytorch import AbstractTorchNetwork
-from utils.arrays import is_iterable
+from utils.arrays import isiterable
 import torch.nn as nn
 
 
@@ -37,7 +37,7 @@ class LSTMNetwork(AbstractTorchNetwork):
         if isinstance(layer_size, int):
             self._hidden_sizes = [layer_size] * (depth - 1)
             last_layer_size = layer_size
-        elif is_iterable(layer_size):
+        elif isiterable(layer_size):
             self._hidden_sizes = layer_size[:-1]
             last_layer_size = layer_size[-1]
             if depth != 1:
@@ -91,6 +91,149 @@ class LSTMNetwork(AbstractTorchNetwork):
         for lstm in self.lstm_layers:
             x, _ = lstm(x)
         x, _ = self._lstm_final(x)
+
+        # Case 1: deep supervision
+        if masking_falg:
+            # Apply the linear layer to each LSTM output at each timestep (ts)
+            B, T, hidden_size = x.shape
+            x = x.reshape(B * T, hidden_size)
+            x = self._output_layer(x)
+            x = x.reshape(B, T, -1)
+
+        # Case 2: standard LSTM or target replication
+        else:
+            # Apply linear layer only to the last output of the LSTM
+            x = x[:, -1, :]
+            x = x.reshape(x.shape[0], 1, x.shape[1])
+            x = self._output_layer(x)
+
+        # Apply final activation if specified
+        if self._final_activation and self._apply_activation:
+            x = self._final_activation(x)
+
+        return x
+
+
+class CWLSTMNetwork(AbstractTorchNetwork):
+
+    def __init__(self,
+                 clayer_size: Union[List[int], int],
+                 layer_size: Union[List[int], int],
+                 input_dim: int,
+                 dropout: float = 0.,
+                 recurrent_dropout: float = 0.,
+                 final_activation: str = None,
+                 output_dim: int = 1,
+                 depth: int = 1,
+                 target_repl_coef: float = 0.,
+                 model_path: Path = None):
+        super(CWLSTMNetwork, self).__init__(final_activation=final_activation,
+                                            output_dim=output_dim,
+                                            model_path=model_path,
+                                            target_repl_coef=target_repl_coef)
+
+        self._input_dim = input_dim
+        self._layer_size = layer_size
+        self._clayer_size = clayer_size
+        self._depth = depth
+        self._dropout = dropout
+        self._recurrent_dropout = recurrent_dropout
+        self._output_dim = output_dim
+
+        # Block 1: Channel wise LSTM layers
+        self._lstm_per_channel = nn.ModuleList()
+        for _ in range(input_dim):
+            channel_lstms = nn.ModuleList()
+            if isiterable(clayer_size):
+                for i, size in enumerate(clayer_size):
+                    lstm = nn.LSTM(input_size=1 if i == 0 else clayer_size[i - 1],
+                                   hidden_size=size,
+                                   num_layers=1,
+                                   batch_first=True,
+                                   dropout=recurrent_dropout if i < len(clayer_size) - 1 else 0)
+                    channel_lstms.append(lstm)
+            else:
+                for i in range(depth):
+                    lstm = nn.LSTM(input_size=1 if i == 0 else clayer_size,
+                                   hidden_size=clayer_size,
+                                   num_layers=1,
+                                   batch_first=True,
+                                   dropout=recurrent_dropout if i < depth - 1 else 0)
+                    channel_lstms.append(lstm)
+            self._lstm_per_channel.append(channel_lstms)
+
+        # Block 1: Concatenated LSTM layers
+        self._concat_lstm_layers = nn.ModuleList()
+        if isiterable(layer_size):
+            input_size = clayer_size[-1] * input_dim
+            for i, size in enumerate(layer_size[-1]):
+
+                lstm = nn.LSTM(input_size=input_size if i == 0 else layer_size[i - 1],
+                               hidden_size=size,
+                               num_layers=1,
+                               batch_first=True,
+                               dropout=recurrent_dropout if i < depth - 1 else 0)
+                self._concat_lstm_layers.append(lstm)
+            final_input_size = layer_size[-2] if len(layer_size) > 1 else input_size
+        else:
+            input_size = clayer_size * input_dim
+            for i in range(depth - 1):
+                lstm = nn.LSTM(input_size=input_size if i == 0 else layer_size,
+                               hidden_size=layer_size,
+                               num_layers=1,
+                               batch_first=True,
+                               dropout=dropout if i < depth - 1 else 0)
+                self._concat_lstm_layers.append(lstm)
+            final_input_size = layer_size if depth > 1 else input_size
+
+        # Final concatenated LSTM layers
+        lstm = nn.LSTM(input_size=final_input_size,
+                       hidden_size=layer_size,
+                       num_layers=1,
+                       batch_first=True)
+        self._concat_lstm_layers.append(lstm)
+
+        self._dropout_layer = nn.Dropout(dropout)
+
+        # Output layer
+        self._output_layer = nn.Linear(layer_size, output_dim)
+
+        # Initialize the network with same methods as in TF2
+        for name, p in self.named_parameters():
+            if 'lstm' in name:
+                if 'weight_ih' in name:
+                    nn.init.xavier_uniform_(p.data, gain=nn.init.calculate_gain('tanh'))
+                elif 'weight_hh' in name:
+                    nn.init.orthogonal_(p.data, gain=nn.init.calculate_gain('sigmoid'))
+                elif 'bias_ih' in name:
+                    p.data.fill_(0)
+                    # Set forget-gate bias to 1
+                    n = p.size(0)
+                    p.data[(n // 4):(n // 2)].fill_(1)
+                elif 'bias_hh' in name:
+                    p.data.fill_(0)
+
+    def forward(self, x, masks=None) -> torch.Tensor:
+        masking_falg = masks is not None
+        if masking_falg:
+            masks = masks.to(self._device)
+
+        x = x.to(self._device)
+
+        # Block 1: Channel wise forward (clayers)
+        channel_outputs = list()
+        for i, channel_lstm in enumerate(self._lstm_per_channel):
+            cw_x = x[:, :, i:i + 1]
+            for lstm in channel_lstm:
+                cw_x, _ = lstm(cw_x)
+            channel_outputs.append(cw_x)
+
+        # Concatenate channel outputs
+        x = torch.cat(channel_outputs, dim=2)
+
+        # Block 2: Concatenated forward
+        for lstm in self._concat_lstm_layers:
+            x, _ = lstm(x)
 
         # Case 1: deep supervision
         if masking_falg:

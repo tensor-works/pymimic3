@@ -127,7 +127,7 @@ def is_allnan(data: Union[pd.DataFrame, pd.Series, np.ndarray]):
         raise TypeError("Input must be a pandas DataFrame, Series, or numpy array.")
 
 
-def is_iterable(obj):
+def isiterable(obj):
     """
     Check if an object is iterable.
 

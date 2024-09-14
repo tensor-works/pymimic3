@@ -45,7 +45,7 @@ from collections import defaultdict
 from utils.IO import *
 from settings import *
 from utils.timeseries import read_timeseries, subjects_for_samples
-from utils.arrays import get_iterable_dtype, is_iterable, zeropad_samples
+from utils.arrays import get_iterable_dtype, isiterable, zeropad_samples
 from utils.types import NoopLock
 from .mimic_utils import upper_case_column_names, convert_dtype_dict, read_varmap_csv
 from .trackers import ExtractionTracker, PreprocessingTracker
@@ -1135,10 +1135,10 @@ class ProcessedSetReader(AbstractReader):
         # Zeropad and concat the dataset
         for prefix in deepcopy(list(dataset.keys())):
             if len(dataset[prefix]) \
-               and is_iterable(dataset[prefix][0]) \
+               and isiterable(dataset[prefix][0]) \
                and len(dataset[prefix][0].shape) > 1:
                 dataset[prefix] = zeropad_samples(dataset[prefix])
-            elif len(dataset[prefix]) and is_iterable(dataset[prefix][0]):
+            elif len(dataset[prefix]) and isiterable(dataset[prefix][0]):
                 dataset[prefix] = np.stack(dataset[prefix])
                 dataset[prefix] = np.expand_dims(dataset[prefix], 1)
             else:
