@@ -84,7 +84,7 @@ def read_timeseries(
     return Xs, ys, ts
 
 
-@lru_cache(maxsize=256)  # People will probably use similar sizes
+@lru_cache(maxsize=2048)  # People will probably use similar sizes
 def subjects_for_samples(tracker: PreprocessingTracker,
                          target_size: int,
                          max_iter: int = 20,
