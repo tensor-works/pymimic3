@@ -614,9 +614,7 @@ class AbstractTorchNetwork(nn.Module):
         y = torch.tensor(y).to(self._device)
 
         # Init counter epoch variables
-        self._on_epoch_start(prefix,
-                             generator_size=len(y),
-                             batch_size=batch_size if batch_size is not None else len(y))
+        self._on_epoch_start(prefix=prefix, generator_size=len(y), batch_size=batch_size)
 
         # Evaluate only if necessary
         self.eval()
@@ -626,10 +624,10 @@ class AbstractTorchNetwork(nn.Module):
         aggr_labels = []
 
         with torch.no_grad():
-            iter_len = len(x) - 1
-            for sample_idx, (val_inputs, val_labels) in enumerate(zip(x, y)):
-                val_labels: torch.Tensor
-                val_inputs: torch.Tensor
+
+            for sample_idx in range(self._iter_len):
+                val_labels: torch.Tensor = y[sample_idx]
+                val_inputs: torch.Tensor = x[sample_idx]
 
                 # Adjust dimensions
                 val_labels = val_labels.unsqueeze(0)
@@ -655,13 +653,12 @@ class AbstractTorchNetwork(nn.Module):
                 aggr_outputs.append(val_outputs)
                 aggr_labels.append(val_labels)
 
-                aggr_outputs, aggr_labels = self._evaluate_batch(aggr_outputs,
-                                                                 aggr_labels,
-                                                                 is_test=is_test,
-                                                                 finalize=iter_len == sample_idx)
-
-                if sample_idx == iter_len:
-                    break
+                aggr_outputs, aggr_labels = self._evaluate_batch(
+                    aggr_outputs,
+                    aggr_labels,
+                    is_test=is_test,
+                    is_epoch_end=sample_idx == self._iter_len - 1,
+                )
 
         # Only update history if test
         if is_test:
@@ -705,7 +702,7 @@ class AbstractTorchNetwork(nn.Module):
 
         # Init counter epoch variables
         generator_size = len(generator)
-        self._on_epoch_start(prefix,
+        self._on_epoch_start(prefix=prefix,
                              generator_size=generator_size,
                              batch_size=batch_size if batch_size is not None else len(y))
 
@@ -717,7 +714,6 @@ class AbstractTorchNetwork(nn.Module):
         self.eval()
         with torch.no_grad():
             # Unroll generator
-            iter_len = len(generator) - 1
             for sample_idx, (val_inputs, val_labels) in enumerate(generator):
 
                 if masking_flag == None:
@@ -749,12 +745,14 @@ class AbstractTorchNetwork(nn.Module):
                 aggr_outputs.append(val_outputs)
                 aggr_labels.append(val_labels)
 
-                aggr_outputs, aggr_labels = self._evaluate_batch(aggr_outputs,
-                                                                 aggr_labels,
-                                                                 is_test=is_test,
-                                                                 finalize=iter_len == sample_idx)
+                aggr_outputs, aggr_labels = self._evaluate_batch(
+                    aggr_outputs,
+                    aggr_labels,
+                    is_test=is_test,
+                    is_epoch_end=self._iter_len == sample_idx,
+                )
 
-                if sample_idx == iter_len:
+                if sample_idx == self._iter_len:
                     break
 
         # Only update history if test
@@ -771,7 +769,7 @@ class AbstractTorchNetwork(nn.Module):
                         outputs: list,
                         labels: list,
                         is_test: bool = False,
-                        finalize: bool = False):
+                        is_epoch_end: bool = False):
         """Evaluates the batch concatenated by higher level _evaluate_with_dataloader or 
            _evaluate_with_arrays method and updates metric state. Finalize will finalize 
            the epoch progbar.
@@ -826,8 +824,9 @@ class AbstractTorchNetwork(nn.Module):
                                  outputs,
                                  labels,
                                  prefix="test" if is_test else "val",
-                                 update_progbar=finalize and not is_test,
-                                 finalize=finalize)
+                                 is_epoch_end=is_epoch_end,
+                                 update_progbar=is_epoch_end and not is_test,
+                                 finalize=is_epoch_end)
             self._sample_count = 0
             self._batch_count += 1
 
@@ -954,22 +953,25 @@ class AbstractTorchNetwork(nn.Module):
     def _on_epoch_start(self,
                         prefix: str,
                         generator_size: int = 0,
-                        batch_size: int = 0,
+                        batch_size: int = None,
+                        verbose: bool = True,
                         has_val: bool = False):
         """Setup epoch state and verbosity before start
         """
         # Insecure about consistency of these here
         self._current_metrics = dict()
-        if generator_size:
-            self._epoch_progbar = Progbar((generator_size // batch_size))
-        self._sample_size = (generator_size // batch_size) * batch_size
+        self._batch_size = generator_size if batch_size is None else batch_size
+        if generator_size and verbose:
+            self._epoch_progbar = Progbar((generator_size // self._batch_size))
 
-        # Batch iter variables
+        # Counter variables
         self._sample_count = 0
         self._batch_count = 1
+
+        # Iteration control variables
         self._generator_size = generator_size
-        self._batch_size = batch_size
         self._has_val = has_val
+        self._iter_len = (self._generator_size // self._batch_size) * self._batch_size
 
         # Reset metric values
         for metric in self._metrics[prefix].values():
@@ -1001,8 +1003,8 @@ class AbstractTorchNetwork(nn.Module):
         # Update metric history
         if hasattr(self._history, f"{prefix}_metrics"):
             metric_history = getattr(self._history, f"{prefix}_metrics")
-            for key, metric in self._metrics[prefix].items():
-                metric_history[key][epoch] = metric.compute()
+            for key, metric_value in self._current_metrics.items():
+                metric_history[key][epoch] = metric_value
 
         self._current_metrics = dict()
         self._sample_count = 0
@@ -1011,7 +1013,11 @@ class AbstractTorchNetwork(nn.Module):
         self._batch_size = 0
         self._has_val = False
 
-    def _optimize_batch(self, outputs: list, labels: list, finalize: bool = False):
+    def _optimize_batch(self,
+                        outputs: list,
+                        labels: list,
+                        is_epoch_end: int,
+                        has_val: bool = False):
         """Applies optimizer to the concatenated outputs and labels, handed down by the higher level
            train_with_dataloader or train_with_array methods and returns updated list of outputs
            and labels. The list is reset to zero if the batch was complete and is unmodified if
@@ -1077,7 +1083,8 @@ class AbstractTorchNetwork(nn.Module):
                                  labels,
                                  prefix="train",
                                  update_progbar=True,
-                                 finalize=finalize)
+                                 is_epoch_end=is_epoch_end,
+                                 finalize=not has_val and is_epoch_end)
             self._sample_count = 0
             self._batch_count += 1
 
@@ -1097,6 +1104,7 @@ class AbstractTorchNetwork(nn.Module):
     def _predict_dataloader(self, generator: DataLoader, **kwargs):
         """ Make predictions on a dataloader while handling masking and dimensions.
         """
+        self._on_epoch_start(prefix="", generator_size=len(generator), has_val=False, verbose=False)
         self.eval()
 
         aggr_outputs = []
@@ -1142,6 +1150,8 @@ class AbstractTorchNetwork(nn.Module):
             masking_flag = False
 
         x = torch.tensor(x, dtype=torch.float32).to(self._device)
+        self._on_epoch_start(prefix="", generator_size=len(x), has_val=False, verbose=False)
+
         # Evaluate only if necessary
         self.eval()
 
@@ -1149,7 +1159,6 @@ class AbstractTorchNetwork(nn.Module):
         aggr_outputs = []
 
         with torch.no_grad():
-            iter_len = len(x) - 1
             for sample_idx, input in enumerate(x):
                 input: torch.Tensor
                 input = input.unsqueeze(0)
@@ -1175,7 +1184,7 @@ class AbstractTorchNetwork(nn.Module):
                     output = placeholder
                 aggr_outputs.append(output.cpu().numpy())
 
-                if sample_idx == iter_len:
+                if sample_idx == self._iter_len - 1:
                     break
 
         return np.concatenate(aggr_outputs)
@@ -1252,15 +1261,17 @@ class AbstractTorchNetwork(nn.Module):
             masks = torch.tensor(masks, dtype=torch.float32)[idx].bool().to(self._device)
 
         # Init counter epoch variables
-        self._on_epoch_start("train", data_size, batch_size, has_val)
+        self._on_epoch_start(prefix="train",
+                             generator_size=data_size,
+                             batch_size=batch_size,
+                             has_val=has_val)
 
         # Batch iter variables
         aggr_outputs = []
         aggr_labels = []
 
         # Main loop
-        iter_len = (len(x) // batch_size) * batch_size - 1
-        for sample_idx in range(x.shape[0]):
+        for sample_idx in range(self._iter_len):
             label: torch.Tensor = y[sample_idx]
             input: torch.Tensor = x[sample_idx]
 
@@ -1288,14 +1299,12 @@ class AbstractTorchNetwork(nn.Module):
             aggr_labels.append(label)
 
             # Optimizer network on abtch
-            aggr_outputs, \
-            aggr_labels = self._optimize_batch(outputs=aggr_outputs, \
-                                               labels=aggr_labels, \
-                                               finalize=(not has_val and sample_idx == iter_len))
-
-            # Miss inclomplete batch
-            if sample_idx == iter_len:
-                break
+            aggr_outputs, aggr_labels = self._optimize_batch(
+                outputs=aggr_outputs,
+                labels=aggr_labels,
+                has_val=has_val,
+                is_epoch_end=sample_idx == self._iter_len - 1,
+            )
 
         self._on_epoch_end(epoch, prefix="train")
 
@@ -1315,7 +1324,7 @@ class AbstractTorchNetwork(nn.Module):
 
         # Tracking variables
         generator_size = len(generator)
-        self._on_epoch_start("train",
+        self._on_epoch_start(prefix="train",
                              generator_size=generator_size,
                              batch_size=batch_size,
                              has_val=has_val)
@@ -1323,7 +1332,6 @@ class AbstractTorchNetwork(nn.Module):
         aggr_labels = []
 
         # Main loop
-        iter_len = (len(generator) // batch_size) * batch_size - 1
         for sample_idx, (input, label) in enumerate(generator):
             input: torch.Tensor
             label: torch.Tensor
@@ -1360,10 +1368,11 @@ class AbstractTorchNetwork(nn.Module):
             aggr_outputs, \
             aggr_labels = self._optimize_batch(outputs=aggr_outputs, \
                                                labels=aggr_labels, \
-                                               finalize=not has_val and iter_len == sample_idx)
+                                               has_val=has_val, \
+                                               is_epoch_end=self._iter_len == sample_idx)
 
             # Miss inclomplete batch
-            if sample_idx == iter_len:
+            if sample_idx == self._iter_len:
                 break
 
         self._on_epoch_end(epoch, prefix="train")
@@ -1373,6 +1382,7 @@ class AbstractTorchNetwork(nn.Module):
                         outputs: torch.Tensor,
                         labels: torch.Tensor,
                         prefix: str,
+                        is_epoch_end: bool = False,
                         finalize: bool = False,
                         update_progbar: bool = False):
         """ Update the loss running average and the metrics base on the outputs and labels for 
@@ -1396,12 +1406,14 @@ class AbstractTorchNetwork(nn.Module):
                             labels.int() if hasattr(labels, "int") else labels.astype(int))
 
                 # Reset accumulators and count
-                self._current_metrics["loss"] = loss.item()
-                self._current_metrics.update(dict(self._get_metrics(self._metrics[prefix])))
+                epoch_loss = loss.item()
+                epoch_metrics = self._get_metrics(self._metrics[prefix])
+                self._current_metrics["loss"] = epoch_loss
+                self._current_metrics.update(dict(epoch_metrics))
 
                 if update_progbar:
                     self._epoch_progbar.update(
                         self._epoch_progbar.target if prefix == "val" else self._batch_count,
-                        values=self._prefixed_metrics(self._get_metrics(self._metrics[prefix]),
+                        values=self._prefixed_metrics(epoch_metrics,
                                                       prefix=prefix if prefix != "train" else None),
-                        finalize=finalize)  # and self._batch_count == self._epoch_progbar.target)
+                        finalize=finalize)

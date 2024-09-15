@@ -114,13 +114,13 @@ OVERFIT_SETTINGS_TR = {
 
 @pytest.mark.parametrize("data_flavour", ["generator", "numpy"])
 @pytest.mark.parametrize("task_name", ["IHM", "PHENO"])
-@retry(3)
+# @retry(3)
 def test_torch_lstm_with_target_replication(
     task_name: str,
     data_flavour: str,
     discretized_readers: Dict[str, ProcessedSetReader],
 ):
-    tests_io(f"Test case torch LSTM with target replication for task {task_name}", level=0)
+    tests_io(f"Test case torch CW-LSTM with target replication for task {task_name}", level=0)
     tests_io(f"Using {data_flavour} dataset.")
 
     reader = discretized_readers[task_name]
@@ -201,7 +201,7 @@ def test_torch_lstm_with_deep_supervision(
     data_flavour: str,
     discretized_readers: Dict[str, ProcessedSetReader],
 ):
-    tests_io(f"Test case torch LSTM with deep supervision for task {task_name}", level=0)
+    tests_io(f"Test case torch CW-LSTM with deep supervision for task {task_name}", level=0)
     tests_io(f"Using {data_flavour} dataset.")
 
     reader = discretized_readers[task_name]
@@ -285,13 +285,13 @@ def test_torch_lstm_with_deep_supervision(
 
 @pytest.mark.parametrize("data_flavour", ["generator", "numpy"])
 @pytest.mark.parametrize("task_name", ["IHM", "DECOMP", "LOS", "PHENO"])
-@retry(3)
+# @retry(3)
 def test_torch_lstm(
     task_name: str,
     data_flavour: str,
     discretized_readers: Dict[str, ProcessedSetReader],
 ):
-    tests_io(f"Test case torch LSTM for task {task_name}", level=0)
+    tests_io(f"Test case torch CW-LSTM for task {task_name}", level=0)
     tests_io(f"Using {data_flavour} dataset.")
 
     reader = discretized_readers[task_name]
@@ -403,9 +403,8 @@ def assert_model_performance(history, task, target_metrics):
 
 
 if __name__ == "__main__":
-    import shutil
     disc_reader = dict()
-    for task_name in ["DECOMP"]:  # ["IHM", "DECOMP", "LOS", "PHENO"]:
+    for task_name in ["IHM", "DECOMP", "LOS", "PHENO"]:
         """
         if Path(SEMITEMP_DIR, "discretized", task_name).exists():
             shutil.rmtree(Path(SEMITEMP_DIR, "discretized", task_name))
@@ -430,7 +429,7 @@ if __name__ == "__main__":
                                         task=task_name)
         reader = ProcessedSetReader(Path(SEMITEMP_DIR, "discretized", task_name))
         disc_reader[task_name] = reader
-        for flavour in ["generator"]:  #["numpy", "generator"]:
+        for flavour in ["numpy", "generator"]:
             if task_name in ["IHM", "PHENO"]:
                 test_torch_lstm_with_target_replication(task_name, flavour, disc_reader)
                 ...

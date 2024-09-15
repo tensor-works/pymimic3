@@ -158,28 +158,28 @@ CHANNEL_WISE_LSTM_PARAMS = {
 CHANNEL_WISE_LSTM_DS_PARAMS = {
     "PHENO": {
         "model": {
-            "layer_size": 16,
-            "clayer_size": 128,
+            "clayer_size": 16,
+            "layer_size": 128,
             "target_repl_coef": 0.5
         }
     },
     "DECOMP": {
         "model": {
-            "layer_size": 16,
-            "clayer_size": 128,
+            "clayer_size": 16,
+            "layer_size": 128,
         }
     },
     "IHM": {
         "model": {
-            "layer_size": 16,
-            "clayer_size": 64,
+            "clayer_size": 16,
+            "layer_size": 64,
             "target_repl_coef": 0.5
         }
     },
     "LOS": {
         "model": {
-            "layer_size": 16,
-            "clayer_size": 128,
+            "clayer_size": 16,
+            "layer_size": 128,
         }
     }
 }

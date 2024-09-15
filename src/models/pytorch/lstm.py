@@ -83,8 +83,8 @@ class LSTMNetwork(AbstractTorchNetwork):
                     p.data.fill_(0)
 
     def forward(self, x, masks=None) -> torch.Tensor:
-        masking_falg = masks is not None
-        if masking_falg:
+        masking_flag = masks is not None
+        if masking_flag:
             masks = masks.to(self._device)
         x = x.to(self._device)
 
@@ -94,19 +94,19 @@ class LSTMNetwork(AbstractTorchNetwork):
         x, _ = self._lstm_final(x)
 
         # Case 1: deep supervision
-        if masking_falg:
+        if masking_flag:
             # Apply the linear layer to each LSTM output at each timestep (ts)
             B, T, hidden_size = x.shape
-            x = x.reshape(B * T, hidden_size)
+            x = x.view(B * T, hidden_size)
             x = self._output_layer(x)
-            x = x.reshape(B, T, -1)
+            x = x.view(B, T, -1)
 
         # Case 2: standard LSTM or target replication
         else:
             # Apply linear layer only to the last output of the LSTM
             x = x[:, -1, :]
-            x = x.reshape(x.shape[0], 1, x.shape[1])
             x = self._output_layer(x)
+            x = x.unsqueeze(1)
 
         # Apply final activation if specified
         if self._final_activation and self._apply_activation:
@@ -229,8 +229,8 @@ class CWLSTMNetwork(AbstractTorchNetwork):
                     p.data.fill_(0)
 
     def forward(self, x, masks=None) -> torch.Tensor:
-        masking_falg = masks is not None
-        if masking_falg:
+        masking_flag = masks is not None
+        if masking_flag:
             masks = masks.to(self._device)
 
         x = x.to(self._device)
@@ -251,19 +251,19 @@ class CWLSTMNetwork(AbstractTorchNetwork):
             x, _ = lstm(x)
 
         # Case 1: deep supervision
-        if masking_falg:
+        if masking_flag:
             # Apply the linear layer to each LSTM output at each timestep (ts)
             B, T, hidden_size = x.shape
-            x = x.reshape(B * T, hidden_size)
+            x = x.view(B * T, hidden_size)
             x = self._output_layer(x)
-            x = x.reshape(B, T, -1)
+            x = x.view(B, T, -1)
 
         # Case 2: standard LSTM or target replication
         else:
             # Apply linear layer only to the last output of the LSTM
             x = x[:, -1, :]
-            x = x.reshape(x.shape[0], 1, x.shape[1])
             x = self._output_layer(x)
+            x = x.unsqueeze(1)
 
         # Apply final activation if specified
         if self._final_activation and self._apply_activation:

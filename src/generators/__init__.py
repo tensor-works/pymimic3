@@ -217,7 +217,7 @@ class AbstractGenerator:
                                                                     bining=self._bining,
                                                                     one_hot=self._one_hot):
                         yield X, y, M
-                    # TODO! added because remainders seem to destabilize training
+                    # Added because remainders seem to destabilize training
                     self._remainder_M = np.array([])
                     self._remainder_X = np.array([])
                     self._remainder_y = np.array([])
