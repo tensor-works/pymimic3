@@ -262,7 +262,7 @@ def test_tf2_lstm(
         history = model.fit(dataset["X"],
                             dataset["y"],
                             batch_size=8,
-                            epochs=OVERFIT_SETTINGS_DS[task_name]["epochs"])
+                            epochs=OVERFIT_SETTINGS[task_name]["epochs"])
 
         # -- Store dataset --
         X = dataset["X"]

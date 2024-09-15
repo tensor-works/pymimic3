@@ -177,7 +177,7 @@ class CWLSTMNetwork(AbstractTorchNetwork):
                     channel_lstms.append(lstm)
             self._lstm_per_channel[channel_names] = channel_lstms
 
-        # Block 1: Concatenated LSTM layers
+        # Block 2: Concatenated LSTM layers
         self._concat_lstm_layers = nn.ModuleList()
         if isiterable(layer_size):
             input_size = clayer_size[-1] * len(self._channels)

@@ -1,8 +1,9 @@
 from models.tf2 import AbstractTf2Model
-import pdb
 import tensorflow as tf
+from collections import OrderedDict
 from typing import List, Union
-from models.tf2.layers import ExtendMask
+from models.tf2.layers import ExtendMask, GetTimestep, Slice
+from utils.arrays import isiterable
 from keras.api._v2.keras import layers
 from utils.IO import *
 from models.tf2.mappings import activation_names
@@ -88,6 +89,106 @@ class LSTMNetwork(AbstractTf2Model):
             y = layers.Dense(output_dim, activation=final_activation)(x)
 
         super(LSTMNetwork, self).__init__(inputs=inputs, outputs=y)
+
+
+class CWLSTMNetwork(AbstractTf2Model):
+    """
+    """
+
+    def __init__(self,
+                 layer_size: Union[List[int], int],
+                 clayer_size: Union[List[int], int],
+                 input_dim: int,
+                 channels: List[str],
+                 dropout: float = 0.,
+                 deep_supervision: bool = False,
+                 recurrent_dropout: float = 0.,
+                 final_activation: str = 'linear',
+                 output_dim: int = 1,
+                 depth: int = 1):
+
+        self._input_dim = input_dim
+        self._layer_size = layer_size
+        self._clayer_size = clayer_size
+        self._depth = depth
+        self._dropout = dropout
+        self._recurrent_dropout = recurrent_dropout
+        self._output_dim = output_dim
+
+        # Channels without masking and one-hot encoding
+        channels_names = set([channel.split("->")[0].strip(" ") \
+                              for channel in channels \
+                              if not "mask" in channel])
+
+        # Channel name to index mapping
+        indices = range(input_dim)
+        self._channels = OrderedDict({
+            channel: list(filter(lambda i: channels[i].find(channel) != -1, indices))
+            for channel in channels_names
+        })
+
+        # Input layers and masking
+        X = layers.Input(shape=(None, input_dim), name='X')
+        inputs = [X]
+        x = layers.Masking()(X)
+
+        if deep_supervision:
+            M = layers.Input(shape=(None,), name='M')
+            inputs.append(M)
+
+        # Block 1: Compute channel wise x
+        cx = OrderedDict()
+        for channel_names, channel_indices in self._channels.items():
+            ccx = Slice(channel_indices)(x)  # Current channel x
+            if isiterable(clayer_size):
+                for _, size in enumerate(clayer_size):
+                    ccx = layers.LSTM(units=size,
+                                      activation='tanh',
+                                      return_sequences=True,
+                                      dropout=recurrent_dropout)(ccx)
+            else:
+                for _ in range(depth):
+                    ccx = layers.LSTM(units=clayer_size,
+                                      activation='tanh',
+                                      return_sequences=True,
+                                      dropout=recurrent_dropout)(ccx)
+            cx[channel_names] = ccx
+
+        # Block 2: Concatenated LSTM layers
+        # Concatenate processed channels
+        x = layers.Concatenate(axis=2)(list(cx.values()))
+
+        if isiterable(layer_size):
+            for _, size in enumerate(layer_size[-1]):
+
+                x = layers.LSTM(units=size,
+                                activation='tanh',
+                                return_sequences=True,
+                                dropout=recurrent_dropout)(x)
+        else:
+            for _ in range(depth - 1):
+                x = layers.LSTM(units=layer_size,
+                                activation='tanh',
+                                return_sequences=True,
+                                dropout=recurrent_dropout)(x)
+
+        # Output module of the network
+        x = layers.LSTM(units=layer_size,
+                        activation='tanh',
+                        return_sequences=deep_supervision,
+                        dropout=dropout,
+                        recurrent_dropout=recurrent_dropout)(x)
+
+        if dropout:
+            L = layers.Dropout(dropout)(x)
+
+        if deep_supervision:
+            y = layers.TimeDistributed(layers.Dense(output_dim, activation=final_activation))(x)
+            y = ExtendMask()([y, M])
+        else:
+            y = layers.Dense(output_dim, activation=final_activation)(x)
+
+        super(CWLSTMNetwork, self).__init__(inputs=inputs, outputs=y)
 
 
 if __name__ == "__main__":

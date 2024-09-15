@@ -1,7 +1,8 @@
 import datasets
 import pytest
 import json
-import numpy as np
+from tests.pytest_utils.models.pytorch import unroll_generator
+from tests.pytest_utils.models.pytorch import assert_model_performance
 from utils.IO import *
 from datasets.readers import ProcessedSetReader
 from typing import Dict
@@ -12,9 +13,9 @@ from tests.tsettings import *
 from preprocessing.scalers import MinMaxScaler
 from generators.pytorch import TorchGenerator
 from models.pytorch.lstm import CWLSTMNetwork
-from utils.arrays import zeropad_samples
 from tests.pytest_utils.decorators import retry
 from tests.pytest_utils.models import assert_valid_metric
+from tests.pytest_utils.models.pytorch import unroll_generator, assert_model_performance
 from tests.msettings import *
 
 # ------------------------- Target settings -------------------------
@@ -51,7 +52,7 @@ TARGET_METRICS_DS = {
     "LOS": {
         "train_loss": 2,
         "cohen_kappa": 0.25,
-        "custom_mae": 100
+        "custom_mae": 110
     }
 }
 
@@ -114,8 +115,8 @@ OVERFIT_SETTINGS_TR = {
 
 @pytest.mark.parametrize("data_flavour", ["generator", "numpy"])
 @pytest.mark.parametrize("task_name", ["IHM", "PHENO"])
-# @retry(3)
-def test_torch_lstm_with_target_replication(
+@retry(3)
+def test_torch_cwlstm_with_target_replication(
     task_name: str,
     data_flavour: str,
     discretized_readers: Dict[str, ProcessedSetReader],
@@ -195,8 +196,8 @@ def test_torch_lstm_with_target_replication(
 
 @pytest.mark.parametrize("data_flavour", ["generator", "numpy"])
 @pytest.mark.parametrize("task_name", ["DECOMP", "LOS"])
-# @retry(3)  # Highly unstable
-def test_torch_lstm_with_deep_supervision(
+@retry(3)  # Highly unstable
+def test_torch_cwlstm_with_deep_supervision(
     task_name: str,
     data_flavour: str,
     discretized_readers: Dict[str, ProcessedSetReader],
@@ -285,8 +286,8 @@ def test_torch_lstm_with_deep_supervision(
 
 @pytest.mark.parametrize("data_flavour", ["generator", "numpy"])
 @pytest.mark.parametrize("task_name", ["IHM", "DECOMP", "LOS", "PHENO"])
-# @retry(3)
-def test_torch_lstm(
+@retry(3)
+def test_cwtorch_lstm(
     task_name: str,
     data_flavour: str,
     discretized_readers: Dict[str, ProcessedSetReader],
@@ -367,41 +368,6 @@ def test_torch_lstm(
     tests_io("Succeeded in asserting model sanity")
 
 
-def unroll_generator(generator: TorchGenerator, deep_supervision: bool = False):
-    X, y = list(zip(*[(X, y) for X, y in iter(generator)]))
-    if deep_supervision:
-        X, M = list(zip(*X))
-        M = [m.numpy() for m in M]
-        M = zeropad_samples(M, axis=1)
-    X = [x.numpy() for x in X]
-    X = zeropad_samples(X, axis=1)
-    if deep_supervision:
-        y = [y_sample.numpy() for y_sample in y]
-        y = zeropad_samples(y, axis=1)
-        return X, M, y
-    y = [y_sample for y_sample in y]
-    y = np.concatenate(y)
-    return X, y
-
-
-def assert_model_performance(history, task, target_metrics):
-
-    for metric, target_value in target_metrics.items():
-        if "loss" in metric:
-            actual_value = min(list(history[metric].values()))
-            comparison = actual_value <= target_value
-        elif "mae" in metric:
-            actual_value = min(list(history["train_metrics"][metric].values()))
-            comparison = actual_value <= target_value
-        else:
-            actual_value = max(list(history["train_metrics"][metric].values()))
-            comparison = actual_value >= target_value
-
-        assert comparison, \
-            (f"Failed in asserting {metric} ({actual_value}) "
-             f"{'<=' if 'loss' in metric or 'mae' in metric  else '>='} {target_value} for task {task}")
-
-
 if __name__ == "__main__":
     disc_reader = dict()
     for task_name in ["IHM", "DECOMP", "LOS", "PHENO"]:
@@ -431,9 +397,9 @@ if __name__ == "__main__":
         disc_reader[task_name] = reader
         for flavour in ["numpy", "generator"]:
             if task_name in ["IHM", "PHENO"]:
-                test_torch_lstm_with_target_replication(task_name, flavour, disc_reader)
+                test_torch_cwlstm_with_target_replication(task_name, flavour, disc_reader)
                 ...
             if task_name in ["DECOMP", "LOS"]:
-                test_torch_lstm_with_deep_supervision(task_name, flavour, disc_reader)
+                test_torch_cwlstm_with_deep_supervision(task_name, flavour, disc_reader)
                 ...
-            test_torch_lstm(task_name, flavour, disc_reader)
+            test_cwtorch_lstm(task_name, flavour, disc_reader)

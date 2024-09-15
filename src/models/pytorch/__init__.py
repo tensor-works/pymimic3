@@ -1369,7 +1369,7 @@ class AbstractTorchNetwork(nn.Module):
             aggr_labels = self._optimize_batch(outputs=aggr_outputs, \
                                                labels=aggr_labels, \
                                                has_val=has_val, \
-                                               is_epoch_end=self._iter_len == sample_idx)
+                                               is_epoch_end=self._iter_len - 1 == sample_idx)
 
             # Miss inclomplete batch
             if sample_idx == self._iter_len:
