@@ -176,7 +176,7 @@ class AUC(metrics.AUC):
             multi_label = True
         elif average == "micro":
             multi_label = False
-            if "numl_labels" in kwargs:
+            if "num_labels" in kwargs:
                 kwargs.pop("num_labels")
             if 'multi_label' in kwargs:
                 kwargs.pop("multi_label")
@@ -206,8 +206,6 @@ class AUC(metrics.AUC):
             tf.print(f"-- after squeeze --")
             tf.print(f"y_true {y_true.shape}")
             tf.print(f"y_pred {y_pred.shape}")
-            # tf.print(f"y_true {y_true[:3]}")
-            # tf.print(f"y_pred {y_pred[:3]}")
 
         # Apply masking
         if sample_weight is not None:
@@ -269,7 +267,7 @@ if __name__ == "__main__":
     metric.reset_state()
 
     # Ground truth labels (one-hot encoded)
-    y_true_multi = torch.Tensor([
+    y_true_multi = tf.constant([
         [1, 0, 0],
         [0, 1, 0],
         [0, 0, 1],
@@ -280,10 +278,11 @@ if __name__ == "__main__":
         [0, 0, 1],
         [1, 0, 0],
         [0, 0, 1],
-    ]).int()
+    ],
+                               dtype=tf.int64)
 
     # Predicted probabilities (softmax applied)
-    y_pred_multi = torch.Tensor([
+    y_pred_multi = tf.constant([
         [0.8, 0.1, 0.1],
         [0.2, 0.7, 0.1],
         [0.1, 0.3, 0.6],
@@ -294,11 +293,12 @@ if __name__ == "__main__":
         [0.3, 0.5, 0.2],
         [0.2, 0.1, 0.7],
         [0.7, 0.2, 0.1],
-    ])
+    ],
+                               dtype=tf.float32)
 
     # ------------------------ Testing the Dynamic Cohen Kappa ------------------------
-    y_true = y_true_multi.argmax(dim=1).numpy()
-    y_pred = y_pred_multi.argmax(dim=1).numpy()
+    y_true = tf.argmax(y_true_multi, axis=1).numpy()
+    y_pred = tf.argmax(y_pred_multi, axis=1).numpy()
 
     dynamic = DynamicCohenKappa()
     dynamic.update_state(y_true_multi, y_pred_multi)

@@ -7,44 +7,86 @@ from metrics import CustomBins, LogBins
 from utils.IO import *
 
 # The error is 0-2, 1-2 at 2, 4
-y_true_mc = torch.torch.Tensor([[1, 0, 0], [0, 1, 0], [0, 0, 1], [1, 0, 0], [0, 1, 0], [0, 0, 1],
-                                [1, 0, 0], [0, 0, 1], [1, 0, 0], [0, 0, 1]]).int()
-y_pred_mc = torch.torch.Tensor([0, 1, 0, 0, 2, 2, 0, 2, 0, 2]).int()
+y_true_mc = torch.tensor(
+    [
+        [1, 0, 0],  # Class 0
+        [0, 1, 0],  # Class 1
+        [0, 0, 1],  # Class 2
+        [1, 0, 0],  # Class 0 
+        [0, 1, 0],  # Class 1
+        [0, 0, 1],  # Class 2
+        [1, 0, 0],  # Class 0
+        [0, 0, 1],  # Class 2
+        [1, 0, 0],  # Class 0
+        [0, 0, 1]  # Class 2
+    ],
+    dtype=torch.int)
+
+# Predicted class indices for multiclass classification
+y_pred_mc = torch.tensor([0, 1, 0, 0, 2, 2, 0, 2, 0, 2], dtype=torch.int)
+
+# Multilabel classification labels (one-hot encoded)
 
 # The error is
-y_true_ml = torch.torch.Tensor([[1, 0, 0], [0, 1, 0], [0, 0, 1], [1, 0, 0], [0, 1, 0], [0, 0, 1],
-                                [1, 0, 0], [0, 0, 1], [1, 0, 0], [1, 0, 1]]).int()
-y_pred_ml = torch.torch.Tensor([[0.8, 0.1, 0.1], [0.2, 0.7, 0.1], [0.1, 0.3, 0.6], [0.7, 0.2, 0.1],
-                                [0.1, 0.6, 0.3], [0.2, 0.1, 0.7], [0.6, 0.3, 0.1], [0.3, 0.5, 0.2],
-                                [0.2, 0.1, 0.7], [0.7, 0.2, 0.1]])
+y_true_ml = torch.Tensor(
+    [
+        [1, 0, 0],  # Only class 0
+        [0, 1, 0],  # Only class 1
+        [0, 0, 1],  # Only class 2
+        [1, 0, 0],  # Only class 0
+        [0, 1, 0],  # Only class 1
+        [0, 0, 1],  # Only class 2
+        [1, 0, 0],  # Only class 0
+        [0, 0, 1],  # Only class 2
+        [1, 0, 0],  # Only class 0
+        [1, 0, 1],  # Classes 0 and 2
+    ],
+    dtype=torch.int)
 
-y_true_flat_mc = y_true_ml.numpy().flatten()
-y_pred_flat_mc = y_pred_ml.numpy().flatten()
+# Predicted probabilities for multilabel classification
+y_pred_ml = torch.Tensor(
+    [
+        [0.8, 0.1, 0.1],  # Only class 0 
+        [0.2, 0.7, 0.1],  # Only class 1 
+        [0.1, 0.3, 0.6],  # Only class 2 
+        [0.7, 0.2, 0.1],  # Only class 0 
+        [0.1, 0.6, 0.3],  # Only class 1 
+        [0.2, 0.1, 0.7],  # Only class 2 
+        [0.6, 0.3, 0.1],  # Only class 0 
+        [0.3, 0.5, 0.2],  # Only class 1
+        [0.2, 0.1, 0.7],  # Only class 2 
+        [0.7, 0.2, 0.1]  # Only class 0
+    ],
+    dtype=torch.float32)
+
+# Flattened versions for sklearn calculations
+y_true_flat_ml = y_true_ml.numpy().flatten()
+y_pred_flat_ml = y_pred_ml.numpy().flatten()
 
 
 @pytest.mark.parametrize("bining_falvour", ["log", "custom"])
-def test_bined_mae(bining_falvour):
-    tests_io(f"Test Case: Bined MAE for bining flavour {bining_falvour}")
+def test_bined_mae(bining_flavour: str):
+    tests_io(f"Test Case: Bined MAE for bining flavour {bining_flavour}", level=0)
 
     # Compute custom torch MAE
-    mae_from_one_hot = BinedMAE(bining_falvour)
+    mae_from_one_hot = BinedMAE(bining_flavour)
     mae_from_one_hot.update(y_pred_mc, y_true_mc)
 
     # Compute gt MAE
-    means = CustomBins.means if bining_falvour == "custom" else LogBins.means
+    means = CustomBins.means if bining_flavour == "custom" else LogBins.means
     means = np.array(means)
     mae_gt = np.abs(means[[0, 1]] - means[[2, 2]]).sum() / 10
 
     assert np.isclose(mae_gt, mae_from_one_hot.compute()), (
-        f"Bined MAE ({bining_falvour}): {mae_from_one_hot.compute()}\n"
+        f"Bined MAE ({bining_flavour}): {mae_from_one_hot.compute()}\n"
         f"Ground truth: {mae_gt}\n"
         f"Diff: {mae_from_one_hot.compute() - mae_gt}")
     tests_io("Successfully compared to ground truth. Test case passed.")
 
 
 @pytest.mark.parametrize("average", ["micro", "macro"])
-def test_roc_auc_multilabel(average):
-    tests_io(f"Test Case: multilabel ROC AUC with {average} average")
+def test_roc_auc_multilabel(average: str):
+    tests_io(f"Test Case: Multilabel ROC AUC with {average} average", level=0)
 
     # Compute custom torch ROC AUC
     rocauc = AUROC(task="multilabel", average=average, num_labels=3)
@@ -61,8 +103,8 @@ def test_roc_auc_multilabel(average):
 
 
 @pytest.mark.parametrize("average", ["micro", "macro"])
-def test_pr_auc_multilabel(average):
-    tests_io(f"Test Case: multilabel PR AUC with {average} average")
+def test_pr_auc_multilabel(average: str):
+    tests_io(f"Test Case: multilabel PR AUC with {average} average", level=0)
 
     prauc = AUPRC(task="multilabel", num_labels=3, average=average)
 
@@ -86,7 +128,7 @@ def test_pr_auc_multilabel(average):
         prauc_sklearn = np.mean(prauc_per_class)
 
     else:
-        precision, recall, _ = precision_recall_curve(y_true_flat_mc, y_pred_flat_mc)
+        precision, recall, _ = precision_recall_curve(y_true_flat_ml, y_pred_flat_ml)
         prauc_sklearn = auc(recall, precision)
 
     np.isclose(prauc.compute(), prauc_sklearn), (\
