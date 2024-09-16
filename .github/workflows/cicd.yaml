@@ -37,7 +37,7 @@ jobs:
       - name: Build Docker image
         run: |
           docker build \
-            --file ./devcontainer/Dockerfile \ 
+            --file ./.devcontainer/Dockerfile \ 
             --cache-from=ghcr.io/amadou1998/fastmimic3:${{ github.ref_name }} \
             --tag ghcr.io/amadou1998/fastmimic3:${{ github.ref_name }} \
             .
