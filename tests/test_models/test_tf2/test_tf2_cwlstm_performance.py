@@ -38,9 +38,9 @@ TARGET_METRICS = {
         "pr_auc": 0.9,
     },
     "LOS": {
-        "loss": np.inf,
-        "cohen_kappa": -np.inf,
-        "custom_mae": -np.inf
+        "loss": 0.3,
+        "cohen_kappa": 0.85,
+        "custom_mae": 3
     },
     "PHENO": {
         "loss": 0.5,
@@ -50,11 +50,6 @@ TARGET_METRICS = {
 }
 
 TARGET_METRICS_DS = {
-    "IHM": {
-        "loss": np.nan,
-        "roc_auc": np.nan,
-        "pr_auc": np.nan
-    },
     "DECOMP": {
         "loss": 0.2,
         "roc_auc": 0.8,
@@ -64,11 +59,6 @@ TARGET_METRICS_DS = {
         "loss": 2,
         "cohen_kappa": 0.25,
         "custom_mae": 110
-    },
-    "PHENO": {
-        "loss": 0.5,
-        "micro_roc_auc": 0.75,
-        "macro_roc_auc": 0.7
     }
 }
 
@@ -118,7 +108,7 @@ OVERFIT_SETTINGS_TR = {
 
 @pytest.mark.parametrize("data_flavour", ["generator", "numpy"])
 @pytest.mark.parametrize("task_name", ["DECOMP", "LOS"])
-# @retry(3)
+@retry(3)
 def test_tf2_cwlstm_with_deep_supvervision(
     task_name: str,
     data_flavour: str,
@@ -198,7 +188,7 @@ def test_tf2_cwlstm_with_deep_supvervision(
 
 @pytest.mark.parametrize("data_flavour", ["generator", "numpy"])
 @pytest.mark.parametrize("task_name", ["DECOMP", "LOS"])
-# @retry(3)
+@retry(3)
 def test_tf2_cwlstm(
     task_name: str,
     data_flavour: str,
@@ -297,8 +287,8 @@ def assert_model_performance(history, task: str, target_metrics: Dict[str, float
 
 if __name__ == "__main__":
     disc_reader = dict()
-    for task_name in ["LOS", "PHENO"]:  #["IHM", "DECOMP", "LOS", "PHENO"]:
-        '''
+    for task_name in ["IHM", "DECOMP", "LOS", "PHENO"]:
+
         reader = datasets.load_data(chunksize=75836,
                                     source_path=TEST_DATA_DEMO,
                                     storage_path=SEMITEMP_DIR,
@@ -317,7 +307,7 @@ if __name__ == "__main__":
                                         deep_supervision=True,
                                         impute_strategy='previous',
                                         task=task_name)
-        '''
+
         reader = ProcessedSetReader(Path(SEMITEMP_DIR, "discretized", task_name))
         dataset = reader.to_numpy()
         for flavour in ["generator", "numpy"]:

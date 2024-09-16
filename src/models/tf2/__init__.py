@@ -55,6 +55,9 @@ class AbstractTf2Model(Model):
                         pss_evaluation_shards=pss_evaluation_shards,
                         **kwargs)
 
+        # Not well understood but this causes problems
+        self._metrics = list()
+
     @tf.function
     def train_step(self, data):
         data = data_adapter.expand_1d(data)

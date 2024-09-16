@@ -50,11 +50,6 @@ TARGET_METRICS = {
 }
 
 TARGET_METRICS_DS = {
-    "IHM": {
-        "loss": np.nan,
-        "roc_auc": np.nan,
-        "pr_auc": np.nan
-    },
     "DECOMP": {
         "loss": 0.2,
         "roc_auc": 0.8,
@@ -64,11 +59,6 @@ TARGET_METRICS_DS = {
         "loss": 2,
         "cohen_kappa": 0.25,
         "custom_mae": 110
-    },
-    "PHENO": {
-        "loss": 0.5,
-        "micro_roc_auc": 0.75,
-        "macro_roc_auc": 0.7
     }
 }
 
