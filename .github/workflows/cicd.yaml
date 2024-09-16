@@ -1,0 +1,54 @@
+name: CI/CD Pipeline
+
+on: [push, pull_request, workflow_dispatch]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: self-hosted
+    steps:
+      # Step 1: Checkout the code
+      - uses: actions/checkout@v4
+
+      # Step 2: Log into GitHub Container Registry
+      - name: Log in to GitHub Container Registry
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      # Step 3: Pull the existing image from the registry
+      - name: Pull existing image from registry
+        run: |
+          docker pull ghcr.io/amadou1998/fastmimic3:${{ github.ref_name }} || true
+
+      # Step 4: Build the Docker image with cache
+      - name: Build Docker image
+        run: |
+          docker build \
+            --cache-from=ghcr.io/amadou1998/fastmimic3:${{ github.ref_name }} \
+            --tag ghcr.io/amadou1998/fastmimic3:${{ github.ref_name }} .
+      
+      # Step 5: Push the Docker image back to the registry (if necessary)
+      - name: Push Docker image to registry
+        run: |
+          docker push ghcr.io/amadou1998/fastmimic3:${{ github.ref_name }}
+  docs:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+      - name: Install dependencies
+        run: |
+          pip install sphinx sphinx_rtd_theme myst_parser
+      - name: Sphinx build
+        run: |
+          sphinx-build doc _build
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+        with:
+          publish_branch: gh-pages
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: _build/
+          force_orphan: true
