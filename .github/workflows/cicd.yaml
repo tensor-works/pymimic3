@@ -17,7 +17,7 @@ jobs:
     steps:
       # Step 1: Checkout the code
       - name: Checkout code
-      - uses: actions/checkout@v4
+        uses: actions/checkout@v4
 
       # Step 2: Log into GitHub Container Registry
       - name: Log in to GitHub Container Registry
