@@ -8,8 +8,8 @@ elif [[ "$OSTYPE" == "darwin"* ]]; then
     SCRIPT="$( cd "$( dirname "$0" )" && pwd )"
 fi
 
-export CONFIG=`dirname $SCRIPT`
-export WORKINGDIR=`dirname $CONFIG`
+export CONFIG=$(dirname $(dirname $SCRIPT))/config
+export WORKINGDIR=$(dirname $(dirname $CONFIG))
 export FRONTEND=$WORKINGDIR/frontend
 export MODEL=$WORKINGDIR/models
 export TESTS=$WORKINGDIR/tests
