@@ -34,7 +34,8 @@ jobs:
           docker build \
             --file ./devcontainer/Dockerfile \ 
             --cache-from=ghcr.io/amadou1998/fastmimic3:${{ github.ref_name }} \
-            --tag ghcr.io/amadou1998/fastmimic3:${{ github.ref_name }} .
+            --tag ghcr.io/amadou1998/fastmimic3:${{ github.ref_name }} \
+            .
       
       # Step 5: Push the Docker image back to the registry (if necessary)
       - name: Push Docker image to registry
