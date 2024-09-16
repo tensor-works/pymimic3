@@ -81,7 +81,7 @@ y_pred_flat_ml = y_pred_ml.numpy().flatten()
 
 
 @pytest.mark.parametrize("bining_falvour", ["log", "custom"])
-def test_bined_mae(bining_flavour):
+def test_bined_mae(bining_flavour: str):
     tests_io(f"Test Case: Bined MAE for binning flavour '{bining_flavour}'", level=0)
 
     # Compute custom tf2 MAE
@@ -112,7 +112,7 @@ def test_bined_mae(bining_flavour):
 
 
 @pytest.mark.parametrize("average", ["micro", "macro"])
-def test_roc_auc_multilabel(average):
+def test_roc_auc_multilabel(average: str):
     tests_io(f"Test Case: Multilabel ROC AUC with '{average}' average", level=0)
 
     # Compute custom tf2 ROC AUC
@@ -137,7 +137,7 @@ def test_roc_auc_multilabel(average):
 
 
 @pytest.mark.parametrize("average", ["micro", "macro"])
-def test_pr_auc_multilabel(average):
+def test_pr_auc_multilabel(average: str):
     tests_io(f"Test Case: Multilabel PR AUC with '{average}' average", level=0)
 
     # Compute custom tf2 ROC AUC
@@ -178,20 +178,23 @@ def test_pr_auc_multilabel(average):
 
 
 # Testing Cohen Kappa metric
-def test_cohen_kappa():
-    # TODO! test with sparse labels
+@pytest.mark.parametrize("sparse_labels", [False])
+def test_cohen_kappa(sparse_labels: bool):
     tests_io("Test Case: Cohen Kappa", level=0)
 
     # Compute tf2 PR AUC
     num_classes = 3
-    kappa_metric = CohenKappa(num_classes=num_classes)
+    kappa_metric = CohenKappa(num_classes=num_classes, sparse_labels=sparse_labels)
 
     # Convert one-hot labels to class indices
     y_true_ordinal = tf.argmax(y_true_mc, axis=1)
     y_pred_ordinal = tf.argmax(y_pred_mc_one_hot, axis=1)
 
     # Update the metric with the test data
-    kappa_metric.update_state(y_true_ordinal, y_pred_mc)
+    if sparse_labels:
+        kappa_metric.update_state(y_true_ordinal, y_pred_mc)
+    else:
+        kappa_metric.update_state(y_true_mc, y_pred_mc)
 
     # Compute the metric result
     kappa_result = kappa_metric.result().numpy()
@@ -221,4 +224,5 @@ if __name__ == "__main__":
         test_pr_auc_multilabel(average)
 
     # Test Cohen Kappa metric
-    test_cohen_kappa()
+    for sparse_labels in [False, True]:
+        test_cohen_kappa(sparse_labels=sparse_labels)
