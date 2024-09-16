@@ -29,9 +29,9 @@ jobs:
         run: |
           docker pull ghcr.io/amadou1998/fastmimic3:${{ github.ref_name }} || true
 
-      - name: echo cwd
+      - name: ls cwd
         run: |
-          echo $PWD
+          ls
 
       # Step 4: Build the Docker image with cache
       - name: Build Docker image
