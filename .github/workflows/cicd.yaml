@@ -31,7 +31,7 @@ jobs:
 
       - name: ls cwd
         run: |
-          ls
+          ls ./devcontainer
 
       # Step 4: Build the Docker image with cache
       - name: Build Docker image
