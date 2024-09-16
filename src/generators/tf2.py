@@ -34,12 +34,8 @@ class TFGenerator(AbstractGenerator, Sequence):
     def __getitem__(self, index=None):
         if self._deep_supervision:
             X, y, m = super().__getitem__(index)
-            if len(m.shape) == 1:
-                m = m.reshape(-1, 1)
         else:
             X, y = super().__getitem__(index)
-        if len(y.shape) == 1:
-            y = y.reshape(-1, 1)
         if self._deep_supervision:
             return (X, m), y
         return X, y

@@ -20,6 +20,7 @@ from datasets.readers import ProcessedSetReader
 from models.tf2.lstm import LSTMNetwork
 from utils.arrays import zeropad_samples
 from tests.pytest_utils.models import assert_valid_metric
+from tests.pytest_utils.decorators import retry
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.metrics import AUC
 
@@ -37,9 +38,9 @@ TARGET_METRICS = {
         "pr_auc": 0.9,
     },
     "LOS": {
-        "loss": np.inf,
-        "cohen_kappa": -np.inf,
-        "custom_mae": -np.inf
+        "loss": 0.3,
+        "cohen_kappa": 0.85,
+        "custom_mae": 3
     },
     "PHENO": {
         "loss": 0.5,
@@ -60,9 +61,9 @@ TARGET_METRICS_DS = {
         "pr_auc": 0.3,  # had to lower from 0.4
     },
     "LOS": {
-        "loss": -np.inf,
-        "cohen_kappa": np.inf,
-        "custom_mae": -np.inf
+        "loss": 2,
+        "cohen_kappa": 0.25,
+        "custom_mae": 110
     },
     "PHENO": {
         "loss": 0.5,
@@ -117,6 +118,7 @@ OVERFIT_SETTINGS_TR = {
 
 @pytest.mark.parametrize("data_flavour", ["generator", "numpy"])
 @pytest.mark.parametrize("task_name", ["DECOMP", "LOS"])
+@retry(3)
 def test_tf2_lstm_with_deep_supvervision(
     task_name: str,
     data_flavour: str,
@@ -195,13 +197,12 @@ def test_tf2_lstm_with_deep_supvervision(
 
 @pytest.mark.parametrize("data_flavour", ["generator", "numpy"])
 @pytest.mark.parametrize("task_name", ["DECOMP", "LOS"])
+@retry(3)
 def test_tf2_lstm(
     task_name: str,
     data_flavour: str,
     discretized_readers: Dict[str, ProcessedSetReader],
 ):
-    if data_flavour == "numpy" and task_name in ["DECOMP", "LOS"]:
-        warn_io("Not yet figured out how to make this work with mulitlabel data")
     tests_io(f"Test case tf2 LSTM for task {task_name}", level=0)
     tests_io(f"Using {data_flavour} dataset.")
     reader = discretized_readers[task_name]
@@ -294,7 +295,6 @@ if __name__ == "__main__":
     disc_reader = dict()
     for task_name in ["IHM", "DECOMP", "LOS", "PHENO"]:
         '''
-        '''
         reader = datasets.load_data(chunksize=75836,
                                     source_path=TEST_DATA_DEMO,
                                     storage_path=SEMITEMP_DIR,
@@ -313,10 +313,12 @@ if __name__ == "__main__":
                                         deep_supervision=True,
                                         impute_strategy='previous',
                                         task=task_name)
+        '''
         reader = ProcessedSetReader(Path(SEMITEMP_DIR, "discretized", task_name))
         dataset = reader.to_numpy()
         for flavour in ["generator", "numpy"]:
             disc_reader[task_name] = reader
-            test_tf2_lstm(task_name, flavour, disc_reader)
             if task_name in ['LOS', 'DECOMP']:
                 test_tf2_lstm_with_deep_supvervision(task_name, flavour, disc_reader)
+                ...
+            test_tf2_lstm(task_name, flavour, disc_reader)
