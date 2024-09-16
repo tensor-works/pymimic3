@@ -1,15 +1,46 @@
-FROM mcr.microsoft.com/devcontainers/anaconda:0-3
+# FROM ubuntu:20.04
+# FROM tensorflow/tensorflow:latest-gpu
+FROM continuumio/miniconda3 AS base
 
-# Copy environment.yml (if found) to a temp location so we update the environment. Also
-# copy "noop.txt" so the COPY instruction does not fail if no environment.yml exists.
-RUN conda update -n base conda
-RUN conda install -n base conda-libmamba-solver
-RUN conda config --set solver libmamba
+# Install General Requirements
+RUN apt-get update && \
+        apt-get install -y --no-install-recommends \
+        wget \
+        # bzip2 \
+        unzip \
+        # python3.9 \
+        # python3-pip \
+        nano \
+        software-properties-common \
+        && apt-get clean \
+        && rm -rf /var/lib/apt/lists/*
 
-COPY .devcontainer/environment.yml* .devcontainer/noop.txt /tmp/conda-tmp/
-RUN if [ -f "/tmp/conda-tmp/environment.yml" ]; then umask 0002 && /opt/conda/bin/conda env update -n base -f /tmp/conda-tmp/environment.yml; fi \
-    && rm -rf /tmp/conda-tmp
+ENV NVIDIA_VISIBLE_DEVICES all
+ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
 
-# [Optional] Uncomment this section to install additional OS packages.
-# RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
-#     && apt-get -y install --no-install-recommends <your-package-list-here>
+# Install Anaconda
+# RUN wget https://repo.anaconda.com/archive/Anaconda3-2023.03-Linux-x86_64.sh && \
+#     bash Anaconda3-2023.03-Linux-x86_64.sh -b && \
+#     rm Anaconda3-2023.03-Linux-x86_64.sh
+# 
+# # Set PATH environment variable to include Anaconda
+# ENV PATH /root/anaconda3/bin:$PATH
+
+# Again, test and train scripts should be executable within the container.
+RUN pip install update
+RUN python3 -m pip install --upgrade pip
+
+# Copy context
+RUN mkdir /workdir
+WORKDIR /workdir
+COPY . /workdir
+RUN chmod -R +x /workdir
+
+RUN bash etc/setup.sh
+
+# FROM base AS final <-- this essentially cleans up the build
+# Set the entrypoint to bash with the conda environment activated
+ENTRYPOINT ["/bin/bash", "-c", "conda activate mimic3 && exec /bin/bash"]
+# RUN pip install -r requirements.txt
+
+# Don't add any CMD or ENTRYPOINT!

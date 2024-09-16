@@ -30,12 +30,12 @@ else
         echo "Updating conda"
         conda update -n base -c defaults conda # 24.3.0 at time of creation
         echo "Installing Libmamba solver"
-        conda install -n base conda-libmamba-solver
+        conda install -yn base conda-libmamba-solver
         # Set libmamba as the default solver
         conda config --set solver libmamba
     fi
     echo "Creating (mimic3) conda env" 
-    conda env create -f $envFile
+    conda env create -yf $envFile
 fi
 
 conda activate mimic3
