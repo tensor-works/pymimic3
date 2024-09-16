@@ -1,3 +1,9 @@
+# CI/CD pipeline builds the Docker image and pushes it to the GitHub Container Registry
+# Then it runs the Sphinx documentation build and deploys it to GitHub Pages
+# Finally it tests the FastMIMIC3 package
+# -- DEBUG --
+# Trigger: git commit --allow-empty -m "Trigger pipeline" && git push
+
 name: CI/CD Pipeline
 
 on: [push, pull_request, workflow_dispatch]
@@ -26,6 +32,7 @@ jobs:
       - name: Build Docker image
         run: |
           docker build \
+            --file ./devcontainer/Dockerfile \ 
             --cache-from=ghcr.io/amadou1998/fastmimic3:${{ github.ref_name }} \
             --tag ghcr.io/amadou1998/fastmimic3:${{ github.ref_name }} .
       
@@ -35,6 +42,7 @@ jobs:
           docker push ghcr.io/amadou1998/fastmimic3:${{ github.ref_name }}
   docs:
     runs-on: self-hosted
+    needs: build
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
