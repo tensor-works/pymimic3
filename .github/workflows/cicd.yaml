@@ -16,6 +16,7 @@ jobs:
     runs-on: self-hosted
     steps:
       # Step 1: Checkout the code
+      - name: Checkout code
       - uses: actions/checkout@v4
 
       # Step 2: Log into GitHub Container Registry
@@ -27,6 +28,10 @@ jobs:
       - name: Pull existing image from registry
         run: |
           docker pull ghcr.io/amadou1998/fastmimic3:${{ github.ref_name }} || true
+
+      - name: echo cwd
+        run: |
+          echo $PWD
 
       # Step 4: Build the Docker image with cache
       - name: Build Docker image
