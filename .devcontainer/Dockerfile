@@ -76,7 +76,7 @@ WORKDIR /workdir
 COPY . /workdir
 RUN chmod -R +x /workdir
 
-RUN bash etc/setup/env_vars.sh && bash etc/setup/env_downloads.sh && bash etc/setup/env_conda.sh
+# RUN bash etc/setup/env_vars.sh && bash etc/setup/env_downloads.sh && bash etc/setup/env_conda.sh
 
 # ENTRYPOINT ["/bin/bash", "-c", "conda activate mimic3 && exec /bin/bash"]
 # RUN pip install -r requirements.txt

@@ -13,6 +13,8 @@ permissions:
 
 jobs:
   build:
+    permissions:
+      packages: write
     runs-on: self-hosted
     steps:
       # Step 1: Checkout the code
@@ -44,8 +46,6 @@ jobs:
       
       # Step 5: Push the Docker image back to the registry (if necessary)
       - name: Push Docker image to registry
-        permissions:
-          packages: write
         run: |
           docker push ghcr.io/amadou1998/fastmimic3:${{ github.ref_name }}
   docs:
