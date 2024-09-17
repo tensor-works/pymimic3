@@ -30,7 +30,7 @@ else
         # Set libmamba as the default solver
         conda config --set solver libmamba
     fi
-    echo "\033[34m[5/6]\033[0m Creating mimic3 conda env from file $envFile" 
+    echo -e "\033[34m[5/6]\033[0m Creating mimic3 conda env from file $envFile" 
     conda env create -yf $envFile
 fi
 
