@@ -38,7 +38,7 @@ echo -e "\033[34m[6/6]\033[0m Activating mimic3 conda environment"
 conda activate mimic3
 
 export CUDNN_PATH=$(dirname $(python -c "import nvidia.cudnn;print(nvidia.cudnn.__file__)"))
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CONDA_PREFIX/lib/:$CUDNN_PATH/lib
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda-12.2/lib64   # $LD_LIBRARY_PATH:$CONDA_PREFIX/lib/:$CUDNN_PATH/lib
 
 python -m dotenv -f ${WORKINGDIR}/.env set CUDNN_PATH ${CUDNN_PATH}
 python -m dotenv -f ${WORKINGDIR}/.env set LD_LIBRARY_PATH ${LD_LIBRARY_PATH}
