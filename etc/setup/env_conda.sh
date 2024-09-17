@@ -11,7 +11,7 @@ elif [[ "$OSTYPE" == "darwin"* ]]; then
 fi
 
 echo -e "\033[34m[2/6]\033[0m Sourcing environment variables"
-source $(dirname $SCRIPT)/../.env
+source $(dirname $SCRIPT)/../../.env
 
 envFile="$WORKINGDIR/.devcontainer/linux-gnu.yml"
 
