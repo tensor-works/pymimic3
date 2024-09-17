@@ -324,6 +324,6 @@ dependencies:
       - triton==2.1.0
       - typing-extensions==4.5.0
       - werkzeug==3.0.3
-      - wrapt==1.16.0
+      - wrapt==1.14.1
       - zipp==3.18.2
-prefix: /home/amadou/Data/anaconda3/envs/mimic3
+
