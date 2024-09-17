@@ -13,6 +13,35 @@ from utils.arrays import isiterable
 
 
 class LSTMNetwork(AbstractTorchNetwork):
+    """
+    Long Short-Term Memory (LSTM) network model for time-series prediction tasks using PyTorch.
+
+    This class implements an LSTM-based neural network for tasks such as time-series prediction,
+    with support for dropout, recurrent dropout, multiple LSTM layers, and target replication.
+
+    Parameters
+    ----------
+    layer_size : Union[List[int], int]
+        The size of each LSTM layer. If a list is provided, each element corresponds to the number
+        of units in a respective layer (bottom->top). If an integer is provided, all layers will have the same
+        number of units.
+    input_dim : int
+        Dimensionality of the input data.
+    dropout : float, optional
+        The dropout rate applied to LSTM layers and the final output (default is 0.).
+    recurrent_dropout : float, optional
+        The dropout rate applied to the recurrent state within the LSTM layers (default is 0.).
+    final_activation : str, optional
+        The activation function to apply in the final layer. Default is None.
+    output_dim : int, optional
+        Dimensionality of the model output (default is 1).
+    depth : int, optional
+        Number of LSTM layers (default is 1).
+    target_repl_coef : float, optional
+        Coefficient for target replication (default is 0.).
+    model_path : Path, optional
+        Path to store the trained model (default is None).
+    """
 
     def __init__(self,
                  layer_size: Union[List[int], int],
@@ -35,17 +64,13 @@ class LSTMNetwork(AbstractTorchNetwork):
         self._depth = depth
         self._output_dim = output_dim
 
-        if isinstance(layer_size, int):
-            self._hidden_sizes = [layer_size] * (depth - 1)
-            last_layer_size = layer_size
-        elif isiterable(layer_size):
+        # Iterator resolution
+        if isiterable(layer_size):
             self._hidden_sizes = layer_size[:-1]
             last_layer_size = layer_size[-1]
-            if depth != 1:
-                warn_io("Specified hidden sizes and depth are not consistent. "
-                        "Using hidden sizes and ignoring depth.")
         else:
-            raise ValueError("Layer size must be an integer or a list of integers.")
+            self._hidden_sizes = [layer_size] * (depth - 1)
+            last_layer_size = layer_size
 
         self.lstm_layers = nn.ModuleList()
         input_size = input_dim
@@ -83,6 +108,8 @@ class LSTMNetwork(AbstractTorchNetwork):
                     p.data.fill_(0)
 
     def forward(self, x, masks=None) -> torch.Tensor:
+        """ Simple forward pass with handling of masking.
+        """
         masking_flag = masks is not None
         if masking_flag:
             masks = masks.to(self._device)
@@ -116,6 +143,41 @@ class LSTMNetwork(AbstractTorchNetwork):
 
 
 class CWLSTMNetwork(AbstractTorchNetwork):
+    """
+    Channel-wise Long Short-Term Memory (LSTM) network model for time-series data with multiple input channels.
+
+    This class implements a channel-wise LSTM-based network where inputs are divided into channels.
+    Each channel can have its own LSTM sub-network, and the results are concatenated before passing
+    through a final LSTM layer. It is useful for heterogeneous features processed separately before being combined.
+
+    Parameters
+    ----------
+    layer_size : Union[List[int], int]
+        The size of the final main LSTM layers. If a list is provided, each element corresponds to
+        the number of units in a respective layer (bottom->top). If an integer is provided, all layers
+        will have the same number of units.
+    clayer_size : Union[List[int], int]
+        The size of the channel-specific LSTM layers. If a list is provided, each element
+        corresponds to the number of units in a respective channel LSTM layer (bottom->top).
+    input_dim : int
+        Dimensionality of the input data.
+    channels : List[str]
+        A list of channel names corresponding to the input features.
+    dropout : float, optional
+        The dropout rate applied to LSTM layers and the final output (default is 0.).
+    recurrent_dropout : float, optional
+        The dropout rate applied to the recurrent state within the LSTM layers (default is 0.).
+    final_activation : str, optional
+        The activation function to apply in the final layer (default is None).
+    output_dim : int, optional
+        Dimensionality of the model output (default is 1).
+    depth : int, optional
+        Number of LSTM layers (default is 1).
+    target_repl_coef : float, optional
+        Coefficient for target replication (default is 0.).
+    model_path : Path, optional
+        Path to store the trained model (default is None).
+    """
 
     def __init__(self,
                  clayer_size: Union[List[int], int],
@@ -134,12 +196,11 @@ class CWLSTMNetwork(AbstractTorchNetwork):
                                             model_path=model_path,
                                             target_repl_coef=target_repl_coef)
 
-        self._input_dim = input_dim
         self._layer_size = layer_size
         self._clayer_size = clayer_size
-        self._depth = depth
-        self._dropout = dropout
+        self._dropout_rate = dropout
         self._recurrent_dropout = recurrent_dropout
+        self._depth = depth
         self._output_dim = output_dim
 
         # Channels without masking and one-hot encoding
@@ -229,6 +290,8 @@ class CWLSTMNetwork(AbstractTorchNetwork):
                     p.data.fill_(0)
 
     def forward(self, x, masks=None) -> torch.Tensor:
+        """ Simple forward pass with handling of masking.
+        """
         masking_flag = masks is not None
         if masking_flag:
             masks = masks.to(self._device)

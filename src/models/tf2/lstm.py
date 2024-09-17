@@ -79,6 +79,7 @@ class LSTMNetwork(AbstractTf2Model):
             M = layers.Input(shape=(None,), name='M')
             inputs.append(M)
 
+        # Iterator resolution
         if isinstance(layer_size, int):
             iterator = [layer_size] * (depth - 1)
             last_layer_size = layer_size
@@ -116,6 +117,39 @@ class LSTMNetwork(AbstractTf2Model):
 
 class CWLSTMNetwork(AbstractTf2Model):
     """
+    Channel-wise LSTM network model for time-series data with multiple input channels.
+
+    This class implements an LSTM-based model where inputs are divided into channels.
+    Each channel can have its own LSTM sub-network, and the results are concatenated before
+    passing through a final set of LSTM layers. This architecture is useful when inputs contain
+    heterogeneous features that should be processed separately before being combined.
+
+    Parameters
+    ----------
+    layer_size : Union[List[int], int]
+        The size of the final main LSTM layers. If a list is provided, each element corresponds to
+        the number of units in a respective layer (bottom->top). If an integer is provided, all layers
+        will have the same number of units.
+    clayer_size : Union[List[int], int]
+        The size of the channel-specific LSTM layers. If a list is provided, each element
+        corresponds to the number of units in a respective channel LSTM layer (bottom->top).
+    input_dim : int
+        Dimensionality of the input data.
+    channels : List[str]
+        A list of channel names corresponding to the input features.
+    dropout : float, optional
+        The dropout rate applied to LSTM layers and the final output (default is 0.).
+    deep_supervision : bool, optional
+        If True, the model will apply deep supervision by returning outputs at each
+        time step (default is False).
+    recurrent_dropout : float, optional
+        The dropout rate applied to the recurrent state within the LSTM layers (default is 0.).
+    final_activation : str, optional
+        The activation function to use in the final output layer (default is 'linear').
+    output_dim : int, optional
+        Dimensionality of the model output (default is 1).
+    depth : int, optional
+        Number of LSTM layers (default is 1).
     """
 
     def __init__(self,
