@@ -87,6 +87,6 @@ python -m dotenv -f ${WORKINGDIR}/.env set TESTS ${TESTS}
 python -m dotenv -f ${WORKINGDIR}/.env set EXAMPLES ${EXAMPLES}
 python -m dotenv -f ${WORKINGDIR}/.env set CUDNN_PATH ${CUDNN_PATH}
 python -m dotenv -f ${WORKINGDIR}/.env set LD_LIBRARY_PATH ${LD_LIBRARY_PATH}
-source "${CONFIG}/envvars.sh"
+source "${CONFIG}/env_vars.sh"
 
 

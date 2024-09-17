@@ -1,4 +1,4 @@
-name: test
+name: mimic3
 channels:
   - defaults
 dependencies:
@@ -288,4 +288,3 @@ dependencies:
       - werkzeug==3.0.3
       - wrapt==1.16.0
       - zipp==3.18.2
-prefix: /home/amadou/anaconda3/envs/test

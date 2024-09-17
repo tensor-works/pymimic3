@@ -11,5 +11,5 @@
   "yapf.args": [
     "--style",
     "{based_on_style: google, COLUMN_LIMIT: 100, SPLIT_BEFORE_BITWISE_OPERATOR: true}"
-  ]
+  ],
 }

@@ -1,6 +1,6 @@
 # FROM ubuntu:20.04
 # FROM tensorflow/tensorflow:latest-gpu
-FROM continuumio/miniconda3 AS base
+FROM continuumio/miniconda3:latest
 
 # Install General Requirements
 RUN apt-get update && \
@@ -36,7 +36,7 @@ WORKDIR /workdir
 COPY . /workdir
 RUN chmod -R +x /workdir
 
-RUN bash etc/setup.sh
+# RUN bash etc/setup.sh
 
 # FROM base AS final <-- this essentially cleans up the build
 # Set the entrypoint to bash with the conda environment activated
