@@ -162,7 +162,7 @@ if __name__ == "__main__":
                                storage_path=SEMITEMP_DIR)
         if TEMP_DIR.is_dir():
             shutil.rmtree(str(TEMP_DIR))
-        test_compact_engineer_task(task)
+        test_iterative_engineer_task(task)
         if TEMP_DIR.is_dir():
             shutil.rmtree(str(TEMP_DIR))
-        test_iterative_engineer_task(task)
+        test_compact_engineer_task(task)

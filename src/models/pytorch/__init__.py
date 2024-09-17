@@ -95,11 +95,12 @@ class AbstractTorchNetwork(nn.Module):
             - adamax
             - rmsprop
             - nadam 
+            
         loss : torch.nn.Module, optional
             The loss function to minimize during training. This can either be a loss function from
             the loss mapping or a custom `torch.nn.Module`. If a string, the function maps it to
             a predefined loss function (e.g., 'categorical_crossentropy').
-            Valid metric string values are:
+            Valid loss string values are:
             - binary_crossentropy
             - logits_binary_crossentropy
             - categorical_crossentropy
@@ -110,9 +111,11 @@ class AbstractTorchNetwork(nn.Module):
             - poisson
             - cosine_similarity
             - huber
+            
         metrics : {str, Union[str, type, Metric]}, optional
             A list of metric names or types for model evaluation.
             If not provided, no additional metrics are tracked.
+            Valid metric strings are:
             - accuracy
             - precision
             - recall
@@ -135,10 +138,12 @@ class AbstractTorchNetwork(nn.Module):
             - macro_roc_auc
             - micro_pr_auc
             - macro_pr_auc
+            
         class_weight : numpy.array or numpy.ndarray, optional
             An array representing the weights to be applied to different classes during training. 
             This is used when training imbalanced datasets to emphasize certain classes.
             Default is None.
+            
         clip_value : float, optional
             If provided, enables gradient clipping with the specified value to avoid exploding gradients.
             Default is None.

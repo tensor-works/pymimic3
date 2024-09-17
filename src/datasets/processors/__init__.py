@@ -168,7 +168,7 @@ class AbstractProcessor(ABC):
 
         return
 
-    def transform_subject(self, subject_id: int, return_tracking=False):
+    def transform_subject(self, subject_id: int, return_tracking=False, write=True):
         """
         Transform the data for a specific subject.
 
@@ -197,12 +197,16 @@ class AbstractProcessor(ABC):
             return proc_data, tracking_info
         return proc_data
 
-    def _update_tracking(self, subject_id: int, tracking_info: dict, overwrite: bool = True):
+    def _update_tracking(self,
+                         subject_id: int,
+                         tracking_info: dict,
+                         overwrite: bool = True,
+                         write: bool = True):
         # Common logic for updating the tracking info and removing empty subjects
         if subject_id in tracking_info:
             if tracking_info[subject_id]:
                 self._n_subjects += 1
-                if self._tracker is not None:
+                if self._tracker is not None and write:
                     with self._lock:
                         if not subject_id in self._tracker.subjects or overwrite:
                             self._tracker.subjects.update({subject_id: tracking_info[subject_id]})
@@ -359,7 +363,9 @@ class AbstractProcessor(ABC):
         # Parallel processing logic
         def process_subject(subject_id: str):
             """_summary_"""
-            _, tracking_infos = self.transform_subject(subject_id, return_tracking=True)
+            _, tracking_infos = self.transform_subject(subject_id,
+                                                       return_tracking=True,
+                                                       write=False)
 
             if tracking_infos:
                 self.save_data([subject_id])
@@ -383,6 +389,7 @@ class AbstractProcessor(ABC):
             processed_subjects=self._tracker.subject_ids
             if not self._tracker.force_rerun else list())
 
+        # DEBUG REMOVE
         # for subject_id in subject_ids:
         #     process_subject(subject_id)
 

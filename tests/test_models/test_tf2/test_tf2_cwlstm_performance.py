@@ -21,6 +21,7 @@ from models.tf2.lstm import CWLSTMNetwork
 from utils.arrays import zeropad_samples
 from tests.pytest_utils.decorators import retry
 from tests.pytest_utils.models import assert_valid_metric
+from tests.pytest_utils.models.tf2 import unroll_generator, assert_model_performance
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.metrics import AUC
 
@@ -159,11 +160,7 @@ def test_tf2_cwlstm_with_deep_supvervision(
         history = model.fit(train_generator, epochs=OVERFIT_SETTINGS_DS[task_name]["epochs"])
 
         # -- Unroll the Generator --
-        X, y = list(zip(*[(X, y) for X, y in iter(train_generator)]))
-        X, M = list(zip(*X))
-        X = zeropad_samples(X, axis=1)
-        M = zeropad_samples(M, axis=1)
-        y_true = zeropad_samples(y, axis=1)
+        X, M, y_true = unroll_generator(generator=train_generator, deep_supervision=True)
     elif data_flavour == "numpy":
         # -- Create the dataset --
         dataset = reader.to_numpy(scaler=scaler,
@@ -181,7 +178,7 @@ def test_tf2_cwlstm_with_deep_supvervision(
         M = dataset["M"]
         y_true = dataset["yds"]
 
-    # assert_model_performance(history, task_name, TARGET_METRICS_DS[task_name])
+    assert_model_performance(history, task_name, TARGET_METRICS_DS[task_name])
     assert_valid_metric(X, y_true, task_name, model, mask=M)
     tests_io("Succeeded in asserting model sanity")
 
@@ -241,9 +238,7 @@ def test_tf2_cwlstm(
         history = model.fit(train_generator, epochs=OVERFIT_SETTINGS[task_name]["epochs"])
 
         # -- Unroll the Generator --
-        X, y = list(zip(*[(X, y) for X, y in iter(train_generator)]))
-        X = zeropad_samples(X, axis=1)
-        y_true = np.concatenate(y)
+        X, y_true = unroll_generator(train_generator)
     elif data_flavour == "numpy":
         # -- Create the dataset --
         tests_io("Loading the numpy dataset...", end="\r")
@@ -266,23 +261,6 @@ def test_tf2_cwlstm(
     assert_model_performance(history, task_name, TARGET_METRICS[task_name])
     assert_valid_metric(X, y_true, task_name, model)
     tests_io("Succeeded in asserting model sanity")
-
-
-def assert_model_performance(history, task: str, target_metrics: Dict[str, float]):
-
-    for metric, target_value in target_metrics.items():
-        if metric in ["loss", "custom_mae"]:
-            actual_value = min(history.history[metric])
-            comparison = actual_value <= target_value
-        else:
-            # For other metrics, assume higher is better unless it's an error metric
-            actual_value = max(history.history[metric])
-            comparison = actual_value >= target_value if "error" not in metric.lower(
-            ) and "loss" not in metric.lower() else actual_value <= target_value
-
-        assert comparison, \
-            (f"Failed in asserting {metric} ({actual_value:.4f}) "
-             f"{'<=' if 'loss' in metric.lower() or 'error' in metric.lower() else '>='} {target_value} for task {task}")
 
 
 if __name__ == "__main__":
