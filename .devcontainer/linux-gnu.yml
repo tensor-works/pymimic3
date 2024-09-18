@@ -336,6 +336,7 @@ dependencies:
       - oauthlib==3.2.2
       - opt-einsum==3.4.0
       - pillow==10.2.0
+      - plyvel==1.5.1
       - polars==0.20.26
       - protobuf==4.25.5
       - requests-oauthlib==2.0.0
