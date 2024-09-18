@@ -565,6 +565,9 @@ class InterceptedProperty:
             obj._set_callback(self._name, self._value)
 
 
+import sqlitedict
+
+
 def storable(cls):
     """
     A class decorator that adds persistence functionality to a class.
