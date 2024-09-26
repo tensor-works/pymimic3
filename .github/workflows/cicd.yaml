@@ -34,6 +34,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           push: true
+          file: .devcontainer/Dockerfile
           tags: amadou1998/fastmimic3:latest
       # - name: Build and push Docker image
       #   uses: docker/build-push-action@v6
