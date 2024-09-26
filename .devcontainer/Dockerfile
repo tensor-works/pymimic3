@@ -11,7 +11,7 @@ WORKDIR /src
 COPY . .
 
 # Create a tarball of the tracked files
-RUN git archive --format=tar HEAD > /tmp/workdir-archive.tar
+RUN if [ -d ".git" ]; then git archive --format=tar HEAD > /tmp/workdir-archive.tar; else echo "Not a git repository"; fi
 
 # Use a smaller CUDA runtime image instead of the devel version
 FROM ubuntu:20.04 
