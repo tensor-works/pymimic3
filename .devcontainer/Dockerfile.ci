@@ -1,18 +1,3 @@
-# Step 1: Build stage to create the archive with git
-FROM ubuntu:20.04 AS build
-
-# Install git
-RUN apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/*
-
-# Set up workdir
-WORKDIR /src
-
-# Copy the Git repo into the build stage
-COPY . .
-
-# Create a tarball of the tracked files
-RUN git archive --format=tar HEAD > /tmp/workdir-archive.tar
-
 # Use a smaller CUDA runtime image instead of the devel version
 FROM ubuntu:20.04 
 
@@ -43,14 +28,11 @@ RUN wget "$MINIFORGE_URL" -O miniforge.sh -q && \
 # Set up the working directory
 WORKDIR /workdir
 # Copy only the files tracked by Git (ignoring .gitignore files)
-COPY --from=build /tmp/workdir-archive.tar /workdir
+COPY . .
 
 # Extract the tar archive into the workdir
-RUN tar -xvf workdir-archive.tar && \
-    rm workdir-archive.tar && \
-    rm -rf .github
-
-RUN chmod -R +x /workdir
+RUN rm -rf .github && \
+    chmod -R +x /workdir
 
 # Activate the environment and install pip packages
 RUN conda env create -f .devcontainer/linux-gnu.yml && \
