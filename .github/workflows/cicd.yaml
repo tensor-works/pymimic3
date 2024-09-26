@@ -29,7 +29,7 @@ jobs:
         with:
           context: .
           push: true
-          tags: amadou1998/fastmimic3:${{ github.ref_name }}:latest
+          tags: amadou1998/fastmimic3:${{ github.ref_name }}
           cache-from: type=registry,ref=amadou1998/fastmimic3:buildcache
           cache-to: type=registry,ref=amadou1998/fastmimic3:buildcache,mode=max
 
