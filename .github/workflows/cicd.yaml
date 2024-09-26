@@ -29,9 +29,11 @@ jobs:
         with:
           image: fastmimic3/mimic3
           dockerfile: .devcontainer/Dockerfile
-          # registry: docker.io
-          # username: ${{ secrets.DOCKER_USERNAME }}
-          # password: ${{ secrets.DOCKER_PASSWORD }}
+          # Instruction to setup the docker credentials:
+          # https://github.com/docker/docker-credential-helpers/issues/102#issuecomment-388974092
+          registry: docker.io
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
           context: .
           push: true
           tags: amadou1998/fastmimic3:${{ github.ref_name }}
