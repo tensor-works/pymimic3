@@ -28,7 +28,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           image: fastmimic3/mimic3
-          dockerfile: .devcontainer/Dockerfile
+          dockerfile: ./.devcontainer/Dockerfile
           # Instruction to setup the docker credentials:
           # https://github.com/docker/docker-credential-helpers/issues/102#issuecomment-388974092
           registry: docker.io
