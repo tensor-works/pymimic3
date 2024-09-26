@@ -34,11 +34,11 @@ jobs:
           registry: docker.io
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
-          context: .
-          push: true
+          # context: .
+          # push: true
           tags: amadou1998/fastmimic3:${{ github.ref_name }}
-          cache-from: type=registry,ref=amadou1998/fastmimic3:buildcache
-          cache-to: type=registry,ref=amadou1998/fastmimic3:buildcache,mode=max
+          # cache-from: type=registry,ref=amadou1998/fastmimic3:buildcache
+          # cache-to: type=registry,ref=amadou1998/fastmimic3:buildcache,mode=max
 
       # Step 2: Log into GitHub Container Registry
       # - name: Log in to GitHub Container Registry
