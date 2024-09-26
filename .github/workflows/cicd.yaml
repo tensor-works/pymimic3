@@ -59,7 +59,7 @@ jobs:
       #     docker push ghcr.io/amadou1998/fastmimic3:${{ github.ref_name }}
   docs:
     runs-on: self-hosted
-    needs: build
+    needs: docker-build-and-push
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
