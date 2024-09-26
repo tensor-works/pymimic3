@@ -50,6 +50,7 @@ Examples
 
 import pandas as pd
 from pathlib import Path
+from settings import *
 from utils.types import NoopLock
 from utils.IO import *
 from multiprocess import Process, JoinableQueue, Lock

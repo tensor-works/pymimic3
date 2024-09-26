@@ -59,6 +59,7 @@ from typing import Dict, Tuple, Dict
 from copy import deepcopy
 from pathlib import Path
 from multiprocess import Manager
+from settings import *
 from datasets.writers import DataSetWriter
 from datasets.readers import ExtractedSetReader, ProcessedSetReader
 from datasets.trackers import PreprocessingTracker
@@ -66,7 +67,6 @@ from datasets.processors import AbstractProcessor
 from datasets.mimic_utils import copy_subject_info
 from utils.jsons import dict_subset
 from utils.IO import *
-from settings import *
 
 
 class MIMICPreprocessor(AbstractProcessor):

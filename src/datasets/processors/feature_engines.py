@@ -56,6 +56,7 @@ from typing import Dict, List, Tuple
 from scipy.stats import skew
 from numpy import random
 from multiprocess import Manager
+from settings import *
 from datasets.readers import ProcessedSetReader
 from datasets.writers import DataSetWriter
 from utils.jsons import dict_subset
@@ -350,8 +351,8 @@ class MIMICFeatureEngine(AbstractProcessor):
             if 'values' in self._impute_config[channel].keys():
                 replace_dict.update(self._impute_config[channel]['values'])
 
-        # with pd.option_context('future.no_silent_downcasting', True):
-        X = X.replace(replace_dict).astype(float)
+        with pd.option_context('future.no_silent_downcasting', True):
+            X = X.replace(replace_dict).astype(float)
         return X
 
     def _make_engineered_features(self, data):

@@ -53,8 +53,8 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 from copy import deepcopy
 from pathlib import Path
 from typing import List
-from utils.IO import *
 from settings import *
+from utils.IO import *
 from datasets.extraction.extraction_functions import extract_subject_events, extract_timeseries
 from datasets.extraction.event_producer import EventProducer
 from datasets.extraction.timeseries_processor import TimeseriesProcessor

@@ -40,8 +40,8 @@ Examples
 """
 
 import pandas as pd
-from utils.IO import *
 from settings import *
+from utils.IO import *
 from pathlib import Path
 from pathos.multiprocessing import cpu_count, Pool
 from .extraction_functions import extract_timeseries

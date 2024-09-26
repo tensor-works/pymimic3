@@ -10,13 +10,12 @@ YerevaNN/mimic3-benchmarks
 
 import numpy as np
 import pandas as pd
-import os
 import re
 import shutil
 from pathlib import Path
 from typing import Dict
-from utils.IO import *
 from settings import *
+from utils.IO import *
 
 
 def copy_subject_info(source_path: Path, storage_path: Path):

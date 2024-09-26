@@ -40,10 +40,10 @@ from pathlib import Path
 import multiprocessing as mp
 from collections.abc import Iterable
 from copy import deepcopy
+from settings import *
 from metrics import CustomBins, LogBins
 from collections import defaultdict
 from utils.IO import *
-from settings import *
 from utils.timeseries import read_timeseries, subjects_for_samples
 from utils.arrays import get_iterable_dtype, is_iterable, zeropad_samples
 from utils.types import NoopLock

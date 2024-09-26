@@ -73,8 +73,8 @@ import yaml
 import os
 from typing import Union
 from pathlib import Path
-from utils.IO import *
 from settings import *
+from utils.IO import *
 from datasets.processors.preprocessors import MIMICPreprocessor
 from datasets.processors.feature_engines import MIMICFeatureEngine
 from datasets.processors.discretizers import MIMICDiscretizer

@@ -32,7 +32,7 @@ echo -e "\033[34m[2/4]\033[0m Setting PYTHONPATH=${PYTHONPATH}"
 # Create the .env file
 if [ -z "$(python -m pip list | grep python-dotenv)" ]; then
     echo -e "\033[34m[3/4]\033[0m Installing python-dotenv"
-    python -m pip install python-dotenv[cli]
+    python -m pip install python-dotenv[cli] --no-cache-dir
 else
     echo -e "\033[34m[3/4]\033[0m Python-dotenv already installed"
 fi

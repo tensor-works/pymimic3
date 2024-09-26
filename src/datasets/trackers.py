@@ -32,6 +32,7 @@ The following table describes the input and tracking details for each tracker in
 """
 
 from typing import List
+from settings import *
 from utils.IO import *
 from storable import storable
 from utils.jsons import write_json

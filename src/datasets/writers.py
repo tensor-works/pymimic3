@@ -21,6 +21,7 @@ from pathos.helpers import mp
 import operator
 from pathlib import Path
 from utils.types import NoopLock
+from settings import *
 from utils.IO import *
 from functools import reduce
 

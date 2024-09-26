@@ -85,8 +85,8 @@ from pathlib import Path
 from typing import Dict, Union
 from multipledispatch import dispatch
 from numbers import Number
-from utils.IO import *
 from settings import *
+from utils.IO import *
 from .splitters import ReaderSplitter, CompactSplitter
 from ..readers import ProcessedSetReader, SplitSetReader
 

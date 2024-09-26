@@ -53,6 +53,7 @@ Examples
 import os
 import multiprocessing as mp
 from utils import count_csv_size
+from settings import *
 from utils.IO import *
 from pathlib import Path
 from multiprocess import JoinableQueue, Process

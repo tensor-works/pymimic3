@@ -12,4 +12,13 @@
     "--style",
     "{based_on_style: google, COLUMN_LIMIT: 100, SPLIT_BEFORE_BITWISE_OPERATOR: true}"
   ],
+  "terminal.integrated.env.linux": {
+    "PYTHONPATH": "${env:PYTHONPATH}:${workspaceFolder}/src"
+  },
+  "terminal.integrated.env.osx": {
+    "PYTHONPATH": "$PYTHONPATH:${workspaceFolder}/src"
+  },
+  "terminal.integrated.env.windows": {
+    "PYTHONPATH": "${env:PYTHONPATH}:${workspaceFolder}\\src"
+  }
 }

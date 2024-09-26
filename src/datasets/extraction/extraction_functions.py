@@ -30,6 +30,7 @@ Certainly! Here is the revised version:
 """
 
 import pandas as pd
+from settings import *
 from utils.IO import *
 from ..mimic_utils import *
 

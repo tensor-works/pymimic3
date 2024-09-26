@@ -36,7 +36,7 @@ Examples
 """
 
 import pandas as pd
-import pathos, multiprocess
+from settings import *
 from pathlib import Path
 from copy import deepcopy
 from multiprocess import Manager
