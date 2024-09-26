@@ -1,0 +1,111 @@
+# Step 1: Build stage to create the archive with git
+FROM ubuntu:20.04 AS build
+
+# Install git
+RUN apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/*
+
+# Set up workdir
+WORKDIR /src
+
+# Copy the Git repo into the build stage
+COPY . .
+
+# Create a tarball of the tracked files
+RUN git archive --format=tar HEAD > /tmp/workdir-archive.tar
+
+# Use a smaller CUDA runtime image instead of the devel version
+FROM ubuntu:20.04 
+
+LABEL maintainer="Your Name <your.email@example.com>"
+
+ENV LANG=C.UTF-8 LC_ALL=C.UTF-8
+ENV PATH=/opt/conda/bin:$PATH
+ENV NVIDIA_VISIBLE_DEVICES all
+ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
+
+# Install minimal dependencies
+RUN apt-get update -q && \
+    apt-get install -q -y --no-install-recommends \
+        bzip2 \
+        ca-certificates \
+        git \
+        wget && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install Miniforge (lighter alternative to Miniconda)
+ARG MINIFORGE_URL="https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh"
+RUN wget "$MINIFORGE_URL" -O miniforge.sh -q && \
+    bash miniforge.sh -b -p /opt/conda && \
+    rm miniforge.sh && \
+    /opt/conda/bin/conda clean -afy
+
+# Set up the working directory
+WORKDIR /workdir
+# Copy only the files tracked by Git (ignoring .gitignore files)
+COPY --from=build /tmp/workdir-archive.tar /workdir
+
+# Extract the tar archive into the workdir
+RUN tar -xvf workdir-archive.tar && \
+    rm workdir-archive.tar && \
+    rm -rf .github
+
+RUN chmod -R +x /workdir
+
+# Create a new conda environment with Python 3.9
+RUN /opt/conda/bin/conda create -n mimic3 python=3.9 -y && \
+    /opt/conda/bin/conda clean -afy
+
+# Activate the environment and install pip packages
+RUN /opt/conda/envs/mimic3/bin/pip install --upgrade pip && \
+    /opt/conda/envs/mimic3/bin/pip install --no-cache-dir numpy==1.24.3 &&\
+    /opt/conda/envs/mimic3/bin/pip install --no-cache-dir torch==2.3.0 --extra-index-url https://download.pytorch.org/whl/cu118 && \
+    /opt/conda/envs/mimic3/bin/pip install --no-cache-dir tensorflow==2.14.0 
+
+# Clean up any unnecessary conda and pip files
+RUN conda clean -afy && \
+    find /opt/conda/ -follow -type f -name '*.a' -delete && \
+    find /opt/conda/ -follow -type f -name '*.js.map' -delete
+
+RUN rm -rf /root/.cache/pip 
+
+
+# Activate the environment and run the entrypoint
+ENTRYPOINT ["/bin/bash", "-c", "source activate mimic3 && exec /bin/bash"]
+
+# --- Apt get libcupti
+# apt-get update && apt-get install -y cuda-command-line-tools-12-2
+
+# --- List sorted space usage
+# du -h | sort -h
+
+# --- Copy libdevice from tensor rt to readable dir
+# cp /opt/conda/envs/mimic3/lib/python3.9/site-packages/triton/third_party/cuda/lib/libdevice.10.bc /usr/local/cuda/nvvm/libdevice/
+
+# --- Find a file
+# find / -name "libcupti.so.12" 2>/dev/null
+
+# --- TF version from metadata
+# /opt/conda/envs/mimic3/lib/python3.9/site-packages/tensorflow-2.14.0.dist-info/METADATA
+
+# --- Export CUDA paths to point torch a existing torch
+# export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda-11.8/lib64
+# export CUDA_HOME=/usr/local/cuda
+# export LD_LIBRARY_PATH=/usr/local/cuda-11.8/targets/x86_64-linux/lib:${LD_LIBRARY_PATH}
+
+# --- Delete preinstalled cuda
+# rm -rf /opt/conda/envs/mimic3/lib/python3.9/site-packages/nvidia
+
+# --- Delete container cuda
+# rm -rf /usr/local/cuda-11.8
+
+# --- Simlink to libcupti version agnostic
+# ln -s /usr/local/cuda-11.8/targets/x86_64-linux/lib/libcupti.so /usr/local/cuda-11.8/targets/x86_64-linux/lib/libcupti.so.11.7
+
+# --- Quick cuda test
+# import torch
+# torch.cuda.is_available()
+
+# --- Quick tensorflow test
+# import tensorflow as tf
+# tf.config.list_physical_devices()
