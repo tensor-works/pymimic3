@@ -12,10 +12,66 @@ permissions:
   contents: write
 
 jobs:
+  test-and-build:
+    runs-on: self-hosted
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Check for cached image
+        id: check-image-cache
+        run: |
+          if [ -f ~/image-cache/fastmimic3.tar ]; then
+            echo "cache-hit=true" >> $GITHUB_OUTPUT
+          else
+            echo "cache-hit=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Load cached image
+        if: steps.check-image-cache.outputs.cache-hit == 'true'
+        run: |
+          docker load -i ~/image-cache/fastmimic3.tar
+          echo "Loaded cached image"
+
+      - name: Build Docker image
+        run: |
+          docker build -t amadou1998/fastmimic3:latest -t amadou1998/fastmimic3:${{ github.sha }} -f .devcontainer/Dockerfile.ci .
+
+
+      - name: Save image to cache
+        if: steps.check-image-cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ~/image-cache
+          docker save -o ~/image-cache/fastmimic3.tar amadou1998/fastmimic3:latest
+          echo "Saved new image to cache"
+
+      - name: Push image
+        if: github.event_name != 'pull_request'
+        run: |
+          docker push amadou1998/fastmimic3:latest
+          docker push amadou1998/fastmimic3:${{ github.sha }}
+
+      - name: Scan image for vulnerabilities
+        uses: anchore/scan-action@v3
+        with:
+          image: "amadou1998/fastmimic3:${{ github.sha }}"
+          fail-build: false
+          severity-cutoff: high
   docker-build-and-push:
     permissions:
       packages: write
     runs-on: self-hosted
+    needs: test-and-build
     steps:
       # Step 1: Checkout the code
       - name: Checkout code
