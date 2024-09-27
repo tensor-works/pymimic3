@@ -14,6 +14,8 @@ permissions:
 jobs:
   build-and-push:
     runs-on: self-hosted
+    env:
+      DOCKER_CACHE_DIR: ${{ vars.DOCKER_CACHE_DIR || '/tmp/docker-cache' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -32,6 +34,9 @@ jobs:
         run: echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT
         id: extract_branch
 
+      - name: Ensure cache directory exists
+        run: mkdir -p ${{ env.DOCKER_CACHE_DIR }}/${{ steps.extract_branch.outputs.branch }}
+
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
@@ -42,9 +47,9 @@ jobs:
             tensor-works/pymimic3:latest
             tensor-works/pymimic3:${{ steps.extract_branch.outputs.branch }}
           cache-from: |
-            type=gha,scope=${{ steps.extract_branch.outputs.branch }}
-            type=gha,scope=main
-          cache-to: type=gha,mode=max,scope=${{ steps.extract_branch.outputs.branch }}
+            type=local,src=${{ env.DOCKER_CACHE_DIR }}/${{ steps.extract_branch.outputs.branch }}
+            type=local,src=${{ env.DOCKER_CACHE_DIR }}/main
+          cache-to: type=local,dest=${{ env.DOCKER_CACHE_DIR }}/${{ steps.extract_branch.outputs.branch }},mode=max
 
       - name: Scan image for vulnerabilities
         uses: anchore/scan-action@v3
