@@ -1,4 +1,4 @@
-Welcome to FASTMIMIC3's documentation!
+Welcome to PyMIMIC3's documentation!
 ======================================
 
 .. toctree::

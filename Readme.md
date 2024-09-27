@@ -1,21 +1,21 @@
 <div>
     <img src="./docs/assets/FastMimicLogo.png" width="300" height="300" style="float: right; margin: 15px;" />
     <div>
-        <h1>FastMIMIC3</h1>
+        <h1>pymimic3</h1>
     !This github is under construtction!
     This project is an enhanced recreation of the <a href="https://github.com/YerevaNN/mimic3-benchmarks">original MIMIC benchmarking code base</a>. TDeveloped during my tenure at the Technical University of Munich's <a href="https://cvg.cit.tum.de/">Computer Vision Group</a>, it serves as a versatile tool for investigating concept drift in medical data. 
     <h3>Key Features:</h3>
     <ul> <li><b>Enhanced Performance</b>:
-    FastMIMIC3 incorporates several performance optimizations to streamline its operation, particularly on machines with limited resources.</li>
+    pymimic3 incorporates several performance optimizations to streamline its operation, particularly on machines with limited resources.</li>
     <li><b>Parallel Processing</b>:
     One standout feature is the ability to extract and preprocess data using multiple cores in chunks of specifiable size. This parallel processing capability significantly accelerates modification of the billions of subject events.</li>
     <li><b>Selective Data Extraction</b>:
     Users can opt to reduce the pool of subjects, eliminating the need to extract the entire database. This selective approach enhances efficiency and conserves computational resources.</li>
     <li><b>Configurable Pipeline</b>:
-    FastMIMIC3 boasts a preimplemented JSON-configurable pipeline, facilitating quick experimentation with different settings. This feature enables researchers to conduct back-to-back experiments seamlessly and organize results effectively.</li>
+    pymimic3 boasts a preimplemented JSON-configurable pipeline, facilitating quick experimentation with different settings. This feature enables researchers to conduct back-to-back experiments seamlessly and organize results effectively.</li>
     <li><b>Configurable Datasplit</b>:
-    FastMIMIC3 boasts a preimplemented JSON-configurable pipeline, facilitating quick experimentation with different settings. This feature enables researchers to conduct back-to-back experiments seamlessly and organize results effectively.</li>
-    <li><b>Advanced Data Splitting Utility:</b> FastMIMIC3 introduces an enhanced data splitting utility that offers splitting by subject features, such as age, insurance type, etc. in order to investigate the concept drift resulting for data, skewed towards a certain type of patient.</li>
+    pymimic3 boasts a preimplemented JSON-configurable pipeline, facilitating quick experimentation with different settings. This feature enables researchers to conduct back-to-back experiments seamlessly and organize results effectively.</li>
+    <li><b>Advanced Data Splitting Utility:</b> pymimic3 introduces an enhanced data splitting utility that offers splitting by subject features, such as age, insurance type, etc. in order to investigate the concept drift resulting for data, skewed towards a certain type of patient.</li>
     </ul>
     </div>
     <br clear="left"/>
