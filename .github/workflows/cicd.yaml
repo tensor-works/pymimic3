@@ -32,6 +32,7 @@ jobs:
         run: echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT
         id: extract_branch
 
+      # TODO! This should only be for local runners
       - name: Set up Docker cache directory
         run: |
           if [ -n "$DOCKER_CACHE_DIR" ]; then
@@ -52,6 +53,7 @@ jobs:
           tags: |
             tensorpod/pymimic3:latest
             tensorpod/pymimic3:${{ steps.extract_branch.outputs.branch }}
+          # TODO! Cache should be gha in max mode for github runners
           cache-from: |
             type=local,src=${{ env.DOCKER_CACHE_DIR }}/${{ steps.extract_branch.outputs.branch }}
             type=local,src=${{ env.DOCKER_CACHE_DIR }}/main
