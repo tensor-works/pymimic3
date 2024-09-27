@@ -29,11 +29,16 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Check for cached image
+      - name: Check for cached images
         id: check-image-cache
         run: |
           if [ -f ~/image-cache/pymimic3.latest.tar ]; then
             echo "cache-hit-latest=true" >> $GITHUB_OUTPUT
+          else
+            echo "cache-hit-latest=false" >> $GITHUB_OUTPUT
+          fi
+          if [ -f ~/image-cache/pymimic3.${{ github.sha }}.tar ]; then
+            echo "cache-hit-${{ github.sha }}=true" >> $GITHUB_OUTPUT
           else
             echo "cache-hit-${{ github.sha }}=false" >> $GITHUB_OUTPUT
           fi
