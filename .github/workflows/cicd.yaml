@@ -60,7 +60,7 @@ jobs:
   # Documentation build and deploy
   docs:
     runs-on: self-hosted
-    needs: test-and-build
+    needs: build-and-push
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
