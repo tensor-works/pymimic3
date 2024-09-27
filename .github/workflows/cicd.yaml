@@ -56,7 +56,6 @@ jobs:
           # TODO! Cache should be gha in max mode for github runners
           cache-from: |
             type=local,src=${{ env.DOCKER_CACHE_DIR }}/${{ steps.extract_branch.outputs.branch }}
-            type=local,src=${{ env.DOCKER_CACHE_DIR }}/main
           cache-to: type=local,dest=${{ env.DOCKER_CACHE_DIR }}/${{ steps.extract_branch.outputs.branch }},mode=max
 
       - name: Scan image for vulnerabilities
