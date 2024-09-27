@@ -32,16 +32,22 @@ jobs:
       - name: Check for cached image
         id: check-image-cache
         run: |
-          if [ -f ~/image-cache/pymimic3.tar ]; then
-            echo "cache-hit=true" >> $GITHUB_OUTPUT
+          if [ -f ~/image-cache/pymimic3.latest.tar ]; then
+            echo "cache-hit-latest=true" >> $GITHUB_OUTPUT
           else
-            echo "cache-hit=false" >> $GITHUB_OUTPUT
+            echo "cache-hit-${{ github.sha }}=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Load cached image
-        if: steps.check-image-cache.outputs.cache-hit == 'true'
+      - name: Load latest cached image
+        if: steps.check-image-cache.outputs.cache-hit-latest == 'true'
         run: |
-          docker load -i ~/image-cache/pymimic3.tar
+          docker load -i ~/image-cache/pymimic3.${{ github.sha }}.tar
+          echo "Loaded cached image"
+
+      - name: Load ${{ github.sha }} cached image
+        if: steps.check-image-cache.outputs.cache-hit-${{ github.sha }} == 'true'
+        run: |
+          docker load -i ~/image-cache/pymimic3.${{ github.sha }}.tar
           echo "Loaded cached image"
 
       - name: Build Docker image
@@ -49,11 +55,18 @@ jobs:
           docker build -t tensor-works/pymimic3:latest -t tensor-works/pymimic3:${{ github.sha }} -f .devcontainer/Dockerfile.ci .
 
 
-      - name: Save image to cache
-        if: steps.check-image-cache.outputs.cache-hit != 'true'
+      - name: Save latest image to cache
+        if: steps.check-image-cache.outputs.cache-hit-latest != 'true'
         run: |
           mkdir -p ~/image-cache
-          docker save -o ~/image-cache/pymimic3.tar tensor-works/pymimic3:latest
+          docker save -o ~/image-cache/pymimic3.latest.tar tensor-works/pymimic3:latest
+          echo "Saved new image to cache"
+
+      - name: Save ${{ github.sha }} image to cache
+        if: steps.check-image-cache.outputs.cache-hit-${{ github.sha }} != 'true'
+        run: |
+          mkdir -p ~/image-cache
+          docker save -o ~/image-cache/pymimic3.${{ github.sha }}.tar tensor-works/pymimic3:${{ github.sha }}
           echo "Saved new image to cache"
 
       - name: Push image
