@@ -41,18 +41,7 @@ jobs:
             echo "DOCKER_CACHE_DIR not set on runner. Using default: $DOCKER_CACHE_DIR"
           fi
           echo "DOCKER_CACHE_DIR=$DOCKER_CACHE_DIR" >> $GITHUB_ENV
-          
-          # Create directory with sudo if necessary
-          if ! mkdir -p "$DOCKER_CACHE_DIR" 2>/dev/null; then
-            echo "Failed to create directory. Attempting with sudo..."
-            sudo mkdir -p "$DOCKER_CACHE_DIR"
-          fi
-          
-          # Set permissions
-          sudo chown -R $(id -u):$(id -g) "$DOCKER_CACHE_DIR"
-          sudo chmod -R 755 "$DOCKER_CACHE_DIR"
-          
-          echo "Docker cache directory created and permissions set: $DOCKER_CACHE_DIR"
+          mkdir -p $DOCKER_CACHE_DIR
 
       - name: Build and push
         uses: docker/build-push-action@v5
