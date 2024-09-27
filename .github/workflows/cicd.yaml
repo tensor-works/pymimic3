@@ -37,27 +37,27 @@ jobs:
           else
             echo "cache-hit-latest=false" >> $GITHUB_OUTPUT
           fi
-          if [ -f ~/image-cache/pymimic3.${{ github.sha }}.tar ]; then
-            echo "cache-hit-${{ github.sha }}=true" >> $GITHUB_OUTPUT
+          if [ -f ~/image-cache/pymimic3.${{ github.ref_name }}.tar ]; then
+            echo "cache-hit-${{ github.ref_name }}=true" >> $GITHUB_OUTPUT
           else
-            echo "cache-hit-${{ github.sha }}=false" >> $GITHUB_OUTPUT
+            echo "cache-hit-${{ github.ref_name }}=false" >> $GITHUB_OUTPUT
           fi
 
       - name: Load latest cached image
         if: steps.check-image-cache.outputs.cache-hit-latest == 'true'
         run: |
-          docker load -i ~/image-cache/pymimic3.${{ github.sha }}.tar
+          docker load -i ~/image-cache/pymimic3.${{ github.ref_name }}.tar
           echo "Loaded cached image"
 
-      - name: Load ${{ github.sha }} cached image
-        if: steps.check-image-cache.outputs.cache-hit-${{ github.sha }} == 'true'
+      - name: Load ${{ github.ref_name }} cached image
+        if: steps.check-image-cache.outputs.cache-hit-${{ github.ref_name }} == 'true'
         run: |
-          docker load -i ~/image-cache/pymimic3.${{ github.sha }}.tar
+          docker load -i ~/image-cache/pymimic3.${{ github.ref_name }}.tar
           echo "Loaded cached image"
 
       - name: Build Docker image
         run: |
-          docker build -t tensor-works/pymimic3:latest -t tensor-works/pymimic3:${{ github.sha }} -f .devcontainer/Dockerfile.ci .
+          docker build -t tensor-works/pymimic3:latest -t tensor-works/pymimic3:${{ github.ref_name }} -f .devcontainer/Dockerfile.ci .
 
 
       - name: Save latest image to cache
@@ -67,23 +67,23 @@ jobs:
           docker save -o ~/image-cache/pymimic3.latest.tar tensor-works/pymimic3:latest
           echo "Saved new image to cache"
 
-      - name: Save ${{ github.sha }} image to cache
-        if: steps.check-image-cache.outputs.cache-hit-${{ github.sha }} != 'true'
+      - name: Save ${{ github.ref_name }} image to cache
+        if: steps.check-image-cache.outputs.cache-hit-${{ github.ref_name }} != 'true'
         run: |
           mkdir -p ~/image-cache
-          docker save -o ~/image-cache/pymimic3.${{ github.sha }}.tar tensor-works/pymimic3:${{ github.sha }}
+          docker save -o ~/image-cache/pymimic3.${{ github.ref_name }}.tar tensor-works/pymimic3:${{ github.ref_name }}
           echo "Saved new image to cache"
 
       - name: Push image
         if: github.event_name != 'pull_request'
         run: |
           docker push tensor-works/pymimic3:latest
-          docker push tensor-works/pymimic3:${{ github.sha }}
+          docker push tensor-works/pymimic3:${{ github.ref_name }}
 
       - name: Scan image for vulnerabilities
         uses: anchore/scan-action@v3
         with:
-          image: "tensor-works/pymimic3:${{ github.sha }}"
+          image: "tensor-works/pymimic3:${{ github.ref_name }}"
           fail-build: false
           severity-cutoff: high
 
