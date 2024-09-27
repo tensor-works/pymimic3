@@ -14,9 +14,18 @@ permissions:
 jobs:
   build-and-push:
     runs-on: self-hosted
-    env:
-      DOCKER_CACHE_DIR: ${{ env.DOCKER_CACHE_DIR || '/tmp/docker-cache' }}
     steps:
+      - name: Set up Docker cache directory
+        run: |
+          if [ -n "$DOCKER_CACHE_DIR" ]; then
+            echo "Using runner's DOCKER_CACHE_DIR: $DOCKER_CACHE_DIR"
+          else
+            DOCKER_CACHE_DIR="/tmp/docker-cache"
+            echo "DOCKER_CACHE_DIR not set on runner. Using default: $DOCKER_CACHE_DIR"
+          fi
+          echo "DOCKER_CACHE_DIR=$DOCKER_CACHE_DIR" >> $GITHUB_ENV
+          mkdir -p $DOCKER_CACHE_DIR
+          
       - name: Checkout code
         uses: actions/checkout@v4
 
