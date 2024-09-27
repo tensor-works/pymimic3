@@ -14,7 +14,7 @@ COPY . .
 RUN git archive --format=tar HEAD > /tmp/workdir-archive.tar
 
 # Use a smaller CUDA runtime image instead of the devel version
-FROM ubuntu:20.04 
+FROM tensorpod/torch-and-tf2-on-cuda:pt2.3-cu118-tf2.14.0-py3.9-no-ta-tv
 
 LABEL maintainer="Your Name <your.email@example.com>"
 
@@ -25,20 +25,8 @@ ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
 
 # Install minimal dependencies
 RUN apt-get update -q && \
-    apt-get install -q -y --no-install-recommends \
-        bzip2 \
-        ca-certificates \
-        git \
-        wget && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
-
-# Install Miniforge (lighter alternative to Miniconda)
-ARG MINIFORGE_URL="https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh"
-RUN wget "$MINIFORGE_URL" -O miniforge.sh -q && \
-    bash miniforge.sh -b -p /opt/conda && \
-    rm miniforge.sh && \
-    /opt/conda/bin/conda clean -afy
 
 # Set up the working directory
 WORKDIR /workdir
@@ -53,7 +41,7 @@ RUN tar -xvf workdir-archive.tar && \
 RUN chmod -R +x /workdir
 
 # Activate the environment and install pip packages
-RUN conda env create -f .devcontainer/linux-gnu.yml && \
+RUN conda env update -n base -f .devcontainer/linux-gnu.yml && \
     /opt/conda/bin/conda clean -afy
 
 # Clean up any unnecessary conda and pip files
@@ -64,5 +52,5 @@ RUN conda clean -afy && \
 RUN rm -rf /root/.cache/pip 
 
 # Activate the environment and run the entrypoint
-ENTRYPOINT ["/bin/bash", "-c", "source activate mimic3 && exec /bin/bash"]
+ENTRYPOINT ["/bin/bash", "-c", "source activate base && exec /bin/bash"]
 
