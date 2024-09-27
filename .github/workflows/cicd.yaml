@@ -15,7 +15,7 @@ jobs:
   build-and-push:
     runs-on: self-hosted
     env:
-      DOCKER_CACHE_DIR: ${{ vars.DOCKER_CACHE_DIR || '/tmp/docker-cache' }}
+      DOCKER_CACHE_DIR: ${{ env.DOCKER_CACHE_DIR || '/tmp/docker-cache' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
