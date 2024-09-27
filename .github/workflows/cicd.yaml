@@ -94,7 +94,7 @@ jobs:
   # Pytest run test
   pytest:
     runs-on: self-hosted
-    needs: build
+    needs: test-and-build
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
