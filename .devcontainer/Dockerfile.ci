@@ -10,8 +10,7 @@ ENV NVIDIA_VISIBLE_DEVICES all
 ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
 
 # Install minimal dependencies
-RUN --mount=type=cache,target=/var/cache/apt \
-    apt-get update -q && \
+RUN --mount=type=cache,target=/var/cache/apt apt-get update -q && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
@@ -22,8 +21,7 @@ WORKDIR /workdir
 COPY .devcontainer/linux-gnu.yml .devcontainer/linux-gnu.yml
 
 # Update conda environment
-RUN --mount=type=cache,target=/opt/conda/pkgs \
-    conda env update -n base -f .devcontainer/linux-gnu.yml && \
+RUN --mount=type=cache,target=/opt/conda/pkgs conda env update -n base -f .devcontainer/linux-gnu.yml && \
     conda clean -afy
 
 # Copy the rest of the files
