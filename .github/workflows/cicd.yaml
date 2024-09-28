@@ -11,13 +11,15 @@ on: [push, pull_request, workflow_dispatch]
 permissions:
   contents: write
 
+env:
+  DOCKER_BUILDKIT: 1
+
 jobs:
-  test-and-build:
-    runs-on: self-hosted
+  build:
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -28,62 +30,83 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Check for cached image
-        id: check-image-cache
-        run: |
-          if [ -f ~/image-cache/pymimic3.tar ]; then
-            echo "cache-hit=true" >> $GITHUB_OUTPUT
-          else
-            echo "cache-hit=false" >> $GITHUB_OUTPUT
-          fi
+      - name: Extract branch name
+        shell: bash
+        run: echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT
+        id: extract_branch
 
-      - name: Load cached image
-        if: steps.check-image-cache.outputs.cache-hit == 'true'
-        run: |
-          docker load -i ~/image-cache/pymimic3.tar
-          echo "Loaded cached image"
-
-      - name: Build Docker image
-        run: |
-          docker build -t tensor-works/pymimic3:latest -t tensor-works/pymimic3:${{ github.sha }} -f .devcontainer/Dockerfile.ci .
-
-
-      - name: Save image to cache
-        if: steps.check-image-cache.outputs.cache-hit != 'true'
-        run: |
-          mkdir -p ~/image-cache
-          docker save -o ~/image-cache/pymimic3.tar tensor-works/pymimic3:latest
-          echo "Saved new image to cache"
-
-      - name: Push image
-        if: github.event_name != 'pull_request'
-        run: |
-          docker push tensor-works/pymimic3:latest
-          docker push tensor-works/pymimic3:${{ github.sha }}
-
-      - name: Scan image for vulnerabilities
-        uses: anchore/scan-action@v3
+      - name: Cache Docker layers
+        uses: actions/cache@v4
         with:
-          image: "tensor-works/pymimic3:${{ github.sha }}"
-          fail-build: false
-          severity-cutoff: high
-  docs:
-    runs-on: self-hosted
-    needs: test-and-build
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-      - name: Install dependencies
-        run: |
-          pip install sphinx sphinx_rtd_theme myst_parser
-      - name: Sphinx build
-        run: |
-          sphinx-build doc _build
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
-        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
         with:
-          publish_branch: gh-pages
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: _build/
-          force_orphan: true
+          context: .
+          file: .devcontainer/Dockerfile.ci
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: |
+            tensorpod/pymimic3:latest
+            tensorpod/pymimic3:${{ steps.extract_branch.outputs.branch }}
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
+
+      - name: Move cache
+        run: |
+          rm -rf /tmp/.buildx-cache
+          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
+
+#       - name: Scan image for vulnerabilities
+#         uses: anchore/scan-action@v3
+#         with:
+#           image: "tensorpod/pymimic3:${{ steps.extract_branch.outputs.branch }}"
+#           fail-build: false
+#           severity-cutoff: high
+ # # Documentation build and deploy
+ # docs:
+ #   runs-on: self-hosted
+ #   needs: build-and-push
+ #   steps:
+ #     - uses: actions/checkout@v4
+ #     - uses: actions/setup-python@v5
+ #     - name: Install dependencies
+ #       run: |
+ #         pip install sphinx sphinx_rtd_theme myst_parser
+ #     - name: Sphinx build
+ #       run: |
+ #         sphinx-build doc _build
+ #     - name: Deploy to GitHub Pages
+ #       uses: peaceiris/actions-gh-pages@v3
+ #       if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+ #       with:
+ #         publish_branch: gh-pages
+ #         github_token: ${{ secrets.GITHUB_TOKEN }}
+ #         publish_dir: _build/
+ #         force_orphan: true
+#
+ # # Pytest run test
+ # pytest:
+ #   runs-on: self-hosted
+ #   needs: build-and-push
+ #   steps:
+ #     - name: Checkout code
+ #       uses: actions/checkout@v4
+#
+ #     - name: Load cached image
+ #       run: |
+ #         docker load -i ~/image-cache/pymimic3.tar
+ #         echo "Loaded cached image for testing"
+#
+ #     - name: Test generators
+ #       run: |
+ #         docker run --rm tensorpod/pymimic3:latest pytest /workingdir/tests/test_generators.py
+#
+ #     - name: Upload pytest results
+ #       uses: actions/upload-artifact@v3
+ #       with:
+ #         name: pytest-results
+ #         path: pytest-results/

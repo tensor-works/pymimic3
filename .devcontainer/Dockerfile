@@ -16,7 +16,7 @@ RUN git archive --format=tar HEAD > /tmp/workdir-archive.tar
 # Use a smaller CUDA runtime image instead of the devel version
 FROM tensorpod/torch-and-tf2-on-cuda:pt2.3-cu118-tf2.14.0-py3.9-no-ta-tv
 
-LABEL maintainer="Your Name <your.email@example.com>"
+LABEL maintainer="Amadou Wolfgang Cisse <amadou.6e@googlemail.com>"
 
 ENV LANG=C.UTF-8 LC_ALL=C.UTF-8
 ENV PATH=/opt/conda/bin:$PATH
