@@ -24,6 +24,7 @@ jobs:
       - name: Set up Docker cache directory
         run: |
           echo env
+          echo ${{ vars.DOCKER_CACHE_DIR }}
           echo cache dir is: "$DOCKER_CACHE_DIR"
           echo cache dir is: ${{ env.DOCKER_CACHE_DIR }}
           if [ -n "$DOCKER_CACHE_DIR" ]; then
