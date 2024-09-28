@@ -21,6 +21,10 @@ WORKDIR /workdir
 # Copy only the conda environment file first to leverage caching
 COPY .devcontainer/linux-gnu.yml .devcontainer/linux-gnu.yml
 
+# TODO! REMOVE DEBUG
+RUN conda install python=3.9 -y && \
+    conda clean -afy
+
 # Update conda environment
 RUN --mount=type=cache,target=/opt/conda/pkgs \
     conda env update -n base -f .devcontainer/linux-gnu.yml && \
