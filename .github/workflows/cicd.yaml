@@ -11,9 +11,12 @@ on: [push, pull_request, workflow_dispatch]
 permissions:
   contents: write
 
+env:
+  DOCKER_BUILDKIT: 1
+  
 jobs:
-  build-and-push:
-    runs-on: self-hosted
+  build:
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -32,28 +35,16 @@ jobs:
         run: echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT
         id: extract_branch
 
-      # TODO! This should only be for local runners
-      - name: Set up Docker cache directory
-        run: |
-          if [ -n "$DOCKER_CACHE_DIR" ]; then
-            echo "Using runner's DOCKER_CACHE_DIR: $DOCKER_CACHE_DIR"
-          else
-            DOCKER_CACHE_DIR="/tmp/docker-cache"
-            echo "DOCKER_CACHE_DIR not set on runner. Using default: $DOCKER_CACHE_DIR"
-          fi
-          echo "DOCKER_CACHE_DIR=$DOCKER_CACHE_DIR" >> $GITHUB_ENV
-          mkdir -p {{ $DOCKER_CACHE_DIR }}/${{ steps.extract_branch.outputs.branch }}
-
       - name: Cache Docker layers
-        uses: actions/cache@v4
+        uses: actions/cache@v3
         with:
-          path: ${{ env.DOCKER_CACHE_DIR }}/${{ steps.extract_branch.outputs.branch }}
+          path: /tmp/.buildx-cache
           key: ${{ runner.os }}-buildx-${{ github.sha }}
           restore-keys: |
-            ${{ runner.os }}-buildx-   
+            ${{ runner.os }}-buildx-
 
       - name: Build and push
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v4
         with:
           context: .
           file: .devcontainer/Dockerfile.ci
@@ -61,10 +52,13 @@ jobs:
           tags: |
             tensorpod/pymimic3:latest
             tensorpod/pymimic3:${{ steps.extract_branch.outputs.branch }}
-          # TODO! Cache should be gha in max mode for github runners
-          cache-from: |
-            type=local,src=${{ env.DOCKER_CACHE_DIR }}/${{ steps.extract_branch.outputs.branch }}
-          cache-to: type=local,dest=${{ env.DOCKER_CACHE_DIR }}/${{ steps.extract_branch.outputs.branch }},mode=max
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
+
+      - name: Move cache
+        run: |
+          rm -rf /tmp/.buildx-cache
+          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
 
       - name: Scan image for vulnerabilities
         uses: anchore/scan-action@v3
