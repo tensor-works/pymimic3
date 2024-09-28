@@ -1,6 +1,5 @@
 # Use a smaller CUDA runtime image instead of the devel version
-FROM condaforge/miniforge3:latest
-# tensorpod/torch-and-tf2-on-cuda:pt2.3-cu118-tf2.14.0-py3.9-no-ta-tv
+FROM tensorpod/torch-and-tf2-on-cuda:pt2.3-cu118-tf2.14.0-py3.9-no-ta-tv
 
 LABEL maintainer="Amadou Wolfgang Cisse <amadou.6e@googlemail.com>"
 
@@ -20,10 +19,6 @@ WORKDIR /workdir
 
 # Copy only the conda environment file first to leverage caching
 COPY .devcontainer/linux-gnu.yml .devcontainer/linux-gnu.yml
-
-# TODO! REMOVE DEBUG
-RUN conda install python=3.9 -y && \
-    conda clean -afy
 
 # Update conda environment
 RUN --mount=type=cache,target=/opt/conda/pkgs \
