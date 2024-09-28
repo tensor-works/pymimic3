@@ -15,7 +15,7 @@ env:
   DOCKER_BUILDKIT: 1
 
 jobs:
-  build:
+  build-and-push:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -60,12 +60,12 @@ jobs:
           rm -rf /tmp/.buildx-cache
           mv /tmp/.buildx-cache-new /tmp/.buildx-cache
 
-#       - name: Scan image for vulnerabilities
-#         uses: anchore/scan-action@v3
-#         with:
-#           image: "tensorpod/pymimic3:${{ steps.extract_branch.outputs.branch }}"
-#           fail-build: false
-#           severity-cutoff: high
+      - name: Scan image for vulnerabilities
+        uses: anchore/scan-action@v3
+        with:
+          image: "tensorpod/pymimic3:${{ steps.extract_branch.outputs.branch }}"
+          fail-build: false
+          severity-cutoff: high
  # # Documentation build and deploy
  # docs:
  #   runs-on: self-hosted
@@ -88,25 +88,22 @@ jobs:
  #         publish_dir: _build/
  #         force_orphan: true
 #
- # # Pytest run test
- # pytest:
- #   runs-on: self-hosted
- #   needs: build-and-push
- #   steps:
- #     - name: Checkout code
- #       uses: actions/checkout@v4
-#
- #     - name: Load cached image
- #       run: |
- #         docker load -i ~/image-cache/pymimic3.tar
- #         echo "Loaded cached image for testing"
-#
- #     - name: Test generators
- #       run: |
- #         docker run --rm tensorpod/pymimic3:latest pytest /workingdir/tests/test_generators.py
-#
- #     - name: Upload pytest results
- #       uses: actions/upload-artifact@v3
- #       with:
- #         name: pytest-results
- #         path: pytest-results/
+# Pytest run test
+  pytest:
+    runs-on: self-hosted
+    needs: build-and-push
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Load cached image
+        run: |
+          docker load -i ~/image-cache/pymimic3.tar
+          echo "Loaded cached image for testing"
+      - name: Test generators
+        run: |
+          docker run --rm tensorpod/pymimic3:latest pytest /workingdir/tests/test_generators.py
+      - name: Upload pytest results
+        uses: actions/upload-artifact@v3
+        with:
+          name: pytest-results
+          path: pytest-results/
