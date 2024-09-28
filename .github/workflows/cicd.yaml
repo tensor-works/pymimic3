@@ -2,7 +2,7 @@
 # Then it runs the Sphinx documentation build and deploys it to GitHub Pages
 # Finally it tests the pymimic3 package
 # -- DEBUG --
-# Trigger: git commit --allow-empty -m "Trigger pipeline" && git push
+# Trigger: >git commit --allow-empty -m "Trigger pipeline" && git push
 
 name: CI/CD Pipeline
 
@@ -21,6 +21,18 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Set up Docker cache directory
+        run: |
+          echo cache dir is: $DOCKER_CACHE_DIR
+          if [ -n "$DOCKER_CACHE_DIR" ]; then
+            echo "Using runner's DOCKER_CACHE_DIR: $DOCKER_CACHE_DIR"
+          else
+            DOCKER_CACHE_DIR="/tmp"
+            echo "DOCKER_CACHE_DIR not set on runner. Using default: $DOCKER_CACHE_DIR"
+          fi
+          echo "DOCKER_CACHE_DIR=$DOCKER_CACHE_DIR" >> $GITHUB_ENV
+          mkdir -p $DOCKER_CACHE_DIR
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -34,18 +46,6 @@ jobs:
         shell: bash
         run: echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT
         id: extract_branch
-
-      - name: Set up Docker cache directory
-        run: |
-          echo cache dir is: $DOCKER_CACHE_DIR
-          if [ -n "$DOCKER_CACHE_DIR" ]; then
-            echo "Using runner's DOCKER_CACHE_DIR: $DOCKER_CACHE_DIR"
-          else
-            DOCKER_CACHE_DIR="/tmp"
-            echo "DOCKER_CACHE_DIR not set on runner. Using default: $DOCKER_CACHE_DIR"
-          fi
-          echo "DOCKER_CACHE_DIR=$DOCKER_CACHE_DIR" >> $GITHUB_ENV
-          mkdir -p $DOCKER_CACHE_DIR
 
       - name: Cache Docker layers
         uses: actions/cache@v4
