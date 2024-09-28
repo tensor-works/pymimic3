@@ -42,7 +42,7 @@ jobs:
             echo "DOCKER_CACHE_DIR not set on runner. Using default: $DOCKER_CACHE_DIR"
           fi
           echo "DOCKER_CACHE_DIR=$DOCKER_CACHE_DIR" >> $GITHUB_ENV
-          mkdir -p $DOCKER_CACHE_DIR
+          mkdir -p {{ $DOCKER_CACHE_DIR }}/${{ steps.extract_branch.outputs.branch }}
 
       - name: Cache Docker layers
         uses: actions/cache@v4
