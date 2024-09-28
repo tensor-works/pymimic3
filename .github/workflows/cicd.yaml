@@ -11,9 +11,8 @@ on: [push, pull_request, workflow_dispatch]
 permissions:
   contents: write
 
-env:
-  DOCKER_BUILDKIT: 1
-  DOCKER_CACHE_DIR: $DOCKER_CACHE_DIR
+# env:
+#   DOCKER_BUILDKIT: 1
 
 jobs:
   build-and-push:
@@ -25,6 +24,7 @@ jobs:
       - name: Set up Docker cache directory
         run: |
           echo cache dir is: $DOCKER_CACHE_DIR
+          echo cache dir is: ${{ env.DOCKER_CACHE_DIR }}
           if [ -n "$DOCKER_CACHE_DIR" ]; then
             echo "Using runner's DOCKER_CACHE_DIR: $DOCKER_CACHE_DIR"
           else
