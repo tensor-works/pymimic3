@@ -37,6 +37,7 @@ jobs:
 
       - name: Set up Docker cache directory
         run: |
+          echo cache dir is: $DOCKER_CACHE_DIR
           if [ -n "$DOCKER_CACHE_DIR" ]; then
             echo "Using runner's DOCKER_CACHE_DIR: $DOCKER_CACHE_DIR"
           else
