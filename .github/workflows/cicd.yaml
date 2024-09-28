@@ -28,7 +28,7 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Set up Docker cache directory
-        if: runner.environment == self-hosted
+        if: runner.environment == 'self-hosted'
         run: |
           echo cache dir is: ${{ env.DOCKER_CACHE_DIR }}
           if [ -n "$DOCKER_CACHE_DIR" ]; then
@@ -54,7 +54,7 @@ jobs:
             ${{ runner.os }}-buildx-
 
       - name: Local build and push
-        if: runner.environment == self-hosted
+        if: runner.environment == 'self-hosted'
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -67,7 +67,7 @@ jobs:
           cache-to: type=local,dest=${{ env.DOCKER_CACHE_DIR }}/.buildx-cache-new,mode=max
 
       - name: Github build and push
-        if: runner.environment == github-hosted
+        if: runner.environment == 'github-hosted'
         uses: docker/build-push-action@v6
         with:
           context: .
