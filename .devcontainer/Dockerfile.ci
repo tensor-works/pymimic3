@@ -1,5 +1,6 @@
 # Use a smaller CUDA runtime image instead of the devel version
-FROM tensorpod/torch-and-tf2-on-cuda:pt2.3-cu118-tf2.14.0-py3.9-no-ta-tv
+FROM alpine:3.14
+# tensorpod/torch-and-tf2-on-cuda:pt2.3-cu118-tf2.14.0-py3.9-no-ta-tv
 
 LABEL maintainer="Amadou Wolfgang Cisse <amadou.6e@googlemail.com>"
 

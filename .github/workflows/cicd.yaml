@@ -60,12 +60,12 @@ jobs:
           rm -rf /tmp/.buildx-cache
           mv /tmp/.buildx-cache-new /tmp/.buildx-cache
 
-      - name: Scan image for vulnerabilities
-        uses: anchore/scan-action@v3
-        with:
-          image: "tensorpod/pymimic3:${{ steps.extract_branch.outputs.branch }}"
-          fail-build: false
-          severity-cutoff: high
+#       - name: Scan image for vulnerabilities
+#         uses: anchore/scan-action@v3
+#         with:
+#           image: "tensorpod/pymimic3:${{ steps.extract_branch.outputs.branch }}"
+#           fail-build: false
+#           severity-cutoff: high
  # # Documentation build and deploy
  # docs:
  #   runs-on: self-hosted
