@@ -18,12 +18,18 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
       - name: Set up Docker cache directory
+        if: runner.environment == "self-hosted"
         run: |
-          echo env
-          echo "${{ vars.DOCKER_CACHE_DIR }}"
-          echo "var is: ${{ vars.DOCKER_CACHE_DIR }}"
-          echo cache dir is: "$DOCKER_CACHE_DIR"
           echo cache dir is: ${{ env.DOCKER_CACHE_DIR }}
           if [ -n "$DOCKER_CACHE_DIR" ]; then
             echo "Using runner's DOCKER_CACHE_DIR: $DOCKER_CACHE_DIR"
@@ -33,15 +39,6 @@ jobs:
           fi
           echo "DOCKER_CACHE_DIR=$DOCKER_CACHE_DIR" >> $GITHUB_ENV
           mkdir -p $DOCKER_CACHE_DIR
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Login to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Extract branch name
         shell: bash
@@ -56,7 +53,8 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-buildx-
 
-      - name: Build and push
+      - name: Local build and push
+        if: runner.environment == "self-hosted"
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -67,6 +65,19 @@ jobs:
             tensorpod/pymimic3:${{ steps.extract_branch.outputs.branch }}
           cache-from: type=local,src=${{ env.DOCKER_CACHE_DIR }}/.buildx-cache
           cache-to: type=local,dest=${{ env.DOCKER_CACHE_DIR }}/.buildx-cache-new,mode=max
+
+      - name: Github build and push
+        if: runner.environment == "github-hosted"
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: .devcontainer/Dockerfile.ci
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: |
+            tensorpod/pymimic3:latest
+            tensorpod/pymimic3:${{ steps.extract_branch.outputs.branch }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Move cache
         run: |
