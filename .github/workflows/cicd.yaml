@@ -13,6 +13,7 @@ permissions:
 
 env:
   DOCKER_BUILDKIT: 1
+  DOCKER_CACHE_DIR: $DOCKER_CACHE_DIR
 
 jobs:
   build-and-push:
