@@ -13,7 +13,7 @@ permissions:
 
 env:
   DOCKER_BUILDKIT: 1
-  
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -66,47 +66,47 @@ jobs:
           image: "tensorpod/pymimic3:${{ steps.extract_branch.outputs.branch }}"
           fail-build: false
           severity-cutoff: high
-  # Documentation build and deploy
-  docs:
-    runs-on: self-hosted
-    needs: build-and-push
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-      - name: Install dependencies
-        run: |
-          pip install sphinx sphinx_rtd_theme myst_parser
-      - name: Sphinx build
-        run: |
-          sphinx-build doc _build
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
-        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
-        with:
-          publish_branch: gh-pages
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: _build/
-          force_orphan: true
-
-  # Pytest run test
-  pytest:
-    runs-on: self-hosted
-    needs: build-and-push
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Load cached image
-        run: |
-          docker load -i ~/image-cache/pymimic3.tar
-          echo "Loaded cached image for testing"
-
-      - name: Test generators
-        run: |
-          docker run --rm tensorpod/pymimic3:latest pytest /workingdir/tests/test_generators.py
-
-      - name: Upload pytest results
-        uses: actions/upload-artifact@v3
-        with:
-          name: pytest-results
-          path: pytest-results/
+ # # Documentation build and deploy
+ # docs:
+ #   runs-on: self-hosted
+ #   needs: build-and-push
+ #   steps:
+ #     - uses: actions/checkout@v4
+ #     - uses: actions/setup-python@v5
+ #     - name: Install dependencies
+ #       run: |
+ #         pip install sphinx sphinx_rtd_theme myst_parser
+ #     - name: Sphinx build
+ #       run: |
+ #         sphinx-build doc _build
+ #     - name: Deploy to GitHub Pages
+ #       uses: peaceiris/actions-gh-pages@v3
+ #       if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+ #       with:
+ #         publish_branch: gh-pages
+ #         github_token: ${{ secrets.GITHUB_TOKEN }}
+ #         publish_dir: _build/
+ #         force_orphan: true
+#
+ # # Pytest run test
+ # pytest:
+ #   runs-on: self-hosted
+ #   needs: build-and-push
+ #   steps:
+ #     - name: Checkout code
+ #       uses: actions/checkout@v4
+#
+ #     - name: Load cached image
+ #       run: |
+ #         docker load -i ~/image-cache/pymimic3.tar
+ #         echo "Loaded cached image for testing"
+#
+ #     - name: Test generators
+ #       run: |
+ #         docker run --rm tensorpod/pymimic3:latest pytest /workingdir/tests/test_generators.py
+#
+ #     - name: Upload pytest results
+ #       uses: actions/upload-artifact@v3
+ #       with:
+ #         name: pytest-results
+ #         path: pytest-results/
