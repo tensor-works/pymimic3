@@ -35,10 +35,21 @@ jobs:
         run: echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT
         id: extract_branch
 
+      - name: Set up Docker cache directory
+        run: |
+          if [ -n "$DOCKER_CACHE_DIR" ]; then
+            echo "Using runner's DOCKER_CACHE_DIR: $DOCKER_CACHE_DIR"
+          else
+            DOCKER_CACHE_DIR="/tmp"
+            echo "DOCKER_CACHE_DIR not set on runner. Using default: $DOCKER_CACHE_DIR"
+          fi
+          echo "DOCKER_CACHE_DIR=$DOCKER_CACHE_DIR" >> $GITHUB_ENV
+          mkdir -p $DOCKER_CACHE_DIR
+
       - name: Cache Docker layers
         uses: actions/cache@v4
         with:
-          path: $DOCKER_CACHE_DIR/.buildx-cache
+          path: ${{ env.DOCKER_CACHE_DIR }}/.buildx-cache
           key: ${{ runner.os }}-buildx-${{ github.sha }}
           restore-keys: |
             ${{ runner.os }}-buildx-
@@ -52,13 +63,13 @@ jobs:
           tags: |
             tensorpod/pymimic3:latest
             tensorpod/pymimic3:${{ steps.extract_branch.outputs.branch }}
-          cache-from: type=local,src=$DOCKER_CACHE_DIR/.buildx-cache
-          cache-to: type=local,dest=$DOCKER_CACHE_DIR/.buildx-cache-new,mode=max
+          cache-from: type=local,src=${{ env.DOCKER_CACHE_DIR }}/.buildx-cache
+          cache-to: type=local,dest=${{ env.DOCKER_CACHE_DIR }}/.buildx-cache-new,mode=max
 
       - name: Move cache
         run: |
-          rm -rf $DOCKER_CACHE_DIR/.buildx-cache
-          mv $DOCKER_CACHE_DIR/.buildx-cache-new $DOCKER_CACHE_DIR/.buildx-cache
+          rm -rf ${{ env.DOCKER_CACHE_DIR }}/.buildx-cache
+          mv ${{ env.DOCKER_CACHE_DIR }}/.buildx-cache-new ${{ env.DOCKER_CACHE_DIR }}/.buildx-cache
 
       - name: Scan image for vulnerabilities
         uses: anchore/scan-action@v3
