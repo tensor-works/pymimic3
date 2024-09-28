@@ -28,7 +28,7 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Set up Docker cache directory
-        if: runner.environment == "self-hosted"
+        if: runner.environment == self-hosted
         run: |
           echo cache dir is: ${{ env.DOCKER_CACHE_DIR }}
           if [ -n "$DOCKER_CACHE_DIR" ]; then
