@@ -83,20 +83,25 @@ jobs:
             ${{ runner.os }}-buildx-
 
       # => 7. Build and push Docker image: self-hosted
-      - name: Local build and push
-        if: runner.environment == 'self-hosted'
+      - name: Build Docker image
         uses: docker/build-push-action@v6
         with:
           context: .
           file: .devcontainer/Dockerfile.ci
-          push: ${{ github.event_name != 'pull_request' }}
+          push: false
           tags: |
             tensorpod/pymimic3:latest
             tensorpod/pymimic3:${{ steps.extract_branch.outputs.branch }}
           cache-from: type=local,src=${{ env.DOCKER_CACHE_DIR }}/.buildx-cache
           cache-to: type=local,dest=${{ env.DOCKER_CACHE_DIR }}/.buildx-cache-new,mode=max
-          # TODO! also for github runners
-          outputs: type=docker, dest=${{ env.DOCKER_CACHE_DIR }}/.buildx-image-cache/tensorpod/pymimic3/${{ steps.extract_branch.outputs.branch }}.tar
+          outputs: type=docker,dest=${{ env.DOCKER_CACHE_DIR }}/.buildx-image-cache/tensorpod/pymimic3/${{ steps.extract_branch.outputs.branch }}.tar
+
+      - name: Push Docker image
+        if: github.event_name != 'pull_request' && runner.environment == 'self-hosted'
+        run: |
+          docker load < ${{ env.DOCKER_CACHE_DIR }}/.buildx-image-cache/tensorpod/pymimic3/${{ steps.extract_branch.outputs.branch }}.tar
+          docker push tensorpod/pymimic3:latest
+          docker push tensorpod/pymimic3:${{ steps.extract_branch.outputs.branch }}
 
       # => 7. Build and push Docker image: github hosted
       - name: Github build and push
