@@ -46,7 +46,7 @@ jobs:
         id: extract_branch
 
       - name: Cache Docker layers
-        uses: actions/cache@v4
+        uses: actions/cache@v3
         with:
           path: ${{ env.DOCKER_CACHE_DIR }}/.buildx-cache
           key: ${{ runner.os }}-buildx-${{ github.sha }}
