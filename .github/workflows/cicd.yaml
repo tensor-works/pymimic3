@@ -44,8 +44,16 @@ jobs:
         shell: bash
         run: echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT
         id: extract_branch
-
-      - name: Cache Docker layers
+      
+      - name: Cache Docker layers locally
+        if: runner.environment == 'self-hosted'
+        uses: MasterworksIO/action-local-cache@2
+        with: 
+          path: ${{ env.DOCKER_CACHE_DIR }}/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+      
+      - name: Cache Docker layers on github
+        if: runner.environment == 'github-hosted'
         uses: actions/cache@v3
         with:
           path: ${{ env.DOCKER_CACHE_DIR }}/.buildx-cache
