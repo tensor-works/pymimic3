@@ -56,7 +56,7 @@ jobs:
           fi
           echo "DOCKER_CACHE_DIR=$DOCKER_CACHE_DIR" >> $GITHUB_ENV
           mkdir -p $DOCKER_CACHE_DIR
-          mkdir -p ${{ env.DOCKER_CACHE_DIR }}/.buildx-image-cache/tensorpod/pymimic3/
+          mkdir -p $DOCKER_CACHE_DIR/.buildx-image-cache/tensorpod/pymimic3/
 
       # => 5. Extract branch name (may fail on pull requests, untested)
       - name: Extract branch name
