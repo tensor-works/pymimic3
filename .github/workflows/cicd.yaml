@@ -118,6 +118,7 @@ jobs:
           elif [ "${{ runner.environment }}" = "github-hosted" ]; then
             rm -rf tmp/.buildx-cache
             mv tmp/.buildx-cache-new tmp/.buildx-cache
+          fi
 
       # => 9. Scan image for vulnerabilities
       - name: Scan image for vulnerabilities
