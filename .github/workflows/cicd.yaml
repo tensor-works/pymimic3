@@ -44,7 +44,7 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       # => 4. Create cache directory if runing locally
-      - name: Set up Docker cache directory
+      - name: Set up Docker cache/output directory
         if: runner.environment == 'self-hosted'
         run: |
           echo cache dir is: ${{ env.DOCKER_CACHE_DIR }}
@@ -56,6 +56,7 @@ jobs:
           fi
           echo "DOCKER_CACHE_DIR=$DOCKER_CACHE_DIR" >> $GITHUB_ENV
           mkdir -p $DOCKER_CACHE_DIR
+          mkdir -p ${{ env.DOCKER_CACHE_DIR }}/.buildx-image-cache/tensorpod/pymimic3/
 
       # => 5. Extract branch name (may fail on pull requests, untested)
       - name: Extract branch name
