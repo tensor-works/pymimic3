@@ -13,17 +13,29 @@ permissions:
 
 jobs:
   build-and-push:
+    # |-> 1. pull code
+    # |-> 2. set up docker buildx 
+    # |-> 3. login to docker hub
+    # |-> 4. setup cache dir
+    # |      - ?=self-hosted
+    # |-> 5. extract branch name
+    # |-> 6. setup cache on runner machine
+    # |      - ?=self-hosted|github-hosted
+    # |-> 7. build and push docker image
+    # |      - ?=self-hosted|github-hosted
+    # |-> 8. move cache
+    # |-> 9. scan image for vulnerabilities
     runs-on: self-hosted # -> ubuntu-latest to run in github cloud
     steps:
-      # Pull code into runner env
+      # => 1. Pull code into runner env
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Set up Docker Buildx step
+      # => 2. Set up Docker Buildx step
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # Login to docker hub to push images
+      # => 3. Login to docker hub to push images
       - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
@@ -31,7 +43,7 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      # Create cache directory if runing locally
+      # => 4. Create cache directory if runing locally
       - name: Set up Docker cache directory
         if: runner.environment == 'self-hosted'
         run: |
@@ -45,13 +57,13 @@ jobs:
           echo "DOCKER_CACHE_DIR=$DOCKER_CACHE_DIR" >> $GITHUB_ENV
           mkdir -p $DOCKER_CACHE_DIR
 
-      # Extract branch name (may fail on pull requests, untested)
+      # => 5. Extract branch name (may fail on pull requests, untested)
       - name: Extract branch name
         shell: bash
         run: echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT
         id: extract_branch
       
-      # Setup cache on runner machine if self-hosted
+      # => 6. Setup cache on runner machine: self-hosted
       - name: Cache Docker layers locally
         if: runner.environment == 'self-hosted'
         uses: maxnowack/local-cache@v2
@@ -59,7 +71,7 @@ jobs:
           path: ${{ env.DOCKER_CACHE_DIR }}/.buildx-cache
           key: ${{ runner.os }}-buildx-${{ github.sha }}
       
-      # Setup cache on github cache if github hosted
+      # => 6. Setup cache on github cache: github hosted
       - name: Cache Docker layers on github
         if: runner.environment == 'github-hosted'
         uses: actions/cache@v3
@@ -69,7 +81,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-buildx-
 
-      # Build and push Docker image for self-hosted
+      # => 7. Build and push Docker image: self-hosted
       - name: Local build and push
         if: runner.environment == 'self-hosted'
         uses: docker/build-push-action@v6
@@ -83,7 +95,7 @@ jobs:
           cache-from: type=local,src=${{ env.DOCKER_CACHE_DIR }}/.buildx-cache
           cache-to: type=local,dest=${{ env.DOCKER_CACHE_DIR }}/.buildx-cache-new,mode=max
 
-      # Build and push Docker image for github hosted
+      # => 7. Build and push Docker image: github hosted
       - name: Github build and push
         if: runner.environment == 'github-hosted'
         uses: docker/build-push-action@v6
@@ -97,7 +109,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      # Move the cache with -new suffix to original cache
+      # => 8. Move the cache with -new suffix to original cache
       - name: Move cache
         run: |
           if [ "${{ runner.environment }}" = "self-hosted" ]; then
@@ -107,7 +119,7 @@ jobs:
             rm -rf tmp/.buildx-cache
             mv tmp/.buildx-cache-new tmp/.buildx-cache
 
-      # Scan image for vulnerabilities
+      # => 9. Scan image for vulnerabilities
       - name: Scan image for vulnerabilities
         uses: anchore/scan-action@v3
         with:
