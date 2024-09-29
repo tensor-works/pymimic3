@@ -24,7 +24,7 @@ jobs:
     # |-> 7. build and push docker image
     # |      - ?=self-hosted|github-hosted
     # |-> 8. move cache
-    # |-> 9. scan image for vulnerabilities
+    # '-> 9. scan image for vulnerabilities
     runs-on: self-hosted # -> ubuntu-latest to run in github cloud
     steps:
       # => 1. Pull code into runner env
@@ -94,6 +94,8 @@ jobs:
             tensorpod/pymimic3:${{ steps.extract_branch.outputs.branch }}
           cache-from: type=local,src=${{ env.DOCKER_CACHE_DIR }}/.buildx-cache
           cache-to: type=local,dest=${{ env.DOCKER_CACHE_DIR }}/.buildx-cache-new,mode=max
+          # TODO! also for github runners
+          outputs: type=docker, dest=${{ env.DOCKER_CACHE_DIR }}/.buildx-image-cache/tensorpod/pymimic3/${{ steps.extract_branch.outputs.branch }}.tar
 
       # => 7. Build and push Docker image: github hosted
       - name: Github build and push
@@ -158,8 +160,10 @@ jobs:
         uses: actions/checkout@v4
       - name: Load cached image
         run: |
-          docker load -i ~/image-cache/pymimic3.tar
-          echo "Loaded cached image for testing"
+          outputs: type=docker, dest=
+          docker load -i ${{ env.DOCKER_CACHE_DIR }}/.buildx-image-cache/tensorpod/pymimic3/${{ steps.extract_branch.outputs.branch }}.tar
+          echo "Loaded cached image for testing: ${{ steps.extract_branch.outputs.branch }}"
+          echo docker iamge ls -a
       - name: Test generators
         run: |
           docker run --rm tensorpod/pymimic3:latest pytest /workingdir/tests/test_generators.py
