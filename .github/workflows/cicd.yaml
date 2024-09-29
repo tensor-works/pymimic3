@@ -47,7 +47,7 @@ jobs:
       
       - name: Cache Docker layers locally
         if: runner.environment == 'self-hosted'
-        uses: MasterworksIO/action-local-cache@2
+        uses: maxnowack/local-cache@v2
         with: 
           path: ${{ env.DOCKER_CACHE_DIR }}/.buildx-cache
           key: ${{ runner.os }}-buildx-${{ github.sha }}
