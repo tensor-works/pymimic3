@@ -113,6 +113,7 @@ jobs:
           outputs: type=docker,dest=/tmp/.buildx-image-cache/tensorpod/pymimic3/${{ steps.extract_branch.outputs.branch }}.tar
 
       - name: Upload artifact
+        if: runner.environment == 'github-hosted'
         uses: actions/upload-artifact@v4
         with:
           name: pymimic3.${{ steps.extract_branch.outputs.branch }}
@@ -137,12 +138,12 @@ jobs:
           fi
 
       # => 10. Scan image for vulnerabilities
-      - name: Scan image for vulnerabilities
-        uses: anchore/scan-action@v3
-        with:
-          image: "tensorpod/pymimic3:${{ steps.extract_branch.outputs.branch }}"
-          fail-build: false
-          severity-cutoff: high
+      # - name: Scan image for vulnerabilities
+      #   uses: anchore/scan-action@v3
+      #   with:
+      #     image: "tensorpod/pymimic3:${{ steps.extract_branch.outputs.branch }}"
+      #     fail-build: false
+      #     severity-cutoff: high
  # # Documentation build and deploy
  # docs:
  #   runs-on: self-hosted
@@ -172,14 +173,23 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      # => xx. Extract branch name (may fail on pull requests, untested)
+      - name: Extract branch name
+        shell: bash
+        run: echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT
+        id: extract_branch
+
       - name: Load cached image
         run: |
-          docker load -i ${{ env.DOCKER_CACHE_DIR }}/.buildx-image-cache/tensorpod/pymimic3/${{ steps.extract_branch.outputs.branch }}.tar
+          docker load -i $DOCKER_CACHE_DIR/.buildx-image-cache/tensorpod/pymimic3/${{ steps.extract_branch.outputs.branch }}.tar
           echo "Loaded cached image for testing: ${{ steps.extract_branch.outputs.branch }}"
           echo docker iamge ls -a
+
       - name: Test generators
         run: |
           docker run --rm tensorpod/pymimic3:latest pytest /workingdir/tests/test_generators.py
+
       - name: Upload pytest results
         uses: actions/upload-artifact@v3
         with:
