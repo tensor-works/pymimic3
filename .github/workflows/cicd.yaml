@@ -92,12 +92,12 @@ jobs:
           rm -rf ${{ env.DOCKER_CACHE_DIR }}/.buildx-cache
           mv ${{ env.DOCKER_CACHE_DIR }}/.buildx-cache-new ${{ env.DOCKER_CACHE_DIR }}/.buildx-cache
 
-      - name: Scan image for vulnerabilities
-        uses: anchore/scan-action@v3
-        with:
-          image: "tensorpod/pymimic3:${{ steps.extract_branch.outputs.branch }}"
-          fail-build: false
-          severity-cutoff: high
+      # - name: Scan image for vulnerabilities
+      #   uses: anchore/scan-action@v3
+      #   with:
+      #     image: "tensorpod/pymimic3:${{ steps.extract_branch.outputs.branch }}"
+      #     fail-build: false
+      #     severity-cutoff: high
  # # Documentation build and deploy
  # docs:
  #   runs-on: self-hosted
