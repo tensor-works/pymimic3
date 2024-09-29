@@ -21,10 +21,11 @@ jobs:
     # |-> 5. extract branch name
     # |-> 6. setup cache on runner machine
     # |      - ?=self-hosted|github-hosted
-    # |-> 7. build and push docker image
+    # |-> 7. build and export docker image
     # |      - ?=self-hosted|github-hosted
-    # |-> 8. move cache
-    # '-> 9. scan image for vulnerabilities
+    # |-> 8. push the image
+    # |-> 9. move cache
+    # '-> 10. scan image for vulnerabilities
     runs-on: self-hosted # -> ubuntu-latest to run in github cloud
     steps:
       # => 1. Pull code into runner env
@@ -44,7 +45,7 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       # => 4. Create cache directory if runing locally
-      - name: Set up Docker cache/output directory
+      - name: Set up Docker cache/output directory on self-hosted
         if: runner.environment == 'self-hosted'
         run: |
           echo cache dir is: ${{ env.DOCKER_CACHE_DIR }}
@@ -65,7 +66,7 @@ jobs:
         id: extract_branch
       
       # => 6. Setup cache on runner machine: self-hosted
-      - name: Cache Docker layers locally
+      - name: Cache Docker layers on self-hosted
         if: runner.environment == 'self-hosted'
         uses: maxnowack/local-cache@v2
         with: 
@@ -73,7 +74,7 @@ jobs:
           key: ${{ runner.os }}-buildx-${{ github.sha }}
       
       # => 6. Setup cache on github cache: github hosted
-      - name: Cache Docker layers on github
+      - name: Cache Docker layers on github-hosted
         if: runner.environment == 'github-hosted'
         uses: actions/cache@v3
         with:
@@ -82,8 +83,8 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-buildx-
 
-      # => 7. Build and push Docker image: self-hosted
-      - name: Build Docker image
+      # => 7. Build and push Docker image: self-hosted (part 1) 
+      - name: Build and export Docker image on self-hosted
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -96,15 +97,8 @@ jobs:
           cache-to: type=local,dest=${{ env.DOCKER_CACHE_DIR }}/.buildx-cache-new,mode=max
           outputs: type=docker,dest=${{ env.DOCKER_CACHE_DIR }}/.buildx-image-cache/tensorpod/pymimic3/${{ steps.extract_branch.outputs.branch }}.tar
 
-      - name: Push Docker image
-        if: github.event_name != 'pull_request' && runner.environment == 'self-hosted'
-        run: |
-          docker load < ${{ env.DOCKER_CACHE_DIR }}/.buildx-image-cache/tensorpod/pymimic3/${{ steps.extract_branch.outputs.branch }}.tar
-          docker push tensorpod/pymimic3:latest
-          docker push tensorpod/pymimic3:${{ steps.extract_branch.outputs.branch }}
-
       # => 7. Build and push Docker image: github hosted
-      - name: Github build and push
+      - name: Build and export Docker image on github-hosted
         if: runner.environment == 'github-hosted'
         uses: docker/build-push-action@v6
         with:
@@ -116,8 +110,22 @@ jobs:
             tensorpod/pymimic3:${{ steps.extract_branch.outputs.branch }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          outputs: type=docker,dest=/tmp/.buildx-image-cache/tensorpod/pymimic3/${{ steps.extract_branch.outputs.branch }}.tar
 
-      # => 8. Move the cache with -new suffix to original cache
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pymimic3.${{ steps.extract_branch.outputs.branch }}
+          path: /tmp/.buildx-image-cache/tensorpod/pymimic3/${{ steps.extract_branch.outputs.branch }}.tar
+
+      # => 8. Push Docker image
+      - name: Push Docker image
+        if: github.event_name != 'pull_request' && runner.environment == 'self-hosted'
+        run: |
+          docker push tensorpod/pymimic3:latest
+          docker push tensorpod/pymimic3:${{ steps.extract_branch.outputs.branch }}
+
+      # => 9. Move the cache with -new suffix to original cache
       - name: Move cache
         run: |
           if [ "${{ runner.environment }}" = "self-hosted" ]; then
@@ -128,7 +136,7 @@ jobs:
             mv tmp/.buildx-cache-new tmp/.buildx-cache
           fi
 
-      # => 9. Scan image for vulnerabilities
+      # => 10. Scan image for vulnerabilities
       - name: Scan image for vulnerabilities
         uses: anchore/scan-action@v3
         with:
@@ -166,7 +174,6 @@ jobs:
         uses: actions/checkout@v4
       - name: Load cached image
         run: |
-          outputs: type=docker, dest=
           docker load -i ${{ env.DOCKER_CACHE_DIR }}/.buildx-image-cache/tensorpod/pymimic3/${{ steps.extract_branch.outputs.branch }}.tar
           echo "Loaded cached image for testing: ${{ steps.extract_branch.outputs.branch }}"
           echo docker iamge ls -a
