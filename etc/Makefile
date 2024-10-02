@@ -3,10 +3,10 @@
 # Default target that depends on other targets
 all: env_vars config_env env_downloads env_conda
 
-# Target for env_vars.sh
+# Target for create_env_vars.sh
 env_vars:
-	@echo "Sourcing env_vars.sh..."
-	@bash ./setup/env_vars.sh
+	@echo "Sourcing create_env_vars.sh..."
+	@bash ./setup/create_env_vars.sh
 
 # Target for env_downloads.sh
 env_downloads:

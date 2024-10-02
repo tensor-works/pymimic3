@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Need env_vars.sh
+# Need create_env_vars.sh
 echo "In etc/setup/env_downloads.sh"
 
 echo -e "\033[34m[1/5]\033[0m Detected OS type: $OSTYPE"

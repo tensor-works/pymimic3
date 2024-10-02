@@ -3,10 +3,13 @@
 {
 	"name": "Anaconda (Python 3)",
 	"build": { 
-		"context": ".",
-		"dockerfile": "Dockerfile"
+		"context": "..",
+		"dockerfile": "Dockerfile.ci"
 	},
-
+	"runArgs": [
+		"--gpus",
+		"all"
+	],
 	"features": {
 		"ghcr.io/devcontainers/features/anaconda:1": {
 			"version": "latest"
@@ -67,7 +70,6 @@
 		},
 		"ghcr.io/akhildevelops/devcontainer-features/apt:0": {},
 		"ghcr.io/wxw-matt/devcontainer-features/command_runner:0": {},
-		"ghcr.io/audacioustux/devcontainers/common-utils-extras:1": {},
 		"ghcr.io/prulloac/devcontainer-features/gitlint:1": {}
 	}
 

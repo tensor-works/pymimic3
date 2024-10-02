@@ -40,16 +40,14 @@ RUN tar -xvf workdir-archive.tar && \
 
 RUN chmod -R +x /workdir
 
-# Activate the environment and install pip packages
+# Install the conda environment
 RUN conda env update -n base -f .devcontainer/linux-gnu.yml && \
     /opt/conda/bin/conda clean -afy
 
 # Clean up any unnecessary conda and pip files
-RUN conda clean -afy && \
-    find /opt/conda/ -follow -type f -name '*.a' -delete && \
-    find /opt/conda/ -follow -type f -name '*.js.map' -delete
-
-RUN rm -rf /root/.cache/pip 
+RUN find /opt/conda/ -follow -type f -name '*.a' -delete && \
+    find /opt/conda/ -follow -type f -name '*.js.map' -delete && \
+    rm -rf /root/.cache/pip 
 
 # Activate the environment and run the entrypoint
 ENTRYPOINT ["/bin/bash", "-c", "source activate base && exec /bin/bash"]
