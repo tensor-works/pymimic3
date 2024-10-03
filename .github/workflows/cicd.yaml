@@ -179,6 +179,9 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Setup persistent test mounts
+        shell: bash
         run: |
           mkdir -p $DOCKER_CACHE_DIR/.github-action-cache/{control-dataset,semitemp,pytest-results}
 
@@ -206,8 +209,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        run: |
-          mkdir -p $DOCKER_CACHE_DIR/.github-action-cache/{control-dataset,semitemp,pytest-results}
 
       # => xx. Extract branch name (may fail on pull requests, untested)
       - name: Extract branch name
@@ -233,8 +234,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        run: |
-          mkdir -p $DOCKER_CACHE_DIR/.github-action-cache/{control-dataset,semitemp,pytest-results}
 
       # => xx. Extract branch name (may fail on pull requests, untested)
       - name: Extract branch name
@@ -260,8 +259,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        run: |
-          mkdir -p $DOCKER_CACHE_DIR/.github-action-cache/{control-dataset,semitemp,pytest-results}
 
       # => xx. Extract branch name (may fail on pull requests, untested)
       - name: Extract branch name
@@ -287,8 +284,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        run: |
-          mkdir -p $DOCKER_CACHE_DIR/.github-action-cache/{control-dataset,semitemp,pytest-results}
 
       # => xx. Extract branch name (may fail on pull requests, untested)
       - name: Extract branch name
@@ -314,8 +309,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        run: |
-          mkdir -p $DOCKER_CACHE_DIR/.github-action-cache/{control-dataset,semitemp,pytest-results}
 
       # => xx. Extract branch name (may fail on pull requests, untested)
       - name: Extract branch name
@@ -341,8 +334,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        run: |
-          mkdir -p $DOCKER_CACHE_DIR/.github-action-cache/{control-dataset,semitemp,pytest-results}
 
       # => xx. Extract branch name (may fail on pull requests, untested)
       - name: Extract branch name
