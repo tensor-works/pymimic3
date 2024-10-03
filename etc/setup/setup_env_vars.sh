@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # Create the environment variables
-echo "In etc/setup/create_env_vars.sh"
+echo "In etc/setup/setup_env_vars.sh"
 echo -e "\033[34m[1/4]\033[0m Detected OS type: $OSTYPE"
 if [[ "$OSTYPE" == "linux-gnu"* ]] || [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "cygwin" ]]; then
     SCRIPT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")"

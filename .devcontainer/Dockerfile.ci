@@ -3,6 +3,7 @@ FROM tensorpod/torch-and-tf2-on-cuda:pt2.3-cu118-tf2.14.0-py3.9-no-ta-tv
 
 LABEL maintainer="Amadou Wolfgang Cisse <amadou.6e@googlemail.com>"
 
+ENV IS_DOCKER=1
 ENV LANG=C.UTF-8 LC_ALL=C.UTF-8
 ENV PATH=/opt/conda/bin:$PATH
 ENV NVIDIA_VISIBLE_DEVICES all
@@ -18,11 +19,11 @@ RUN --mount=type=cache,target=/var/cache/apt \
 WORKDIR /workdir
 
 # Copy only the conda environment file first to leverage caching
-COPY .devcontainer/linux-gnu.yml .devcontainer/linux-gnu.yml
+COPY .devcontainer/linux-gnu-ci.yml .devcontainer/linux-gnu-ci.yml
 
 # Update conda environment
 RUN --mount=type=cache,target=/opt/conda/pkgs \
-    conda env update -n base -f .devcontainer/linux-gnu.yml && \
+    conda env update -n base -f .devcontainer/linux-gnu-ci.yml && \
     conda clean -afy
 
 # Copy the rest of the files

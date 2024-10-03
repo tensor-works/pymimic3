@@ -7,12 +7,12 @@ sys.path.append(os.getenv("WORKINGDIR"))
 from tests.tsettings import *
 
 result_paths = [
-    Path(TEST_DATA_DIR, "generated-benchmark", "extracted"),
-    Path(TEST_DATA_DIR, "generated-benchmark", "processed", "in-hospital-mortality"),
-    Path(TEST_DATA_DIR, "generated-benchmark", "processed", "length-of-stay"),
-    Path(TEST_DATA_DIR, "generated-benchmark", "processed", "multitask"),
-    Path(TEST_DATA_DIR, "generated-benchmark", "processed", "phenotyping"),
-    Path(TEST_DATA_DIR, "generated-benchmark", "processed", "decompensation"),
+    Path(TEST_DATA_DIR, "control-dataset", "extracted"),
+    Path(TEST_DATA_DIR, "control-dataset", "processed", "in-hospital-mortality"),
+    Path(TEST_DATA_DIR, "control-dataset", "processed", "length-of-stay"),
+    Path(TEST_DATA_DIR, "control-dataset", "processed", "multitask"),
+    Path(TEST_DATA_DIR, "control-dataset", "processed", "phenotyping"),
+    Path(TEST_DATA_DIR, "control-dataset", "processed", "decompensation"),
 ]
 
 for path in result_paths:

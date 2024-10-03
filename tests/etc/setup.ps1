@@ -1,3 +1,5 @@
+# TODO! outdated
+
 function Download-FilesFromWebPage([string]$sourceUrl, [string]$destinationDir) {
     # Ensure WebClient is available for downloading
     $webClient = New-Object System.Net.WebClient
@@ -70,7 +72,7 @@ if (-Not (Test-Path $outputDefinitions)) {
 
 # Download the MIMIC-III benchmarks dataset from github if necessary
 $benchmarkDir = Join-Path -Path $testFolder -ChildPath "data/mimic3benchmarks"
-$generatedDir = Join-Path -Path $testFolder -ChildPath "data/generated-benchmark"
+$generatedDir = Join-Path -Path $testFolder -ChildPath "data/control-dataset"
 Write-Output "Benchmark dir $benchmarkDir"
 if (-Not (Test-Path $generatedDir)) {
     Write-Output "Downloading MIMIC-III benchmarks dataset from github"
@@ -139,7 +141,7 @@ if (-Not (Test-Path $ihmProcessed) -Or -Not (Test-Path $decompProcessed) -Or -No
     python -m mimic3benchmark.scripts.create_decompensation $extractedDir $decompProcessed
     python -m mimic3benchmark.scripts.create_length_of_stay $extractedDir $losProcessed
     python -m mimic3benchmark.scripts.create_phenotyping $extractedDir $phenotypingProcessed
-    python -m mimic3benchmark.scripts.create_multitask $extractedDir "../generated-benchmark/processed/multitask/"
+    python -m mimic3benchmark.scripts.create_multitask $extractedDir "../control-dataset/processed/multitask/"
     Write-Output "Reverting the dataset split from original MIMIC-III github"
     python $revertSplitScript
 }

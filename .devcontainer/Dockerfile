@@ -18,6 +18,7 @@ FROM tensorpod/torch-and-tf2-on-cuda:pt2.3-cu118-tf2.14.0-py3.9-no-ta-tv
 
 LABEL maintainer="Amadou Wolfgang Cisse <amadou.6e@googlemail.com>"
 
+ENV IS_DOCKER=1
 ENV LANG=C.UTF-8 LC_ALL=C.UTF-8
 ENV PATH=/opt/conda/bin:$PATH
 ENV NVIDIA_VISIBLE_DEVICES all
@@ -41,7 +42,7 @@ RUN tar -xvf workdir-archive.tar && \
 RUN chmod -R +x /workdir
 
 # Install the conda environment
-RUN conda env update -n base -f .devcontainer/linux-gnu.yml && \
+RUN conda env update -n base -f .devcontainer/linux-gnu-ci.yml && \
     /opt/conda/bin/conda clean -afy
 
 # Clean up any unnecessary conda and pip files

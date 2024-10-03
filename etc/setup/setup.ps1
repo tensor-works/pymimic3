@@ -1,3 +1,5 @@
+# TODO! outdated
+
 # Setting up environment with OS type
 $OSTYPE = [System.Environment]::OSVersion.Platform
 Write-Output "Setting up environment with OS type: $OSTYPE"

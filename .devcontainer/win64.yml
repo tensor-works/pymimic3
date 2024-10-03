@@ -1,4 +1,5 @@
-name: mimic3
+# TODO! outdated
+name: pymimic3
 channels:
   - conda-forge
   - defaults

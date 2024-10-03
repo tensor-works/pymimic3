@@ -1,7 +1,7 @@
 #!/bin/sh
 
-# Need create_env_vars.sh
-echo "In etc/setup/env_downloads.sh"
+# Need setup_env_vars.sh
+echo "In etc/setup/setup_config_file.sh"
 
 echo -e "\033[34m[1/5]\033[0m Detected OS type: $OSTYPE"
 if [[ "$OSTYPE" == "linux-gnu"* ]] || [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "cygwin" ]]; then

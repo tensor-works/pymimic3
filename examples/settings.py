@@ -4,9 +4,19 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 __all__ = [
-    "TEMP_DIR", "EXAMPLE_DIR", "EXAMPLE_DATA_DEMO", "EXAMPLE_DATA", "TEMP_DIR", "YERVA_SPLIT",
-    "LOG_METRICS", "NETWORK_METRICS", "BENCHMARK_MODEL", "LOG_REG_PARAMS", "STANDARD_LSTM_PARAMS",
-    "STANDARD_LSTM_DS_PARAMS", "CHANNEL_WISE_LSTM_PARAMS"
+    "TEMP_DIR",
+    "EXAMPLE_DIR",
+    "EXAMPLE_DATA_DEMO",
+    "EXAMPLE_DATA",
+    "TEMP_DIR",
+    "YERVA_SPLIT",
+    "LOG_METRICS",
+    "NETWORK_METRICS",
+    "BENCHMARK_MODEL",
+    "LOG_REG_PARAMS",
+    "STANDARD_LSTM_PARAMS",
+    "STANDARD_LSTM_DS_PARAMS",
+    "CHANNEL_WISE_LSTM_PARAMS",
 ]
 
 load_dotenv()
@@ -15,10 +25,7 @@ EXAMPLE_DIR = Path(os.getenv("EXAMPLES"))
 EXAMPLE_DATA = Path(EXAMPLE_DIR, "data")
 EXAMPLE_DATA_DEMO = Path(
     EXAMPLE_DATA,
-    "physionet.org",
-    "files",
     "mimiciii-demo",
-    "1.4",
 )
 TEMP_DIR = Path(EXAMPLE_DATA, "temp")
 YERVA_SPLIT = Path(EXAMPLE_DIR, "yerva_nn_benchmark", "data_split")

@@ -71,8 +71,32 @@
 		"ghcr.io/akhildevelops/devcontainer-features/apt:0": {},
 		"ghcr.io/wxw-matt/devcontainer-features/command_runner:0": {},
 		"ghcr.io/prulloac/devcontainer-features/gitlint:1": {}
+	},
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"ms-python.python",
+				"aaron-bond.better-comments",
+				"mikestead.dotenv",
+				"usernamehw.errorlens",
+				"kevinrose.vsc-python-indent",
+				"njpwerner.autodocstring",
+				"ms-azuretools.vscode-docker",
+				"mhutchie.git-graph",
+				"donjayamanne.githistory",
+				"github.copilot",
+				"eamodio.gitlens",
+				"ms-python.isort",
+				"ms-toolsai.jupyter",
+				"ms-toolsai.jupyter-renderers",
+				"ms-python.vscode-pylance",
+				"ms-python.python",
+				"ms-python.debugpy",
+				"mechatroner.rainbow-csv",
+				"eeyore.yapf"
+			]
+		}
 	}
-
 	// Features to add to the dev container. More info: https://containers.dev/features.
 	// "features": {},
 
