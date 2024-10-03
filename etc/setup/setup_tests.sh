@@ -34,26 +34,29 @@ fi
 sourceUrl="https://physionet.org/files/mimiciii-demo/1.4/"
 testFolder="$(dirname $(dirname $(dirname $SCRIPT)))/tests"
 
-# Download the MIMIC-III demo dataset from the web
 destinationDir="$testFolder/data/"
 convertScript="$testFolder/etc/benchmark_scripts/convert_columns.py"
-csvDir="$destinationDir/mimiciii-demo/"
+demoDataDir="$destinationDir/mimiciii-demo/"
 
-if [ ! -d "$destinationDir/mimiciii-demo" ]; then
+# Download the MIMIC-III demo dataset from the web
+if [ ! -d "$demoDataDir" ]; then
     echo -e "\033[34m[3/huregeil]\033[0m Downloading the MIMIC-III demo dataset directory"
     sudo wget -r -N -c -np $sourceUrl -P $destinationDir
     
     # Correcting defaults of the demo dataset
     echo -e "\033[34m[4/huregeil]\033[0m Correcting headers of the MIMIC-III demo dataset"
-    sudo -E env PATH=$PATH PYTHONPATH=$PYTHONPATH python $convertScript
-    sudo mkdir $csvDir
+    sudo mkdir $demoDataDir
     origCsvDir="$destinationDir/physionet.org/files/mimiciii-demo/1.4/"
-    sudo cp $origCsvDir/* $csvDir
+    sudo cp $origCsvDir/* $demoDataDir
+    sudo rm -rf $origCsvDir
+    sudo -E env PATH=$PATH PYTHONPATH=$PYTHONPATH python $convertScript $demoDataDir
 else
     echo -e "\033[34m[3/huregeil]\033[0m MIMIC-III demo dataset directory already exists"
     echo -e "\033[34m[4/huregeil]\033[0m Header already corrected"
 fi
-resourcesDir="$csvDir/resources/"
+resourcesDir="$demoDataDir/resources/"
+
+# Download the MIMIC-III demo config files from original repo
 if [ ! -d "$resourcesDir" ]; then
     echo -e "\033[34m[5/huregeil]\033[0m Downloading the MIMIC-III demo config files from original repo"
     sudo mkdir -p $resourcesDir
@@ -66,6 +69,8 @@ else
 fi
 
 controlRepositorDir="$testFolder/data/mimic3benchmarks"
+
+# Download the MIMIC-III benchmarks code from github
 if [ ! -d "$controlRepositorDir" ]; then
     echo -e "\033[34m[5/huregeil]\033[0m Downloading original MIMIC-III benchmarks code from github"
     git clone "https://github.com/YerevaNN/mimic3-benchmarks.git" $controlRepositorDir
@@ -98,10 +103,10 @@ discretizedDir="$destinationDir/control-dataset/discretized/"
 if [ ! -d "$extractedDir" ]; then
     # Run the MIMIC-III benchmarks dataset processing
     echo -e "\033[34m[6/huregeil]\033[0m Extracting subject informations and timeseries data using original MIMIC-III github"
-    sudo -E env PATH=$PATH PYTHONPATH=$PYTHONPATH python $extractScript $csvDir $extractedDir $controlRepositorDir
+    sudo -E env PATH=$PATH PYTHONPATH=$PYTHONPATH python $extractScript $demoDataDir $extractedDir $controlRepositorDir
 
     echo -e "\033[34m[7/huregeil]\033[0m Renaming episode files to include ICUSTAY_ID in the filename"
-    sudo -E env PATH=$PATH PYTHONPATH=$PYTHONPATH python $renameScript
+    sudo -E env PATH=$PATH PYTHONPATH=$PYTHONPATH python $renameScript $extractedDir
 
 else
     echo -e "\033[34m[6/huregeil]\033[0m Control dataset already extracted"

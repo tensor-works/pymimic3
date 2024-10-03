@@ -296,6 +296,7 @@ dependencies:
   - zlib-ng=2.2.2=h5888daf_0
   - zstandard=0.23.0=py39h08a7858_1
   - zstd=1.5.6=ha6fb4c9_0
+  - junitparser
   - pip:
       - absl-py==2.1.0
       - astunparse==1.6.3
