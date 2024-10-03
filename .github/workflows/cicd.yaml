@@ -11,6 +11,12 @@ on: [push, pull_request, workflow_dispatch]
 permissions:
   contents: write
 
+env:
+  DOCKER_VOLUME_MOUNTS: >-
+    -v $DOCKER_CACHE_DIR/.github-action-cache/control-dataset:/workdir/pymimic3/tests/data/control-dataset
+    -v $DOCKER_CACHE_DIR/docker-cache/.github-action-cache/semitemp:/workdir/pymimic3/tests/data/semitemp
+    -v $DOCKER_CACHE_DIR/docker-cache/.github-action-cache/pytest-results:/workdir/pymimic3/tests/data/pytest-results
+
 jobs:
   build-and-push:
     # |-> 1. pull code
@@ -167,12 +173,14 @@ jobs:
  #         force_orphan: true
 #
 # Pytest run test
-  pytest:
+  setup-control-dataset:
     runs-on: self-hosted
     needs: build-and-push
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        run: |
+          mkdir -p $DOCKER_CACHE_DIR/.github-action-cache/{control-dataset,semitemp,pytest-results}
 
       # => xx. Extract branch name (may fail on pull requests, untested)
       - name: Extract branch name
@@ -186,12 +194,175 @@ jobs:
           echo "Loaded cached image for testing: ${{ steps.extract_branch.outputs.branch }}"
           echo docker iamge ls -a
 
-      - name: Test generators
+      - name: Setup control dataset
         run: |
-          docker run --rm tensorpod/pymimic3:latest pytest /workingdir/tests/test_generators.py
+          docker run ${{ env.DOCKER_VOLUME_MOUNTS }} \
+            tensorpod/pymimic3:${{ steps.extract_branch.outputs.branch }} \
+            bash -c "cd /etc && make testing=true"
 
-      - name: Upload pytest results
-        uses: actions/upload-artifact@v3
-        with:
-          name: pytest-results
-          path: pytest-results/
+  setup-fixtures:
+    needs: setup-control-dataset
+    runs-on: self-hosted
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        run: |
+          mkdir -p $DOCKER_CACHE_DIR/.github-action-cache/{control-dataset,semitemp,pytest-results}
+
+      # => xx. Extract branch name (may fail on pull requests, untested)
+      - name: Extract branch name
+        shell: bash
+        run: echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT
+        id: extract_branch
+
+      - name: Load cached image
+        run: |
+          docker load -i $DOCKER_CACHE_DIR/.buildx-image-cache/tensorpod/pymimic3/${{ steps.extract_branch.outputs.branch }}.tar
+          echo "Loaded cached image for testing: ${{ steps.extract_branch.outputs.branch }}"
+          echo docker iamge ls -a
+
+      - name: Run fixture setup tests
+        run: |
+          docker run ${{ env.DOCKER_VOLUME_MOUNTS }} \
+            tensorpod/pymimic3:${{ steps.extract_branch.outputs.branch }} \
+            pytest --no-cleanup -v tests/testz_setup_all_fixtures.pymimic3
+
+  test-pytest-suite:
+    needs: setup-fixtures
+    runs-on: self-hosted
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        run: |
+          mkdir -p $DOCKER_CACHE_DIR/.github-action-cache/{control-dataset,semitemp,pytest-results}
+
+      # => xx. Extract branch name (may fail on pull requests, untested)
+      - name: Extract branch name
+        shell: bash
+        run: echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT
+        id: extract_branch
+
+      - name: Load cached image
+        run: |
+          docker load -i $DOCKER_CACHE_DIR/.buildx-image-cache/tensorpod/pymimic3/${{ steps.extract_branch.outputs.branch }}.tar
+          echo "Loaded cached image for testing: ${{ steps.extract_branch.outputs.branch }}"
+          echo docker iamge ls -a
+
+      - name: Run pytest suite tests
+        run: |
+          docker run ${{ env.DOCKER_VOLUME_MOUNTS }} \
+            tensorpod/pymimic3:${{ steps.extract_branch.outputs.branch }} \
+            pytest --no-cleanup -v tests/test_pytest_suite.py
+
+  test-datasets:
+    needs: test-pytest-suite
+    runs-on: self-hosted
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        run: |
+          mkdir -p $DOCKER_CACHE_DIR/.github-action-cache/{control-dataset,semitemp,pytest-results}
+
+      # => xx. Extract branch name (may fail on pull requests, untested)
+      - name: Extract branch name
+        shell: bash
+        run: echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT
+        id: extract_branch
+
+      - name: Load cached image
+        run: |
+          docker load -i $DOCKER_CACHE_DIR/.buildx-image-cache/tensorpod/pymimic3/${{ steps.extract_branch.outputs.branch }}.tar
+          echo "Loaded cached image for testing: ${{ steps.extract_branch.outputs.branch }}"
+          echo docker iamge ls -a
+
+      - name: Run dataset tests
+        run: |
+          docker run ${{ env.DOCKER_VOLUME_MOUNTS }} \
+            tensorpod/pymimic3:${{ steps.extract_branch.outputs.branch }} \
+            pytest --no-cleanup -v tests/test_datasets
+
+  test-preprocessing:
+    needs: test-pytest-suite
+    runs-on: self-hosted
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        run: |
+          mkdir -p $DOCKER_CACHE_DIR/.github-action-cache/{control-dataset,semitemp,pytest-results}
+
+      # => xx. Extract branch name (may fail on pull requests, untested)
+      - name: Extract branch name
+        shell: bash
+        run: echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT
+        id: extract_branch
+
+      - name: Load cached image
+        run: |
+          docker load -i $DOCKER_CACHE_DIR/.buildx-image-cache/tensorpod/pymimic3/${{ steps.extract_branch.outputs.branch }}.tar
+          echo "Loaded cached image for testing: ${{ steps.extract_branch.outputs.branch }}"
+          echo docker iamge ls -a
+
+      - name: Run preprocessing tests
+        run: |
+          docker run ${{ env.DOCKER_VOLUME_MOUNTS }} \
+            tensorpod/pymimic3:${{ steps.extract_branch.outputs.branch }} \
+            pytest --no-cleanup -v tests/test_preprocessing
+
+  test-metrics:
+    needs: test-pytest-suite
+    runs-on: self-hosted
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        run: |
+          mkdir -p $DOCKER_CACHE_DIR/.github-action-cache/{control-dataset,semitemp,pytest-results}
+
+      # => xx. Extract branch name (may fail on pull requests, untested)
+      - name: Extract branch name
+        shell: bash
+        run: echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT
+        id: extract_branch
+
+      - name: Load cached image
+        run: |
+          docker load -i $DOCKER_CACHE_DIR/.buildx-image-cache/tensorpod/pymimic3/${{ steps.extract_branch.outputs.branch }}.tar
+          echo "Loaded cached image for testing: ${{ steps.extract_branch.outputs.branch }}"
+          echo docker iamge ls -a
+
+      - name: Run metrics tests
+        run: |
+          docker run ${{ env.DOCKER_VOLUME_MOUNTS }} \
+            tensorpod/pymimic3:${{ steps.extract_branch.outputs.branch }} \
+            pytest --no-cleanup -v tests/test_metrics
+
+  test-models:
+    needs: [test-datasets, test-preprocessing, test-metrics]
+    runs-on: self-hosted
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        run: |
+          mkdir -p $DOCKER_CACHE_DIR/.github-action-cache/{control-dataset,semitemp,pytest-results}
+
+      # => xx. Extract branch name (may fail on pull requests, untested)
+      - name: Extract branch name
+        shell: bash
+        run: echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT
+        id: extract_branch
+
+      - name: Load cached image
+        run: |
+          docker load -i $DOCKER_CACHE_DIR/.buildx-image-cache/tensorpod/pymimic3/${{ steps.extract_branch.outputs.branch }}.tar
+          echo "Loaded cached image for testing: ${{ steps.extract_branch.outputs.branch }}"
+          echo docker iamge ls -a
+
+      - name: Run model tests
+        run: |
+          docker run ${{ env.DOCKER_VOLUME_MOUNTS }} \
+            tensorpod/pymimic3:${{ steps.extract_branch.outputs.branch }} \
+            pytest --no-cleanup -v tests/test_models
+
+      - name: Cleanup semitemp directory
+        if: always()
+        run: |
+          rm -rf $DOCKER_CACHE_DIR/.github-action-cache/semitemp
