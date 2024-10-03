@@ -1,4 +1,4 @@
-# !bin/bash
+#!bin/bash
 
 echo "In etc/setup/setup_tests.sh"
 

@@ -24,10 +24,15 @@ endif
 
 setup_tests:
 ifeq ($(testing), true)
-	@echo "Sourcing setup_config_file.sh..."
-	@bash ./setup/setup_tests.sh
+ifeq ($(IS_DOCKER), 1)
+	@echo "Sourcing setup_ci_tests.sh..."
+	@bash ./setup/setup_ci_tests.sh
 else
-	@echo "Skipping setup_tests step because. Set testing=true to setup tests."
+	@echo "Sourcing setup_tests.sh..."
+	@bash ./setup/setup_tests.sh
+endif
+else
+	@echo "Skipping setup_tests step because testing is not enabled. Set testing=true to setup tests."
 endif
 
 .PHONY: all env_vars config_env setup_config_file setup_conda_env setup_tests
