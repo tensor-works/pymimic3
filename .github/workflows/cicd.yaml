@@ -183,7 +183,7 @@ jobs:
       - name: Setup persistent test mounts
         shell: bash
         run: |
-          mkdir -p $DOCKER_CACHE_DIR/.github-action-cache/{pytest-results,bash-results}
+          sudo mkdir -p $DOCKER_CACHE_DIR/.github-action-cache/{pytest-results,bash-results}
 
       # => xx. Extract branch name (may fail on pull requests, untested)
       - name: Extract branch name
