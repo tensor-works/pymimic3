@@ -50,6 +50,6 @@ RUN find /opt/conda/ -follow -type f -name '*.a' -delete && \
     find /opt/conda/ -follow -type f -name '*.js.map' -delete && \
     rm -rf /root/.cache/pip 
 
-# Activate the environment and run the entrypoint
-ENTRYPOINT ["/bin/bash", "-c", "source activate base && exec /bin/bash"]
+RUN echo "source activate base" >> ~/.bashrc
+CMD [ "/bin/bash" ]
 

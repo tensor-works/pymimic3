@@ -183,7 +183,7 @@ jobs:
       - name: Setup persistent test mounts
         shell: bash
         run: |
-          mkdir -p $DOCKER_CACHE_DIR/.github-action-cache/{control-dataset,semitemp,pytest-results}
+          mkdir -p $DOCKER_CACHE_DIR/.github-action-cache/{pytest-results,bash-results}
 
       # => xx. Extract branch name (may fail on pull requests, untested)
       - name: Extract branch name
@@ -201,7 +201,12 @@ jobs:
         run: |
           docker run ${{ env.DOCKER_VOLUME_MOUNTS }} \
             tensorpod/pymimic3:${{ steps.extract_branch.outputs.branch }} \
-            bash -c "cd /etc && make testing=true"
+            bash -c "cd /etc && make testing=true >> /workdir/pymimic3/tests/data/bash-results/${GITHUB_SHA}.txt 2>&1 "
+          echo "Exit status: $?"
+          if [ $? -ne 0 ]; then
+            echo "The command failed."
+            exit 1
+          fi
 
   setup-fixtures:
     needs: setup-control-dataset
@@ -226,7 +231,14 @@ jobs:
         run: |
           docker run ${{ env.DOCKER_VOLUME_MOUNTS }} \
             tensorpod/pymimic3:${{ steps.extract_branch.outputs.branch }} \
-            pytest --no-cleanup -v tests/testz_setup_all_fixtures.pymimic3
+            pytest --no-cleanup -v tests/testz_setup_all_fixtures.pymimic3 \
+          >> /workdir/pymimic3/tests/data/bash-results/${GITHUB_SHA}.txt 2>&1
+          echo "Exit status: $?"
+          if [ $? -ne 0 ]; then
+            echo "The command failed."
+            exit 1
+          fi
+
 
   test-pytest-suite:
     needs: setup-fixtures
@@ -251,7 +263,14 @@ jobs:
         run: |
           docker run ${{ env.DOCKER_VOLUME_MOUNTS }} \
             tensorpod/pymimic3:${{ steps.extract_branch.outputs.branch }} \
-            pytest --no-cleanup -v tests/test_pytest_suite.py
+            pytest --no-cleanup -v tests/test_pytest_suite.py \
+          >> /workdir/pymimic3/tests/data/bash-results/${GITHUB_SHA}.txt 2>&1
+          echo "Exit status: $?"
+          if [ $? -ne 0 ]; then
+            echo "The command failed."
+            exit 1
+          fi
+
 
   test-datasets:
     needs: test-pytest-suite
@@ -276,7 +295,14 @@ jobs:
         run: |
           docker run ${{ env.DOCKER_VOLUME_MOUNTS }} \
             tensorpod/pymimic3:${{ steps.extract_branch.outputs.branch }} \
-            pytest --no-cleanup -v tests/test_datasets
+            pytest --no-cleanup -v tests/test_datasets \
+          >> /workdir/pymimic3/tests/data/bash-results/${GITHUB_SHA}.txt 2>&1
+          echo "Exit status: $?"
+          if [ $? -ne 0 ]; then
+            echo "The command failed."
+            exit 1
+          fi
+
 
   test-preprocessing:
     needs: test-pytest-suite
@@ -301,7 +327,14 @@ jobs:
         run: |
           docker run ${{ env.DOCKER_VOLUME_MOUNTS }} \
             tensorpod/pymimic3:${{ steps.extract_branch.outputs.branch }} \
-            pytest --no-cleanup -v tests/test_preprocessing
+            pytest --no-cleanup -v tests/test_preprocessing \
+          >> /workdir/pymimic3/tests/data/bash-results/${GITHUB_SHA}.txt 2>&1
+          echo "Exit status: $?"
+          if [ $? -ne 0 ]; then
+            echo "The command failed."
+            exit 1
+          fi
+
 
   test-metrics:
     needs: test-pytest-suite
@@ -326,7 +359,14 @@ jobs:
         run: |
           docker run ${{ env.DOCKER_VOLUME_MOUNTS }} \
             tensorpod/pymimic3:${{ steps.extract_branch.outputs.branch }} \
-            pytest --no-cleanup -v tests/test_metrics
+            pytest --no-cleanup -v tests/test_metrics \
+          >> /workdir/pymimic3/tests/data/bash-results/${GITHUB_SHA}.txt 2>&1
+          echo "Exit status: $?"
+          if [ $? -ne 0 ]; then
+            echo "The command failed."
+            exit 1
+          fi
+
 
   test-models:
     needs: [test-datasets, test-preprocessing, test-metrics]
@@ -351,9 +391,22 @@ jobs:
         run: |
           docker run ${{ env.DOCKER_VOLUME_MOUNTS }} \
             tensorpod/pymimic3:${{ steps.extract_branch.outputs.branch }} \
-            pytest --no-cleanup -v tests/test_models
+            pytest --no-cleanup -v tests/test_models \
+          >> /workdir/pymimic3/tests/data/bash-results/${GITHUB_SHA}.txt 2>&1
+          echo "Exit status: $?"
+          if [ $? -ne 0 ]; then
+            echo "The command failed."
+            exit 1
+          fi
+
 
       - name: Cleanup semitemp directory
         if: always()
         run: |
-          rm -rf $DOCKER_CACHE_DIR/.github-action-cache/semitemp
+          rm -rf $DOCKER_CACHE_DIR/.github-action-cache/semitemp \
+          >> /workdir/pymimic3/tests/data/bash-results/${GITHUB_SHA}.txt 2>&1
+          echo "Exit status: $?"
+          if [ $? -ne 0 ]; then
+            echo "The command failed."
+            exit 1
+          fi
