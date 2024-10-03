@@ -77,7 +77,7 @@ jobs:
         uses: maxnowack/local-cache@v2
         with: 
           path: ${{ env.DOCKER_CACHE_DIR }}/.buildx-cache
-          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          key: ${{ runner.os }}-buildx-${{ steps.extract_branch.outputs.branch }}
       
       # => 6. Setup cache on github cache: github hosted
       - name: Cache Docker layers on github-hosted
@@ -183,7 +183,7 @@ jobs:
       - name: Setup persistent test mounts
         shell: bash
         run: |
-          sudo mkdir -p $DOCKER_CACHE_DIR/.github-action-cache/{pytest-results,bash-results}
+          mkdir -p $DOCKER_CACHE_DIR/.github-action-cache/{pytest-results,bash-results}
 
       # => xx. Extract branch name (may fail on pull requests, untested)
       - name: Extract branch name

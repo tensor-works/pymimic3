@@ -27,7 +27,6 @@ ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
 # Install minimal dependencies
 RUN apt-get update -q && \    
     apt-get install -y make && \
-
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
