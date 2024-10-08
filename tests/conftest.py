@@ -1,3 +1,8 @@
+# ==================== setup env ====================
+from tests.tsettings import *
+from settings import *
+#
+# ================= everything else =================
 import shutil
 import pytest
 import os
@@ -5,10 +10,8 @@ import datasets
 import ray
 from pathlib import Path
 from typing import Dict
-from tests.tsettings import *
 from utils.IO import *
 from datasets.readers import ExtractedSetReader, ProcessedSetReader
-from settings import *
 from tests.pytest_utils.discretization import prepare_discretizer_listfiles
 
 collect_ignore = ['src/utils/IO.py']
