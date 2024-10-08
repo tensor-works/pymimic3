@@ -9,9 +9,12 @@ all: env_vars config_env setup_config_files setup_conda_env setup_tests
 env_vars:
 	@echo "Sourcing setup_env_vars.sh..."
 	@bash ./setup/setup_env_vars.sh
+	@$(MAKE) load_env
 
-include ../.env
-export $(shell sed 's/=.*//' envfile)
+# Function to load .env and export variables
+load_env:
+	$(eval include ../.env)
+	$(eval export $(shell sed 's/=.*//' ../.env))
 
 # Target for setup_config_file.sh
 setup_config_files:
