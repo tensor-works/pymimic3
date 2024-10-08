@@ -79,7 +79,7 @@ jobs:
         uses: maxnowack/local-cache@v2
         with: 
           path: ${{ env.DOCKER_CACHE_DIR }}/.buildx-cache
-          key: ${{ runner.os }}-buildx-${{ steps.extract_branch.outputs.branch }}
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
           restore-keys: |
             ${{ runner.os }}-buildx-   
       
