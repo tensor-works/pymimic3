@@ -14,8 +14,11 @@ env_vars:
 
 # Function to load .env and export variables
 load_env:
-	$(eval export $(shell cat ../.env | sed -e 's/\r//g' -e 's/#.*//g' | xargs))
-	@echo "All environment variables have been loaded and exported."
+	@echo "Loading environment variables..."
+	@set -a; \
+	source ../.env; \
+	set +a; \
+	env | grep -E '^(CONFIG|ETC|EXAMPLES|TESTS|WORKINGDIR|MODEL|PYTHONPATH)='
 
 # Target for setup_config_file.sh
 setup_config_files: load_env
