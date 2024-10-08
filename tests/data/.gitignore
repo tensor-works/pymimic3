@@ -1,6 +1,6 @@
-temp/
-semitemp/
-generated-benchmark/
-mimic3benchmarks/
-phisionet.org/
-*
+temp/               # Temporary files (delete on every test)
+semitemp/           # Semi-temporary files (deleted once per run)
+mimic3benchmarks/   # Orig MIMIC-III benchmarks repo
+phisionet.org/      # Dowload location for MIMIC-III demo
+mimiciii-demo       # MIMIC-III demo dataset
+control-dataset     # Processed MIMIC-III demo dataset against which to compare
