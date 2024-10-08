@@ -80,6 +80,8 @@ jobs:
         with: 
           path: ${{ env.DOCKER_CACHE_DIR }}/.buildx-cache
           key: ${{ runner.os }}-buildx-${{ steps.extract_branch.outputs.branch }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-   
       
       # => 6. Setup cache on github cache: github hosted
       - name: Cache Docker layers on github-hosted
