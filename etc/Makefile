@@ -9,7 +9,6 @@ all: env_vars config_env setup_config_files setup_conda_env setup_tests
 env_vars:
 	@echo "Running setup_env_vars.sh..."
 	@bash ./setup/setup_env_vars.sh
-	@$(MAKE) load_env
 	@cat ../.env
 
 
@@ -19,7 +18,7 @@ load_env:
 	@echo "All environment variables have been loaded and exported."
 
 # Target for setup_config_file.sh
-setup_config_files:
+setup_config_files: load_env
 	@printenv | grep -E '^(CONFIG|ETC|EXAMPLES|TESTS|WORKINGDIR)'
 	@echo "Running setup_config_files.sh..."
 	@bash ./setup/setup_config_files.sh
