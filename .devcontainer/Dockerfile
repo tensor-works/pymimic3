@@ -51,5 +51,5 @@ RUN find /opt/conda/ -follow -type f -name '*.a' -delete && \
     find /opt/conda/ -follow -type f -name '*.js.map' -delete && \
     rm -rf /root/.cache/pip 
 
-RUN echo "source activate base" >> ~/.bashrc
+RUN echo "source activate base" >> ~/.bashrc && echo "source etc/config_env.sh" >> ~/.bashrc
 CMD [ "/bin/bash" ]
