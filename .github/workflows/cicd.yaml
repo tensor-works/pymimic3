@@ -15,6 +15,7 @@ env:
   DOCKER_VOLUME_MOUNTS: >-
     -v $DOCKER_CACHE_DIR/.github-action-cache/control-dataset:/workdir/pymimic3/tests/data/control-dataset
     -v $DOCKER_CACHE_DIR/docker-cache/.github-action-cache/semitemp:/workdir/pymimic3/tests/data/semitemp
+    -v $DOCKER_CACHE_DIR/docker-cache/.github-action-cache/bash-results:/workdir/pymimic3/tests/data/bash-results
     -v $DOCKER_CACHE_DIR/docker-cache/.github-action-cache/pytest-results:/workdir/pymimic3/tests/data/pytest-results
 
 jobs:
@@ -37,6 +38,13 @@ jobs:
       # => 1. Pull code into runner env
       - name: Checkout code
         uses: actions/checkout@v4
+
+      # => 2. Setup mount directories in docker container if not exist
+      - name: Setup mount directories
+        run: |
+          mkdir -p tests/data/{semitemp, bash-results, pytest-results, control-dataset}
+          
+        
 
       # => 2. Set up Docker Buildx step
       - name: Set up Docker Buildx
@@ -199,6 +207,7 @@ jobs:
 
       - name: Setup control dataset
         run: |
+          echo ls /workdir/pymimic3/tests/data/bash-results 
           docker run ${{ env.DOCKER_VOLUME_MOUNTS }} \
             tensorpod/pymimic3:${{ steps.extract_branch.outputs.branch }} \
             bash -c "cd /etc && make testing=true >> /workdir/pymimic3/tests/data/bash-results/${GITHUB_SHA}.txt 2>&1 "

@@ -6,7 +6,7 @@ mimic3benchmarks/
 # Orig MIMIC-III benchmarks repo
 phisionet.org/      
 # Dowload location for MIMIC-III demo
-mimiciii-demo       
+mimiciii-demo/
 # MIMIC-III demo dataset
-control-dataset     
+control-dataset/     
 # Processed MIMIC-III demo dataset against which to compare
