@@ -53,4 +53,3 @@ RUN find /opt/conda/ -follow -type f -name '*.a' -delete && \
 
 RUN echo "source activate base" >> ~/.bashrc
 CMD [ "/bin/bash" ]
-

@@ -1,5 +1,15 @@
 #!/bin/bash
 
+is_empty() {
+    # This way because of possible gitignore
+    local resourcesDir=$1
+    if [ -d "$resourcesDir" ] && [ -z "$(find "$resourcesDir" -mindepth 1 -type f | grep -v '/\.gitignore$')" ]; then
+        echo "The directory contains only .gitignore or is empty."
+    else
+        echo "The directory contains files other than .gitignore."
+    fi
+}
+
 echo "In etc/setup/setup_ci_tests.sh"
 
 # Check OS-type and resolve SCRIPT directory
@@ -19,7 +29,7 @@ destinationDir="$testFolder/data/"
 convertScript="$testFolder/etc/benchmark_scripts/convert_columns.py"
 demoDataDir="$destinationDir/mimiciii-demo/"
 
-if [ ! -d "$demoDataDir" ]; then
+if is_empty "$demoDataDir"; then
     echo -e "\033[34m[3/huregeil]\033[0m Downloading the MIMIC-III demo dataset directory"
     sudo wget -r -N -c -np $sourceUrl -P $destinationDir
     
@@ -53,7 +63,7 @@ downloadScript="$testFolder/etc/benchmark_scripts/download_ci_dataset.py"
 controlDatasetDir="$testFolder/data/control-dataset"
 
 # Control the dataset from Google Drive
-if [ ! -d "$controlDatasetDir" ]; then
+if is_empty "$controlDatasetDir"; then
     echo -e "\033[34m[6/huregeil]\033[0m Downloading the readily preprocessed control dataset"
     sudo -E env PATH="$PATH" PYTHONPATH="$PYTHONPATH" python "$downloadScript"
 else
