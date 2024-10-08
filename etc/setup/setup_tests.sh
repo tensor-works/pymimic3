@@ -2,6 +2,7 @@
 
 echo "In etc/setup/setup_tests.sh"
 
+
 # Check for wget and install if not present
 if ! command -v wget &> /dev/null; then
     echo -e "\033[34m[1/huregeil]\033[0m wget could not be found. Attempting to install..."
