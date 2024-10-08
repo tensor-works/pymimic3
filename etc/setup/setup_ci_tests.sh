@@ -4,9 +4,9 @@ is_empty() {
     # This way because of possible gitignore
     local resourcesDir=$1
     if [ -d "$resourcesDir" ] && [ -z "$(find "$resourcesDir" -mindepth 1 -type f | grep -v '/\.gitignore$')" ]; then
-        echo "The directory contains only .gitignore or is empty."
+        return 0
     else
-        echo "The directory contains files other than .gitignore."
+        return 1
     fi
 }
 

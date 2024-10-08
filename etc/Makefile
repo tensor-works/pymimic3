@@ -26,10 +26,10 @@ setup_tests:
 ifeq ($(testing), true)
 ifeq ($(IS_DOCKER), 1)
 	@echo "Sourcing setup_ci_tests.sh..."
-	@bash ./config_env.sh; ./setup/setup_ci_tests.sh
+	@bash source ./config_env.sh; ./setup/setup_ci_tests.sh
 else
 	@echo "Sourcing setup_tests.sh..."
-	@bash ./config_env.sh; ./setup/setup_tests.sh
+	@bash source ./config_env.sh; ./setup/setup_tests.sh
 endif
 else
 	@echo "Skipping setup_tests step because testing is not enabled. Set testing=true to setup tests."

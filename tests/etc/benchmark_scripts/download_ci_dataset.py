@@ -8,7 +8,7 @@ from pathlib import Path
 google_id = "1vGLD0RWnMgo_0q8RpuCslEd-qEn7dBBV"  # TODO! relocate
 
 # Create the data folder
-data_folder = Path(os.getenv("TESTS"), "data")
+data_folder = Path("workdir", "tests", "data")
 data_folder.mkdir(parents=True, exist_ok=True)
 
 # Download the control dataset
