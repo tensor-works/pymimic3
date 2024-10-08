@@ -201,7 +201,6 @@ jobs:
 
       - name: Setup control dataset
         run: |
-          echo ls /workdir/pymimic3/tests/data/bash-results 
           docker run ${{ env.DOCKER_VOLUME_MOUNTS }} \
             tensorpod/pymimic3:${{ steps.extract_branch.outputs.branch }} \
             bash -c "cd /etc && make testing=true >> /workdir/pymimic3/tests/data/bash-results/${GITHUB_SHA}.txt 2>&1 "
