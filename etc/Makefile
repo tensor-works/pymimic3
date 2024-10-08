@@ -14,7 +14,7 @@ env_vars:
 
 # Function to load .env and export variables
 load_env:
-	$(eval export $(shell sed 's/=.*//' ../.env))
+	$(eval export $(shell cat ../.env | sed -e 's/\r//g' -e 's/#.*//g' | xargs))
 	@echo "All environment variables have been loaded and exported."
 
 # Target for setup_config_file.sh
