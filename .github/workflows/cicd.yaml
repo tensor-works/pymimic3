@@ -203,7 +203,7 @@ jobs:
         run: |
           docker run ${{ env.DOCKER_VOLUME_MOUNTS }} \
             tensorpod/pymimic3:${{ steps.extract_branch.outputs.branch }} \
-            bash -c "cd /etc && make testing=true >> /workdir/pymimic3/tests/data/bash-results/${GITHUB_SHA}.txt 2>&1 "
+            bash -c "cd etc && make testing=true >> /workdir/pymimic3/tests/data/bash-results/${GITHUB_SHA}.txt 2>&1 "
           echo "Exit status: $?"
           if [ $? -ne 0 ]; then
             echo "The command failed."
