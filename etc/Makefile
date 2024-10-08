@@ -10,11 +10,21 @@ env_vars:
 	@echo "Running setup_env_vars.sh..."
 	@bash ./setup/setup_env_vars.sh
 	@$(MAKE) load_env
+	@cat ../.env
+
 
 # Function to load .env and export variables
 load_env:
-	$(eval include ../.env)
-	$(eval export $(shell sed 's/=.*//' ../.env))
+	@echo "Loading environment variables from .env..."
+	@set -a; \
+	source ../.env; \
+	set +a; \
+	while read line; do \
+		if [ -n "$$line" ]; then \
+			echo "Exporting: $$line"; \
+		fi; \
+	done < ../.env
+	@echo "All environment variables have been loaded and exported."
 
 # Target for setup_config_file.sh
 setup_config_files:
