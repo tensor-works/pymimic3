@@ -11,16 +11,13 @@ all: ../.env load_env setup_config_files setup_conda_env setup_tests
 	@echo "Running setup_env_vars.sh..."
 	@bash ./setup/setup_env_vars.sh; \
 
-include ../.env
-
-export
-# $(eval export $(shell sed -ne 's/ *#.*$$//; /./ s/=.*$$// p' ../.env))
-
 .PHONY: config_env setup_config_files setup_conda_env setup_tests
 
 # Function to load .env and export variables
-load_env:
+load_env: 
 	@echo "Loading environment variables..."
+	$(eval include ../.env)
+	$(eval export)
 # set -o allexport; source ../.env; set +o allexport
 	@printenv | grep -E '^(CONFIG|ETC|EXAMPLES|TESTS|WORKINGDIR|MODEL|PYTHONPATH)='
 
