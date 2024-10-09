@@ -3,31 +3,29 @@
 SHELL := /bin/bash
 
 # Default target that depends on other targets
-all: env_vars config_env setup_config_files setup_conda_env setup_tests
+all: .env load_env setup_config_files setup_conda_env setup_tests
 
+.PHONY: .env
 # Target for setup_env_vars.sh
-env_vars:
+.env:
 	@echo "Running setup_env_vars.sh..."
-	@bash ./setup/setup_env_vars.sh
-	@cat ../.env
+	@bash ./setup/setup_env_vars.sh; \
 
+include ../.env
+
+.PHONY: config_env setup_config_files setup_conda_env setup_tests
 
 # Function to load .env and export variables
 load_env:
-	@echo "Content of .env file:"
-	@cat ../.env
-	@echo "\nProcessed environment variables:"
-	@cat ../.env | sed -e 's/\r//g' -e 's/#.*//g'
-	@echo "\nFinal export command:"
-	@echo "$$(cat ../.env | sed -e 's/\r//g' -e 's/#.*//g' | xargs -0)"
-	$(eval export $(shell cat ../.env | sed -e 's/\r//g' -e 's/#.*//g' | xargs -0))
-	@echo "\nVerifying exported variables:"
-	@printenv | grep -E '^(CONFIG|ETC|EXAMPLES|TESTS|WORKINGDIR|MODEL|PYTHONPATH)='
+	$(eval export $(shell sed -ne 's/ *#.*$$//; /./ s/=.*$$// p' ../.env))
+# $(eval export $(shell sed -ne 's/^\([^#].*\)$/\1/' ../.env) )
+	@printenv | grep -E '^(CONFIG|ETC|EXAMPLES|TESTS|WORKINGDIR)'
+	@echo "Environment variables loaded:"
 
 # Target for setup_config_file.sh
-setup_config_files: load_env
-	@printenv | grep -E '^(CONFIG|ETC|EXAMPLES|TESTS|WORKINGDIR)'
+setup_config_files: 
 	@echo "Running setup_config_files.sh..."
+	@printenv | grep -E '^(CONFIG|ETC|EXAMPLES|TESTS|WORKINGDIR)'
 	@bash ./setup/setup_config_files.sh
 
 # Target for setup_config_file.sh
@@ -52,4 +50,3 @@ else
 	@echo "Skipping setup_tests step because testing is not enabled. Set testing=true to setup tests."
 endif
 
-.PHONY: all env_vars config_env setup_config_files setup_conda_env setup_tests

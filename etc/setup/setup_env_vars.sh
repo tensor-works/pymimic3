@@ -38,10 +38,12 @@ else
 fi
 
 echo -e "\033[34m[4/4]\033[0m Exporting ${WORKINGDIR}/.env"
-python -m dotenv -f ${WORKINGDIR}/.env set WORKINGDIR ${WORKINGDIR}  > /dev/null 2>&1
-python -m dotenv -f ${WORKINGDIR}/.env set CONFIG ${CONFIG}   > /dev/null 2>&1
-python -m dotenv -f ${WORKINGDIR}/.env set ETC ${ETC}   > /dev/null 2>&1
-python -m dotenv -f ${WORKINGDIR}/.env set MODEL ${MODEL}   > /dev/null 2>&1
-python -m dotenv -f ${WORKINGDIR}/.env set PYTHONPATH ${PYTHONPATH}   > /dev/null 2>&1
-python -m dotenv -f ${WORKINGDIR}/.env set TESTS ${TESTS}  > /dev/null 2>&1
-python -m dotenv -f ${WORKINGDIR}/.env set EXAMPLES ${EXAMPLES}  > /dev/null 2>&1
+python -m dotenv -q never -f  ${WORKINGDIR}/.env set WORKINGDIR ${WORKINGDIR}  > /dev/null 2>&1
+python -m dotenv -q never -f  ${WORKINGDIR}/.env set CONFIG ${CONFIG}   > /dev/null 2>&1
+python -m dotenv -q never -f  ${WORKINGDIR}/.env set ETC ${ETC}   > /dev/null 2>&1
+python -m dotenv -q never -f  ${WORKINGDIR}/.env set MODEL ${MODEL}   > /dev/null 2>&1
+python -m dotenv -q never -f  ${WORKINGDIR}/.env set PYTHONPATH ${PYTHONPATH}   > /dev/null 2>&1
+python -m dotenv -q never -f  ${WORKINGDIR}/.env set TESTS ${TESTS}  > /dev/null 2>&1
+python -m dotenv -q never -f  ${WORKINGDIR}/.env set EXAMPLES ${EXAMPLES}  > /dev/null 2>&1
+
+chmod 777 ${WORKINGDIR}/.env

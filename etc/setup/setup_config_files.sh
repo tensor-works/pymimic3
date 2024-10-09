@@ -11,7 +11,6 @@ elif [[ "$OSTYPE" == "darwin"* ]]; then
 fi
 
 echo -e "\033[34m[2/5]\033[0m Sourcing environment variables"
-source $(dirname $SCRIPT)/../../.env
 
 echo -e "\033[34m[3/5]\033[0m Creating benchmark download dir at $CONFIG/mimic3-benchmark"
 # Fetch settings files from original mimic3 directory

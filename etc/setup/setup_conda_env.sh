@@ -14,10 +14,8 @@ elif [[ "$OSTYPE" == "darwin"* ]]; then
     SCRIPT="$( cd "$( dirname "$0" )" && pwd )"
 fi
 
-echo -e "\033[34m[2/6]\033[0m Sourcing environment variables"
-source $(dirname $SCRIPT)/../../.env
 
-envFile="$WORKINGDIR/.devcontainer/linux-gnu-ci.yml"
+envFile="$WORKINGDIR/.devcontainer/linux-gnu.yml"
 
 eval "$(conda shell.bash hook)"
 if conda env list | grep -q "pymimic3"; then
@@ -44,5 +42,5 @@ conda activate pymimic3
 export CUDNN_PATH=$(dirname $(python -c "import nvidia.cudnn;print(nvidia.cudnn.__file__)"))
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda-12.2/lib64   # $LD_LIBRARY_PATH:$CONDA_PREFIX/lib/:$CUDNN_PATH/lib
 
-python -m dotenv -f ${WORKINGDIR}/.env set CUDNN_PATH ${CUDNN_PATH}
-python -m dotenv -f ${WORKINGDIR}/.env set LD_LIBRARY_PATH ${LD_LIBRARY_PATH}
+python -m dotenv -q never -f ${WORKINGDIR}/.env set CUDNN_PATH ${CUDNN_PATH}
+python -m dotenv -q never -f ${WORKINGDIR}/.env set LD_LIBRARY_PATH ${LD_LIBRARY_PATH}
