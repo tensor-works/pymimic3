@@ -8,7 +8,7 @@ from pathlib import Path
 google_id = "1vGLD0RWnMgo_0q8RpuCslEd-qEn7dBBV"  # TODO! relocate
 
 # Create the data folder
-data_folder = Path("workdir", "tests", "data")
+data_folder = Path(os.getenv("TESTS"), "data")
 data_folder.mkdir(parents=True, exist_ok=True)
 
 # Download the control dataset
@@ -30,6 +30,12 @@ try:
     subprocess.run(["tar", "-xf", str(save_file_path), "-C", str(data_folder)], check=True)
     print(f"All files have been extracted to {data_folder}")
     # Remove the tar file
+    extraction_target = Path(data_folder, "control-dataset")
+    file_list = list(extraction_target.iterdir())
+    assert any(file.name != '.gitignore' for file in file_list), \
+           f"No files were extracted from the tar file at {str(extraction_target)}" \
+           f"Files are: {file_list,}"
+
     save_file_path.unlink()
 except subprocess.CalledProcessError as e:
     print(f"An error occurred while extracting the file: {e}")
