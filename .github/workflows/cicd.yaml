@@ -78,6 +78,10 @@ jobs:
           echo "BRANCH_NAME=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_ENV
           echo "DOCKER_IMAGE_TAR=$DOCKER_CACHE_DIR/.buildx-image-cache/tensorpod/pymimic3/$BRANCH_NAME.tar" >> $GITHUB_ENV
         id: extract_branch
+
+      - name: Branch name
+        shell: bash
+        run: echo $BRANCH_NAME
       
       # => 6. Setup cache on runner machine: self-hosted
       - name: Cache Docker layers on self-hosted
