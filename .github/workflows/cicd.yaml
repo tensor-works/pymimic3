@@ -208,7 +208,7 @@ jobs:
         run: |
           docker run ${{ env.DOCKER_VOLUME_MOUNTS }} \
             tensorpod/pymimic3:${{ steps.extract_branch.outputs.branch }} \
-            bash -c "cd etc && make testing=true >> /workdir/tests/data/bash-results/${GITHUB_SHA}.txt 2>&1 "
+          bash -ic "cd etc && make testing=true 2>&1 | tee /workdir/tests/data/bash-results/${GITHUB_SHA}.txt "
           echo "Exit status: $?"
           if [ $? -ne 0 ]; then
             echo "The command failed."
@@ -238,8 +238,8 @@ jobs:
         run: |
           docker run ${{ env.DOCKER_VOLUME_MOUNTS }} \
             tensorpod/pymimic3:${{ steps.extract_branch.outputs.branch }} \
-            bash -ic "pytest --no-cleanup -v tests/testz_setup_all_fixtures.pymimic3 
-            >> /workdir/tests/data/bash-results/${GITHUB_SHA}.txt 2>&1"
+            bash -ic "pytest --no-cleanup -v tests/test_zsetup_all_fixtures.py \
+            2>&1 | tee /workdir/tests/data/bash-results/${GITHUB_SHA}.txt"
           echo "Exit status: $?"
           if [ $? -ne 0 ]; then
             echo "The command failed."
@@ -247,7 +247,7 @@ jobs:
           fi
 
 
-  test-pytest-suite:
+  test-pytest-utils:
     needs: setup-fixtures
     runs-on: self-hosted
     steps:
@@ -270,8 +270,8 @@ jobs:
         run: |
           docker run ${{ env.DOCKER_VOLUME_MOUNTS }} \
             tensorpod/pymimic3:${{ steps.extract_branch.outputs.branch }} \
-          bash -ic "pytest --no-cleanup -v tests/test_pytest_suite.py \
-          >> /workdir/tests/data/bash-results/${GITHUB_SHA}.txt 2>&1"
+          bash -ic "pytest --no-cleanup -v tests/test_pytest_utils.py \
+          2>&1 | tee /workdir/tests/data/bash-results/${GITHUB_SHA}.txt"
           echo "Exit status: $?"
           if [ $? -ne 0 ]; then
             echo "The command failed."
@@ -303,7 +303,7 @@ jobs:
           docker run ${{ env.DOCKER_VOLUME_MOUNTS }} \
             tensorpod/pymimic3:${{ steps.extract_branch.outputs.branch }} \
           bash -ic "pytest --no-cleanup -v tests/test_datasets \
-          >> /workdir/tests/data/bash-results/${GITHUB_SHA}.txt 2>&1"
+          2>&1 | tee /workdir/tests/data/bash-results/${GITHUB_SHA}.txt"
           echo "Exit status: $?"
           if [ $? -ne 0 ]; then
             echo "The command failed."
@@ -335,7 +335,7 @@ jobs:
           docker run ${{ env.DOCKER_VOLUME_MOUNTS }} \
             tensorpod/pymimic3:${{ steps.extract_branch.outputs.branch }} \
           bash -ic "pytest --no-cleanup -v tests/test_preprocessing \
-          >> /workdir/tests/data/bash-results/${GITHUB_SHA}.txt 2>&1"
+          2>&1 | tee /workdir/tests/data/bash-results/${GITHUB_SHA}.txt"
           echo "Exit status: $?"
           if [ $? -ne 0 ]; then
             echo "The command failed."
@@ -367,7 +367,7 @@ jobs:
           docker run ${{ env.DOCKER_VOLUME_MOUNTS }} \
             tensorpod/pymimic3:${{ steps.extract_branch.outputs.branch }} \
           bash -ic "pytest --no-cleanup -v tests/test_metrics \
-          >> /workdir/tests/data/bash-results/${GITHUB_SHA}.txt 2>&1"
+          2>&1 | tee /workdir/tests/data/bash-results/${GITHUB_SHA}.txt"
           echo "Exit status: $?"
           if [ $? -ne 0 ]; then
             echo "The command failed."
@@ -399,7 +399,7 @@ jobs:
           docker run ${{ env.DOCKER_VOLUME_MOUNTS }} \
             tensorpod/pymimic3:${{ steps.extract_branch.outputs.branch }} \
             pytest --no-cleanup -v tests/test_models \
-          >> /workdir/tests/data/bash-results/${GITHUB_SHA}.txt 2>&1
+          2>&1 | tee /workdir/tests/data/bash-results/${GITHUB_SHA}.txt
           echo "Exit status: $?"
           if [ $? -ne 0 ]; then
             echo "The command failed."
@@ -411,7 +411,7 @@ jobs:
         if: always()
         run: |
           rm -rf $DOCKER_CACHE_DIR/.github-action-cache/semitemp \
-          >> /workdir/tests/data/bash-results/${GITHUB_SHA}.txt 2>&1
+          2>&1 | tee /workdir/tests/data/bash-results/${GITHUB_SHA}.txt
           echo "Exit status: $?"
           if [ $? -ne 0 ]; then
             echo "The command failed."
