@@ -51,5 +51,14 @@ RUN find /opt/conda/ -follow -type f -name '*.a' -delete && \
     find /opt/conda/ -follow -type f -name '*.js.map' -delete && \
     rm -rf /root/.cache/pip 
 
-RUN echo "source activate base" >> ~/.bashrc && echo "source etc/config_env.sh" >> ~/.bashrc
+RUN echo "source activate base" >> ~/.bashrc 
+USER root
+# Emulates the functionality of the make file but sourcing env vars
+# Seemingly only works outside the docker container when done in the
+# Makefile
+# RUN echo "source activate base" >> ~/.bashrc && \
+#     echo "source etc/setup/setup_env_vars.sh" >> ~/.bashrc && \
+#     echo "source etc/config_env.sh" >> ~/.bashrc && \
+#     echo "source etc/setup/setup_config_files.sh" >> ~/.bashrc
+
 CMD [ "/bin/bash" ]

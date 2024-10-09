@@ -1,5 +1,5 @@
 # Makefile
-
+.ONESHELL:
 SHELL := /bin/bash
 
 # Default target that depends on other targets
@@ -17,9 +17,9 @@ include ../.env
 
 # Function to load .env and export variables
 load_env:
-	@printenv | grep -E '^(CONFIG|ETC|EXAMPLES|TESTS|WORKINGDIR|MODEL|PYTHONPATH)='
 	@echo "Loading environment variables..."
 	$(eval export $(shell sed -ne 's/ *#.*$$//; /./ s/=.*$$// p' ../.env))
+	@printenv | grep -E '^(CONFIG|ETC|EXAMPLES|TESTS|WORKINGDIR|MODEL|PYTHONPATH)='
 
 # Target for setup_config_file.sh
 setup_config_files: 
