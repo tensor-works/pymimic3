@@ -71,8 +71,7 @@ jobs:
           mkdir -p $DOCKER_CACHE_DIR
           mkdir -p $DOCKER_CACHE_DIR/.buildx-image-cache/tensorpod/pymimic3/
 
-          mkdir -p $CONTAINER_PYTEST_RESULTS
-          mkdir -p $CONTAINER_BASH_RESULTS
+
 
 
       # => 5. Extract branch name (may fail on pull requests, untested)
@@ -207,11 +206,19 @@ jobs:
           echo "Loaded cached image for testing: $BRANCH_NAME"
           echo docker iamge ls -a
 
+      - name: Create output dirs
+        run: |
+          docker run $DOCKER_VOLUME_MOUNTS \
+            tensorpod/pymimic3:$BRANCH_NAME \  
+            bash -ic "mkdir -p $CONTAINER_PYTEST_RESULTS && \
+            mkdir -p $CONTAINER_BASH_RESULTS 2>&1 | tee $CONTAINER_BASH_RESULTS\setup-control-dataset.txt "
+
       - name: Setup control dataset
         run: |
           docker run $DOCKER_VOLUME_MOUNTS \
             tensorpod/pymimic3:$BRANCH_NAME \
           bash -ic "cd etc && make testing=true 2>&1 | tee $CONTAINER_BASH_RESULTS\setup-control-dataset.txt "
+          
           echo "Exit status: $?"
           if [ $? -ne 0 ]; then
             echo "The command failed."
@@ -239,7 +246,7 @@ jobs:
              -v tests/test_zsetup_all_fixtures.py 2>&1 \
              | tee $BASH_RESULTS/setup-fixture.txt"
 
-             docker run $DOCKER_VOLUME_MOUNTS \
+          docker run $DOCKER_VOLUME_MOUNTS \
              tensorpod/pymimic3:$BRANCH_NAME \
              bash -ic "python -m tests.pytest_utils.reporting $CONTAINER_PYTEST_RESULTS/setup-fixture.xml"
              
