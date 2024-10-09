@@ -234,12 +234,11 @@ jobs:
           echo "Loaded cached image for testing: ${{ steps.extract_branch.outputs.branch }}"
           echo docker iamge ls -a
 
-# bash -c 
       - name: Run fixture setup tests
         run: |
           docker run ${{ env.DOCKER_VOLUME_MOUNTS }} \
             tensorpod/pymimic3:${{ steps.extract_branch.outputs.branch }} \
-            "pytest --no-cleanup -v tests/testz_setup_all_fixtures.pymimic3 
+            bash -ic "pytest --no-cleanup -v tests/testz_setup_all_fixtures.pymimic3 
             >> /workdir/tests/data/bash-results/${GITHUB_SHA}.txt 2>&1"
           echo "Exit status: $?"
           if [ $? -ne 0 ]; then
@@ -271,8 +270,8 @@ jobs:
         run: |
           docker run ${{ env.DOCKER_VOLUME_MOUNTS }} \
             tensorpod/pymimic3:${{ steps.extract_branch.outputs.branch }} \
-            pytest --no-cleanup -v tests/test_pytest_suite.py \
-          >> /workdir/tests/data/bash-results/${GITHUB_SHA}.txt 2>&1
+          bash -ic "pytest --no-cleanup -v tests/test_pytest_suite.py \
+          >> /workdir/tests/data/bash-results/${GITHUB_SHA}.txt 2>&1"
           echo "Exit status: $?"
           if [ $? -ne 0 ]; then
             echo "The command failed."
@@ -303,8 +302,8 @@ jobs:
         run: |
           docker run ${{ env.DOCKER_VOLUME_MOUNTS }} \
             tensorpod/pymimic3:${{ steps.extract_branch.outputs.branch }} \
-            pytest --no-cleanup -v tests/test_datasets \
-          >> /workdir/tests/data/bash-results/${GITHUB_SHA}.txt 2>&1
+          bash -ic "pytest --no-cleanup -v tests/test_datasets \
+          >> /workdir/tests/data/bash-results/${GITHUB_SHA}.txt 2>&1"
           echo "Exit status: $?"
           if [ $? -ne 0 ]; then
             echo "The command failed."
@@ -335,8 +334,8 @@ jobs:
         run: |
           docker run ${{ env.DOCKER_VOLUME_MOUNTS }} \
             tensorpod/pymimic3:${{ steps.extract_branch.outputs.branch }} \
-            pytest --no-cleanup -v tests/test_preprocessing \
-          >> /workdir/tests/data/bash-results/${GITHUB_SHA}.txt 2>&1
+          bash -ic "pytest --no-cleanup -v tests/test_preprocessing \
+          >> /workdir/tests/data/bash-results/${GITHUB_SHA}.txt 2>&1"
           echo "Exit status: $?"
           if [ $? -ne 0 ]; then
             echo "The command failed."
@@ -367,8 +366,8 @@ jobs:
         run: |
           docker run ${{ env.DOCKER_VOLUME_MOUNTS }} \
             tensorpod/pymimic3:${{ steps.extract_branch.outputs.branch }} \
-            pytest --no-cleanup -v tests/test_metrics \
-          >> /workdir/tests/data/bash-results/${GITHUB_SHA}.txt 2>&1
+          bash -ic "pytest --no-cleanup -v tests/test_metrics \
+          >> /workdir/tests/data/bash-results/${GITHUB_SHA}.txt 2>&1"
           echo "Exit status: $?"
           if [ $? -ne 0 ]; then
             echo "The command failed."

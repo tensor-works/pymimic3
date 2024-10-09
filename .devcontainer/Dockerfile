@@ -55,4 +55,4 @@ RUN echo "source activate base" >> ~/.bashrc && \
     echo "make -C etc/" >> ~/.bashrc && \
     echo "source etc/config_env.sh" >> ~/.bashrc
 
-CMD [ "/bin/bash" ]
+CMD ["/bin/bash"]
