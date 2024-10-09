@@ -312,7 +312,7 @@ jobs:
 
 
   test-preprocessing:
-    needs: test-pytest-suite
+    needs: test-pytest-utils
     runs-on: self-hosted
     steps:
       - name: Checkout code
@@ -344,7 +344,7 @@ jobs:
 
 
   test-metrics:
-    needs: test-pytest-suite
+    needs: test-pytest-utils
     runs-on: self-hosted
     steps:
       - name: Checkout code
