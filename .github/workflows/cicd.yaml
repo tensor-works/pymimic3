@@ -71,15 +71,12 @@ jobs:
           mkdir -p $DOCKER_CACHE_DIR
           mkdir -p $DOCKER_CACHE_DIR/.buildx-image-cache/tensorpod/pymimic3/
 
-
-
-
       # => 5. Extract branch name (may fail on pull requests, untested)
       - name: Extract branch name
         shell: bash
         run: |
           echo "BRANCH_NAME=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_ENV
-          "DOCKER_IMAGE_TAR=$DOCKER_CACHE_DIR/.buildx-image-cache/tensorpod/pymimic3/$BRANCH_NAME.tar" >> $GITHUB_ENV
+          echo "DOCKER_IMAGE_TAR=$DOCKER_CACHE_DIR/.buildx-image-cache/tensorpod/pymimic3/$BRANCH_NAME.tar" >> $GITHUB_ENV
         id: extract_branch
       
       # => 6. Setup cache on runner machine: self-hosted
