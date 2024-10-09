@@ -18,11 +18,12 @@ include ../.env
 # Function to load .env and export variables
 load_env:
 	@echo "Loading environment variables..."
-	$(eval export $(shell sed -ne 's/ *#.*$$//; /./ s/=.*$$// p' ../.env))
-	@printenv | grep -E '^(CONFIG|ETC|EXAMPLES|TESTS|WORKINGDIR|MODEL|PYTHONPATH)='
+# $(eval export $(shell sed -ne 's/ *#.*$$//; /./ s/=.*$$// p' ../.env))
+    set -o allexport; source ../.env; set +o allexport
 
 # Target for setup_config_file.sh
 setup_config_files: 
+	@printenv | grep -E '^(CONFIG|ETC|EXAMPLES|TESTS|WORKINGDIR|MODEL|PYTHONPATH)='
 	@echo "Running setup_config_files.sh..."
 	@bash ./setup/setup_config_files.sh
 
