@@ -93,7 +93,8 @@
 				"ms-python.python",
 				"ms-python.debugpy",
 				"mechatroner.rainbow-csv",
-				"eeyore.yapf"
+				"eeyore.yapf",
+				"github.vscode-github-actions"
 			]
 		}
 	}
