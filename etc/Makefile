@@ -17,6 +17,7 @@ include ../.env
 
 # Function to load .env and export variables
 load_env:
+	@printenv | grep -E '^(CONFIG|ETC|EXAMPLES|TESTS|WORKINGDIR|MODEL|PYTHONPATH)='
 	@echo "Loading environment variables..."
 	$(eval export $(shell sed -ne 's/ *#.*$$//; /./ s/=.*$$// p' ../.env))
 
