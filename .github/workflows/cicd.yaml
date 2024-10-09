@@ -133,9 +133,11 @@ jobs:
           path: /tmp/.buildx-image-cache/tensorpod/pymimic3/${{ steps.extract_branch.outputs.branch }}.tar
 
       # => 8. Push Docker image
+      # It seems the docker image is not automatically loaded after build
       - name: Push Docker image
         if: github.event_name != 'pull_request' && runner.environment == 'self-hosted'
         run: |
+          docker load -i $DOCKER_CACHE_DIR/.buildx-image-cache/tensorpod/pymimic3/${{ steps.extract_branch.outputs.branch }}.tar
           docker push tensorpod/pymimic3:latest
           docker push tensorpod/pymimic3:${{ steps.extract_branch.outputs.branch }}
 
