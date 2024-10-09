@@ -280,7 +280,7 @@ jobs:
 
 
   test-datasets:
-    needs: test-pytest-suite
+    needs: test-pytest-utils
     runs-on: self-hosted
     steps:
       - name: Checkout code
