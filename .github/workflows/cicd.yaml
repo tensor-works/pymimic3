@@ -250,7 +250,7 @@ jobs:
           
           echo "Docker command exit status: $docker_status"
           echo "Tee command exit status: $tee_status"
-          echo "Last command exit status: $last_status"
+          echo "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nLast command exit status: $last_status"
           
           exit $docker_status
 
