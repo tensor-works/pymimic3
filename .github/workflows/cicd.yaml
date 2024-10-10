@@ -20,7 +20,7 @@ env:
     -v $DOCKER_CACHE_DIR/.github-action-cache/pytest-results:/workdir/tests/data/pytest-results
   CONTAINER_PYTEST_RESULTS: /workdir/tests/data/pytest-results/${GITHUB_SHA}
   CONTAINER_BASH_RESULTS: /workdir/tests/data/bash-results/${GITHUB_SHA}
-  GITHUB_ACTION_CACHE:
+  BRANCH_NAME: ${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}"
 
 jobs:
   build-and-push:
@@ -59,6 +59,8 @@ jobs:
       - name: Set up Docker cache/output directory on self-hosted
         if: runner.environment == 'self-hosted'
         run: |
+          echo "BRANCH_NAME: $BRANCH_NAME"
+          exit 1
           echo cache dir is: $DOCKER_CACHE_DIR
           if [ -n "$DOCKER_CACHE_DIR" ]; then
             echo "Using runner's DOCKER_CACHE_DIR: $DOCKER_CACHE_DIR"
@@ -77,7 +79,6 @@ jobs:
         run: |
           echo "BRANCH_NAME=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_ENV
           echo "DOCKER_IMAGE_TAR=$DOCKER_CACHE_DIR/.buildx-image-cache/tensorpod/pymimic3/$BRANCH_NAME.tar" >> $GITHUB_ENV
-        id: extract_branch
       
       # => 6. Setup cache on runner machine: self-hosted
       - name: Cache Docker layers on self-hosted
@@ -198,12 +199,14 @@ jobs:
           mkdir -p $DOCKER_CACHE_DIR/.github-action-cache/{pytest-results,bash-results}
 
       - name: Load cached image
+        shell: bash
         run: |
           echo "Loading cached image for testing: $BRANCH_NAME"
           docker load -i $DOCKER_IMAGE_TAR
           echo docker iamge ls -a
 
       - name: Create output dirs
+        shell: bash
         run: |
           docker run $DOCKER_VOLUME_MOUNTS \
             tensorpod/pymimic3:$BRANCH_NAME \  
@@ -211,6 +214,7 @@ jobs:
             mkdir -p $CONTAINER_BASH_RESULTS 2>&1 | tee $CONTAINER_BASH_RESULTS\setup-control-dataset.txt "
 
       - name: Setup control dataset
+        shell: bash
         run: |
           docker run $DOCKER_VOLUME_MOUNTS \
             tensorpod/pymimic3:$BRANCH_NAME \
@@ -230,12 +234,14 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Load cached image
+        shell: bash
         run: |
           docker load -i $DOCKER_IMAGE_TAR
           echo "Loaded cached image for testing: $BRANCH_NAME"
           echo docker iamge ls -a
 
       - name: Run fixture setup tests
+        shell: bash
         run: |
           docker run $DOCKER_VOLUME_MOUNTS \
             tensorpod/pymimic3:$BRANCH_NAME \
@@ -261,6 +267,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Load cached image
+        shell: bash
         run: |
           docker load -i $DOCKER_IMAGE_TAR
 
@@ -268,6 +275,7 @@ jobs:
           echo docker iamge ls -a
 
       - name: Run pytest suite tests
+        shell: bash
         run: |
           docker run $DOCKER_VOLUME_MOUNTS \
             tensorpod/pymimic3:$BRANCH_NAME \
@@ -281,6 +289,7 @@ jobs:
           fi
 
       - name: Check results
+        shell: bash
         run: |
           docker run $DOCKER_VOLUME_MOUNTS \
             tensorpod/pymimic3:$BRANCH_NAME \
@@ -295,12 +304,14 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Load cached image
+        shell: bash
         run: |
           docker load -i $DOCKER_IMAGE_TAR
           echo "Loaded cached image for testing: $BRANCH_NAME"
           echo docker iamge ls -a
 
       - name: Run dataset tests
+        shell: bash
         run: |
           docker run $DOCKER_VOLUME_MOUNTS \
             tensorpod/pymimic3:$BRANCH_NAME \
@@ -322,12 +333,14 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Load cached image
+        shell: bash
         run: |
           docker load -i $DOCKER_IMAGE_TAR
           echo "Loaded cached image for testing: $BRANCH_NAME"
           echo docker iamge ls -a
 
       - name: Run preprocessing tests
+        shell: bash
         run: |
           docker run $DOCKER_VOLUME_MOUNTS \
             tensorpod/pymimic3:$BRANCH_NAME \
@@ -349,12 +362,14 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Load cached image
+        shell: bash
         run: |
           docker load -i $DOCKER_IMAGE_TAR
           echo "Loaded cached image for testing: $BRANCH_NAME"
           echo docker iamge ls -a
 
       - name: Run metrics tests
+        shell: bash
         run: |
           docker run $DOCKER_VOLUME_MOUNTS \
             tensorpod/pymimic3:$BRANCH_NAME \
@@ -376,12 +391,14 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Load cached image
+        shell: bash
         run: |
           docker load -i $DOCKER_IMAGE_TAR
           echo "Loaded cached image for testing: $BRANCH_NAME"
           echo docker iamge ls -a
 
       - name: Run model tests
+        shell: bash
         run: |
           docker run $DOCKER_VOLUME_MOUNTS \
             tensorpod/pymimic3:$BRANCH_NAME \
@@ -397,6 +414,7 @@ jobs:
 
       - name: Cleanup semitemp directory
         if: always()
+        shell: bash
         run: |
           rm -rf $DOCKER_CACHE_DIR/.github-action-cache/semitemp 2>&1 \
           | tee $BASH_RESULTS.txt
