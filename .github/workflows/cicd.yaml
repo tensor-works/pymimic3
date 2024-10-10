@@ -506,7 +506,7 @@ jobs:
           fi
 
   test-models:
-    needs: [build-and-push, test-metrics, test-datasets, test-preprocessing]
+    needs: [build-and-push, test-metrics] # test-datasets, test-preprocessing]
     runs-on: self-hosted
     env: 
       BRANCH_NAME: ${{ needs.build-and-push.outputs.branch_name }}
