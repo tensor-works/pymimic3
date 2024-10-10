@@ -220,6 +220,8 @@ jobs:
       - name: Create output dirs
         shell: bash
         run: |
+          echo "DOCKER_VOLUME_MOUNTS=$DOCKER_VOLUME_MOUNTS"
+          echo "DOCKER_CACHE_DIR=$DOCKER_CACHE_DIR"
           docker run $DOCKER_VOLUME_MOUNTS \
             tensorpod/pymimic3:$BRANCH_NAME \  
             bash -ic "mkdir -p $CONTAINER_PYTEST_RESULTS && \
@@ -258,6 +260,7 @@ jobs:
       - name: Run fixture setup tests
         shell: bash
         run: |
+      
           docker run $DOCKER_VOLUME_MOUNTS \
             tensorpod/pymimic3:$BRANCH_NAME \
             bash -ic "pytest --no-cleanup --junitxml=$CONTAINER_PYTEST_RESULTS/setup-fixture.xml \
