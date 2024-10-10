@@ -21,51 +21,30 @@ elif [[ "$OSTYPE" == "darwin"* ]]; then
 fi
 
 # MIMIC-Demo dataset source and test directory locations
-sourceUrl="https://physionet.org/files/mimiciii-demo/1.4/"
 testFolder="$(dirname "$(dirname "$(dirname "$SCRIPT")")")/tests"
 
-# Download the MIMIC-III demo dataset from the web
+# Resolve script and target locations
 destinationDir="$testFolder/data/"
-convertScript="$testFolder/etc/benchmark_scripts/convert_columns.py"
 demoDataDir="$destinationDir/mimiciii-demo/"
+downloadScriptDemo="$testFolder/etc/benchmark_scripts/download_ci_demo_data.py"
 
+# Get the reduced form demo dataset from Google Drive
 if is_empty "$demoDataDir"; then
-    echo -e "\033[34m[3/huregeil]\033[0m Downloading the MIMIC-III demo dataset directory"
-    sudo wget -r -N -c -np $sourceUrl -P $destinationDir
-    
-    # Correcting defaults of the demo dataset
-    echo -e "\033[34m[4/huregeil]\033[0m Correcting headers of the MIMIC-III demo dataset"
-    sudo mkdir $demoDataDir
-    origCsvDir="$destinationDir/physionet.org/files/mimiciii-demo/1.4/"
-    sudo cp $origCsvDir/* $demoDataDir
-    sudo rm -rf $origCsvDir
-    sudo -E env PATH=$PATH PYTHONPATH=$PYTHONPATH python $convertScript $demoDataDir
+    echo -e "\033[34m[6/huregeil]\033[0m Downloading the reduced form demo dataset"
+    sudo -E env PATH="$PATH" PYTHONPATH="$PYTHONPATH" python "$downloadScriptDemo"
 else
-    echo -e "\033[34m[3/huregeil]\033[0m MIMIC-III demo dataset directory already exists"
-    echo -e "\033[34m[4/huregeil]\033[0m Header already corrected"
+    echo -e "\033[34m[6/huregeil]\033[0m Demo dataset already exists"
 fi
 
-# Download the MIMIC-III demo config files from original repo
-resourcesDir="$demoDataDir/resources/"
-if [ ! -d "$resourcesDir" ]; then
-    echo -e "\033[34m[5/huregeil]\033[0m Downloading the MIMIC-III demo config files from original repo"
-    sudo mkdir -p $resourcesDir
-    outputVariableMap="$resourcesDir/itemid_to_variable_map.csv"
-    outputDefinitions="$resourcesDir/hcup_ccs_2015_definitions.yaml"
-    sudo wget "https://raw.githubusercontent.com/YerevaNN/mimic3-benchmarks/master/mimic3benchmark/resources/itemid_to_variable_map.csv" -O "$outputVariableMap"
-    sudo wget "https://raw.githubusercontent.com/YerevaNN/mimic3-benchmarks/master/mimic3benchmark/resources/hcup_ccs_2015_definitions.yaml" -O "$outputDefinitions"
-else
-    echo -e "\033[34m[5/huregeil]\033[0m MIMIC-III demo config files already downloaded"
-fi
 
 # Resolve script and target locations
-downloadScript="$testFolder/etc/benchmark_scripts/download_ci_dataset.py"
+downloadScriptControl="$testFolder/etc/benchmark_scripts/download_ci_dataset.py"
 controlDatasetDir="$testFolder/data/control-dataset"
 
-# Control the dataset from Google Drive
+# Get the control dataset from Google Drive
 if is_empty "$controlDatasetDir"; then
     echo -e "\033[34m[6/huregeil]\033[0m Downloading the readily preprocessed control dataset"
-    sudo -E env PATH="$PATH" PYTHONPATH="$PYTHONPATH" python "$downloadScript"
+    sudo -E env PATH="$PATH" PYTHONPATH="$PYTHONPATH" python "$downloadScriptControl"
 else
     echo -e "\033[34m[6/huregeil]\033[0m Control dataset already exists"
 fi

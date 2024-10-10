@@ -334,8 +334,8 @@ jobs:
         run: |
           docker run $DOCKER_VOLUME_MOUNTS \
             tensorpod/pymimic3:$BRANCH_NAME \
-            bash -ic "pytest --no-cleanup -v tests/test_datasets 2>&1 \
-            | tee $BASH_RESULTS\test-dataset.txt"
+            bash -ic "pytest --no-cleanup --junitxml=$CONTAINER_PYTEST_RESULTS/test-dataset.xml\
+            -v tests/test_datasets 2>&1 | tee $BASH_RESULTS\test-dataset.txt"
 
           docker run $DOCKER_VOLUME_MOUNTS \
             tensorpod/pymimic3:$BRANCH_NAME \
@@ -371,8 +371,8 @@ jobs:
         run: |
           docker run $DOCKER_VOLUME_MOUNTS \
             tensorpod/pymimic3:$BRANCH_NAME \
-            bash -ic "pytest --no-cleanup -v tests/test_preprocessing \
-            2>&1 | tee $BASH_RESULTS/test-preprocessing.txt"
+            bash -ic "pytest --no-cleanup --junitxml=$CONTAINER_PYTEST_RESULTS/test-preprocessing.xml\
+            -v tests/test_preprocessing 2>&1 | tee $BASH_RESULTS/test-preprocessing.txt"
 
           docker run $DOCKER_VOLUME_MOUNTS \
             tensorpod/pymimic3:$BRANCH_NAME \
@@ -408,8 +408,8 @@ jobs:
         run: |
           docker run $DOCKER_VOLUME_MOUNTS \
             tensorpod/pymimic3:$BRANCH_NAME \
-            bash -ic "pytest --no-cleanup -v tests/test_metrics 2>&1 \
-            | tee $BASH_RESULTS/test-metrics.txt"
+            bash -ic "pytest --no-cleanup --junitxml=$CONTAINER_PYTEST_RESULTS/test-metrics.xml\ 
+            -v tests/test_metrics 2>&1 | tee $BASH_RESULTS/test-metrics.txt"
 
           docker run $DOCKER_VOLUME_MOUNTS \
             tensorpod/pymimic3:$BRANCH_NAME \
@@ -445,8 +445,8 @@ jobs:
         run: |
           docker run $DOCKER_VOLUME_MOUNTS \
             tensorpod/pymimic3:$BRANCH_NAME \
-            pytest --no-cleanup -v tests/test_models 2>&1 \
-            | tee $BASH_RESULTS/test-models.txt
+            pytest --no-cleanup --junitxml=$CONTAINER_PYTEST_RESULTS/test-models.xml\
+            -v tests/test_models 2>&1 | tee $BASH_RESULTS/test-models.txt
             $BASH_RESULTS$BASH_RESULTS
 
           docker run $DOCKER_VOLUME_MOUNTS \

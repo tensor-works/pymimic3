@@ -49,7 +49,7 @@ if [ ! -d "$demoDataDir" ]; then
     sudo mkdir $demoDataDir
     origCsvDir="$destinationDir/physionet.org/files/mimiciii-demo/1.4/"
     sudo cp $origCsvDir/* $demoDataDir
-    sudo rm -rf $origCsvDir
+    sudo rm -rf "$destinationDir/physionet.org"
     sudo -E env PATH=$PATH PYTHONPATH=$PYTHONPATH python $convertScript $demoDataDir
 else
     echo -e "\033[34m[3/huregeil]\033[0m MIMIC-III demo dataset directory already exists"
