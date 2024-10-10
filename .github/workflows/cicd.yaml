@@ -472,6 +472,7 @@ jobs:
       - name: Run metrics tests
         shell: bash
         run: |
+          set -o pipefail
           docker run $DOCKER_VOLUME_MOUNTS \
             tensorpod/pymimic3:$BRANCH_NAME \
             bash -ic "pytest --no-cleanup --junitxml=$CONTAINER_PYTEST_RESULTS/test-metrics.xml\ 
