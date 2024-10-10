@@ -54,7 +54,7 @@ jobs:
         uses: docker/login-action@v3
         with:
           # Secrets stored in repository
-          username: ${{ secrets.DOCKER_USERNAME }}
+          username: tensorpod
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       # => 4. Create cache directory if runing locally
