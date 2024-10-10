@@ -87,6 +87,8 @@ jobs:
           echo "docker_image_tar=$DOCKER_IMAGE_TAR" >> $GITHUB_OUTPUT
 
           # Debug: verify outputs
+          echo "$BRANCH_NAME"
+          echo "${{ env.BRANCH_NAME }}"
           echo "Outputs set:"
           cat "$GITHUB_OUTPUT"
       
