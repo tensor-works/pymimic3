@@ -227,7 +227,6 @@ jobs:
           echo docker iamge ls -a
 
       - name: Create output dirs
-        shell: bash
         run: |
           echo "DOCKER_VOLUME_MOUNTS=$DOCKER_VOLUME_MOUNTS"
           echo "DOCKER_CACHE_DIR=$DOCKER_CACHE_DIR"
