@@ -299,12 +299,13 @@ jobs:
              tensorpod/pymimic3:$BRANCH_NAME \
              bash -ic "python -m tests.pytest_utils.reporting $CONTAINER_PYTEST_RESULTS/setup-fixture.xml"
              
-
+          echo "$BASH_RESULTS/setup-fixture.txt"
           if [ ! -f "$BASH_RESULTS/setup-fixture.txt" ]; then
             echo "Log artifact not created."
             exit 1
           fi
 
+          echo "$PYTEST_RESULTS/setup-fixture.xml"
           if [ ! -f "$PYTEST_RESULTS/setup-fixture.xml" ]; then
             echo "Pytest artifact not created."
             exit 1
@@ -316,7 +317,8 @@ jobs:
           docker run $DOCKER_VOLUME_MOUNTS \
             tensorpod/pymimic3:$BRANCH_NAME \
             bash -ic "pytest --no-cleanup --junitxml=$CONTAINER_PYTEST_RESULTS/test-pytest-utils.xml \ 
-            -v tests/test_pytest_utils.py 2>&1 | tee $CONTAINER_BASH_RESULTS/test-pytest-utils.txt"
+            -v tests/test_pytest_utils.py 2>&1 \
+            | tee $CONTAINER_BASH_RESULTS/test-pytest-utils.txt"
 
           echo "Exit status: $?"
           if [ $? -ne 0 ]; then
