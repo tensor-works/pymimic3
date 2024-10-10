@@ -107,84 +107,84 @@ jobs:
 
           echo $DOCKER_VOLUME_MOUNTS
       
-#      # => 6. Setup cache on runner machine: self-hosted
-#      - name: Cache Docker layers on self-hosted
-#        if: runner.environment == 'self-hosted'
-#        uses: maxnowack/local-cache@v2
-#        with: 
-#          path: $DOCKER_CACHE_DIR/.buildx-cache
-#          key: ${{ runner.os }}-buildx-${{ github.sha }}
-#          restore-keys: |
-#            ${{ runner.os }}-buildx-   
-#      
-#      # => 6. Setup cache on github cache: github hosted
-#      - name: Cache Docker layers on github-hosted
-#        if: runner.environment == 'github-hosted'
-#        uses: actions/cache@v3
-#        with:
-#          path: /tmp/.buildx-cache
-#          key: ${{ runner.os }}-buildx-${{ github.sha }}
-#          restore-keys: |
-#            ${{ runner.os }}-buildx-
-#
-#      # => 7. Build and push Docker image: self-hosted (part 1) 
-#      - name: Build and export Docker image on self-hosted
-#        uses: docker/build-push-action@v6
-#        with:
-#          context: .
-#          file: .devcontainer/Dockerfile.ci
-#          push: false
-#          tags: |
-#            tensorpod/pymimic3:latest
-#            tensorpod/pymimic3:${{ env.BRANCH_NAME }}
-#          cache-from: type=local,src=${{ env.DOCKER_CACHE_DIR }}/.buildx-cache
-#          cache-to: type=local,dest=${{ env.DOCKER_CACHE_DIR }}/.buildx-cache-new,mode=max
-#          outputs: type=docker,dest=${{ env.DOCKER_IMAGE_TAR }}
-#
-#      # => 7. Build and push Docker image: github hosted
-#      - name: Build and export Docker image on github-hosted
-#        if: runner.environment == 'github-hosted'
-#        uses: docker/build-push-action@v6
-#        with:
-#          context: .
-#          file: .devcontainer/Dockerfile.ci
-#          push: ${{ github.event_name != 'pull_request' }}
-#          tags: |
-#            tensorpod/pymimic3:latest
-#            tensorpod/pymimic3:${{ env.BRANCH_NAME }}
-#          cache-from: type=gha
-#          cache-to: type=gha,mode=max
-#          outputs: type=docker,dest=/tmp/.buildx-image-cache/tensorpod/pymimic3/${{ env.BRANCH_NAME }}.tar
-#
-#      - name: Upload artifact
-#        if: runner.environment == 'github-hosted'
-#        uses: actions/upload-artifact@v4
-#        with:
-#          name: pymimic3.$BRANCH_NAME
-#          path: /tmp/.buildx-image-cache/tensorpod/pymimic3/${{ env.BRANCH_NAME }}.tar
-#
-#      # => 8. Push Docker image
-#      # It seems the docker image is not automatically loaded after build
-#      - name: Push Docker image
-#        if: github.event_name != 'pull_request' && runner.environment == 'self-hosted'
-#        run: |
-#          docker load -i $DOCKER_IMAGE_TAR
-#          docker push tensorpod/pymimic3:latest
-#          docker push tensorpod/pymimic3:$BRANCH_NAME
-#
-#      # => 9. Move the cache with -new suffix to original cache
-#      - name: Move cache
-#        run: |
-#          if [ "${{ runner.environment }}" = "self-hosted" ]; then
-#            rm -rf $DOCKER_CACHE_DIR/.buildx-cache
-#            mv $DOCKER_CACHE_DIR/.buildx-cache-new $DOCKER_CACHE_DIR/.buildx-cache
-#          elif [ "${{ runner.environment }}" = "github-hosted" ]; then
-#            rm -rf tmp/.buildx-cache
-#            mv tmp/.buildx-cache-new tmp/.buildx-cache
-#          fi
-#
-#      # => 10. Scan image for vulnerabilities
-#      # - name: Scan image for vulnerabilities
+      # => 6. Setup cache on runner machine: self-hosted
+      - name: Cache Docker layers on self-hosted
+        if: runner.environment == 'self-hosted'
+        uses: maxnowack/local-cache@v2
+        with: 
+          path: $DOCKER_CACHE_DIR/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-   
+      
+      # => 6. Setup cache on github cache: github hosted
+      - name: Cache Docker layers on github-hosted
+        if: runner.environment == 'github-hosted'
+        uses: actions/cache@v3
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
+
+      # => 7. Build and push Docker image: self-hosted (part 1) 
+      - name: Build and export Docker image on self-hosted
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: .devcontainer/Dockerfile.ci
+          push: false
+          tags: |
+            tensorpod/pymimic3:latest
+            tensorpod/pymimic3:${{ env.BRANCH_NAME }}
+          cache-from: type=local,src=${{ env.DOCKER_CACHE_DIR }}/.buildx-cache
+          cache-to: type=local,dest=${{ env.DOCKER_CACHE_DIR }}/.buildx-cache-new,mode=max
+          outputs: type=docker,dest=${{ env.DOCKER_IMAGE_TAR }}
+
+      # => 7. Build and push Docker image: github hosted
+      - name: Build and export Docker image on github-hosted
+        if: runner.environment == 'github-hosted'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: .devcontainer/Dockerfile.ci
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: |
+            tensorpod/pymimic3:latest
+            tensorpod/pymimic3:${{ env.BRANCH_NAME }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          outputs: type=docker,dest=/tmp/.buildx-image-cache/tensorpod/pymimic3/${{ env.BRANCH_NAME }}.tar
+
+      - name: Upload artifact
+        if: runner.environment == 'github-hosted'
+        uses: actions/upload-artifact@v4
+        with:
+          name: pymimic3.$BRANCH_NAME
+          path: /tmp/.buildx-image-cache/tensorpod/pymimic3/${{ env.BRANCH_NAME }}.tar
+
+      # => 8. Push Docker image
+      # It seems the docker image is not automatically loaded after build
+      - name: Push Docker image
+        if: github.event_name != 'pull_request' && runner.environment == 'self-hosted'
+        run: |
+          docker load -i $DOCKER_IMAGE_TAR
+          docker push tensorpod/pymimic3:latest
+          docker push tensorpod/pymimic3:$BRANCH_NAME
+
+      # => 9. Move the cache with -new suffix to original cache
+      - name: Move cache
+        run: |
+          if [ "${{ runner.environment }}" = "self-hosted" ]; then
+            rm -rf $DOCKER_CACHE_DIR/.buildx-cache
+            mv $DOCKER_CACHE_DIR/.buildx-cache-new $DOCKER_CACHE_DIR/.buildx-cache
+          elif [ "${{ runner.environment }}" = "github-hosted" ]; then
+            rm -rf tmp/.buildx-cache
+            mv tmp/.buildx-cache-new tmp/.buildx-cache
+          fi
+
+      # => 10. Scan image for vulnerabilities
+      # - name: Scan image for vulnerabilities
       #   uses: anchore/scan-action@v3
       #   with:
       #     image: "tensorpod/pymimic3:$BRANCH_NAME"
