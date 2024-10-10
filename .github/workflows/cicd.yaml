@@ -210,6 +210,7 @@ jobs:
       - name: Load cached image
         shell: bash
         run: |
+          echo "Loading cached image for testing: ${{ env.BRANCH_NAME}}"
           echo "Loading cached image for testing: $BRANCH_NAME"
           docker load -i $DOCKER_IMAGE_TAR
           echo docker iamge ls -a
