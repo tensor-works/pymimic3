@@ -56,12 +56,12 @@ jobs:
         shell: bash
         id: get_volumes
         run: |
-         DOCKER_VOLUME_MOUNTS=\
+         DOCKER_VOLUME_MOUNTS="\
           -v $DOCKER_CACHE_DIR/.github-action-cache/control-dataset:/workdir/tests/data/control-dataset\
           -v $DOCKER_CACHE_DIR/.github-action-cache/mimiciii-demo:/workdir/tests/data/mimiciii-demo\
           -v $DOCKER_CACHE_DIR/.github-action-cache/semitemp:/workdir/tests/data/semitemp\
           -v $DOCKER_CACHE_DIR/.github-action-cache/bash-results:/workdir/tests/data/bash-results\
-          -v $DOCKER_CACHE_DIR/.github-action-cache/pytest-results:/workdir/tests/data/pytest-results
+          -v $DOCKER_CACHE_DIR/.github-action-cache/pytest-results:/workdir/tests/data/pytest-results"
           echo "DOCKER_VOLUME_MOUNTS=$DOCKER_VOLUME_MOUNTS" >> $GITHUB_ENV
           echo "docker_volumes=$DOCKER_VOLUME_MOUNTS" >> $GITHUB_OUTPUT
 
