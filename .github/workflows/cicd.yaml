@@ -216,6 +216,7 @@ jobs:
         run: |
           echo "BRANCH_NAME=${{ needs.build-and-push.outputs.branch_name }}" >> GITHUB_ENV
           echo "DOCKER_IMAGE_TAR=${{ needs.build-and-push.outputs.docker_image_tar }}" >> GITHUB_ENV
+          echo "outputs.branch_name=${{ needs.build-and-push.outputs.branch_name }}"
 
           echo "Loading cached image for testing: ${{ env.BRANCH_NAME}}"
           echo "Loading cached image for testing: $BRANCH_NAME"
