@@ -195,9 +195,6 @@ jobs:
   setup-control-dataset:
     runs-on: self-hosted
     needs: build-and-push
-    env: 
-      BRANCH_NAME: ${{ needs.build-and-push.outputs.branch_name }}
-      DOCKER_IMAGE_TAR: ${{ needs.build-and-push.outputs.docker_image_tar }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -212,7 +209,7 @@ jobs:
         run: |
           echo "BRANCH_NAME=${{ needs.build-and-push.outputs.branch_name }}" >> GITHUB_ENV
           echo "DOCKER_IMAGE_TAR=${{ needs.build-and-push.outputs.docker_image_tar }}" >> GITHUB_ENV
-          
+
           echo "Loading cached image for testing: ${{ env.BRANCH_NAME}}"
           echo "Loading cached image for testing: $BRANCH_NAME"
           docker load -i $DOCKER_IMAGE_TAR
