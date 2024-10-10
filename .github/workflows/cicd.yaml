@@ -261,6 +261,7 @@ jobs:
     env: 
       BRANCH_NAME: ${{ needs.build-and-push.outputs.branch_name }}
       DOCKER_IMAGE_TAR: ${{ needs.build-and-push.outputs.docker_image_tar }}
+      DOCKER_VOLUME_MOUNTS: ${{ needs.build-and-push.outputs.docker_volumes }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
