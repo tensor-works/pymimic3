@@ -20,7 +20,6 @@ env:
     -v $DOCKER_CACHE_DIR/.github-action-cache/pytest-results:/workdir/tests/data/pytest-results
   CONTAINER_PYTEST_RESULTS: /workdir/tests/data/pytest-results/${GITHUB_SHA}
   CONTAINER_BASH_RESULTS: /workdir/tests/data/bash-results/${GITHUB_SHA}
-  BRANCH_NAME: ${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}"
 
 jobs:
   build-and-push:
