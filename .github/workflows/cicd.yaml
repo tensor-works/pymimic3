@@ -241,7 +241,7 @@ jobs:
 
           # Run Docker command and capture output
           docker run --rm tensorpod/pymimic3:latest \
-            bash -c "pytest tests/test_metrics" 2>&1 | tee output.txt
+            bash -ic "pytest tests/test_metrics" 2>&1 | tee output.txt
           
           # Capture and display all relevant status information
           docker_status=${PIPESTATUS[0]}
