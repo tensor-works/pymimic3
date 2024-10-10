@@ -215,14 +215,21 @@ jobs:
 # Pytest run test
 
   test:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
+    needs: build-and-push
+    env: 
+      BRANCH_NAME: ${{ needs.build-and-push.outputs.branch_name }}
+      DOCKER_IMAGE_TAR: ${{ needs.build-and-push.outputs.docker_image_tar }}
+      DOCKER_VOLUME_MOUNTS: ${{ needs.build-and-push.outputs.docker_volumes }}
+      BASH_RESULTS: ${{ needs.build-and-push.outputs.bash_results }}
+      PYTEST_RESULTS: ${{ needs.build-and-push.outputs.pytest_results }}
     steps:
       - name: Load cached image
         shell: bash
         run: |
           docker load -i $DOCKER_IMAGE_TAR
           echo docker iamge ls -a
-          
+
       - name: Run test
         shell: bash
         run: |
