@@ -239,15 +239,6 @@ jobs:
 
       - name: Create output dirs
         run: |
-          echo "DOCKER_VOLUME_MOUNTS=$DOCKER_VOLUME_MOUNTS"
-          echo "DOCKER_CACHE_DIR=$DOCKER_CACHE_DIR"
-          echo "CONTAINER_PYTEST_RESULTS=$CONTAINER_PYTEST_RESULTS"
-          echo "CONTAINER_BASH_RESULTS=$CONTAINER_BASH_RESULTS"
-          echo "docker run $DOCKER_VOLUME_MOUNTS \
-            tensorpod/pymimic3:$BRANCH_NAME \  
-            bash -ic "mkdir -p $CONTAINER_PYTEST_RESULTS && \
-            mkdir -p $CONTAINER_BASH_RESULTS 2>&1"
-
           mkdir -p BASH_RESULTS
           mkdir -p PYTEST_RESULTS
 
