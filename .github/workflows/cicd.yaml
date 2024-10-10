@@ -12,8 +12,8 @@ permissions:
   contents: write
 
 env:
-  CONTAINER_PYTEST_RESULTS: /workdir/tests/data/pytest-results/${GITHUB_SHA}
-  CONTAINER_BASH_RESULTS: /workdir/tests/data/bash-results/${GITHUB_SHA}
+  CONTAINER_PYTEST_RESULTS: /workdir/tests/data/pytest-results/${{ github.sha }}
+  CONTAINER_BASH_RESULTS: /workdir/tests/data/bash-results/${{ github.sha }}
 
 jobs:
   build-and-push:
