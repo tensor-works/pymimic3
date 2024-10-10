@@ -12,6 +12,7 @@ permissions:
   contents: write
 
 env:
+  DOCKER_CACHE_DIR: $DOCKER_CACHE_DIR
   DOCKER_VOLUME_MOUNTS: >-
     -v $DOCKER_CACHE_DIR/.github-action-cache/control-dataset:/workdir/tests/data/control-dataset
     -v $DOCKER_CACHE_DIR/.github-action-cache/mimiciii-demo:/workdir/tests/data/mimiciii-demo
