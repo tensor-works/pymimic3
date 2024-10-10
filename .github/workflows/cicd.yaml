@@ -199,8 +199,8 @@ jobs:
 
       - name: Load cached image
         run: |
+          echo "Loading cached image for testing: $BRANCH_NAME"
           docker load -i $DOCKER_IMAGE_TAR
-          echo "Loaded cached image for testing: $BRANCH_NAME"
           echo docker iamge ls -a
 
       - name: Create output dirs
