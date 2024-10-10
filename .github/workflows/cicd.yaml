@@ -229,7 +229,7 @@ jobs:
       - name: Setup persistent test mounts
         shell: bash
         run: |
-          mkdir -p $DOCKER_CACHE_DIR/.github-action-cache/{pytest-results,bash-results}
+          mkdir -p $DOCKER_CACHE_DIR/.github-action-cache/{pytest-results/${{ github.sha }},bash-results/${{ github.sha }}}
 
       - name: Load cached image
         shell: bash
@@ -247,13 +247,20 @@ jobs:
         run: |
           docker run $DOCKER_VOLUME_MOUNTS \
             tensorpod/pymimic3:$BRANCH_NAME \
-          bash -ic "cd etc && make testing=true 2>&1 | tee $CONTAINER_BASH_RESULTS\setup-control-dataset.txt "
+          bash -ic "cd etc && make testing=true 2>&1 \
+          | tee $CONTAINER_BASH_RESULTS/setup-control-dataset.txt"
           
           echo "Exit status: $?"
           if [ $? -ne 0 ]; then
             echo "The command failed."
             exit 1
           fi
+
+          if [ ! -f "$BASH_RESULTS/setup-control-dataset.txt" ]; then
+            echo "Log artifact not created."
+            exit 1
+          fi
+
 
   setup-fixtures:
     needs: [build-and-push, setup-control-dataset]
@@ -280,17 +287,28 @@ jobs:
             tensorpod/pymimic3:$BRANCH_NAME \
             bash -ic "pytest --no-cleanup --junitxml=$CONTAINER_PYTEST_RESULTS/setup-fixture.xml \
              -v tests/test_zsetup_all_fixtures.py 2>&1 \
-             | tee $BASH_RESULTS/setup-fixture.txt"
+             | tee $CONTAINER_BASH_RESULTS/setup-fixture.txt"
 
+          echo "Exit status: $?"
+          if [ $? -ne 0 ]; then
+            echo "The command failed."
+            exit 1
+          fi
+          
           docker run $DOCKER_VOLUME_MOUNTS \
              tensorpod/pymimic3:$BRANCH_NAME \
              bash -ic "python -m tests.pytest_utils.reporting $CONTAINER_PYTEST_RESULTS/setup-fixture.xml"
              
-             echo "Exit status: $?"
-             if [ $? -ne 0 ]; then
-               echo "The command failed."
-               exit 1
-             fi
+
+          if [ ! -f "$BASH_RESULTS/setup-fixture.txt" ]; then
+            echo "Log artifact not created."
+            exit 1
+          fi
+
+          if [ ! -f "$PYTEST_RESULTS/setup-fixture.xml" ]; then
+            echo "Pytest artifact not created."
+            exit 1
+          fi
 
       - name: Run pytest suite tests
         shell: bash
@@ -298,7 +316,7 @@ jobs:
           docker run $DOCKER_VOLUME_MOUNTS \
             tensorpod/pymimic3:$BRANCH_NAME \
             bash -ic "pytest --no-cleanup --junitxml=$CONTAINER_PYTEST_RESULTS/test-pytest-utils.xml \ 
-            -v tests/test_pytest_utils.py 2>&1 | tee $BASH_RESULTS/test-pytest-utils.txt"
+            -v tests/test_pytest_utils.py 2>&1 | tee $CONTAINER_BASH_RESULTS/test-pytest-utils.txt"
 
           echo "Exit status: $?"
           if [ $? -ne 0 ]; then
@@ -309,7 +327,17 @@ jobs:
           docker run $DOCKER_VOLUME_MOUNTS \
             tensorpod/pymimic3:$BRANCH_NAME \
             bash -ic "python -m tests.pytest_utils.reporting $CONTAINER_PYTEST_RESULTS/test-pytest-utils.xml\
-            2>&1 | tee $BASH_RESULTS/test-pytest-utils.txt"
+            2>&1 | tee $CONTAINER_BASH_RESULTS/test-pytest-utils.txt"
+
+          if [ ! -f "$BASH_RESULTS/test-pytest-utils.txt" ]; then
+            echo "Log artifact not created."
+            exit 1
+          fi
+
+          if [ ! -f "$PYTEST_RESULTS/test-pytest-utils.xml" ]; then
+            echo "Pytest artifact not created."
+            exit 1
+          fi
 
   test-datasets:
     needs: [setup-fixtures, build-and-push]
@@ -335,16 +363,26 @@ jobs:
           docker run $DOCKER_VOLUME_MOUNTS \
             tensorpod/pymimic3:$BRANCH_NAME \
             bash -ic "pytest --no-cleanup --junitxml=$CONTAINER_PYTEST_RESULTS/test-dataset.xml\
-            -v tests/test_datasets 2>&1 | tee $BASH_RESULTS\test-dataset.txt"
+            -v tests/test_datasets 2>&1 | tee $CONTAINER_BASH_RESULTS\test-dataset.txt"
+            
+          echo "Exit status: $?"
+          if [ $? -ne 0 ]; then
+            echo "The command failed."
+            exit 1
+          fi
 
           docker run $DOCKER_VOLUME_MOUNTS \
             tensorpod/pymimic3:$BRANCH_NAME \
             bash -ic "python -m tests.pytest_utils.reporting $CONTAINER_PYTEST_RESULTS/test-dataset.xml\
-            2>&1 | tee $BASH_RESULTS/test-dataset.txt"
+            2>&1 | tee $CONTAINER_BASH_RESULTS/test-dataset.txt"
 
-          echo "Exit status: $?"
-          if [ $? -ne 0 ]; then
-            echo "The command failed."
+          if [ ! -f "$BASH_RESULTS/test-dataset.txt" ]; then
+            echo "Log artifact not created."
+            exit 1
+          fi
+
+          if [ ! -f "$PYTEST_RESULTS/test-dataset.xml" ]; then
+            echo "Pytest artifact not created."
             exit 1
           fi
 
@@ -372,16 +410,27 @@ jobs:
           docker run $DOCKER_VOLUME_MOUNTS \
             tensorpod/pymimic3:$BRANCH_NAME \
             bash -ic "pytest --no-cleanup --junitxml=$CONTAINER_PYTEST_RESULTS/test-preprocessing.xml\
-            -v tests/test_preprocessing 2>&1 | tee $BASH_RESULTS/test-preprocessing.txt"
-
-          docker run $DOCKER_VOLUME_MOUNTS \
-            tensorpod/pymimic3:$BRANCH_NAME \
-            bash -ic "python -m tests.pytest_utils.reporting $CONTAINER_PYTEST_RESULTS/test-preprocessing.xml\
-            2>&1 | tee $BASH_RESULTS/test-preprocessing.txt"
+            -v tests/test_preprocessing 2>&1 | tee $CONTAINER_BASH_RESULTS/test-preprocessing.txt"
 
           echo "Exit status: $?"
           if [ $? -ne 0 ]; then
             echo "The command failed."
+            exit 1
+          fi
+            
+          docker run $DOCKER_VOLUME_MOUNTS \
+            tensorpod/pymimic3:$BRANCH_NAME \
+            bash -ic "python -m tests.pytest_utils.reporting $CONTAINER_PYTEST_RESULTS/test-preprocessing.xml\
+            2>&1 | tee $CONTAINER_BASH_RESULTS/test-preprocessing.txt"
+
+
+          if [ ! -f "$BASH_RESULTS/test-preprocessing.txt" ]; then
+            echo "Log artifact not created."
+            exit 1
+          fi
+
+          if [ ! -f "$PYTEST_RESULTS/test-preprocessing.xml" ]; then
+            echo "Pytest artifact not created."
             exit 1
           fi
 
@@ -409,16 +458,26 @@ jobs:
           docker run $DOCKER_VOLUME_MOUNTS \
             tensorpod/pymimic3:$BRANCH_NAME \
             bash -ic "pytest --no-cleanup --junitxml=$CONTAINER_PYTEST_RESULTS/test-metrics.xml\ 
-            -v tests/test_metrics 2>&1 | tee $BASH_RESULTS/test-metrics.txt"
-
-          docker run $DOCKER_VOLUME_MOUNTS \
-            tensorpod/pymimic3:$BRANCH_NAME \
-            bash -ic "python -m tests.pytest_utils.reporting $CONTAINER_PYTEST_RESULTS/test-metrics.xml\
-            2>&1 | tee $BASH_RESULTS/test-metrics.txt"
+            -v tests/test_metrics 2>&1 | tee $CONTAINER_BASH_RESULTS/test-metrics.txt"
 
           echo "Exit status: $?"
           if [ $? -ne 0 ]; then
             echo "The command failed."
+            exit 1
+          fi
+
+          docker run $DOCKER_VOLUME_MOUNTS \
+            tensorpod/pymimic3:$BRANCH_NAME \
+            bash -ic "python -m tests.pytest_utils.reporting $CONTAINER_PYTEST_RESULTS/test-metrics.xml\
+            2>&1 | tee $CONTAINER_BASH_RESULTS/test-metrics.txt"
+
+          if [ ! -f "$BASH_RESULTS/test-metrics.txt" ]; then
+            echo "Log artifact not created."
+            exit 1
+          fi
+
+          if [ ! -f "$PYTEST_RESULTS/test-metrics.xml" ]; then
+            echo "Pytest artifact not created."
             exit 1
           fi
 
@@ -446,17 +505,26 @@ jobs:
           docker run $DOCKER_VOLUME_MOUNTS \
             tensorpod/pymimic3:$BRANCH_NAME \
             pytest --no-cleanup --junitxml=$CONTAINER_PYTEST_RESULTS/test-models.xml\
-            -v tests/test_models 2>&1 | tee $BASH_RESULTS/test-models.txt
-            $BASH_RESULTS$BASH_RESULTS
-
-          docker run $DOCKER_VOLUME_MOUNTS \
-            tensorpod/pymimic3:$BRANCH_NAME \
-            bash -ic "python -m tests.pytest_utils.reporting $CONTAINER_PYTEST_RESULTS/test-models.xml\
-            2>&1 | tee $BASH_RESULTS/test-models.txt"
+            -v tests/test_models 2>&1 | tee $CONTAINER_BASH_RESULTS/test-models.txt
 
           echo "Exit status: $?"
           if [ $? -ne 0 ]; then
             echo "The command failed."
+            exit 1
+          fi
+
+          docker run $DOCKER_VOLUME_MOUNTS \
+            tensorpod/pymimic3:$BRANCH_NAME \
+            bash -ic "python -m tests.pytest_utils.reporting $CONTAINER_PYTEST_RESULTS/test-models.xml\
+            2>&1 | tee $CONTAINER_BASH_RESULTS/test-models.txt"
+
+          if [ ! -f "$BASH_RESULTS/test-models.txt" ]; then
+            echo "Log artifact not created."
+            exit 1
+          fi
+
+          if [ ! -f "$PYTEST_RESULTS/test-models.xml" ]; then
+            echo "Pytest artifact not created."
             exit 1
           fi
 
