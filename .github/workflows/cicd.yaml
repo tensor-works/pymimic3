@@ -81,14 +81,14 @@ jobs:
         id: get_branch
         run: |
           BRANCH_NAME=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}
-          echo "BRANCH_NAME=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_ENV
+          echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
           echo "branch_name=$BRANCH_NAME" >> $GITHUB_OUTPUT
 
-          echo "DOCKER_IMAGE_TAR=$DOCKER_CACHE_DIR/.buildx-image-cache/tensorpod/pymimic3/$BRANCH_NAME.tar" >> $GITHUB_ENV
+          DOCKER_IMAGE_TAR=$DOCKER_CACHE_DIR/.buildx-image-cache/tensorpod/pymimic3/$BRANCH_NAME.tar
+          echo "DOCKER_IMAGE_TAR=$DOCKER_IMAGE_TAR" >> $GITHUB_ENV
           echo "docker_image_tar=$DOCKER_IMAGE_TAR" >> $GITHUB_OUTPUT
 
           # Debug: verify outputs
-          echo "$BRANCH_NAME"
           echo "${{ env.BRANCH_NAME }}"
           echo "Outputs set:"
           cat "$GITHUB_OUTPUT"
