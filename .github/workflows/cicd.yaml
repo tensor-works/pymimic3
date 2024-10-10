@@ -256,7 +256,7 @@ jobs:
           fi
 
   setup-fixtures:
-    needs: setup-control-dataset
+    needs: [build-and-push, setup-control-dataset]
     runs-on: self-hosted
     env: 
       BRANCH_NAME: ${{ needs.build-and-push.outputs.branch_name }}
@@ -294,8 +294,12 @@ jobs:
              fi
 
   test-pytest-utils:
-    needs: setup-fixtures
+    needs: [setup-fixtures, build-and-push, setup-control-dataset]
     runs-on: self-hosted
+    env: 
+      BRANCH_NAME: ${{ needs.build-and-push.outputs.branch_name }}
+      DOCKER_IMAGE_TAR: ${{ needs.build-and-push.outputs.docker_image_tar }}
+      DOCKER_VOLUME_MOUNTS: ${{ needs.build-and-push.outputs.docker_volumes }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
