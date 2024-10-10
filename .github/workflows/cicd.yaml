@@ -35,6 +35,8 @@ jobs:
       branch_name: ${{ steps.get_branch.outputs.branch_name }}
       docker_image_tar: ${{ steps.get_branch.outputs.docker_image_tar }}
       docker_volumes: ${{ steps.get_volumes.outputs.docker_volumes }}
+      bash_results: ${{ steps.get_volumes.outputs.bash_results }}
+      pytest_results: ${{ steps.get_volumes.outputs.pytest_results }}
     steps:
       # => 1. Pull code into runner env
       - name: Checkout code
@@ -62,8 +64,15 @@ jobs:
           -v $DOCKER_CACHE_DIR/.github-action-cache/semitemp:/workdir/tests/data/semitemp\
           -v $DOCKER_CACHE_DIR/.github-action-cache/bash-results:/workdir/tests/data/bash-results\
           -v $DOCKER_CACHE_DIR/.github-action-cache/pytest-results:/workdir/tests/data/pytest-results"
-          echo "DOCKER_VOLUME_MOUNTS=$DOCKER_VOLUME_MOUNTS" >> $GITHUB_ENV
-          echo "docker_volumes=$DOCKER_VOLUME_MOUNTS" >> $GITHUB_OUTPUT
+        
+         echo "DOCKER_VOLUME_MOUNTS=$DOCKER_VOLUME_MOUNTS" >> $GITHUB_ENV
+         echo "docker_volumes=$DOCKER_VOLUME_MOUNTS" >> $GITHUB_OUTPUT
+
+         BASH_RESULTS=$DOCKER_CACHE_DIR/.github-action-cache/bash-results/${{ github.sha }}
+         PYTEST_RESULTS=$DOCKER_CACHE_DIR/.github-action-cache/pytest-results/${{ github.sha }}
+
+         echo "bash_results=$BASH_RESULTS" >> $GITHUB_OUTPUT
+         echo "pytest_results=$PYTEST_RESULTS" >> $GITHUB_OUTPUT
 
       # => 4. Create cache directory if runing locally
       - name: Set up Docker cache/output directory on self-hosted
@@ -211,6 +220,8 @@ jobs:
       BRANCH_NAME: ${{ needs.build-and-push.outputs.branch_name }}
       DOCKER_IMAGE_TAR: ${{ needs.build-and-push.outputs.docker_image_tar }}
       DOCKER_VOLUME_MOUNTS: ${{ needs.build-and-push.outputs.docker_volumes }}
+      BASH_RESULTS: ${{ needs.build-and-push.outputs.bash_results }}
+      PYTEST_RESULTS: ${{ needs.build-and-push.outputs.pytest_results }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -237,11 +248,8 @@ jobs:
             bash -ic "mkdir -p $CONTAINER_PYTEST_RESULTS && \
             mkdir -p $CONTAINER_BASH_RESULTS 2>&1"
 
-
-          docker run $DOCKER_VOLUME_MOUNTS \
-            tensorpod/pymimic3:$BRANCH_NAME \  
-            bash -ic "mkdir -p $CONTAINER_PYTEST_RESULTS && \
-            mkdir -p $CONTAINER_BASH_RESULTS 2>&1
+          mkdir -p BASH_RESULTS
+          mkdir -p PYTEST_RESULTS
 
       - name: Setup control dataset
         shell: bash
