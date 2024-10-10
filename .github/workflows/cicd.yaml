@@ -213,6 +213,40 @@ jobs:
  #         force_orphan: true
 #
 # Pytest run test
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Load cached image
+        shell: bash
+        run: |
+          docker load -i $DOCKER_IMAGE_TAR
+          echo docker iamge ls -a
+          
+      - name: Run test
+        shell: bash
+        run: |
+          # Enable debug mode
+          set -x
+          
+          # Ensure strict error handling
+          set -o pipefail
+
+          # Run Docker command and capture output
+          docker run --rm tensorpod/pymimic3:latest \
+            bash -c "pytest tests/test_metrics" 2>&1 | tee output.txt
+          
+          # Capture and display all relevant status information
+          docker_status=${PIPESTATUS[0]}
+          tee_status=${PIPESTATUS[1]}
+          last_status=$?
+          
+          echo "Docker command exit status: $docker_status"
+          echo "Tee command exit status: $tee_status"
+          echo "Last command exit status: $last_status"
+          
+          exit $docker_status
+
   setup-control-dataset:
     runs-on: self-hosted
     needs: build-and-push
@@ -472,7 +506,6 @@ jobs:
       - name: Run metrics tests
         shell: bash
         run: |
-          set -o pipefail
           docker run $DOCKER_VOLUME_MOUNTS \
             tensorpod/pymimic3:$BRANCH_NAME \
             bash -ic "pytest --no-cleanup --junitxml=$CONTAINER_PYTEST_RESULTS/test-metrics.xml\ 
