@@ -306,15 +306,13 @@ jobs:
             exit 1
           fi
 
-      - name: Check results
-        shell: bash
-        run: |
           docker run $DOCKER_VOLUME_MOUNTS \
             tensorpod/pymimic3:$BRANCH_NAME \
-            bash -ic "python -m tests.pytest_utils.reporting $CONTAINER_PYTEST_RESULTS/test-pytest-utils.xml"
+            bash -ic "python -m tests.pytest_utils.reporting $CONTAINER_PYTEST_RESULTS/test-pytest-utils.xml\
+            2>&1 | tee $BASH_RESULTS/test-pytest-utils.txt"
 
   test-datasets:
-    needs: [setup-fixtures, build-and-push, setup-control-dataset]
+    needs: [setup-fixtures, build-and-push]
     runs-on: self-hosted
     env: 
       BRANCH_NAME: ${{ needs.build-and-push.outputs.branch_name }}
@@ -339,6 +337,11 @@ jobs:
             bash -ic "pytest --no-cleanup -v tests/test_datasets 2>&1 \
             | tee $BASH_RESULTS\test-dataset.txt"
 
+          docker run $DOCKER_VOLUME_MOUNTS \
+            tensorpod/pymimic3:$BRANCH_NAME \
+            bash -ic "python -m tests.pytest_utils.reporting $CONTAINER_PYTEST_RESULTS/test-dataset.xml\
+            2>&1 | tee $BASH_RESULTS/test-dataset.txt"
+
           echo "Exit status: $?"
           if [ $? -ne 0 ]; then
             echo "The command failed."
@@ -346,7 +349,7 @@ jobs:
           fi
 
   test-preprocessing:
-    needs: [setup-fixtures, build-and-push, setup-control-dataset]
+    needs: [setup-fixtures, build-and-push]
     runs-on: self-hosted
     env: 
       BRANCH_NAME: ${{ needs.build-and-push.outputs.branch_name }}
@@ -371,6 +374,11 @@ jobs:
             bash -ic "pytest --no-cleanup -v tests/test_preprocessing \
             2>&1 | tee $BASH_RESULTS/test-preprocessing.txt"
 
+          docker run $DOCKER_VOLUME_MOUNTS \
+            tensorpod/pymimic3:$BRANCH_NAME \
+            bash -ic "python -m tests.pytest_utils.reporting $CONTAINER_PYTEST_RESULTS/test-preprocessing.xml\
+            2>&1 | tee $BASH_RESULTS/test-preprocessing.txt"
+
           echo "Exit status: $?"
           if [ $? -ne 0 ]; then
             echo "The command failed."
@@ -378,7 +386,7 @@ jobs:
           fi
 
   test-metrics:
-    needs: [setup-fixtures, build-and-push, setup-control-dataset]
+    needs: [setup-fixtures, build-and-push]
     runs-on: self-hosted
     env: 
       BRANCH_NAME: ${{ needs.build-and-push.outputs.branch_name }}
@@ -401,7 +409,12 @@ jobs:
           docker run $DOCKER_VOLUME_MOUNTS \
             tensorpod/pymimic3:$BRANCH_NAME \
             bash -ic "pytest --no-cleanup -v tests/test_metrics 2>&1 \
-            | tee $BASH_RESULTS.txt"
+            | tee $BASH_RESULTS/test-metrics.txt"
+
+          docker run $DOCKER_VOLUME_MOUNTS \
+            tensorpod/pymimic3:$BRANCH_NAME \
+            bash -ic "python -m tests.pytest_utils.reporting $CONTAINER_PYTEST_RESULTS/test-metrics.xml\
+            2>&1 | tee $BASH_RESULTS/test-metrics.txt"
 
           echo "Exit status: $?"
           if [ $? -ne 0 ]; then
@@ -410,8 +423,12 @@ jobs:
           fi
 
   test-models:
-    needs: [test-datasets, test-preprocessing, test-metrics]
+    needs: [build-and-push, test-metrics, test-datasets, test-preprocessing]
     runs-on: self-hosted
+    env: 
+      BRANCH_NAME: ${{ needs.build-and-push.outputs.branch_name }}
+      DOCKER_IMAGE_TAR: ${{ needs.build-and-push.outputs.docker_image_tar }}
+      DOCKER_VOLUME_MOUNTS: ${{ needs.build-and-push.outputs.docker_volumes }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -429,8 +446,13 @@ jobs:
           docker run $DOCKER_VOLUME_MOUNTS \
             tensorpod/pymimic3:$BRANCH_NAME \
             pytest --no-cleanup -v tests/test_models 2>&1 \
-            | tee $BASH_RESULTS.txt
+            | tee $BASH_RESULTS/test-models.txt
             $BASH_RESULTS$BASH_RESULTS
+
+          docker run $DOCKER_VOLUME_MOUNTS \
+            tensorpod/pymimic3:$BRANCH_NAME \
+            bash -ic "python -m tests.pytest_utils.reporting $CONTAINER_PYTEST_RESULTS/test-models.xml\
+            2>&1 | tee $BASH_RESULTS/test-models.txt"
 
           echo "Exit status: $?"
           if [ $? -ne 0 ]; then
@@ -443,7 +465,7 @@ jobs:
         shell: bash
         run: |
           rm -rf $DOCKER_CACHE_DIR/.github-action-cache/semitemp 2>&1 \
-          | tee $BASH_RESULTS.txt
+          | tee $BASH_RESULTS/cleanup-semitemp.txt
 
           echo "Exit status: $?"
           if [ $? -ne 0 ]; then

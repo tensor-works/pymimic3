@@ -1,6 +1,7 @@
 # This was used to reduce the dataset to speed up CICD
 import os
 import shutil
+from pathlib import Path
 
 # no mortality
 no_mortality = [
@@ -31,18 +32,18 @@ mortality = [
 ]
 
 # Directory to check
-directory = "/workspaces/pymimic3/tests/data/control-dataset/extracted"
+directory = Path(os.getenv("TESTS"), "data", "control-dataset", "extracted")
 
 # Convert lists to a set for faster lookup
 safe_dirs = set(no_mortality + mortality)
 
 # Traverse the directory
-for folder in os.listdir(directory):
-    folder_path = os.path.join(directory, folder)
+for folder in Path(directory).iterdir():
+    folder_path = Path(directory, folder)
     # Check if the folder name is a digit and not in the safe list
-    if folder.isdigit() and int(folder) not in safe_dirs:
+    if str(folder).isdigit() and int(folder) not in safe_dirs:
         # Remove the folder if it is not in the safe lists
-        shutil.rmtree(folder_path)
+        shutil.rmtree(str(folder_path))
         print(f"Deleted folder: {folder_path}")
     else:
         print(f"Skipped folder: {folder_path}")
