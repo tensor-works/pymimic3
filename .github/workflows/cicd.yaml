@@ -220,6 +220,7 @@ jobs:
           echo "Loading cached image for testing: $BRANCH_NAME"
           echo "Loading cached image for testing: ${{ env.DOCKER_IMAGE_TAR}}"
           echo "Loading cached image for testing: $DOCKER_IMAGE_TAR"
+          echo "Loading cached image for testing: ${{ needs.build-and-push.outputs.docker_image_tar}}"
           docker load -i $DOCKER_IMAGE_TAR
           echo docker iamge ls -a
 
