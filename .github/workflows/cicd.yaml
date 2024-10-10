@@ -78,10 +78,6 @@ jobs:
           echo "BRANCH_NAME=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_ENV
           echo "DOCKER_IMAGE_TAR=$DOCKER_CACHE_DIR/.buildx-image-cache/tensorpod/pymimic3/$BRANCH_NAME.tar" >> $GITHUB_ENV
         id: extract_branch
-
-      - name: Branch name
-        shell: bash
-        run: echo $BRANCH_NAME
       
       # => 6. Setup cache on runner machine: self-hosted
       - name: Cache Docker layers on self-hosted
@@ -112,10 +108,10 @@ jobs:
           push: false
           tags: |
             tensorpod/pymimic3:latest
-            tensorpod/pymimic3:$BRANCH_NAME
-          cache-from: type=local,src=$DOCKER_CACHE_DIR/.buildx-cache
-          cache-to: type=local,dest=$DOCKER_CACHE_DIR/.buildx-cache-new,mode=max
-          outputs: type=docker,dest=$DOCKER_IMAGE_TAR
+            tensorpod/pymimic3:${{ env.BRANCH_NAME }}
+          cache-from: type=local,src=${{ env.DOCKER_CACHE_DIR }}/.buildx-cache
+          cache-to: type=local,dest=${{ env.DOCKER_CACHE_DIR }}/.buildx-cache-new,mode=max
+          outputs: type=docker,dest=${{ env.DOCKER_IMAGE_TAR }}
 
       # => 7. Build and push Docker image: github hosted
       - name: Build and export Docker image on github-hosted
@@ -127,17 +123,17 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           tags: |
             tensorpod/pymimic3:latest
-            tensorpod/pymimic3:$BRANCH_NAME
+            tensorpod/pymimic3:${{ env.BRANCH_NAME }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          outputs: type=docker,dest=/tmp/.buildx-image-cache/tensorpod/pymimic3/$BRANCH_NAME.tar
+          outputs: type=docker,dest=/tmp/.buildx-image-cache/tensorpod/pymimic3/${{ env.BRANCH_NAME }}.tar
 
       - name: Upload artifact
         if: runner.environment == 'github-hosted'
         uses: actions/upload-artifact@v4
         with:
           name: pymimic3.$BRANCH_NAME
-          path: /tmp/.buildx-image-cache/tensorpod/pymimic3/$BRANCH_NAME.tar
+          path: /tmp/.buildx-image-cache/tensorpod/pymimic3/${{ env.BRANCH_NAME }}.tar
 
       # => 8. Push Docker image
       # It seems the docker image is not automatically loaded after build
