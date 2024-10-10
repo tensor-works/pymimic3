@@ -12,13 +12,6 @@ permissions:
   contents: write
 
 env:
-  DOCKER_CACHE_DIR: $DOCKER_CACHE_DIR
-  DOCKER_VOLUME_MOUNTS: >-
-    -v $DOCKER_CACHE_DIR/.github-action-cache/control-dataset:/workdir/tests/data/control-dataset
-    -v $DOCKER_CACHE_DIR/.github-action-cache/mimiciii-demo:/workdir/tests/data/mimiciii-demo
-    -v $DOCKER_CACHE_DIR/.github-action-cache/semitemp:/workdir/tests/data/semitemp
-    -v $DOCKER_CACHE_DIR/.github-action-cache/bash-results:/workdir/tests/data/bash-results
-    -v $DOCKER_CACHE_DIR/.github-action-cache/pytest-results:/workdir/tests/data/pytest-results
   CONTAINER_PYTEST_RESULTS: /workdir/tests/data/pytest-results/${GITHUB_SHA}
   CONTAINER_BASH_RESULTS: /workdir/tests/data/bash-results/${GITHUB_SHA}
 
@@ -41,6 +34,7 @@ jobs:
     outputs:
       branch_name: ${{ steps.get_branch.outputs.branch_name }}
       docker_image_tar: ${{ steps.get_branch.outputs.docker_image_tar }}
+      docker_volumes: ${{ steps.get_volumes.outputs.docker_volumes }}
     steps:
       # => 1. Pull code into runner env
       - name: Checkout code
@@ -57,6 +51,19 @@ jobs:
           # Secrets stored in repository
           username: tensorpod
           password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Setup volume mounts
+        shell: bash
+        id: get_volumes
+        run: |
+         DOCKER_VOLUME_MOUNTS=\
+          -v $DOCKER_CACHE_DIR/.github-action-cache/control-dataset:/workdir/tests/data/control-dataset\
+          -v $DOCKER_CACHE_DIR/.github-action-cache/mimiciii-demo:/workdir/tests/data/mimiciii-demo\
+          -v $DOCKER_CACHE_DIR/.github-action-cache/semitemp:/workdir/tests/data/semitemp\
+          -v $DOCKER_CACHE_DIR/.github-action-cache/bash-results:/workdir/tests/data/bash-results\
+          -v $DOCKER_CACHE_DIR/.github-action-cache/pytest-results:/workdir/tests/data/pytest-results
+          echo "DOCKER_VOLUME_MOUNTS=$DOCKER_VOLUME_MOUNTS" >> $GITHUB_ENV
+          echo "docker_volumes=$DOCKER_VOLUME_MOUNTS" >> $GITHUB_OUTPUT
 
       # => 4. Create cache directory if runing locally
       - name: Set up Docker cache/output directory on self-hosted
@@ -203,6 +210,7 @@ jobs:
     env: 
       BRANCH_NAME: ${{ needs.build-and-push.outputs.branch_name }}
       DOCKER_IMAGE_TAR: ${{ needs.build-and-push.outputs.docker_image_tar }}
+      DOCKER_VOLUME_MOUNTS: ${{ needs.build-and-push.outputs.docker_volumes }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
