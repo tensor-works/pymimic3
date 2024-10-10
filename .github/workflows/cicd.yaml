@@ -89,7 +89,6 @@ jobs:
           echo "docker_image_tar=$DOCKER_IMAGE_TAR" >> $GITHUB_OUTPUT
 
           # Debug: verify outputs
-          echo "${{ env.BRANCH_NAME }}"
           echo "Outputs set:"
           cat "$GITHUB_OUTPUT"
       
@@ -219,6 +218,7 @@ jobs:
         run: |
           echo "Loading cached image for testing: ${{ env.BRANCH_NAME}}"
           echo "Loading cached image for testing: $BRANCH_NAME"
+          echo "Loading cached image for testing: ${{ env.DOCKER_IMAGE_TAR}}"
           echo "Loading cached image for testing: $DOCKER_IMAGE_TAR"
           docker load -i $DOCKER_IMAGE_TAR
           echo docker iamge ls -a
