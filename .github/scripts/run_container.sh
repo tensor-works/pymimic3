@@ -7,16 +7,25 @@ COMMAND="${3}"
 BASH_RESULTS="${4}"
 OUTPUT_FILENAME="${5}"
 
-echo ""
-echo "=========== .github/scripts/run_container.sh ================"
-echo "- Docker volume: $DOCKER_VOLUME_MOUNTS"
-echo "- Branch name: $BRANCH_NAME"
-echo "- Command: $COMMAND"
-echo "- Bash results: $BASH_RESULTS"
-echo "- Output filename: $OUTPUT_FILENAME"
-echo ""
+BLUE="\033[0;34m"
+RESET="\033[0m"
+
+echo -e ""
+echo -e "${BLUE}=========== .github/scripts/run_container.sh ================"
+echo -e "${BLUE}- Docker volume: ${RESET}$DOCKER_VOLUME_MOUNTS"
+echo -e "${BLUE}- Branch name: ${RESET}$BRANCH_NAME"
+echo -e "${BLUE}- Command: ${RESET}$COMMAND"
+echo -e "${BLUE}- Bash results: ${RESET}$BASH_RESULTS"
+echo -e "${BLUE}- Output filename: ${RESET}$OUTPUT_FILENAME"
+echo -e ""
 
 set -o pipefail
+
+echo -e "${BLUE}Running command:${REST}\n \
+    docker run $DOCKER_VOLUME_MOUNTS \
+    tensorpod/pymimic3:$BRANCH_NAME \
+    bash -ic "$COMMAND 2>&1" \
+    | tee $BASH_RESULTS/$OUTPUT_FILENAME.txt${RESET}\n"
 
 # Running the pytest command inside a Docker container
 docker run $DOCKER_VOLUME_MOUNTS \
@@ -28,7 +37,9 @@ docker run $DOCKER_VOLUME_MOUNTS \
 test_status=$?
 
 # Printing and handling the exit status
-echo "---------- Exit status: $test_status--------------------------------"
+echo -e "${BLUE}---------- Exit status: $test_status--------------------------------${RESET}"
+echo -e "Log artifact located at: \
+    $BASH_RESULTS/$OUTPUT_FILENAME.txt"
 if [ $test_status -ne 0 ]; then
     echo "The command failed."
     exit $test_status

@@ -301,6 +301,7 @@ dependencies:
   - junitparser
   - pytorch==2.3.0
   - pytorch-cuda=11.8
+  - junit2html
   - pip:
       - absl-py==2.1.0
       - astunparse==1.6.3

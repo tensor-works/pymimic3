@@ -1,8 +1,7 @@
 import xml.etree.ElementTree as ET
 import sys
 from colorama import Fore, Style, init
-from typing import List, Dict, Any, Set
-from collections import defaultdict
+from typing import List, Dict, Any
 
 # Initialize colorama
 init()
