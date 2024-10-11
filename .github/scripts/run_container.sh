@@ -19,7 +19,7 @@ echo "Output filename: $OUTPUT_FILENAME"
 docker run $DOCKER_VOLUME_MOUNTS \
     tensorpod/pymimic3:$BRANCH_NAME \
     bash -ic "$COMMAND 2>&1" \
-    | tee $CONTAINER_BASH_RESULTS/${OUTPUT_FILENAME%.xml}.txt
+    | tee $BASH_RESULTS/$OUTPUT_FILENAME.txt
 
 # Capture the exit status of the pytest command
 test_status=$?
@@ -29,7 +29,7 @@ echo "Exit status: $test_status"
 if [ $test_status -ne 0 ]; then
     echo "The command failed."
     exit $test_status
-elif [ ! -f "$BASH_RESULTS/${OUTPUT_FILENAME%.xml}.txt" ]; then
+elif [ ! -f "$BASH_RESULTS/$OUTPUT_FILENAME.txt" ]; then
     echo "Log artifact not created."
     exit $(( $test_status == 0 ? 1 : $test_status ))
 fi

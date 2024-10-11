@@ -252,7 +252,7 @@ jobs:
           "cd etc && make testing=true" \
           "$CONTAINER_BASH_RESULTS" \
           "$BASH_RESULTS" \
-          "setup-control-dataset.txt"
+          "setup-control-dataset"
 
   setup-fixtures:
     needs: [build-and-push, setup-control-dataset]
