@@ -1,0 +1,6 @@
+ImportError while loading conftest '/workdir/tests/conftest.py'.
+tests/conftest.py:2: in <module>
+    from tests.tsettings import *
+tests/tsettings.py:5: in <module>
+    from settings import *
+E   ModuleNotFoundError: No module named 'settings'
