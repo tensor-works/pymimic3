@@ -79,7 +79,6 @@ jobs:
          # Method 1: Using GitHub Actions Workflow Commands
          echo "::notice::This is a blue notice message"
          echo "::warning::This is a yellow warning message"
-         echo "::error::This is a red error message"
         
          # Method 2: Using groups for visual organization
          echo "::group::Grouped output (collapsible)"
@@ -89,7 +88,6 @@ jobs:
          echo "You can add multiple lines"
          echo -e "\033[31;1;4mHello\033[0m"
          echo "::endgroup::"
-         exit 1
 
       # => 4. Create cache directory if runing locally
       - name: Set up Docker cache/output directory on self-hosted
