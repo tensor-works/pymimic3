@@ -22,7 +22,6 @@ load_env:
 # Target for setup_config_file.sh
 setup_config_files: 
 	@echo "DEBUG: Environment variables:"
-	@printenv | grep -E '^(CONFIG|ETC|EXAMPLES|TESTS|WORKINGDIR|MODEL|PYTHONPATH)='
 	@echo "Running setup_config_files.sh..."
 	@bash ./setup/setup_config_files.sh
 

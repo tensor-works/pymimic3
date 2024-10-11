@@ -265,6 +265,7 @@ jobs:
           export TERM=xterm-color
           export TERM=xterm-256color
 
+          # Run command in docker
           .github/scripts/run_container.sh \
           "$DOCKER_VOLUME_MOUNTS" \
           "$BRANCH_NAME" \
@@ -294,7 +295,12 @@ jobs:
 
       - name: Run fixture setup tests
         shell: bash
-        run: |      
+        run: |
+          # Enable color output
+          export TERM=xterm-color
+          export TERM=xterm-256color
+
+          # Run pytest in docker
           .github/scripts/run_pytest_container.sh \
           "$DOCKER_VOLUME_MOUNTS" \
           "$BRANCH_NAME" \
@@ -307,6 +313,11 @@ jobs:
       - name: Run pytest suite tests
         shell: bash
         run: |
+          # Enable color output
+          export TERM=xterm-color
+          export TERM=xterm-256color
+
+          # Run pytest in docker
           .github/scripts/run_pytest_container.sh \
           "$DOCKER_VOLUME_MOUNTS" \
           "$BRANCH_NAME" \
@@ -339,6 +350,11 @@ jobs:
       - name: Run dataset tests
         shell: bash
         run: |
+          # Enable color output
+          export TERM=xterm-color
+          export TERM=xterm-256color
+
+          # Run pytest in docker
           .github/scripts/run_pytest_container.sh \
           "$DOCKER_VOLUME_MOUNTS" \
           "$BRANCH_NAME" \
@@ -371,6 +387,11 @@ jobs:
       - name: Run preprocessing tests
         shell: bash
         run: |
+          # Enable color output
+          export TERM=xterm-color
+          export TERM=xterm-256color
+
+          # Run pytest in docker
           .github/scripts/run_pytest_container.sh \
           "$DOCKER_VOLUME_MOUNTS" \
           "$BRANCH_NAME" \
@@ -403,6 +424,11 @@ jobs:
       - name: Run metrics tests
         shell: bash
         run: |
+          # Enable color output
+          export TERM=xterm-color
+          export TERM=xterm-256color
+
+          # Run pytest in docker
           .github/scripts/run_pytest_container.sh \
           "$DOCKER_VOLUME_MOUNTS" \
           "$BRANCH_NAME" \
@@ -435,6 +461,11 @@ jobs:
       - name: Run model tests
         shell: bash
         run: |
+          # Enable color output
+          export TERM=xterm-color
+          export TERM=xterm-256color
+
+          # Run pytest in docker
           .github/scripts/run_pytest_container.sh \
           "$DOCKER_VOLUME_MOUNTS" \
           "$BRANCH_NAME" \
