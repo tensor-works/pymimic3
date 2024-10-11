@@ -41,7 +41,8 @@ echo "::endgroup::"
 docker run $DOCKER_VOLUME_MOUNTS \
     tensorpod/pymimic3:$BRANCH_NAME \
     bash -ic "pytest --no-cleanup --junitxml=$CONTAINER_PYTEST_RESULTS/$OUTPUT_FILENAME.xml \
-    -v $PYTEST_MODULE_PATH 2>&1" \
+    -v $PYTEST_MODULE_PATH \
+    && junit2html $CONTAINER_PYTEST_RESULTS/$OUTPUT_FILENAME.xml $CONTAINER_PYTEST_RESULTS/$OUTPUT_FILENAME.html 2>&1" \
     | tee $BASH_RESULTS/$OUTPUT_FILENAME.txt
 
 # Capture the exit status of the pytest command
@@ -63,14 +64,14 @@ docker run $DOCKER_VOLUME_MOUNTS \
 # Printing and handling the exit status
 echo -e "${BLUE}---------- Exit status: $test_status--------------------------------${RESET}"
 echo -e "${BLUE}Log artifact located at:\n${LIGHT_BLUE}$BASH_RESULTS/$OUTPUT_FILENAME.txt${RESET}"
-echo -e "${BLUE}Pytest artfact created at:\n${LIGHT_BLUE}$PYTEST_RESULTS/$OUTPUT_FILENAME.xml${RESET}"
-echo -e "${BLUE}Pytest artfact created at:\n${LIGHT_BLUE}$PYTEST_RESULTS/$OUTPUT_FILENAME.xml${RESET}"
+echo -e "${BLUE}Pytest junit artfact created at:\n${LIGHT_BLUE}$PYTEST_RESULTS/$OUTPUT_FILENAME.xml${RESET}"
+echo -e "${BLUE}Pytest html artfact created at:\n${LIGHT_BLUE}$PYTEST_RESULTS/$OUTPUT_FILENAME.html${RESET}"
 
 if [ $test_status -ne 0 ]; then
     echo "${BLUE}The command failed.${RESET}"
     exit $test_status
 elif [ ! -f "$BASH_RESULTS/$OUTPUT_FILENAME.txt" ]; then
-    echo "${RED}Bash artifact not created. Expected location:\n \
+    echo "${RED}Log artifact not created. Expected location:\n \
         $BASH_RESULTS/$OUTPUT_FILENAME.txt${RESET}"
     exit $(( $test_status == 0 ? 1 : $test_status ))
 elif [ ! -f "$PYTEST_RESULTS/$OUTPUT_FILENAME.xml" ]; then
