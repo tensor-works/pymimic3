@@ -7,6 +7,9 @@ COMMAND="${3}"
 BASH_RESULTS="${4}"
 OUTPUT_FILENAME="${5}"
 
+# For echoing
+FORMATTED_MOUNTS=$(echo "$DOCKER_VOLUME_MOUNTS" | sed 's/ -v /\n  -v /g')
+
 RED='\033[31;1m'
 BLUE='\033[34;1m'
 LIGHT_BLUE='\033[94m'
@@ -26,7 +29,7 @@ set -o pipefail
 
 echo "::group::Container command"
 echo -e "${BLUE}Running command:${REST}\n \
-    docker run $DOCKER_VOLUME_MOUNTS \
+    docker run $FORMATTED_MOUNTS \
     tensorpod/pymimic3:$BRANCH_NAME \
     bash -ic \"$COMMAND 2>&1\" \
     | tee $BASH_RESULTS/$OUTPUT_FILENAME.txt${RESET}\n"

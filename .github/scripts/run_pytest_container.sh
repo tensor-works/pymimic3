@@ -9,6 +9,9 @@ BASH_RESULTS="${5}"
 PYTEST_RESULTS="${6}"
 OUTPUT_FILENAME="${7}"
 
+# For echoing
+FORMATTED_MOUNTS=$(echo "$DOCKER_VOLUME_MOUNTS" | sed 's/ -v /\n  -v /g')
+
 RED='\033[31;1m'
 BLUE='\033[34;1m'
 LIGHT_BLUE='\033[94m'
@@ -30,7 +33,7 @@ set -o pipefail
 
 echo "::group::Pytest container command"
 echo -e "${BLUE}Running command:${REST}\n \
-docker run $DOCKER_VOLUME_MOUNTS\n \
+docker run $FORMATTED_MOUNTS\n \
 tensorpod/pymimic3:$BRANCH_NAME\n \
 bash -ic \"pytest --no-cleanup --junitxml=$CONTAINER_PYTEST_RESULTS/$OUTPUT_FILENAME.xml\n \
 -v $PYTEST_MODULE_PATH 2>&1\n \

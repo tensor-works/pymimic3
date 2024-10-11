@@ -24,8 +24,8 @@ dependencies:
   - sqlite=3.46.1=h9eae976_0
   - yaspin
   - gdown
-  - junit2html
   - pip:
+      - junit2html
       - lightning-utilities==0.11.2
       - pillow==10.2.0
       - polars==0.20.26
