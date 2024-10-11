@@ -479,7 +479,7 @@ jobs:
           docker run --rm $DOCKER_VOLUME_MOUNTS \
             tensorpod/pymimic3:$BRANCH_NAME \
             bash -ic "pytest --no-cleanup --junitxml=$CONTAINER_PYTEST_RESULTS/test-metrics.xml\ 
-            -v tests/test_metrics 2>&1 | tee $CONTAINER_BASH_RESULTS/test-metrics.txt"
+            -v tests/test_metrics 2>&1" | tee $CONTAINER_BASH_RESULTS/test-metrics.txt
           
           # Capture and display all relevant status information
           docker_status=${PIPESTATUS[0]}
