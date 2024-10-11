@@ -15,26 +15,27 @@ LIGHT_BLUE='\033[94m'
 GREEN='\033[32;1m'
 RESET='\033[0m'
 
-echo ""
-echo "${BLUE}=========== .github/scripts/run_container.sh ================"
-echo "${BLUE}- Docker volume: ${LIGHT_BLUE}$DOCKER_VOLUME_MOUNTS"
-echo "${BLUE}- Branch name: ${LIGHT_BLUE}$BRANCH_NAME"
-echo "${BLUE}- Container pytest results: ${LIGHT_BLUE}$CONTAIER_PYTEST_RESULTS"
-echo "${BLUE}- Pytest module path: ${LIGHT_BLUE}$PYTEST_MODULE_PATH"
-echo "${BLUE}- Bash results: ${LIGHT_BLUE}$BASH_RESULTS"
-echo "${BLUE}- Pytest results: ${LIGHT_BLUE}$PYTEST_RESULTS"
-echo "${BLUE}- Output filename: ${LIGHT_BLUE}$OUTPUT_FILENAME${RESET}"
-echo ""
+echo -e ""
+echo -e "${BLUE}=========== .github/scripts/run_container.sh ================"
+echo -e "${BLUE}- Docker volume: ${LIGHT_BLUE}$DOCKER_VOLUME_MOUNTS"
+echo -e "${BLUE}- Branch name: ${LIGHT_BLUE}$BRANCH_NAME"
+echo -e "${BLUE}- Container pytest results: ${LIGHT_BLUE}$CONTAIER_PYTEST_RESULTS"
+echo -e "${BLUE}- Pytest module path: ${LIGHT_BLUE}$PYTEST_MODULE_PATH"
+echo -e "${BLUE}- Bash results: ${LIGHT_BLUE}$BASH_RESULTS"
+echo -e "${BLUE}- Pytest results: ${LIGHT_BLUE}$PYTEST_RESULTS"
+echo -e "${BLUE}- Output filename: ${LIGHT_BLUE}$OUTPUT_FILENAME${RESET}"
+echo -e ""
 
 set -o pipefail
 
 echo "::group::Pytest container command"
 echo -e "${BLUE}Running command:${REST}\n \
-    docker run $DOCKER_VOLUME_MOUNTS \
-    tensorpod/pymimic3:$BRANCH_NAME \
-    bash -ic \"pytest --no-cleanup --junitxml=$CONTAINER_PYTEST_RESULTS/$OUTPUT_FILENAME.xml \
-    -v $PYTEST_MODULE_PATH 2>&1 && $CONTAINER_PYTEST_RESULTS/$OUTPUT_FILENAME.html\" \
-    | tee $BASH_RESULTS/$OUTPUT_FILENAME.txt${RESET}\n"
+docker run $DOCKER_VOLUME_MOUNTS\n \
+tensorpod/pymimic3:$BRANCH_NAME\n \
+bash -ic \"pytest --no-cleanup --junitxml=$CONTAINER_PYTEST_RESULTS/$OUTPUT_FILENAME.xml\n \
+-v $PYTEST_MODULE_PATH 2>&1\n \
+&& junit2html $CONTAINER_PYTEST_RESULTS/$OUTPUT_FILENAME.xml $CONTAINER_PYTEST_RESULTS/$OUTPUT_FILENAME.html\n\" \
+| tee $BASH_RESULTS/$OUTPUT_FILENAME.txt${RESET}\n"
 echo "::endgroup::"
 
 # Running the pytest command inside a Docker container

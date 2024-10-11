@@ -58,36 +58,31 @@ jobs:
         shell: bash
         id: get_volumes
         run: |
-         TERM=xterm-color
-         DOCKER_VOLUME_MOUNTS="\
-          -v $DOCKER_CACHE_DIR/.github-action-cache/control-dataset:/workdir/tests/data/control-dataset\
-          -v $DOCKER_CACHE_DIR/.github-action-cache/mimiciii-demo:/workdir/tests/data/mimiciii-demo\
-          -v $DOCKER_CACHE_DIR/.github-action-cache/semitemp:/workdir/tests/data/semitemp\
-          -v $DOCKER_CACHE_DIR/.github-action-cache/bash-results:/workdir/tests/data/bash-results\
-          -v $DOCKER_CACHE_DIR/.github-action-cache/pytest-results:/workdir/tests/data/pytest-results"
-        
-         echo "DOCKER_VOLUME_MOUNTS=$DOCKER_VOLUME_MOUNTS" >> $GITHUB_ENV
-         echo "docker_volumes=$DOCKER_VOLUME_MOUNTS" >> $GITHUB_OUTPUT
+          TERM=xterm-color
+          DOCKER_VOLUME_MOUNTS="\
+           -v $DOCKER_CACHE_DIR/.github-action-cache/control-dataset:/workdir/tests/data/control-dataset\
+           -v $DOCKER_CACHE_DIR/.github-action-cache/mimiciii-demo:/workdir/tests/data/mimiciii-demo\
+           -v $DOCKER_CACHE_DIR/.github-action-cache/semitemp:/workdir/tests/data/semitemp\
+           -v $DOCKER_CACHE_DIR/.github-action-cache/bash-results:/workdir/tests/data/bash-results\
+           -v $DOCKER_CACHE_DIR/.github-action-cache/pytest-results:/workdir/tests/data/pytest-results"
+         
+          echo "DOCKER_VOLUME_MOUNTS=$DOCKER_VOLUME_MOUNTS" >> $GITHUB_ENV
+          echo "docker_volumes=$DOCKER_VOLUME_MOUNTS" >> $GITHUB_OUTPUT
+ 
+          echo "::group::DOCKER_VOLUME_MOUNTS"
+          echo $DOCKER_VOLUME_MOUNTS
+          echo "::endgroup::"
+ 
+          BASH_RESULTS=$DOCKER_CACHE_DIR/.github-action-cache/bash-results/${{ github.sha }}
+          PYTEST_RESULTS=$DOCKER_CACHE_DIR/.github-action-cache/pytest-results/${{ github.sha }}
 
-         BASH_RESULTS=$DOCKER_CACHE_DIR/.github-action-cache/bash-results/${{ github.sha }}
-         PYTEST_RESULTS=$DOCKER_CACHE_DIR/.github-action-cache/pytest-results/${{ github.sha }}
-
-         echo "bash_results=$BASH_RESULTS" >> $GITHUB_OUTPUT
-         echo "pytest_results=$PYTEST_RESULTS" >> $GITHUB_OUTPUT
-
-         echo "::notice:: testing colorized outputs"
-         # Method 1: Using GitHub Actions Workflow Commands
-         echo "::notice::This is a blue notice message"
-         echo "::warning::This is a yellow warning message"
-        
-         # Method 2: Using groups for visual organization
-         echo "::group::Grouped output (collapsible)"
-         echo "This content is in a collapsible group"
-         echo -e "\033[0;34m colored text \033[0m"
-         echo -e "\033[31;1;4mHello\033[0m"
-         echo "You can add multiple lines"
-         echo -e "\033[31;1;4mHello\033[0m"
-         echo "::endgroup::"
+          echo "::group::BASH/PYTEST RESULTS"
+          echo $BASH_RESULTS
+          echo $PYTEST_RESULTS
+          echo "::endgroup::"
+ 
+          echo "bash_results=$BASH_RESULTS" >> $GITHUB_OUTPUT
+          echo "pytest_results=$PYTEST_RESULTS" >> $GITHUB_OUTPUT
 
       # => 4. Create cache directory if runing locally
       - name: Set up Docker cache/output directory on self-hosted
@@ -107,6 +102,11 @@ jobs:
           mkdir -p $DOCKER_CACHE_DIR
           mkdir -p $DOCKER_CACHE_DIR/.buildx-image-cache/tensorpod/pymimic3/
 
+          echo "::group::DOCKER_CACHE_DIR"
+          echo $DOCKER_CACHE_DIR
+          echo $DOCKER_CACHE_DIR/.buildx-image-cache/tensorpod/pymimic3/
+          echo "::endgroup::"
+
       # => 5. Extract branch name (may fail on pull requests, untested)
       - name: Extract branch name
         shell: bash
@@ -116,11 +116,16 @@ jobs:
           echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
           echo "branch_name=$BRANCH_NAME" >> $GITHUB_OUTPUT
 
+          echo "::group::BRANCH_NAME"
+          echo $BRANCH_NAME
+          echo "::endgroup::"
+
           DOCKER_IMAGE_TAR=$DOCKER_CACHE_DIR/.buildx-image-cache/tensorpod/pymimic3/$BRANCH_NAME.tar
           echo "DOCKER_IMAGE_TAR=$DOCKER_IMAGE_TAR" >> $GITHUB_ENV
           echo "docker_image_tar=$DOCKER_IMAGE_TAR" >> $GITHUB_OUTPUT
-
-          echo $DOCKER_VOLUME_MOUNTS
+          echo "::group::DOCKER_IMAGE_TAR"
+          echo $DOCKER_IMAGE_TAR
+          echo "::endgroup::"
       
 #      # => 6. Setup cache on runner machine: self-hosted
 #      - name: Cache Docker layers on self-hosted
