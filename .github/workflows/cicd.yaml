@@ -246,7 +246,7 @@ jobs:
       - name: Setup control dataset
         shell: bash
         run: |
-          ../run_container.sh \
+          ../scripts/run_container.sh \
           "$DOCKER_VOLUME_MOUNTS" \
           "$BRANCH_NAME" \
           "cd etc && make testing=true"
