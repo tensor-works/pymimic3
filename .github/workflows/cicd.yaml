@@ -214,46 +214,6 @@ jobs:
 #
 # Pytest run test
 
-  test:
-    runs-on: self-hosted
-    needs: build-and-push
-    env: 
-      BRANCH_NAME: ${{ needs.build-and-push.outputs.branch_name }}
-      DOCKER_IMAGE_TAR: ${{ needs.build-and-push.outputs.docker_image_tar }}
-      DOCKER_VOLUME_MOUNTS: ${{ needs.build-and-push.outputs.docker_volumes }}
-      BASH_RESULTS: ${{ needs.build-and-push.outputs.bash_results }}
-      PYTEST_RESULTS: ${{ needs.build-and-push.outputs.pytest_results }}
-    steps:
-      - name: Load cached image
-        shell: bash
-        run: |
-          docker load -i $DOCKER_IMAGE_TAR
-          echo docker iamge ls -a
-
-      - name: Run test
-        shell: bash
-        run: |
-          # Enable debug mode
-          set -x
-          
-          # Ensure strict error handling
-          set -o pipefail
-
-          # Run Docker command and capture output
-          docker run --rm tensorpod/pymimic3:latest \
-            bash -ic "pytest tests/test_metrics" 2>&1 | tee output.txt
-          
-          # Capture and display all relevant status information
-          docker_status=${PIPESTATUS[0]}
-          tee_status=${PIPESTATUS[1]}
-          last_status=$?
-          
-          echo "Docker command exit status: $docker_status"
-          echo "Tee command exit status: $tee_status"
-          echo "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nLast command exit status: $last_status"
-          
-          exit $docker_status
-
   setup-control-dataset:
     runs-on: self-hosted
     needs: build-and-push
@@ -513,10 +473,23 @@ jobs:
       - name: Run metrics tests
         shell: bash
         run: |
+          # Enable debug mode
+          set -x
+          
+          # Ensure strict error handling
+          set -o pipefail       
+
           docker run $DOCKER_VOLUME_MOUNTS \
             tensorpod/pymimic3:$BRANCH_NAME \
             bash -ic "pytest --no-cleanup --junitxml=$CONTAINER_PYTEST_RESULTS/test-metrics.xml\ 
             -v tests/test_metrics 2>&1 | tee $CONTAINER_BASH_RESULTS/test-metrics.txt"
+          
+          # Capture and display all relevant status information
+          docker_status=${PIPESTATUS[0]}
+          tee_status=${PIPESTATUS[1]}
+          last_status=$?
+          
+          exit $docker_status
 
           echo "Pipe status: ${PIPESTATUS[0]}"
           echo "Exit status: $?"
