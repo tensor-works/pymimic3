@@ -75,6 +75,16 @@ jobs:
          echo "pytest_results=$PYTEST_RESULTS" >> $GITHUB_OUTPUT
 
          echo "::notice:: testing colorized outputs"
+         # Method 1: Using GitHub Actions Workflow Commands
+         echo "::notice::This is a blue notice message"
+         echo "::warning::This is a yellow warning message"
+         echo "::error::This is a red error message"
+        
+         # Method 2: Using groups for visual organization
+         echo "::group::Grouped output (collapsible)"
+         echo "This content is in a collapsible group"
+         echo "You can add multiple lines"
+         echo "::endgroup::"
          exit 1
 
       # => 4. Create cache directory if runing locally
