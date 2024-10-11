@@ -74,6 +74,9 @@ jobs:
          echo "bash_results=$BASH_RESULTS" >> $GITHUB_OUTPUT
          echo "pytest_results=$PYTEST_RESULTS" >> $GITHUB_OUTPUT
 
+         echo "::notice:: testing colorized outputs"
+         exit 1
+
       # => 4. Create cache directory if runing locally
       - name: Set up Docker cache/output directory on self-hosted
         if: runner.environment == 'self-hosted'
