@@ -8,6 +8,13 @@ CONTAINER_BASH_RESULTS="${4}"
 BASH_RESULTS="${5}"
 OUTPUT_FILENAME="${6}"
 
+echo "Docker volume: $DOCKER_VOLUME_MOUNTS"
+echo "Branch name: $BRANCH_NAME"
+echo "Command: $COMMAND"
+echo "Contianer bash results: $CONTAINER_BASH_RESULTS"
+echo "Bash results: $BASH_RESULTS"
+echo "Output filename: $OUTPUT_FILENAME"
+
 # Running the pytest command inside a Docker container
 docker run $DOCKER_VOLUME_MOUNTS \
     tensorpod/pymimic3:$BRANCH_NAME \
