@@ -58,6 +58,7 @@ jobs:
         shell: bash
         id: get_volumes
         run: |
+         TERM=xterm-color
          DOCKER_VOLUME_MOUNTS="\
           -v $DOCKER_CACHE_DIR/.github-action-cache/control-dataset:/workdir/tests/data/control-dataset\
           -v $DOCKER_CACHE_DIR/.github-action-cache/mimiciii-demo:/workdir/tests/data/mimiciii-demo\
@@ -83,6 +84,7 @@ jobs:
          # Method 2: Using groups for visual organization
          echo "::group::Grouped output (collapsible)"
          echo "This content is in a collapsible group"
+         echo "\033[0;34m colored text \033[0m"
          echo "You can add multiple lines"
          echo "::endgroup::"
          exit 1
