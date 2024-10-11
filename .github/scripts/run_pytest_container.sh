@@ -20,6 +20,8 @@ echo "- Pytest results: $PYTEST_RESULTS"
 echo "- Output filename: $OUTPUT_FILENAME"
 echo ""
 
+set -o pipefail
+
 # Running the pytest command inside a Docker container
 docker run $DOCKER_VOLUME_MOUNTS \
     tensorpod/pymimic3:$BRANCH_NAME \
