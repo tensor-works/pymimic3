@@ -18,7 +18,7 @@ RESET='\033[0m'
 
 echo -e ""
 echo -e "${BLUE}=========== .github/scripts/run_container.sh ================"
-echo -e "${BLUE}- Docker volume: ${LIGHT_BLUE}$DOCKER_VOLUME_MOUNTS"
+echo -e "${BLUE}- Docker volume: ${LIGHT_BLUE}$FORMATTED_MOUNTS"
 echo -e "${BLUE}- Branch name: ${LIGHT_BLUE}$BRANCH_NAME"
 echo -e "${BLUE}- Command: ${LIGHT_BLUE}$COMMAND"
 echo -e "${BLUE}- Bash results: ${LIGHT_BLUE}$BASH_RESULTS"

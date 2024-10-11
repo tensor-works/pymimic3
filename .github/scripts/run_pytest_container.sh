@@ -20,7 +20,7 @@ RESET='\033[0m'
 
 echo -e ""
 echo -e "${BLUE}=========== .github/scripts/run_container.sh ================"
-echo -e "${BLUE}- Docker volume: ${LIGHT_BLUE}$DOCKER_VOLUME_MOUNTS"
+echo -e "${BLUE}- Docker volume: ${LIGHT_BLUE}$FORMATTED_MOUNTS"
 echo -e "${BLUE}- Branch name: ${LIGHT_BLUE}$BRANCH_NAME"
 echo -e "${BLUE}- Container pytest results: ${LIGHT_BLUE}$CONTAIER_PYTEST_RESULTS"
 echo -e "${BLUE}- Pytest module path: ${LIGHT_BLUE}$PYTEST_MODULE_PATH"
