@@ -332,7 +332,7 @@ jobs:
           "$PYTEST_RESULTS" \
           "test-pytest-utils"
 
-  test-datasets:
+  test-readers:
     needs: [setup-fixtures, build-and-push]
     runs-on: self-hosted
     env: 
@@ -364,10 +364,270 @@ jobs:
           "$DOCKER_VOLUME_MOUNTS" \
           "$BRANCH_NAME" \
           "$CONTAINER_PYTEST_RESULTS" \
-          "tests/test_datasets" \
+          "tests/test_datasets/test_readers" \
           "$BASH_RESULTS" \
           "$PYTEST_RESULTS" \
-          "test-dataset"
+          "test-readers"
+
+  test-trackers:
+    needs: [setup-fixtures, build-and-push]
+    runs-on: self-hosted
+    env: 
+      BRANCH_NAME: ${{ needs.build-and-push.outputs.branch_name }}
+      DOCKER_IMAGE_TAR: ${{ needs.build-and-push.outputs.docker_image_tar }}
+      DOCKER_VOLUME_MOUNTS: ${{ needs.build-and-push.outputs.docker_volumes }}
+      BASH_RESULTS: ${{ needs.build-and-push.outputs.bash_results }}
+      PYTEST_RESULTS: ${{ needs.build-and-push.outputs.pytest_results }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Load cached image
+        shell: bash
+        run: |
+          docker load -i $DOCKER_IMAGE_TAR
+          echo "Loaded cached image for testing: $BRANCH_NAME"
+          echo docker iamge ls -a
+
+      - name: Run dataset tests
+        shell: bash
+        run: |
+          # Enable color output
+          export TERM=xterm-color
+          export TERM=xterm-256color
+
+          # Run pytest in docker
+          .github/scripts/run_pytest_container.sh \
+          "$DOCKER_VOLUME_MOUNTS" \
+          "$BRANCH_NAME" \
+          "$CONTAINER_PYTEST_RESULTS" \
+          "tests/test_datasets/test_readers/test_trackers" \
+          "$BASH_RESULTS" \
+          "$PYTEST_RESULTS" \
+          "test-trackers"
+
+  test-data-split:
+    needs: [test-readers, test-trackers, build-and-push]
+    runs-on: self-hosted
+    env: 
+      BRANCH_NAME: ${{ needs.build-and-push.outputs.branch_name }}
+      DOCKER_IMAGE_TAR: ${{ needs.build-and-push.outputs.docker_image_tar }}
+      DOCKER_VOLUME_MOUNTS: ${{ needs.build-and-push.outputs.docker_volumes }}
+      BASH_RESULTS: ${{ needs.build-and-push.outputs.bash_results }}
+      PYTEST_RESULTS: ${{ needs.build-and-push.outputs.pytest_results }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Load cached image
+        shell: bash
+        run: |
+          docker load -i $DOCKER_IMAGE_TAR
+          echo "Loaded cached image for testing: $BRANCH_NAME"
+          echo docker iamge ls -a
+
+      - name: Run dataset tests
+        shell: bash
+        run: |
+          # Enable color output
+          export TERM=xterm-color
+          export TERM=xterm-256color
+
+          # Run pytest in docker
+          .github/scripts/run_pytest_container.sh \
+          "$DOCKER_VOLUME_MOUNTS" \
+          "$BRANCH_NAME" \
+          "$CONTAINER_PYTEST_RESULTS" \
+          "tests/test_datasets/test_readers/test_data_split.py" \
+          "$BASH_RESULTS" \
+          "$PYTEST_RESULTS" \
+          "test-data-split"
+
+  test-extraction:
+    needs: [test-readers, test-trackers, build-and-push]
+    runs-on: self-hosted
+    env: 
+      BRANCH_NAME: ${{ needs.build-and-push.outputs.branch_name }}
+      DOCKER_IMAGE_TAR: ${{ needs.build-and-push.outputs.docker_image_tar }}
+      DOCKER_VOLUME_MOUNTS: ${{ needs.build-and-push.outputs.docker_volumes }}
+      BASH_RESULTS: ${{ needs.build-and-push.outputs.bash_results }}
+      PYTEST_RESULTS: ${{ needs.build-and-push.outputs.pytest_results }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Load cached image
+        shell: bash
+        run: |
+          docker load -i $DOCKER_IMAGE_TAR
+          echo "Loaded cached image for testing: $BRANCH_NAME"
+          echo docker iamge ls -a
+
+      - name: Run dataset tests
+        shell: bash
+        run: |
+          # Enable color output
+          export TERM=xterm-color
+          export TERM=xterm-256color
+
+          # Run pytest in docker
+          .github/scripts/run_pytest_container.sh \
+          "$DOCKER_VOLUME_MOUNTS" \
+          "$BRANCH_NAME" \
+          "$CONTAINER_PYTEST_RESULTS" \
+          "tests/test_datasets/test_readers/test_extraction.py" \
+          "$BASH_RESULTS" \
+          "$PYTEST_RESULTS" \
+          "test-extraction"
+
+  test-preprocessors:
+    needs: [test-extraction, build-and-push]
+    runs-on: self-hosted
+    env: 
+      BRANCH_NAME: ${{ needs.build-and-push.outputs.branch_name }}
+      DOCKER_IMAGE_TAR: ${{ needs.build-and-push.outputs.docker_image_tar }}
+      DOCKER_VOLUME_MOUNTS: ${{ needs.build-and-push.outputs.docker_volumes }}
+      BASH_RESULTS: ${{ needs.build-and-push.outputs.bash_results }}
+      PYTEST_RESULTS: ${{ needs.build-and-push.outputs.pytest_results }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Load cached image
+        shell: bash
+        run: |
+          docker load -i $DOCKER_IMAGE_TAR
+          echo "Loaded cached image for testing: $BRANCH_NAME"
+          echo docker iamge ls -a
+
+      - name: Run dataset tests
+        shell: bash
+        run: |
+          # Enable color output
+          export TERM=xterm-color
+          export TERM=xterm-256color
+
+          # Run pytest in docker
+          .github/scripts/run_pytest_container.sh \
+          "$DOCKER_VOLUME_MOUNTS" \
+          "$BRANCH_NAME" \
+          "$CONTAINER_PYTEST_RESULTS" \
+          "tests/test_datasets/test_readers/test_preprocessors.py" \
+          "$BASH_RESULTS" \
+          "$PYTEST_RESULTS" \
+          "test-preprocessors"
+
+  test-feature-engineering:
+    needs: [test-extraction, build-and-push]
+    runs-on: self-hosted
+    env: 
+      BRANCH_NAME: ${{ needs.build-and-push.outputs.branch_name }}
+      DOCKER_IMAGE_TAR: ${{ needs.build-and-push.outputs.docker_image_tar }}
+      DOCKER_VOLUME_MOUNTS: ${{ needs.build-and-push.outputs.docker_volumes }}
+      BASH_RESULTS: ${{ needs.build-and-push.outputs.bash_results }}
+      PYTEST_RESULTS: ${{ needs.build-and-push.outputs.pytest_results }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Load cached image
+        shell: bash
+        run: |
+          docker load -i $DOCKER_IMAGE_TAR
+          echo "Loaded cached image for testing: $BRANCH_NAME"
+          echo docker iamge ls -a
+
+      - name: Run dataset tests
+        shell: bash
+        run: |
+          # Enable color output
+          export TERM=xterm-color
+          export TERM=xterm-256color
+
+          # Run pytest in docker
+          .github/scripts/run_pytest_container.sh \
+          "$DOCKER_VOLUME_MOUNTS" \
+          "$BRANCH_NAME" \
+          "$CONTAINER_PYTEST_RESULTS" \
+          "tests/test_datasets/test_readers/test_feature_engine.py" \
+          "$BASH_RESULTS" \
+          "$PYTEST_RESULTS" \
+          "test-feature-engineering"
+
+  test-discretizer:
+    needs: [test-extraction, build-and-push]
+    runs-on: self-hosted
+    env: 
+      BRANCH_NAME: ${{ needs.build-and-push.outputs.branch_name }}
+      DOCKER_IMAGE_TAR: ${{ needs.build-and-push.outputs.docker_image_tar }}
+      DOCKER_VOLUME_MOUNTS: ${{ needs.build-and-push.outputs.docker_volumes }}
+      BASH_RESULTS: ${{ needs.build-and-push.outputs.bash_results }}
+      PYTEST_RESULTS: ${{ needs.build-and-push.outputs.pytest_results }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Load cached image
+        shell: bash
+        run: |
+          docker load -i $DOCKER_IMAGE_TAR
+          echo "Loaded cached image for testing: $BRANCH_NAME"
+          echo docker iamge ls -a
+
+      - name: Run dataset tests
+        shell: bash
+        run: |
+          # Enable color output
+          export TERM=xterm-color
+          export TERM=xterm-256color
+
+          # Run pytest in docker
+          .github/scripts/run_pytest_container.sh \
+          "$DOCKER_VOLUME_MOUNTS" \
+          "$BRANCH_NAME" \
+          "$CONTAINER_PYTEST_RESULTS" \
+          "tests/test_datasets/test_readers/test_discretizer.py" \
+          "$BASH_RESULTS" \
+          "$PYTEST_RESULTS" \
+          "test-discretizer"
+
+  test-options:
+    needs: [test-preprocessors, test-feature-engineering, build-and-push]
+    runs-on: self-hosted
+    env: 
+      BRANCH_NAME: ${{ needs.build-and-push.outputs.branch_name }}
+      DOCKER_IMAGE_TAR: ${{ needs.build-and-push.outputs.docker_image_tar }}
+      DOCKER_VOLUME_MOUNTS: ${{ needs.build-and-push.outputs.docker_volumes }}
+      BASH_RESULTS: ${{ needs.build-and-push.outputs.bash_results }}
+      PYTEST_RESULTS: ${{ needs.build-and-push.outputs.pytest_results }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Load cached image
+        shell: bash
+        run: |
+          docker load -i $DOCKER_IMAGE_TAR
+          echo "Loaded cached image for testing: $BRANCH_NAME"
+          echo docker iamge ls -a
+
+      - name: Run dataset tests
+        shell: bash
+        run: |
+          # Enable color output
+          export TERM=xterm-color
+          export TERM=xterm-256color
+
+          # Run pytest in docker
+          .github/scripts/run_pytest_container.sh \
+          "$DOCKER_VOLUME_MOUNTS" \
+          "$BRANCH_NAME" \
+          "$CONTAINER_PYTEST_RESULTS" \
+          "tests/test_datasets/test_readers/test_options" \
+          "$BASH_RESULTS" \
+          "$PYTEST_RESULTS" \
+          "test-parameters"
+
 
   test-preprocessing:
     needs: [setup-fixtures, build-and-push]
