@@ -1258,18 +1258,16 @@ class EventReader():
             self._csv_handle = dict()
             for csv_name, kwargs in self._event_csv_kwargs.items():
                 file_handle = Path(dataset_folder, csv_name).open("rb")
-                self._csv_reader[csv_name] = pd.read_csv(file_handle,
-                                                         iterator=True,
-                                                         na_values=[''],
-                                                         keep_default_na=False,
-                                                         chunksize=chunksize,
-                                                         low_memory=False,
-                                                         **kwargs)
+                self._csv_reader[csv_name] = pd.read_csv(
+                    file_handle,
+                    iterator=True,
+                    skiprows=range(1, self._tracker.count_subject_events[csv_name]),
+                    na_values=[''],
+                    keep_default_na=False,
+                    chunksize=chunksize,
+                    low_memory=False,
+                    **kwargs)
                 self._csv_handle[csv_name] = file_handle
-            if subject_ids is None:
-                # If subject ids is specified we need to start from the begining again
-                # Since the new subjects might be in the first chunks
-                self._init_reader()
 
         self._convert_datetime = ["INTIME", "CHARTTIME", "OUTTIME"]
         resource_folder = Path(dataset_folder, "resources")
@@ -1289,26 +1287,6 @@ class EventReader():
             True if all chunks have been read, False otherwise.
         """
         return self._done
-
-    def _init_reader(self):
-        """
-        Initialize the reader by skipping rows according to the tracker if it exists.
-        """
-        info_io(f"Starting reader initialization.", verbose=self._verbose)
-        header = "Initializing reader and starting at row:\n"
-        msg = list()
-        for csv in self._event_csv_kwargs:
-            try:
-                with self._lock:
-                    n_chunks = self._tracker.count_subject_events[csv] // self._chunksize
-                    skip_rows = self._tracker.count_subject_events[csv] % self._chunksize
-                [len(self._csv_reader[csv].get_chunk()) for _ in range(n_chunks)]  # skipping chunks
-                self.event_csv_skip_rows[csv] = skip_rows  # rows to skip in first chunk
-                with self._lock:
-                    msg.append(f"{csv}: {self._tracker.count_subject_events[csv]}")
-            except:
-                self._csv_handle[csv].close()
-        info_io(header + " - ".join(msg), verbose=self._verbose)
 
     def get_chunk(self) -> tuple:
         """
@@ -1335,6 +1313,7 @@ class EventReader():
                     self._lo_thread_done[csv_name] = True
 
             events_df = self._csv_reader[csv_name].get_chunk()
+            events_df.index += self._tracker.count_subject_events[csv_name]
 
             # If start index exceeds last occurence of any subject, stop reader
             if self._lo_thread_done[csv_name] and events_df.index[0] >= self._last_occurrence[
