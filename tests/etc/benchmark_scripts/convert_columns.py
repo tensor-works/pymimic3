@@ -1,12 +1,15 @@
-import pandas as pd
 import sys
+import os
+import pandas as pd
 from pathlib import Path
 from yaspin import yaspin
+from tests.pytest_utils.reporting import nullyaspin
 from datasets.mimic_utils import upper_case_column_names
 
 if __name__ == "__main__":
     demoDataDir = Path(sys.argv[1])
-    with yaspin(color="green", text="Converting columns to uppercase") as sp:
+    with nullyaspin(f"Converting columns to uppercase...") if os.getenv('GITHUB_ACTIONS') else \
+         yaspin(color="green", text=f"Converting columns to uppercase...") as sp:
         try:
             for csv in demoDataDir.iterdir():
                 sp.text = f"Upper casing columns in {csv.name}"

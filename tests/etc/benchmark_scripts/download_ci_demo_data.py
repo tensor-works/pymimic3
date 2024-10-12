@@ -2,6 +2,8 @@ import os
 import gdown
 import subprocess
 from yaspin import yaspin
+from tests.pytest_utils.reporting import nullyaspin
+from colorama import Fore, Style
 from pathlib import Path
 
 # Google drive location
@@ -15,7 +17,8 @@ data_folder.mkdir(parents=True, exist_ok=True)
 save_file_path = Path(data_folder, "mimiciii-demo.tar.xz")
 url = f'https://drive.google.com/uc?id={google_id}'
 
-with yaspin(color="green", text="Downloading MIMIC-III demo dataset of reduced size") as sp:
+with nullyaspin("Downloading MIMIC-III demo dataset of reduced size...") if os.getenv('GITHUB_ACTIONS') else \
+     yaspin(color="green", text="Downloading MIMIC-III demo dataset of reduced size...") as sp:
     try:
         gdown.download(url=str(url), output=str(save_file_path), quiet=False)
         sp.text = "Download complete"

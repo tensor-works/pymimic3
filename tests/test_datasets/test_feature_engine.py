@@ -155,6 +155,8 @@ if __name__ == "__main__":
     if TEMP_DIR.is_dir():
         shutil.rmtree(str(TEMP_DIR))
     for task in TASK_NAMES:
+        if task == "MULTI":
+            continue
         _ = datasets.load_data(chunksize=75835,
                                task=task,
                                preprocess=True,

@@ -6,6 +6,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from colorama import Fore, Style
 from yaspin import yaspin
+from tests.pytest_utils.reporting import nullyaspin
 
 load_dotenv()
 
@@ -81,7 +82,8 @@ if __name__ == "__main__":
         else:
             print(f"{Fore.BLUE}Engineering data for task: {task}.{Style.RESET_ALL}")
 
-        with yaspin(color="green", text=f"Engineering data...") as sp:
+        with nullyaspin(f"Engineering data...") if os.getenv('GITHUB_ACTIONS') else \
+             yaspin(color="green", text=f"Engineering data...") as sp:
             try:
                 reader = readers[task](dataset_dir=processed_paths[task],
                                        listfile=Path(processed_paths[task], "listfile.csv"))

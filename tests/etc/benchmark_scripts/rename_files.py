@@ -5,14 +5,18 @@ import sys
 import pandas as pd
 from dotenv import load_dotenv
 from yaspin import yaspin
+from tests.pytest_utils.reporting import nullyaspin
+from colorama import Fore, Style
 from pathlib import Path
 
 load_dotenv()
 
 if __name__ == "__main__":
     extractedDir = Path(sys.argv[1])
+
     # I want to rename the files episodeX.csv and episodeX_timeseries.csv by replacing X, which in this case is a random number by the icustay
-    with yaspin(color="green", text="Converting file names") as sp:
+    with nullyaspin("Converting file names...") if os.getenv('GITHUB_ACTIONS') else \
+         yaspin(color="green", text="Converting file names...") as sp:
         try:
             for subject_dir in extractedDir.iterdir():
                 sp.text = f"Converting file names in {subject_dir.name}"
