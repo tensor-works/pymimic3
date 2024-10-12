@@ -9,25 +9,29 @@ BASH_RESULTS="${5}"
 PYTEST_RESULTS="${6}"
 OUTPUT_FILENAME="${7}"
 
-# For echoing
-FORMATTED_MOUNTS=$(echo "$DOCKER_VOLUME_MOUNTS" | sed 's/ -v /\n  -v /g')
-
 RED='\033[31;1m'
 BLUE='\033[34;1m'
 LIGHT_BLUE='\033[94m'
 GREEN='\033[32;1m'
 RESET='\033[0m'
 
+# For echoing
+FORMATTED_MOUNTS=$(echo "$DOCKER_VOLUME_MOUNTS" | sed "s/ -v /\n  \\${LIGHTBLUE} /g")
+
 echo -e ""
-echo -e "${BLUE}=========== .github/scripts/run_container.sh ================"
+echo -e "${BLUE}=========== .github/scripts/run_pytest_container.sh ================"
 echo -e "${BLUE}- Docker volume: ${LIGHT_BLUE}$FORMATTED_MOUNTS"
 echo -e "${BLUE}- Branch name: ${LIGHT_BLUE}$BRANCH_NAME"
-echo -e "${BLUE}- Container pytest results: ${LIGHT_BLUE}$CONTAIER_PYTEST_RESULTS"
+echo -e "${BLUE}- Container pytest results: ${LIGHT_BLUE}$CONTAINER_PYTEST_RESULTS"
 echo -e "${BLUE}- Pytest module path: ${LIGHT_BLUE}$PYTEST_MODULE_PATH"
 echo -e "${BLUE}- Bash results: ${LIGHT_BLUE}$BASH_RESULTS"
 echo -e "${BLUE}- Pytest results: ${LIGHT_BLUE}$PYTEST_RESULTS"
 echo -e "${BLUE}- Output filename: ${LIGHT_BLUE}$OUTPUT_FILENAME${RESET}"
-echo -e ""
+echo -e "${BLUE}----------- Artifacts and logs -------------------------------------"
+echo -e "${BLUE}Log artifact located at:\n${LIGHT_BLUE}$BASH_RESULTS/$OUTPUT_FILENAME.txt${RESET}"
+echo -e "${BLUE}Pytest junit artfact created at:\n${LIGHT_BLUE}$PYTEST_RESULTS/$OUTPUT_FILENAME.xml${RESET}"
+echo -e "${BLUE}Pytest html artfact created at:\n${LIGHT_BLUE}$PYTEST_RESULTS/$OUTPUT_FILENAME.html${RESET}"
+
 
 set -o pipefail
 
@@ -67,10 +71,6 @@ docker run $DOCKER_VOLUME_MOUNTS \
 
 # Printing and handling the exit status
 echo -e "${BLUE}---------- Exit status: $test_status--------------------------------${RESET}"
-echo -e "${BLUE}Log artifact located at:\n${LIGHT_BLUE}$BASH_RESULTS/$OUTPUT_FILENAME.txt${RESET}"
-echo -e "${BLUE}Pytest junit artfact created at:\n${LIGHT_BLUE}$PYTEST_RESULTS/$OUTPUT_FILENAME.xml${RESET}"
-echo -e "${BLUE}Pytest html artfact created at:\n${LIGHT_BLUE}$PYTEST_RESULTS/$OUTPUT_FILENAME.html${RESET}"
-
 if [ $test_status -ne 0 ]; then
     echo "${BLUE}The command failed.${RESET}"
     exit $test_status

@@ -7,14 +7,14 @@ COMMAND="${3}"
 BASH_RESULTS="${4}"
 OUTPUT_FILENAME="${5}"
 
-# For echoing
-FORMATTED_MOUNTS=$(echo "$DOCKER_VOLUME_MOUNTS" | sed 's/ -v /\n  -v /g')
-
 RED='\033[31;1m'
 BLUE='\033[34;1m'
 LIGHT_BLUE='\033[94m'
 GREEN='\033[32;1m'
 RESET='\033[0m'
+
+# For echoing
+FORMATTED_MOUNTS=$(echo "$DOCKER_VOLUME_MOUNTS" | sed "s/ -v /\n  \\${LIGHTBLUE} /g")
 
 echo -e ""
 echo -e "${BLUE}=========== .github/scripts/run_container.sh ================"
@@ -23,7 +23,9 @@ echo -e "${BLUE}- Branch name: ${LIGHT_BLUE}$BRANCH_NAME"
 echo -e "${BLUE}- Command: ${LIGHT_BLUE}$COMMAND"
 echo -e "${BLUE}- Bash results: ${LIGHT_BLUE}$BASH_RESULTS"
 echo -e "${BLUE}- Output filename: ${LIGHT_BLUE}$OUTPUT_FILENAME${RESET}"
-echo -e ""
+echo -e "${BLUE}----------- Artifacts and logs ------------------------------"
+echo -e "${BLUE}Log artifact located at:${LIGHT_BLUE} \
+
 
 set -o pipefail
 
@@ -46,7 +48,6 @@ test_status=$?
 
 # Printing and handling the exit status
 echo -e "${BLUE}---------- Exit status: $test_status --------------------------------"
-echo -e "${BLUE}Log artifact located at:${LIGHT_BLUE} \
     $BASH_RESULTS/$OUTPUT_FILENAME.txt${RESET}"
 if [ $test_status -ne 0 ]; then
     echo "${RED}The command failed.${RESET}"
