@@ -630,7 +630,7 @@ jobs:
 
 
   test-preprocessing:
-    needs: [setup-fixtures, build-and-push]
+    needs: [test-readers, build-and-push]
     runs-on: self-hosted
     env: 
       BRANCH_NAME: ${{ needs.build-and-push.outputs.branch_name }}

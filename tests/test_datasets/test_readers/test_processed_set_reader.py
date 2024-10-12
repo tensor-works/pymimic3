@@ -105,7 +105,7 @@ def test_read_sample(task_name: str, reader_flavour: str,
         reader = engineered_readers[task_name]  # Testing basic read function
     tests_io(f"Test case read sample for {reader_flavour} task {task_name}", level=0)
     # 10017: Single stay
-    # 40124: Multiple stays
+    # 41976: Multiple stays
 
     # Testing without reading ids and timestamps
     check_sample(reader.read_sample(10017),
@@ -113,7 +113,7 @@ def test_read_sample(task_name: str, reader_flavour: str,
                  read_timestamps=False,
                  flavour=reader_flavour,
                  task_name=task_name)
-    check_sample(reader.read_sample(40124),
+    check_sample(reader.read_sample(41976),
                  read_ids=False,
                  read_timestamps=False,
                  flavour=reader_flavour,
@@ -121,7 +121,7 @@ def test_read_sample(task_name: str, reader_flavour: str,
     tests_io(f"Suceeded testing read sample for task {task_name} without ids and timestamps passed")
 
     # Testing with reading ids and without timestamps
-    check_sample(reader.read_sample(40124, read_ids=True),
+    check_sample(reader.read_sample(41976, read_ids=True),
                  read_ids=True,
                  read_timestamps=False,
                  flavour=reader_flavour,
@@ -135,14 +135,14 @@ def test_read_sample(task_name: str, reader_flavour: str,
         f"Suceeded testing read sample for task {task_name} with ids and without timestamps passed")
 
     # Testing convert to numpy on read
-    check_sample(reader.read_sample(40124, data_type=np.ndarray),
+    check_sample(reader.read_sample(41976, data_type=np.ndarray),
                  read_ids=False,
                  read_timestamps=False,
                  flavour=reader_flavour,
                  data_type=np.ndarray,
                  task_name=task_name)
 
-    check_sample(reader.read_sample(40124, data_type=pd.DataFrame),
+    check_sample(reader.read_sample(41976, data_type=pd.DataFrame),
                  read_ids=False,
                  read_timestamps=False,
                  flavour=reader_flavour,
@@ -155,7 +155,7 @@ def test_read_sample(task_name: str, reader_flavour: str,
 def test_read_sample_with_ds(task_name: str, discretized_readers: Dict[str, ProcessedSetReader]):
     # Testing deep supervision reads
     # 10017: Single stay
-    # 40124: Multiple stays
+    # 41976: Multiple stays
     tests_io(
         f"Test case read discretized sample with deep supervision for discretized for task {task_name}",
         level=0)
@@ -168,7 +168,7 @@ def test_read_sample_with_ds(task_name: str, discretized_readers: Dict[str, Proc
                  read_timestamps=False,
                  flavour="discretized",
                  task_name=task_name)
-    check_sample(reader.read_sample(40124, read_masks=True),
+    check_sample(reader.read_sample(41976, read_masks=True),
                  read_ids=False,
                  read_masks=True,
                  read_timestamps=False,
@@ -184,7 +184,7 @@ def test_read_sample_with_ds(task_name: str, discretized_readers: Dict[str, Proc
                  read_timestamps=False,
                  flavour="discretized",
                  task_name=task_name)
-    check_sample(reader.read_sample(40124, read_masks=True, read_ids=True),
+    check_sample(reader.read_sample(41976, read_masks=True, read_ids=True),
                  read_ids=True,
                  read_masks=True,
                  read_timestamps=False,
@@ -244,7 +244,7 @@ def test_read_samples(task_name: str, reader_flavour: str,
         reader = engineered_readers[task_name]  # Testing basic read function
     tests_io(f"Test case read samples for {reader_flavour} for task {task_name}", level=0)
     # Testing without reading ids and timestamps
-    check_samples(reader.read_samples([10017, 40124]),
+    check_samples(reader.read_samples([10017, 41976]),
                   read_ids=False,
                   read_timestamps=False,
                   flavour=reader_flavour,
@@ -263,7 +263,7 @@ def test_read_samples(task_name: str, reader_flavour: str,
              " without ids and timestamps passed")
 
     # Testing with reading ids but without timestamps
-    check_samples(reader.read_samples([10017, 40124], read_ids=True),
+    check_samples(reader.read_samples([10017, 41976], read_ids=True),
                   read_timestamps=False,
                   read_ids=True,
                   flavour=reader_flavour,
@@ -282,14 +282,14 @@ def test_read_samples(task_name: str, reader_flavour: str,
              f" {task_name} with ids and without timestamps passed")
 
     # Testing convert to numpy on read
-    check_samples(reader.read_samples([40124, 10017], data_type=np.ndarray),
+    check_samples(reader.read_samples([41976, 10017], data_type=np.ndarray),
                   read_ids=False,
                   read_timestamps=False,
                   flavour=reader_flavour,
                   data_type=np.ndarray,
                   task_name=task_name)
 
-    check_samples(reader.read_samples([40124, 10017], data_type=pd.DataFrame),
+    check_samples(reader.read_samples([41976, 10017], data_type=pd.DataFrame),
                   read_ids=False,
                   read_timestamps=False,
                   flavour=reader_flavour,
@@ -306,7 +306,7 @@ def test_read_samples_with_ts(task_name: str, engineered_readers: Dict[str, Proc
     reader = engineered_readers[task_name]
     # Testing with reading ids and timestamps
     # Testing without reading IDs but with timestamps
-    check_samples(reader.read_samples([10017, 40124], read_timestamps=True),
+    check_samples(reader.read_samples([10017, 41976], read_timestamps=True),
                   read_ids=False,
                   read_timestamps=True,
                   flavour="engineered",
@@ -327,7 +327,7 @@ def test_read_samples_with_ts(task_name: str, engineered_readers: Dict[str, Proc
              f" with timestamps for task {task_name}")
 
     # Testing with reading IDs and timestamps
-    check_samples(reader.read_samples([10017, 40124], read_ids=True, read_timestamps=True),
+    check_samples(reader.read_samples([10017, 41976], read_ids=True, read_timestamps=True),
                   read_timestamps=True,
                   read_ids=True,
                   flavour="engineered",
@@ -356,7 +356,7 @@ def test_read_samples_with_ds(task_name: str, discretized_readers: Dict[str, Pro
     reader = discretized_readers[task_name]
 
     # Testing without reading IDs and timestamps
-    check_samples(reader.read_samples([10017, 40124], read_masks=True),
+    check_samples(reader.read_samples([10017, 41976], read_masks=True),
                   read_ids=False,
                   read_masks=True,
                   read_timestamps=False,
@@ -378,7 +378,7 @@ def test_read_samples_with_ds(task_name: str, discretized_readers: Dict[str, Pro
     tests_io(f"Succeeded testing read samples without IDs and timestamps")
 
     # Testing with reading IDs but without timestamps
-    check_samples(reader.read_samples([10017, 40124], read_ids=True, read_masks=True),
+    check_samples(reader.read_samples([10017, 41976], read_ids=True, read_masks=True),
                   read_ids=True,
                   read_timestamps=False,
                   read_masks=True,
@@ -563,26 +563,42 @@ def test_random_samples_with_ds(task_name: str, discretized_readers: Dict[str, P
 def test_to_numpy(task_name: str, reader_flavour: str,
                   discretized_readers: Dict[str, ProcessedSetReader],
                   engineered_readers: Dict[str, ProcessedSetReader]):
+
+    # TODO! Implement multi readers
     if task_name == "MULTI":
-        # TODO! Implement multi readers
         return
+
+    # Imputation is done inside the discretizer
     if reader_flavour == "discretized":
         reader = discretized_readers[task_name]
         imputer = None
+    # No MULTI for engineered since its only used by DNNs
     elif reader_flavour == "engineered":
         if task_name == "MULTI":
             return
         reader = engineered_readers[task_name]
         imputer = PartialImputer().fit_reader(reader)
+
+    # When running on reduced dataset, there are only 18 subjects for IHM and PHENO
+    n_samples = 200
+    if task_name in ["IHM", "PHENO"]:
+        n_samples = 10
+
+    # Prepare
     tests_io(f"Test case for to_numpy for task {task_name}", level=0)
     scaler = MinMaxScaler(imputer=imputer).fit_reader(reader)
 
-    dataset = reader.to_numpy(200, scaler=scaler, imputer=imputer, bining="custom")
+    # => Read the samples
+    dataset = reader.to_numpy(n_samples, scaler=scaler, imputer=imputer, bining="custom")
+
+    # => Assert n samples (subjects)
     for prefix in dataset:
-        # Assert 10 samples
-        assert dataset[prefix].shape[0] == 200
+        assert dataset[prefix].shape[0] == n_samples
+
     tests_io(f"Succeeded in testing retriving limited amount of samples"
              f" to_numpy for {reader_flavour} for task {task_name}")
+
+    # => Check sample content
     for prefix in dataset:
         dataset[prefix] = [dataset[prefix][index] for index in range(dataset[prefix].shape[0])]
 
@@ -740,7 +756,7 @@ if __name__ == "__main__":
     proc_reader_dict = dict()
     eng_reader_dict = dict()
     disc_reader_dict = dict()
-    for task_name in ["DECOMP"]:  # TASK_NAMES:
+    for task_name in TASK_NAMES:
         proc_reader = datasets.load_data(chunksize=75835,
                                          source_path=TEST_DATA_DEMO,
                                          storage_path=SEMITEMP_DIR,
@@ -762,11 +778,9 @@ if __name__ == "__main__":
                                             engineer=True,
                                             task=task_name)
             eng_reader_dict[task_name] = eng_reader
-            '''
             test_random_samples_with_ts(task_name, eng_reader_dict)
             test_read_sample_with_ts(task_name, eng_reader_dict)
             test_read_samples_with_ts(task_name, eng_reader_dict)
-            '''
         else:
             eng_reader_dict[task_name] = None
         if task_name in ["DECOMP", "LOS"]:
@@ -776,12 +790,9 @@ if __name__ == "__main__":
                                              discretize=True,
                                              deep_supervision=True,
                                              task=task_name)
-            '''
             test_random_samples_with_ds(task_name, disc_reader_dict)
             test_read_sample_with_ds(task_name, disc_reader_dict)
             test_read_samples_with_ds(task_name, disc_reader_dict)
-            '''
-        '''
         for flavour in ["preprocessed", "engineered", "discretized"]:
             test_random_samples(task_name, flavour, proc_reader_dict, eng_reader_dict,
                                 disc_reader_dict)
@@ -790,7 +801,6 @@ if __name__ == "__main__":
             test_read_samples(task_name, flavour, proc_reader_dict, eng_reader_dict,
                               disc_reader_dict)
             ...
-        '''
         for flavour in ["engineered", "discretized"]:
             test_to_numpy(task_name, flavour, disc_reader_dict, eng_reader_dict)
 
