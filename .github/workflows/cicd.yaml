@@ -591,7 +591,7 @@ jobs:
           "$PYTEST_RESULTS" \
           "test-discretizer"
 
-  test-options:
+  test-parameters:
     needs: [test-preprocessors, test-feature-engineering, build-and-push]
     runs-on: self-hosted
     env: 
@@ -704,7 +704,7 @@ jobs:
           "test-metrics"
 
   test-models:
-    needs: [build-and-push, test-metrics, test-datasets, test-preprocessing]
+    needs: [build-and-push, test-metrics, test-parameters, test-preprocessing]
     runs-on: self-hosted
     env: 
       BRANCH_NAME: ${{ needs.build-and-push.outputs.branch_name }}
