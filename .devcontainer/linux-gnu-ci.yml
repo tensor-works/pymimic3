@@ -32,4 +32,5 @@ dependencies:
       - river==0.21.1
       - torcheval==0.0.7
       - torchmetrics==1.4.0.post0
+      - tensorflow-addons 
 
