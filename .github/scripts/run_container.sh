@@ -25,7 +25,7 @@ echo -e "${BLUE}- Bash results: ${LIGHT_BLUE}$BASH_RESULTS"
 echo -e "${BLUE}- Output filename: ${LIGHT_BLUE}$OUTPUT_FILENAME${RESET}"
 echo -e "${BLUE}----------- Artifacts and logs ------------------------------"
 echo -e "${BLUE}Log artifact located at:${LIGHT_BLUE} \
-
+    $BASH_RESULTS/$OUTPUT_FILENAME.txt${RESET}"
 
 set -o pipefail
 
@@ -48,9 +48,8 @@ test_status=$?
 
 # Printing and handling the exit status
 echo -e "${BLUE}---------- Exit status: $test_status --------------------------------"
-    $BASH_RESULTS/$OUTPUT_FILENAME.txt${RESET}"
 if [ $test_status -ne 0 ]; then
-    echo "${RED}The command failed.${RESET}"
+    echo -e "${RED}The command failed.${RESET}"
     exit $test_status
 elif [ ! -f "$BASH_RESULTS/$OUTPUT_FILENAME.txt" ]; then
     echo "${RED}Log artifact not created. Expected location:\n \

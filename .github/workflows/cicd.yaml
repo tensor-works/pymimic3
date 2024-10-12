@@ -352,7 +352,7 @@ jobs:
           echo "Loaded cached image for testing: $BRANCH_NAME"
           echo docker iamge ls -a
 
-      - name: Run dataset tests
+      - name: Run reader tests
         shell: bash
         run: |
           # Enable color output
@@ -389,7 +389,7 @@ jobs:
           echo "Loaded cached image for testing: $BRANCH_NAME"
           echo docker iamge ls -a
 
-      - name: Run dataset tests
+      - name: Run tracker tests
         shell: bash
         run: |
           # Enable color output
@@ -401,7 +401,7 @@ jobs:
           "$DOCKER_VOLUME_MOUNTS" \
           "$BRANCH_NAME" \
           "$CONTAINER_PYTEST_RESULTS" \
-          "tests/test_datasets/test_readers/test_trackers" \
+          "tests/test_datasets/test_trackers" \
           "$BASH_RESULTS" \
           "$PYTEST_RESULTS" \
           "test-trackers"
@@ -426,7 +426,7 @@ jobs:
           echo "Loaded cached image for testing: $BRANCH_NAME"
           echo docker iamge ls -a
 
-      - name: Run dataset tests
+      - name: Run data split tests
         shell: bash
         run: |
           # Enable color output
@@ -463,7 +463,7 @@ jobs:
           echo "Loaded cached image for testing: $BRANCH_NAME"
           echo docker iamge ls -a
 
-      - name: Run dataset tests
+      - name: Run extraction tests
         shell: bash
         run: |
           # Enable color output
@@ -500,7 +500,7 @@ jobs:
           echo "Loaded cached image for testing: $BRANCH_NAME"
           echo docker iamge ls -a
 
-      - name: Run dataset tests
+      - name: Run preprocessor tests
         shell: bash
         run: |
           # Enable color output
@@ -537,7 +537,7 @@ jobs:
           echo "Loaded cached image for testing: $BRANCH_NAME"
           echo docker iamge ls -a
 
-      - name: Run dataset tests
+      - name: Run feature engineering tests
         shell: bash
         run: |
           # Enable color output
@@ -574,7 +574,7 @@ jobs:
           echo "Loaded cached image for testing: $BRANCH_NAME"
           echo docker iamge ls -a
 
-      - name: Run dataset tests
+      - name: Run discretizer tests
         shell: bash
         run: |
           # Enable color output
@@ -611,7 +611,7 @@ jobs:
           echo "Loaded cached image for testing: $BRANCH_NAME"
           echo docker iamge ls -a
 
-      - name: Run dataset tests
+      - name: Run parameter tests
         shell: bash
         run: |
           # Enable color output
