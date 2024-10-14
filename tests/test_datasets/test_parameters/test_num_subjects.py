@@ -31,7 +31,7 @@ def test_num_subjects_extraction(extracted_reader: ExtractedSetReader, extractio
 
     # Test on empty directory
     extracted_dir = Path(TEMP_DIR, "extracted")
-    for num_subjects in [10, 16]:
+    for num_subjects in [5, 11]:
         # Remove existing dir
         if extracted_dir.is_dir():
             shutil.rmtree(str(extracted_dir))
@@ -79,7 +79,7 @@ def test_num_subjects_preprocessing_only(task_name: str, extraction_style: str):
 
     # Test on empty directory
     processed_dir = Path(TEMP_DIR, "processed")
-    for num_subjects in [10, 16]:
+    for num_subjects in [5, 11]:
         if processed_dir.is_dir():
             shutil.rmtree(str(processed_dir))
         tests_io("-" * 100)
@@ -136,7 +136,7 @@ def test_num_subjects_engineer_only(task_name: str, extraction_style: str):
 
     # Test on empty directory
     engineered_dir = Path(TEMP_DIR, "engineered")
-    for num_subjects in [10, 16]:
+    for num_subjects in [5, 11]:
         if engineered_dir.is_dir():
             shutil.rmtree(engineered_dir)
         tests_io("-" * 100)
@@ -180,7 +180,7 @@ def test_num_subjects_process(task_name: str, extraction_style: str):
     tests_io(f"-> Succeeded in testing on existing directory.")
 
     # Test on empty directory
-    for num_subjects in [10, 16]:
+    for num_subjects in [5, 11]:
         if TEMP_DIR.is_dir():
             shutil.rmtree(str(Path(TEMP_DIR)))
         tests_io("-" * 100)
@@ -233,7 +233,7 @@ def test_num_subjects_engineer(task_name: str, extraction_style: str):
     tests_io(f"-> Succeeded in testing on existing directory.")
 
     # Test on empty directory
-    for num_subjects in [10, 16]:
+    for num_subjects in [5, 11]:
         if TEMP_DIR.is_dir():
             shutil.rmtree(TEMP_DIR)
         tests_io("-" * 100)
@@ -341,7 +341,7 @@ if __name__ == "__main__":
         if TEMP_DIR.is_dir():
             shutil.rmtree(str(TEMP_DIR))
         test_num_subjects_extraction(extraction_reader, extraction_style)
-        for task in [["IHM"]]:
+        for task in ["IHM"]:
             if not Path(SEMITEMP_DIR, "processed", task).is_dir():
                 reader = datasets.load_data(chunksize=75835,
                                             source_path=TEST_DATA_DEMO,

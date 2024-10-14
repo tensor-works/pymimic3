@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 from utils.IO import *
+from storable import NestedSqliteDict
 from tests.pytest_utils.general import assert_dataframe_equals
 from datasets.readers import ProcessedSetReader
 from tests.tsettings import *
@@ -120,14 +121,19 @@ def assert_subject_data_equals(subject_id: int,
             assert np.allclose(y_true["y_true"].values, np.squeeze(y.values))
 
         # Testing the preprocessing tracker at the same time
-        with shelve.open(str(Path(root_path, "progress"))) as db:
-            assert int(subject_id) in db["subjects"]
-            assert int(stay_id) in db["subjects"][subject_id]
-            assert db["subjects"][subject_id][stay_id] == len(y)
-            assert db["subjects"][subject_id]["total"] == sum([
-                lengths for stay_id, lengths in db["subjects"][subject_id].items()
-                if stay_id != "total"
+        with NestedSqliteDict(str(root_path / "progress")) as db:
+            assert int(subject_id) in db["subjects"], \
+                f"Subject {subject_id} not found in the database"
+            assert int(stay_id) in db["subjects"][int(subject_id)],\
+                f"Stay {stay_id} not found for subject {subject_id}"
+            assert db["subjects"][int(subject_id)][int(stay_id)] == len(y), \
+                f"Length mismatch for stay {stay_id} of subject {subject_id}"
+            total = sum([
+                lengths for stay, lengths in db["subjects"][int(subject_id)].items()
+                if stay != "total" and isinstance(stay, int)
             ])
+            assert db["subjects"][int(subject_id)]["total"] == total,\
+                f"Total mismatch for subject {subject_id}, {db['subjects'][int(subject_id)]}"
 
         assert_dataframe_equals(X.reset_index(),
                                 test_data, {"hours": "Hours"},

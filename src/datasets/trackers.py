@@ -249,7 +249,10 @@ class PreprocessingTracker():
                 if "no_deep_supervision" not in self.supervision_modes:
                     self.supervision_modes.append("no_deep_supervision")
             self.force_rerun = False
-            write_json(Path(str(self._path) + ".json"), self._read())
+            self._to_dict()
+
+    def _to_dict(self):
+        write_json(Path(str(self._path) + ".json"), self._read())
 
     @property
     def subject_ids(self) -> List[int]:

@@ -107,7 +107,7 @@ class NestedSqliteDict(SqliteDict):
             super().__setitem__(encoded_key, value)
 
     def _encode_value(self, value):
-        if hasattr(value, '_value'):  # ProxyValue
+        if isinstance(value, ProxyValue):
             return self._encode_value(value._value)
         elif isinstance(value, dict):
             return {self._encode_key(k): self._encode_value(v) for k, v in value.items()}
@@ -540,12 +540,11 @@ class ProxyDict(dict):
                 if k not in self or not isinstance(self[k], ProxyDict):
                     self[k] = ProxyDict(
                         self._encode_key(k),
-                        {},
+                        v,
                         self._get_callback,
                         self._set_callback,
                         self._store_total,
                     )
-                self[k].update(v)
             else:
                 self[k] = v
         return
@@ -939,10 +938,21 @@ if __name__ == "__main__":
         c = True
         _store_total = True
         d = None
-        e = {'a.f': 3}
+        e = {'a': 3}
         f = [4, 5]
 
     if Path("atest.sqlite").is_file():
         Path("atest.sqlite").unlink()
+    a = TestClass('atest.sqlite')
+    print(a.e)
+    a.e += {"a": 4}
+    print(a.e)
+    a.e.update({"a": {"b": 5}})
+    a.e.update({"a": {"c": 5}})
+    a.e.update({"b": {"o": 5}})
+
+    print(a.e)
+    del a
+
     a = TestClass('atest.sqlite')
     print(a.e)

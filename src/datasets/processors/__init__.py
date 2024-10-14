@@ -206,6 +206,7 @@ class AbstractProcessor(ABC):
                     with self._lock:
                         if not subject_id in self._tracker.subjects or overwrite:
                             self._tracker.subjects.update({subject_id: tracking_info[subject_id]})
+                            self._tracker._to_dict()
             else:
                 self._n_skip += 1
                 del tracking_info[subject_id]
