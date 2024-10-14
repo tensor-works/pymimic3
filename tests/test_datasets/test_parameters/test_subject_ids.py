@@ -47,13 +47,13 @@ def test_subject_ids_extraction(extracted_reader: ExtractedSetReader, subject_id
 
     # Sample subject from scratch and extract into empty dir
     extracted_dir = Path(TEMP_DIR, "extracted")
-    for num_subjects in [10, 16]:
+    subjects = deepcopy(subject_ids)
+    for num_subjects in [5, 11]:
         # Remove the extracted directory
         if extracted_dir.is_dir():
             shutil.rmtree(str(extracted_dir))
         # Sample subject ids
         curr_subjects = random.sample(subjects, num_subjects)
-        subjects = list(set(subjects) - set(curr_subjects))
         # Compare the extracted data with the test data
         tests_io("-" * 100)
         tests_io(
@@ -118,14 +118,13 @@ def test_subject_ids_preprocessing_only(task_name: str, subject_ids: list, extra
 
     # Sample subject from scratch and extract into empty dir
     processed_dir = Path(TEMP_DIR, "processed")
-
-    for num_subjects in [10, 16]:
+    subjects = deepcopy(subject_ids)
+    for num_subjects in [5, 11]:
         # Remove the processed directory
         if processed_dir.is_dir():
             shutil.rmtree(str(processed_dir))
         # Sample subject ids
         curr_subjects = random.sample(subjects, num_subjects)
-        subjects = list(set(subjects) - set(curr_subjects))
         # Compare the processed data
         tests_io("-" * 100)
         tests_io(
@@ -198,12 +197,12 @@ def test_subject_ids_engineer_only(task_name: str, subject_ids: list, extraction
 
     # Test on empty directory
     engineered_dir = Path(TEMP_DIR, "engineered")
-    for num_subjects in [10, 16]:
+    subjects = deepcopy(subject_ids)
+    for num_subjects in [5, 11]:
         if TEMP_DIR.is_dir():
             shutil.rmtree(engineered_dir)
         # Sample subject ids
         curr_subjects = random.sample(subjects, num_subjects)
-        subjects = list(set(subjects) - set(curr_subjects))
         # Compare the processed data
         tests_io("-" * 100)
         tests_io(
@@ -264,14 +263,13 @@ def test_subject_ids_preprocessing(task_name: str, subject_ids: list, extraction
 
     # Sample subject from scratch and extract into empty dir
     processed_dir = Path(TEMP_DIR, "processed")
-
-    for num_subjects in [10, 16]:
+    subjects = deepcopy(subject_ids)
+    for num_subjects in [5, 11]:
         # Remove the processed directory
         if processed_dir.is_dir():
             shutil.rmtree(str(processed_dir))
         # Sample subject ids
         curr_subjects = random.sample(subjects, num_subjects)
-        subjects = list(set(subjects) - set(curr_subjects))
         # Compare the processed data
         tests_io("-" * 100)
         tests_io(
@@ -337,12 +335,12 @@ def test_subject_ids_engineer(task_name: str, subject_ids: list, extraction_styl
 
     # Test on empty directory
     engineered_dir = Path(TEMP_DIR, "engineered")
-    for num_subjects in [10, 16]:
+    subjects = deepcopy(subject_ids)
+    for num_subjects in [5, 11]:
         if TEMP_DIR.is_dir():
             shutil.rmtree(engineered_dir)
         # Sample subject ids
         curr_subjects = random.sample(subjects, num_subjects)
-        subjects = list(set(subjects) - set(curr_subjects))
         # Compare the processed data
         tests_io("-" * 100)
         tests_io(
