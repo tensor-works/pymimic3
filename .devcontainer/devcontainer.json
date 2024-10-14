@@ -75,6 +75,7 @@
 	"customizations": {
 		"vscode": {
 			"extensions": [
+<<<<<<< HEAD
 				"ms-python.python",
 				"aaron-bond.better-comments",
 				"mikestead.dotenv",
@@ -95,6 +96,9 @@
 				"mechatroner.rainbow-csv",
 				"eeyore.yapf",
 				"github.vscode-github-actions"
+=======
+				"GitHub.copilot"
+>>>>>>> New database cannot be atomic
 			]
 		}
 	}
