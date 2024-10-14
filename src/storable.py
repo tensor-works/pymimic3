@@ -38,6 +38,9 @@ def atomic_operation(func):
     return wrapper
 
 
+import ast
+
+
 class NestedSqliteDict(SqliteDict):
     """
     A subclass of SqliteDict that supports nested dictionary operations.
@@ -82,87 +85,127 @@ class NestedSqliteDict(SqliteDict):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def __setitem__(self, key: str, value: Any):
+    def __setitem__(self, key, value):
+        encoded_key = self._encode_key(key)
+        value = self._encode_value(value)
         if isinstance(value, dict):
-            flat_items = list(self._flatten_dict(value, prefix=key))
-            existing_keys = set(self.keys_with_prefix(key))
-            keys_to_delete = existing_keys - set(k for k, _ in flat_items) - {key}
+            flat_items = list(self._flatten_dict(value, prefix=encoded_key))
+            existing_keys = set(self.keys_with_prefix(encoded_key))
+            keys_to_delete = existing_keys - set(k for k, _ in flat_items) - {encoded_key}
 
-            # Batch delete
             if keys_to_delete:
                 self._batch_delete(keys_to_delete)
 
-            # Batch insert/update
             if flat_items:
                 self._batch_update(flat_items)
             elif not value:
-                super().__setitem__(key, value)
+                super().__setitem__(encoded_key, dict(value))
         else:
-            keys_to_delete = set(self.keys_with_prefix(key)) - {key}
+            keys_to_delete = set(self.keys_with_prefix(encoded_key)) - {encoded_key}
             if keys_to_delete:
                 self._batch_delete(keys_to_delete)
-            super().__setitem__(key, value)
+            super().__setitem__(encoded_key, value)
 
-    def __getitem__(self, key: str) -> Any:
-        if self._is_nested_key(key):
-            return self._get_nested_dict(key)
-        return super().__getitem__(key)
+    def _encode_value(self, value):
+        if hasattr(value, '_value'):  # ProxyValue
+            return self._encode_value(value._value)
+        elif isinstance(value, dict):
+            return {self._encode_key(k): self._encode_value(v) for k, v in value.items()}
+        elif isinstance(value, list):
+            return [self._encode_value(v) for v in value]
+        return value
 
-    def __delitem__(self, key: str):
-        if self._is_nested_key(key):
-            keys_to_delete = self.keys_with_prefix(key + ".")
+    def __getitem__(self, key):
+        encoded_key = self._encode_key(key)
+        if self._is_nested_key(encoded_key):
+            return self._get_nested_dict(encoded_key)
+        try:
+            return super().__getitem__(encoded_key)
+        except KeyError as e:
+            self.print()
+            raise KeyError(f"Key {key} not found in the database {list(self.keys())}.")
+
+    def __delitem__(self, key):
+        encoded_key = self._encode_key(key)
+        if self._is_nested_key(encoded_key):
+            keys_to_delete = self.keys_with_prefix(encoded_key + ".")
             self._batch_delete(keys_to_delete)
         else:
-            super().__delitem__(key)
+            super().__delitem__(encoded_key)
 
-    def __contains__(self, key: str) -> bool:
-        return self._key_exists(key)
+    def __contains__(self, key):
+        encoded_key = self._encode_key(key)
+        return self._key_exists(encoded_key)
 
-    def _key_exists(self, key: str) -> bool:
-        if self._is_nested_key(key):
-            prefix = key + "."
+    def _key_exists(self, key):
+        encoded_key = self._encode_key(key)
+        if self._is_nested_key(encoded_key):
+            prefix = encoded_key + "."
             return bool(self.keys_with_prefix(prefix))
-        return super().__contains__(key)
+        return super().__contains__(encoded_key)
 
-    def _flatten_dict(self, d: Dict, prefix: str = '') -> List[Tuple[str, Any]]:
+    def _flatten_dict(self, d, prefix=''):
         items = []
         for k, v in d.items():
-            new_key = f"{prefix}{NESTING_INDICATOR}{k}" if prefix else k
+            encoded_k = self._encode_key(k)
+            new_key = f"{prefix}{NESTING_INDICATOR}{encoded_k}" if prefix else encoded_k
             if isinstance(v, dict):
                 items.extend(self._flatten_dict(v, new_key))
             else:
                 items.append((new_key, v))
         return items
 
-    def _is_nested_key(self, key: str) -> bool:
+    def _is_nested_key(self, key):
         prefix = key + NESTING_INDICATOR
         return bool(self.keys_with_prefix(prefix))
 
-    def _get_nested_dict(self, prefix: str) -> Dict:
+    def _get_nested_dict(self, prefix):
         result = {}
         for key in self.keys_with_prefix(prefix + NESTING_INDICATOR):
             parts = key[len(prefix) + 1:].split(NESTING_INDICATOR)
             current = result
             for part in parts[:-1]:
-                current = current.setdefault(part, {})
-            current[parts[-1]] = super().__getitem__(key)
+                decoded_part = self._decode_key(part)
+                current = current.setdefault(decoded_part, {})
+            decoded_last_part = self._decode_key(parts[-1])
+            current[decoded_last_part] = super().__getitem__(key)
         return result
 
-    def keys_with_prefix(self, prefix: str) -> List[str]:
+    def keys_with_prefix(self, prefix):
+        encoded_prefix = self._encode_key(prefix)
         query = f'SELECT key FROM "{self.tablename}" WHERE key LIKE ?'
         keys = [
             self.decode_key(key[0])
-            for key in self.conn.select(query, (f"{self.encode_key(prefix)}%",))
+            for key in self.conn.select(query, (f"{self.encode_key(encoded_prefix)}%",))
         ]
         return keys
 
-    def _batch_delete(self, keys: set):
-        query = f'DELETE FROM "{self.tablename}" WHERE key IN ({",".join("?" for _ in keys)})'
-        self.conn.execute(query, tuple(map(self.encode_key, keys)))
+    def _batch_delete(self, keys):
+        encoded_keys = [self._encode_key(key) for key in keys]
+        query = f'DELETE FROM "{self.tablename}" WHERE key IN ({",".join("?" for _ in encoded_keys)})'
+        self.conn.execute(query, tuple(map(self.encode_key, encoded_keys)))
 
-    def _batch_update(self, items: List[Tuple[str, Any]]):
+    def _batch_update(self, items):
+        encoded_items = [(self._encode_key(k), v) for k, v in items]
         query = f'INSERT OR REPLACE INTO "{self.tablename}" (key, value) VALUES (?, ?)'
-        self.conn.executemany(query, [(self.encode_key(k), self.encode(v)) for k, v in items])
+        self.conn.executemany(query,
+                              [(self.encode_key(k), self.encode(v)) for k, v in encoded_items])
+
+    def _encode_key(self, key):
+        if isinstance(key, int):
+            return f"__int__{str(key)}"
+        return str(key)
+
+    def _decode_key(self, key):
+        if key.startswith("__int__"):
+            return int(key[7:])
+        return key
+
+    def keys(self):
+        return [self._decode_key(key) for key in super().keys()]
+
+    def items(self):
+        return [(self._decode_key(k), v) for k, v in super().items()]
 
     def print(self):
         print("=== Printing ===")
@@ -447,11 +490,16 @@ class ProxyDict(dict):
                 total += value
         return total
 
+    def _encode_key(self, key):
+        if isinstance(key, int):
+            return f"{self._name}{NESTING_INDICATOR}__int__{key}"
+        return f"{self._name}{NESTING_INDICATOR}{key}"
+
     def _update_total(self, key, value):
         if isinstance(value, dict):
             value["total"] = self._init_total(value)
         if key in self:
-            cur_val = self._get_callback(f"{self._name}.{key}")
+            cur_val = self._get_callback(self._encode_key(key))
             if isinstance(cur_val, dict):
                 cur_val = cur_val["total"]
             if isinstance(value, dict):
@@ -463,8 +511,8 @@ class ProxyDict(dict):
             super().__setitem__("total", self["total"] + value)
 
     def __getitem__(self, key):
-        value = self._get_callback(f"{self._name}{NESTING_INDICATOR}{key}")
-        return wrap_value(f"{self._name}{NESTING_INDICATOR}{key}",
+        value = self._get_callback(self._encode_key(key))
+        return wrap_value(self._encode_key(key),
                           value,
                           self._get_callback,
                           self._set_callback,
@@ -475,11 +523,11 @@ class ProxyDict(dict):
         if self._store_total and key != "total":
             self._update_total(key, value)
         super().__setitem__(key, value)
-        self._set_callback(f"{self._name}{NESTING_INDICATOR}{key}", value)
+        self._set_callback(self._encode_key(key), value)
 
     def __delitem__(self, key):
         super().__delitem__(key)
-        self._set_callback(f"{self._name}{NESTING_INDICATOR}{key}", "\\delete")
+        self._set_callback(self._encode_key(key), "\\delete")
 
     def _set_self(self, value):
         self._set_callback(self._name, value)
@@ -491,7 +539,7 @@ class ProxyDict(dict):
             if isinstance(v, dict):
                 if k not in self or not isinstance(self[k], ProxyDict):
                     self[k] = ProxyDict(
-                        f"{self._name}{NESTING_INDICATOR}{k}",
+                        self._encode_key(k),
                         {},
                         self._get_callback,
                         self._set_callback,
@@ -639,6 +687,12 @@ class ProxyProperty:
         return self._value
 
     def __set__(self, obj, value):
+        if isinstance(value, ProxyDict):
+            value = dict(value)
+        elif isinstance(value, ProxyList):
+            value = list(value)
+        elif isinstance(value, ProxyValue):
+            value = value._value
         self._value = wrap_value(self._name,
                                  value,
                                  obj._get_callback,
@@ -860,6 +914,8 @@ if __name__ == "__main__":
     if Path("test.sqlite").is_file():
         Path("test.sqlite").unlink()
     test = TestClass('test.sqlite')
+    test.e[1] = 1
+    print(f"f: {test.f}")
     # test.e = {"a": {"a": 1, "b": 2}, "b": {"a": 2, "b": 4}}
     print(f"a: {test.a}")
     print(f"a: test.a + 1")

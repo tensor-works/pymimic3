@@ -26,6 +26,12 @@ class CountTestClass:
     _store_total: bool = True
 
 
+@storable
+class IntKeyTestClass:
+    int_key_dict: dict = {1: "one", 2: "two"}
+    mixed_key_dict: dict = {1: "one", "two": 2, 3: "three"}
+
+
 # Test the storable
 def test_storable_basics():
     tests_io("Test case basic capabilities of Storable.", level=0)
@@ -102,6 +108,7 @@ def test_dictionary_iadd():
     test_instance.subjects == {"a": 0, "b": 0}
 
     test_instance.subjects += {"a": 1, "b": 2}
+
     assert test_instance.subjects == {"a": 1, "b": 2}
 
     test_instance.subjects += {"a": 1}
@@ -410,6 +417,55 @@ def test_list_append():
     assert test_instance.subject_ids == ["a", "b", "c", "d"]
     # assert test_instance._progress["subject_ids"] == ["a", "b", "c", "d"]
     tests_io("Succeeded testing restoration of append list assignment.")
+
+
+def test_int_keys():
+    tests_io("Test case for integer keys in storable decorator.", level=0)
+
+    # Create an instance and modify the dictionaries
+    test_instance = IntKeyTestClass(Path(TEMP_DIR, "int_key_test"))
+    test_instance.int_key_dict[3] = "three"
+    test_instance.mixed_key_dict[4] = "four"
+
+    # Check immediate state
+    assert test_instance.int_key_dict == {1: "one", 2: "two", 3: "three"}
+    assert test_instance.mixed_key_dict == {1: "one", "two": 2, 3: "three", 4: "four"}
+    assert all(isinstance(key, int) for key in test_instance.int_key_dict.keys())
+    assert all(isinstance(key, (int, str)) for key in test_instance.mixed_key_dict.keys())
+    tests_io("Succeeded testing immediate state after modification.")
+
+    # Delete the instance and create a new one to test persistence
+    del test_instance
+    restored_instance = IntKeyTestClass(Path(TEMP_DIR, "int_key_test"))
+
+    # Check restored state
+    assert restored_instance.int_key_dict == {1: "one", 2: "two", 3: "three"}
+    assert restored_instance.mixed_key_dict == {1: "one", "two": 2, 3: "three", 4: "four"}
+    assert all(isinstance(key, int) for key in restored_instance.int_key_dict.keys())
+    assert all(isinstance(key, (int, str)) for key in restored_instance.mixed_key_dict.keys())
+    tests_io("Succeeded testing restored state after reloading.")
+
+    # Test nested dictionaries with integer keys
+    restored_instance.int_key_dict[4] = {1: "nested_one", 2: "nested_two"}
+    del restored_instance
+    nested_instance = IntKeyTestClass(Path(TEMP_DIR, "int_key_test"))
+
+    assert nested_instance.int_key_dict[4] == {1: "nested_one", 2: "nested_two"}
+    assert all(isinstance(key, int) for key in nested_instance.int_key_dict[4].keys())
+    tests_io("Succeeded testing nested dictionaries with integer keys.")
+
+    # Test updating with integer keys
+    nested_instance.int_key_dict.update({5: "five", 6: "six"})
+    assert nested_instance.int_key_dict[5] == "five" and nested_instance.int_key_dict[6] == "six"
+    assert all(isinstance(key, int) for key in nested_instance.int_key_dict.keys())
+    tests_io("Succeeded testing dictionary update with integer keys.")
+
+    # Test deleting with integer keys
+    del nested_instance.int_key_dict[1]
+    assert 1 not in nested_instance.int_key_dict
+    tests_io("Succeeded testing deletion of integer keys.")
+
+    tests_io("All integer key tests passed successfully.")
 
 
 def update_instance(instance, iterations, thread_id):
