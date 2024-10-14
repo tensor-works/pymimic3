@@ -4,7 +4,7 @@ import shutil
 from pathlib import Path
 from utils.IO import *
 # from storable import storable
-from trash1 import storable
+from storable import storable
 
 
 @storable

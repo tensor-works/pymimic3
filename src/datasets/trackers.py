@@ -263,7 +263,8 @@ class PreprocessingTracker():
         """
         if hasattr(self, "_progress"):
             return [
-                subject_id for subject_id in self._read("subjects").keys() if subject_id != "total"
+                subject_id for subject_id in self._get_callback("subjects").keys()
+                if subject_id != "total"
             ]
         return list()
 
@@ -279,7 +280,7 @@ class PreprocessingTracker():
         """
         if hasattr(self, "_progress"):
             return [
-                stay_id for subject_id, subject_data in self._read("subjects").items()
+                stay_id for subject_id, subject_data in self._get_callback("subjects").items()
                 if subject_id != "total" for stay_id in subject_data.keys() if stay_id != "total"
             ]
         return list()
@@ -297,7 +298,7 @@ class PreprocessingTracker():
         if hasattr(self, "_progress"):
             return sum([
                 subject_data["total"]
-                for subject_id, subject_data in self._read("subjects").items()
+                for subject_id, subject_data in self._get_callback("subjects").items()
                 if subject_id != "total"
             ])
         return 0
@@ -384,7 +385,8 @@ class DataSplitTracker():
         """
         if hasattr(self, "_progress"):
             return [
-                subject_id for subject_id in self._read("subjects").keys() if subject_id != "total"
+                subject_id for subject_id in self._get_callback("subjects").keys()
+                if subject_id != "total"
             ]
         return list()
 

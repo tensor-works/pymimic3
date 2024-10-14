@@ -9,6 +9,8 @@ from sqlitedict import SqliteDict
 from typing import Any, Dict, Tuple, List
 from functools import wraps
 
+NESTING_INDICATOR = "^"
+
 
 def atomic_operation(func):
 
@@ -86,7 +88,7 @@ class NestedSqliteDict(SqliteDict):
     def _flatten_dict(self, d: Dict, prefix: str = '') -> List[Tuple[str, Any]]:
         items = []
         for k, v in d.items():
-            new_key = f"{prefix}.{k}" if prefix else k
+            new_key = f"{prefix}{NESTING_INDICATOR}{k}" if prefix else k
             if isinstance(v, dict):
                 items.extend(self._flatten_dict(v, new_key))
             else:
@@ -94,13 +96,13 @@ class NestedSqliteDict(SqliteDict):
         return items
 
     def _is_nested_key(self, key: str) -> bool:
-        prefix = key + "."
+        prefix = key + NESTING_INDICATOR
         return bool(self.keys_with_prefix(prefix))
 
     def _get_nested_dict(self, prefix: str) -> Dict:
         result = {}
-        for key in self.keys_with_prefix(prefix + "."):
-            parts = key[len(prefix) + 1:].split(".")
+        for key in self.keys_with_prefix(prefix + NESTING_INDICATOR):
+            parts = key[len(prefix) + 1:].split(NESTING_INDICATOR)
             current = result
             for part in parts[:-1]:
                 current = current.setdefault(part, {})
@@ -401,8 +403,8 @@ class InterceptedDict(dict):
             super().__setitem__("total", self["total"] + value)
 
     def __getitem__(self, key):
-        value = self._get_callback(f"{self._name}.{key}")
-        return wrap_value(f"{self._name}.{key}",
+        value = self._get_callback(f"{self._name}{NESTING_INDICATOR}{key}")
+        return wrap_value(f"{self._name}{NESTING_INDICATOR}{key}",
                           value,
                           self._get_callback,
                           self._set_callback,
@@ -413,24 +415,23 @@ class InterceptedDict(dict):
         if self._store_total and key != "total":
             self._update_total(key, value)
         super().__setitem__(key, value)
-        self._set_callback(f"{self._name}.{key}", value)
+        self._set_callback(f"{self._name}{NESTING_INDICATOR}{key}", value)
 
     def __delitem__(self, key):
         super().__delitem__(key)
-        self._set_callback(f"{self._name}.{key}", "\\delete")
+        self._set_callback(f"{self._name}{NESTING_INDICATOR}{key}", "\\delete")
 
     def _set_self(self, value):
         self._set_callback(self._name, value)
         for k, v in value.items():
             super().__setitem__(k, v)
 
-    #
     def update(self, other):
         for k, v in other.items():
             if isinstance(v, dict):
                 if k not in self or not isinstance(self[k], InterceptedDict):
                     self[k] = InterceptedDict(
-                        f"{self._name}.{k}",
+                        f"{self._name}{NESTING_INDICATOR}{k}",
                         {},
                         self._get_callback,
                         self._set_callback,
@@ -644,7 +645,7 @@ def storable(cls):
 
     def _write(self, update_dict):
         with NestedSqliteDict(self._path) as db:
-            for k, value in self._flatten_dict(update_dict):
+            for k, value in update_dict.items():
                 if isinstance(value, InterceptedValue):
                     value = value._value
                 db[k] = value
@@ -660,16 +661,6 @@ def storable(cls):
     def _db_keys(self):
         with NestedSqliteDict(self._path) as db:
             return list(db.keys())
-
-    def _flatten_dict(self, d: Dict, prefix: str = '') -> list:
-        items = []
-        for k, v in d.items():
-            new_key = f"{prefix}.{k}" if prefix else k
-            if isinstance(v, dict):
-                items.extend(self._flatten_dict(v, new_key))
-            else:
-                items.append((new_key, v))
-        return items
 
     def print_db(self):
         print("===== Printing =====")
@@ -689,7 +680,6 @@ def storable(cls):
     cls._get_callback = _get_callback
     cls._read = _read
     cls._db_keys = _db_keys
-    cls._flatten_dict = _flatten_dict
     cls.print_db = print_db
 
     # Attribute wrapping logic
@@ -739,6 +729,7 @@ if __name__ == "__main__":
     print(f"a: test.a + 1")
     test.e = {"a": {"a": 1, "b": 2}, "b": {"a": 2, "b": 4}}
     test.e.update({"a": {"c": 3}})
+    print(test.e)
     print(f"a: test.a=1")
     test.a += 1
     print(f"a: {test.a}+=1")
@@ -746,3 +737,20 @@ if __name__ == "__main__":
     print(f"f: {test.f}")
     test.f.append(6)
     print(f"f: {test.f}")
+    test.n = {"a.b.c": 1}
+    print(f"n: {test.n}")
+
+    @storable
+    class TestClass:
+        a = 1
+        b = 2.2
+        c = True
+        _store_total = True
+        d = None
+        e = {'a.f': 3}
+        f = [4, 5]
+
+    if Path("atest.sqlite").is_file():
+        Path("atest.sqlite").unlink()
+    a = TestClass('atest.sqlite')
+    print(a.e)
