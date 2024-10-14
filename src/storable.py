@@ -39,6 +39,45 @@ def atomic_operation(func):
 
 
 class NestedSqliteDict(SqliteDict):
+    """
+    A subclass of SqliteDict that supports nested dictionary operations.
+
+    This class provides methods for working with nested dictionaries in a SQLite database,
+    including flattening and reconstructing nested structures.
+
+    Methods
+    -------
+    __setitem__(key: str, value: Any)
+        Set an item in the nested dictionary structure.
+    __getitem__(key: str) -> Any
+        Get an item from the nested dictionary structure.
+    __delitem__(key: str)
+        Delete an item from the nested dictionary structure.
+    __contains__(key: str) -> bool
+        Check if a key exists in the nested dictionary structure.
+    keys_with_prefix(prefix: str) -> List[str]
+        Get all keys with a given prefix.
+    print()
+        Print the contents of the database.
+    
+    Examples
+    --------
+    >>> db = NestedSqliteDict('example.sqlite', autocommit=True)
+    >>> db['user.profile.name'] = 'John Doe'
+    >>> db['user.profile.age'] = 30
+    >>> db['user.settings.theme'] = 'dark'
+    >>> print(db['user.profile'])
+    {'name': 'John Doe', 'age': 30}
+    >>> print(db['user'])
+    {'profile': {'name': 'John Doe', 'age': 30}, 'settings': {'theme': 'dark'}}
+    >>> 'user.profile.name' in db
+    True
+    >>> db.keys_with_prefix('user.profile')
+    ['user.profile.name', 'user.profile.age']
+    >>> del db['user.settings.theme']
+    >>> db.print()
+    >>> db.close()
+    """
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -135,7 +174,19 @@ class NestedSqliteDict(SqliteDict):
 import operator
 
 
-class InterceptedValue():
+class ProxyValue():
+    """
+    A class that intercepts operations on values and provides callbacks for get and set operations.
+
+    This class is used to create proxy objects for primitive types (int, float, str)
+    that can trigger callbacks when accessed or modified and implement inplace modification methods.
+    This was designed to work with the storable class, and enable thread safety.
+
+    Methods
+    -------
+    Various magic methods are implemented to intercept different operations.
+    """
+
     _OPS = {
         'add': operator.add,
         'sub': operator.sub,
@@ -182,7 +233,7 @@ class InterceptedValue():
         return object.__getattribute__(self, name)
 
     def __repr__(self):
-        return f"InterceptedValue({self._value})"
+        return f"{self._value}"
 
     @classmethod
     def _create_op_method(cls, op):
@@ -191,7 +242,7 @@ class InterceptedValue():
             # Get the current value using the get_callback
             self_value = self._get_callback(self._name)
 
-            if isinstance(other, InterceptedValue):
+            if isinstance(other, ProxyValue):
                 other = other._get_callback(other._name)
 
             result = cls._OPS[op](self_value, other)
@@ -220,7 +271,7 @@ class InterceptedValue():
             # Get the current value using the get_callback
             self_value = self._get_callback(self._name)
 
-            if isinstance(other, InterceptedValue):
+            if isinstance(other, ProxyValue):
                 other = other._get_callback(other._name)
 
             result = cls._OPS[op](self_value, other)
@@ -233,24 +284,24 @@ class InterceptedValue():
         return method
 
 
-for op in InterceptedValue._OPS:
-    setattr(InterceptedValue, f'__{op}__', InterceptedValue._create_op_method(op))
+for op in ProxyValue._OPS:
+    setattr(ProxyValue, f'__{op}__', ProxyValue._create_op_method(op))
     if op not in ('eq', 'ne', 'lt', 'le', 'gt', 'ge'):
-        setattr(InterceptedValue, f'__r{op}__', InterceptedValue._create_rop_method(op))
-        setattr(InterceptedValue, f'__i{op}__', InterceptedValue._create_iop_method(op))
+        setattr(ProxyValue, f'__r{op}__', ProxyValue._create_rop_method(op))
+        setattr(ProxyValue, f'__i{op}__', ProxyValue._create_iop_method(op))
 
 
-class InterceptedStr(InterceptedValue, str):
+class ProxyStr(ProxyValue, str):
 
     def __new__(cls, name, value, get_callback, set_callback, store_on_init=False, file_lock=None):
         instance = super().__new__(cls, value)
-        InterceptedValue.__init__(instance,
-                                  name,
-                                  value,
-                                  get_callback,
-                                  set_callback,
-                                  store_on_init=store_on_init,
-                                  file_lock=file_lock)
+        ProxyValue.__init__(instance,
+                            name,
+                            value,
+                            get_callback,
+                            set_callback,
+                            store_on_init=store_on_init,
+                            file_lock=file_lock)
         return instance
 
     def __init__(*args, **kwargs):
@@ -260,17 +311,17 @@ class InterceptedStr(InterceptedValue, str):
         return str(self._get_callback(self._name))
 
 
-class InterceptedFloat(InterceptedValue, float):
+class ProxyFloat(ProxyValue, float):
 
     def __new__(cls, name, value, get_callback, set_callback, store_on_init=False, file_lock=None):
         instance = super().__new__(cls, value)
-        InterceptedValue.__init__(instance,
-                                  name,
-                                  value,
-                                  get_callback,
-                                  set_callback,
-                                  store_on_init=store_on_init,
-                                  file_lock=file_lock)
+        ProxyValue.__init__(instance,
+                            name,
+                            value,
+                            get_callback,
+                            set_callback,
+                            store_on_init=store_on_init,
+                            file_lock=file_lock)
         return instance
 
     def __init__(*args, **kwargs):
@@ -280,7 +331,7 @@ class InterceptedFloat(InterceptedValue, float):
         return float(self._get_callback(self._name))
 
 
-class InterceptedInt(InterceptedValue, int):
+class ProxyInt(ProxyValue, int):
 
     def __new__(
         cls,
@@ -292,13 +343,13 @@ class InterceptedInt(InterceptedValue, int):
         file_lock=None,
     ):
         instance = super().__new__(cls, value)
-        InterceptedValue.__init__(instance,
-                                  name,
-                                  value,
-                                  get_callback,
-                                  set_callback,
-                                  store_on_init=store_on_init,
-                                  file_lock=file_lock)
+        ProxyValue.__init__(instance,
+                            name,
+                            value,
+                            get_callback,
+                            set_callback,
+                            store_on_init=store_on_init,
+                            file_lock=file_lock)
         return instance
 
     def __init__(*args, **kwargs):
@@ -315,48 +366,57 @@ def wrap_value(name,
                store_total=False,
                store_on_init=False,
                file_lock=None):
-    if isinstance(value, (InterceptedDict, InterceptedList, InterceptedValue)):
+    if isinstance(value, (ProxyDict, ProxyList, ProxyValue)):
         return value
     elif isinstance(value, dict):
-        return InterceptedDict(name,
-                               value,
-                               get_callback=get_callback,
-                               set_callback=set_callback,
-                               store_total=store_total,
-                               file_lock=file_lock)
+        return ProxyDict(name,
+                         value,
+                         get_callback=get_callback,
+                         set_callback=set_callback,
+                         store_total=store_total,
+                         file_lock=file_lock)
     elif isinstance(value, list):
-        return InterceptedList(name,
-                               value,
-                               get_callback=get_callback,
-                               set_callback=set_callback,
-                               file_lock=file_lock)
+        return ProxyList(name,
+                         value,
+                         get_callback=get_callback,
+                         set_callback=set_callback,
+                         file_lock=file_lock)
     elif isinstance(value, bool):
         return value
     elif isinstance(value, int):
-        return InterceptedInt(name,
-                              value,
-                              get_callback,
-                              set_callback,
-                              store_on_init,
-                              file_lock=file_lock)
+        return ProxyInt(name, value, get_callback, set_callback, store_on_init, file_lock=file_lock)
     elif isinstance(value, float):
-        return InterceptedFloat(name,
-                                value,
-                                get_callback,
-                                set_callback,
-                                store_on_init,
-                                file_lock=file_lock)
+        return ProxyFloat(name,
+                          value,
+                          get_callback,
+                          set_callback,
+                          store_on_init,
+                          file_lock=file_lock)
     elif isinstance(value, str):
-        return InterceptedStr(name,
-                              value,
-                              get_callback,
-                              set_callback,
-                              store_on_init,
-                              file_lock=file_lock)
+        return ProxyStr(name, value, get_callback, set_callback, store_on_init, file_lock=file_lock)
     return value
 
 
-class InterceptedDict(dict):
+class ProxyDict(dict):
+    """
+    A dictionary subclass that intercepts get and set operations.
+
+    This class is used to create a proxy dictionary that can trigger callbacks
+    when items are accessed or modified.
+
+    Methods
+    -------
+    __getitem__(key)
+        Get an item from the dictionary, wrapping it if necessary.
+    __setitem__(key, value)
+        Set an item in the dictionary, updating totals if necessary.
+    __delitem__(key)
+        Delete an item from the dictionary.
+    update(other)
+        Update the dictionary with another dictionary.
+    __iadd__(other)
+        Implement the += operation for the dictionary.
+    """
 
     def __init__(self,
                  name,
@@ -429,8 +489,8 @@ class InterceptedDict(dict):
     def update(self, other):
         for k, v in other.items():
             if isinstance(v, dict):
-                if k not in self or not isinstance(self[k], InterceptedDict):
-                    self[k] = InterceptedDict(
+                if k not in self or not isinstance(self[k], ProxyDict):
+                    self[k] = ProxyDict(
                         f"{self._name}{NESTING_INDICATOR}{k}",
                         {},
                         self._get_callback,
@@ -452,10 +512,20 @@ class InterceptedDict(dict):
         return self
 
     def __repr__(self):
-        return f"InterceptedDict({super().__repr__()})"
+        return f"{super().__repr__()}"
 
 
-class InterceptedList(list):
+class ProxyList(list):
+    """
+    A list subclass that intercepts get and set operations.
+
+    This class is used to create a proxy list that can trigger callbacks
+    when items are accessed or modified.
+
+    Methods
+    -------
+    Various list methods are overridden to provide interception functionality.
+    """
 
     def __init__(self,
                  name,
@@ -534,10 +604,23 @@ class InterceptedList(list):
         self._set_callback(self._name, list(self))
 
     def __repr__(self):
-        return f"InterceptedList({self._name}, {super().__repr__()})"
+        return f"{super().__repr__()}"
 
 
-class InterceptedProperty:
+class ProxyProperty:
+    """
+    A descriptor class for intercepting attribute access and modification.
+
+    This class is used to create property-like objects that can trigger
+    callbacks when accessed or modified.
+
+    Methods
+    -------
+    __get__(obj, objtype=None)
+        Get the value of the property.
+    __set__(obj, value)
+        Set the value of the property.
+    """
 
     def __init__(self, name, initial_value=None, store_total=False):
         self._name = name
@@ -546,7 +629,7 @@ class InterceptedProperty:
 
     def __get__(self, obj, objtype=None):
         self._value = obj._get_callback(self._name)
-        if not isinstance(self._value, (InterceptedList, InterceptedValue, InterceptedDict)):
+        if not isinstance(self._value, (ProxyList, ProxyValue, ProxyDict)):
             self._value = wrap_value(self._name,
                                      self._value,
                                      obj._get_callback,
@@ -573,11 +656,64 @@ def storable(cls):
     """
     A class decorator that adds persistence functionality to a class.
 
-    Args:
-        cls: The class to decorate.
+    This decorator modifies the class to automatically save its attributes
+    to a SQLite database and load them when instantiated.
 
-    Returns:
-        The decorated class.
+    Parameters
+    ----------
+    cls : type
+        The class to be decorated.
+
+    Returns
+    -------
+    type
+        The decorated class with added persistence functionality.
+
+    Notes
+    -----
+    The decorated class will have additional methods for managing the 
+    persistent storage of its state.
+
+    Examples
+    --------
+    >>> from dataclasses import dataclass
+    >>> 
+    >>> @storable
+    ... @dataclass
+    ... class UserStats:
+    ...     username: str
+    ...     posts: dict
+    ...     likes: dict
+    ...     store_total: bool = True # (set to False to disable total computations)
+    ... 
+    >>> # Create a new user
+    >>> user = UserStats("alice", storage_path="alice_stats.db")
+    >>> 
+    >>> # Add some data
+    >>> user.posts["day1"] = 5
+    >>> user.likes["day1"] = 10
+    >>> 
+    >>> # Data is automatically persisted
+    >>> del user
+    >>> 
+    >>> # Load user data in a new session
+    >>> loaded_user = UserStats("alice", storage_path="alice_stats.db")
+    >>> print(f"Posts: {loaded_user.posts}, Likes: {loaded_user.likes}")
+    Posts: {'day1': 5, 'total': 5}, Likes: {'day1': 10, 'total': 10}
+    >>> 
+    >>> # Update data
+    >>> loaded_user.posts["day2"] = 3
+    >>> loaded_user.likes["day2"] = 7
+    >>> 
+    >>> # Check updated totals
+    >>> print(f"Total posts: {loaded_user.posts['total']}, Total likes: {loaded_user.likes['total']}")
+    Total posts: 8, Total likes: 17
+    >>> 
+    >>> # Data persists across sessions
+    >>> del loaded_user
+    >>> final_check = UserStats("alice", storage_path="alice_stats.db")
+    >>> print(f"Final state - Posts: {final_check.posts}, Likes: {final_check.likes}")
+    Final state - Posts: {'day1': 5, 'day2': 3, 'total': 8}, Likes: {'day1': 10, 'day2': 7, 'total': 17}
     """
     # When you think about it this is highly illegal but the only way of keeping them cls attributes unchanged between instantiations.
     # Find a better way if you can, you are the real hero.
@@ -638,7 +774,7 @@ def storable(cls):
     def _set_callback(self, key, value):
         # print("setting")
         with NestedSqliteDict(self._path) as db:
-            if isinstance(value, InterceptedValue):
+            if isinstance(value, ProxyValue):
                 value = value._value
             db[key] = value
             db.commit()
@@ -646,7 +782,7 @@ def storable(cls):
     def _write(self, update_dict):
         with NestedSqliteDict(self._path) as db:
             for k, value in update_dict.items():
-                if isinstance(value, InterceptedValue):
+                if isinstance(value, ProxyValue):
                     value = value._value
                 db[k] = value
             db.commit()
@@ -696,9 +832,9 @@ def storable(cls):
                     # Store total is a mess but necessary for preprocessing trackers
                     store_total = getattr(cls, "_store_total", False)
                     # TODO! store total
-                    setattr(cls, name, InterceptedProperty(name, attr, store_total=store_total))
+                    setattr(cls, name, ProxyProperty(name, attr, store_total=store_total))
                 else:
-                    setattr(cls, name, InterceptedProperty(name, attr))
+                    setattr(cls, name, ProxyProperty(name, attr))
                 self._progress[name] = attr
 
     cls._wrap_attributes = _wrap_attributes
