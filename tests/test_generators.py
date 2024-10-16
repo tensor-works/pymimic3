@@ -29,7 +29,7 @@ def test_tf_generators_with_ds(task_name: str, batch_size: int, mode: str, multi
         if ray.is_initialized():
             ray.shutdown()
         n_cpus = min(mp.cpu_count(), 4)
-        ray.init(num_cpus=n_cpus)
+        ray.init(num_cpus=n_cpus, ignore_reinit_error=True)
 
     # Test reader supervision
     X, y, m = reader.random_samples(1, read_masks=True)
@@ -94,7 +94,7 @@ def test_tf_generators_with_tr(task_name: str, batch_size: int, mode: str, multi
         if ray.is_initialized():
             ray.shutdown()
         n_cpus = min(mp.cpu_count(), 4)
-        ray.init(num_cpus=n_cpus)
+        ray.init(num_cpus=n_cpus, ignore_reinit_error=True)
     # Prepare generator inputs
     scaler = MinMaxScaler().fit_reader(reader)
 
@@ -138,7 +138,7 @@ def test_torch_generators_with_ds(task_name: str, mode: str, multiprocessed: boo
         if ray.is_initialized():
             ray.shutdown()
         n_cpus = min(mp.cpu_count(), 4)
-        ray.init(num_cpus=n_cpus)
+        ray.init(num_cpus=n_cpus, ignore_reinit_error=True)
     # Prepare generator inputs
 
     # Test reader supervision
@@ -211,7 +211,7 @@ def test_torch_generators_with_tr(task_name: str, mode: str, multiprocessed: boo
         n_cpus = min(mp.cpu_count(), 4)
         if ray.is_initialized():
             ray.shutdown()
-        ray.init(num_cpus=n_cpus)
+        ray.init(num_cpus=n_cpus, ignore_reinit_error=True)
     # Prepare generator inputs
     scaler = MinMaxScaler().fit_reader(reader)
 
@@ -265,7 +265,7 @@ def test_river_generator(task_name: str, multiprocessed: bool,
         n_cpus = min(mp.cpu_count(), 4)
         if ray.is_initialized():
             ray.shutdown()
-        ray.init(num_cpus=n_cpus)
+        ray.init(num_cpus=n_cpus, ignore_reinit_error=True)
     # Prepare generator inputs
     imputer = PartialImputer().fit_reader(reader)
     scaler = MinMaxScaler(imputer=imputer).fit_reader(reader)

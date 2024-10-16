@@ -114,7 +114,21 @@ def assert_dataframe_equals(generated_df: pd.DataFrame,
     # Assert shape 1
     if not len(generated_df) == len(test_df):
         tests_io("Dataframe has diff!")
-        difference = pd.concat([test_df, generated_df]).drop_duplicates(keep=False)
+        # Find rows in test_df that are not in generated_df
+        rows_only_in_test = test_df.reset_index().merge(
+            generated_df.reset_index(), indicator=True,
+            how='left').loc[lambda x: x['_merge'] == 'left_only']
+
+        # Find rows in generated_df that are not in test_df
+        rows_only_in_generated = generated_df.reset_index().merge(
+            test_df.reset_index(), indicator=True,
+            how='left').loc[lambda x: x['_merge'] == 'left_only']
+
+        # Combine the differences
+        difference = pd.concat([
+            rows_only_in_test.drop(columns=['_merge']).assign(source='test_df'),
+            rows_only_in_generated.drop(columns=['_merge']).assign(source='generated_df')
+        ])
         tests_io(
             f"Length generated: {len(generated_df)}\nLength test: {len(test_df)}\nDiff is: \n{difference}"
         )
@@ -230,7 +244,6 @@ def assert_dataframe_equals(generated_df: pd.DataFrame,
         else:
             # Find a matching row in test_df with the same index
             difference = compare_homogenous_multiline_df(generated_df, test_df, verbose=True)
-
     assert not difference, f"Diffs detected between generated and ground truth files: {difference}!"
 
 

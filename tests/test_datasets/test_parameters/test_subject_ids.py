@@ -499,7 +499,7 @@ if __name__ == "__main__":
                                            storage_path=SEMITEMP_DIR)
     icu_history = pd.read_csv(Path(extraction_reader.root_path, "icu_history.csv"))
     subjects = icu_history["SUBJECT_ID"].astype(int).unique().tolist()
-    for extraction_style in ["compact", "iterative"]:
+    for extraction_style in ["iterative", "compact"]:
         if TEMP_DIR.is_dir():
             shutil.rmtree(str(TEMP_DIR))
         test_subject_ids_extraction(extraction_reader, subjects, extraction_style)

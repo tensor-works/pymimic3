@@ -291,7 +291,6 @@ def test_num_subject_option():
     assert not set(["subject_1", "subject_2", "subject_3"]) - set(tracker.subject_ids)
     # Test switch to None
     # Reconsider the workings of this:
-    '''
     del tracker
     tracker = PreprocessingTracker(storage_path=Path(TEMP_DIR, "progress"))
     tracker.set_num_subjects(None)
@@ -304,7 +303,6 @@ def test_num_subject_option():
     assert not set(tracker.subject_ids) - set(["subject_1", "subject_2", "subject_3"])
     assert not set(["subject_1", "subject_2", "subject_3"]) - set(tracker.subject_ids)
     tests_io("Succeeded testing switch to None.")
-    '''
 
 
 def test_subject_ids_option():
@@ -363,7 +361,42 @@ def test_subject_ids_option():
     tests_io("Succeeded testing falsey subject_ids.")
 
 
+import random
+
+
+def test_rapid_updates_with_store_total():
+    num_updates = 1000
+    tracker = PreprocessingTracker(storage_path=Path(TEMP_DIR, "progress"))
+    all_updates = {}
+
+    for i in range(num_updates):
+        print(i)
+        tracking_info = {}
+        for _ in range(random.randint(1, 5)):
+            subject_id = random.randint(1, 1000)  # Simulate processing times between 1-10ms
+            stay_id = random.randint(1, 1000)
+            n_samples = random.randint(1, 1000)
+            tracking_info[subject_id] = {stay_id: n_samples}
+
+        tracker.subjects.update(tracking_info)
+        all_updates.update(tracking_info)
+
+    tracker.is_finished = True
+
+    print(f"\nTest with {num_updates} updates:")
+
+    # Assertions to verify performance
+    assert abs(
+        tracker.get_average_time() - 0.0055
+    ) < 0.001, f"Expected average processing time around 0.0055s, but got {tracker.get_average_time():.6f}s"
+    assert tracker.count == num_updates, f"Expected count {num_updates}, but got {tracker.count}"
+
+
 if __name__ == "__main__":
+    if TEMP_DIR.exists():
+        shutil.rmtree(TEMP_DIR)
+    test_rapid_updates_with_store_total()
+    exit()
     if TEMP_DIR.exists():
         shutil.rmtree(TEMP_DIR)
     test_processing_tracker_basics()

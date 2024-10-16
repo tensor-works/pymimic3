@@ -123,11 +123,11 @@ def assert_subject_data_equals(subject_id: int,
         # Testing the preprocessing tracker at the same time
         with NestedSqliteDict(str(root_path / "progress")) as db:
             assert int(subject_id) in db["subjects"], \
-                f"Subject {subject_id} not found in the database"
+                f"Subject {subject_id} not found in the database, {db['subjects']}"
             assert int(stay_id) in db["subjects"][int(subject_id)],\
-                f"Stay {stay_id} not found for subject {subject_id}"
+                f"Stay {stay_id} not found for subject {subject_id}, {db['subjects'][int(subject_id)]}"
             assert db["subjects"][int(subject_id)][int(stay_id)] == len(y), \
-                f"Length mismatch for stay {stay_id} of subject {subject_id}"
+                f"Length mismatch for stay {stay_id} of subject {subject_id}, {db['subjects'][int(subject_id)]} and {len(y)}"
             total = sum([
                 lengths for stay, lengths in db["subjects"][int(subject_id)].items()
                 if stay != "total" and isinstance(stay, int)

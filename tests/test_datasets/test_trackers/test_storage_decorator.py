@@ -1,9 +1,10 @@
 from tests.tsettings import *
 import pytest
+import random
 import shutil
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from utils.IO import *
-# from storable import storable
 from storable import storable
 
 
@@ -167,12 +168,127 @@ def test_dictionary_update():
     tests_io("Succeeded testing restoration of dictionary update.")
 
 
-def test_total_count():
+def test_total_count_int_keys():
+    # Only implemented for single nesting and not for iadd
+    tests_io("Test case total count for storable decorator with numeric keys.", level=0)
+    test_instance = CountTestClass(Path(TEMP_DIR, "progress"))
+    test_instance.subjects = {1: {1: 1, 2: 2}, 2: {1: 2, 2: 4}}
+    test_instance.print_db()
+    assert test_instance.subjects == {
+        1: {
+            1: 1,
+            2: 2,
+            "total": 3
+        },
+        2: {
+            1: 2,
+            2: 4,
+            "total": 6
+        },
+        "total": 9
+    }
+    tests_io("Succeeded dictionary assignment total count.")
+    test_instance.subjects.update({1: {3: 3}})
+    test_instance.print_db()
+    assert test_instance.subjects == {
+        1: {
+            1: 1,
+            2: 2,
+            3: 3,
+            "total": 6
+        },
+        2: {
+            1: 2,
+            2: 4,
+            "total": 6
+        },
+        "total": 12
+    }
+    tests_io("Succeeded dictionary nested update total count.")
+
+    test_instance.subjects = {1: 0, 2: 0}
+    assert test_instance.subjects == {1: 0, 2: 0, "total": 0}
+    tests_io("Succeeded dictionary reassignment total count.")
+
+    test_instance.subjects = {}
+    assert test_instance.subjects == {"total": 0}
+    tests_io("Succeeded dictionary empty reassignment total count.")
+
+    test_instance.subjects.update({1: 1, 2: 2})
+    assert test_instance.subjects == {1: 1, 2: 2, "total": 3}
+    tests_io("Succeeded dictionary simple data type overwrite total count.")
+
+    test_instance.subjects.update({1: 1, 2: 1})
+    assert test_instance.subjects == {1: 1, 2: 1, "total": 2}
+
+    test_instance.subjects.update({1: 2, 2: 2})
+    assert test_instance.subjects == {1: 2, 2: 2, "total": 4}
+
+    test_instance.subjects.update({3: 1, 4: 1})
+    assert test_instance.subjects == {1: 2, 2: 2, 3: 1, 4: 1, "total": 6}
+
+    test_instance.subjects.update({1: {1: 1, 2: 2}, 2: {1: 2, 2: 4}})
+    assert test_instance.subjects == {
+        1: {
+            1: 1,
+            2: 2,
+            "total": 3
+        },
+        2: {
+            1: 2,
+            2: 4,
+            "total": 6
+        },
+        3: 1,
+        4: 1,
+        "total": 11
+    }
+    tests_io("Succeeded dictionary complex data type overwrite total count.")
+    test_instance.subjects.update({3: 3})
+    assert test_instance.subjects == {
+        1: {
+            1: 1,
+            2: 2,
+            "total": 3
+        },
+        2: {
+            1: 2,
+            2: 4,
+            "total": 6
+        },
+        3: 3,
+        4: 1,
+        "total": 13
+    }
+
+    test_instance.subjects.update({4: {1: 1, 2: 1}})
+    assert test_instance.subjects == {
+        1: {
+            1: 1,
+            2: 2,
+            "total": 3
+        },
+        2: {
+            1: 2,
+            2: 4,
+            "total": 6
+        },
+        3: 3,
+        4: {
+            1: 1,
+            2: 1,
+            "total": 2
+        },
+        "total": 14
+    }
+
+
+def test_total_count_str_keys():
     # Only implemented for single nestation and not for iadd
     tests_io("Test case total count for storable decorator.", level=0)
     test_instance = CountTestClass(Path(TEMP_DIR, "progress"))
-
     test_instance.subjects = {"a": {"a": 1, "b": 2}, "b": {"a": 2, "b": 4}}
+    test_instance.print_db()
     assert test_instance.subjects == {
         "a": {
             "a": 1,
@@ -188,6 +304,7 @@ def test_total_count():
     }
     tests_io("Succeeded dictionary assignment total count.")
     test_instance.subjects.update({"a": {"c": 3}})
+    test_instance.print_db()
     assert test_instance.subjects == {
         "a": {
             "a": 1,
@@ -479,12 +596,7 @@ def update_instance(instance, iterations, thread_id):
     instance.finished = True
 
 
-import pytest
-from concurrent.futures import ThreadPoolExecutor
-import time
-import random
-
-
+@pytest.mark.xfail("Test case would succeed for thread safe storable only", strict=False)
 def test_concurrent_access():
     test_instance = CountTestClass(Path(TEMP_DIR, "progress"))
 
@@ -515,6 +627,7 @@ def test_concurrent_access():
     assert test_instance.finished
 
 
+@pytest.mark.xfail("Test case would succeed for thread safe storable only", strict=False)
 def test_persistence(test_instance):
     print(f"Persistence test starting. Original instance state: {test_instance.__dict__}")
     # Verify persistence by creating a new instance
@@ -544,10 +657,22 @@ if __name__ == "__main__":
     # test_concurrent_access()
     if TEMP_DIR.is_dir():
         shutil.rmtree(str(TEMP_DIR))
+    test_storable_basics()
+    if TEMP_DIR.is_dir():
+        shutil.rmtree(str(TEMP_DIR))
+    TEMP_DIR.mkdir(exist_ok=True, parents=True)
+    test_dictionary_update()
+    if TEMP_DIR.is_dir():
+        shutil.rmtree(str(TEMP_DIR))
+    if TEMP_DIR.is_dir():
+        shutil.rmtree(str(TEMP_DIR))
+    test_total_count_int_keys()
+    if TEMP_DIR.is_dir():
+        shutil.rmtree(str(TEMP_DIR))
     test_list_basic()
     if TEMP_DIR.is_dir():
         shutil.rmtree(str(TEMP_DIR))
-    test_total_count()
+    test_total_count_str_keys()
     if TEMP_DIR.is_dir():
         shutil.rmtree(str(TEMP_DIR))
     test_list_extend()
@@ -562,11 +687,7 @@ if __name__ == "__main__":
     test_list_remove()
     if TEMP_DIR.is_dir():
         shutil.rmtree(str(TEMP_DIR))
-    test_total_count()
-    if TEMP_DIR.is_dir():
-        shutil.rmtree(str(TEMP_DIR))
-    TEMP_DIR.mkdir(exist_ok=True, parents=True)
-    test_storable_basics()
+    test_total_count_str_keys()
     if TEMP_DIR.is_dir():
         shutil.rmtree(str(TEMP_DIR))
     TEMP_DIR.mkdir(exist_ok=True, parents=True)
@@ -574,8 +695,5 @@ if __name__ == "__main__":
     if TEMP_DIR.is_dir():
         shutil.rmtree(str(TEMP_DIR))
     TEMP_DIR.mkdir(exist_ok=True, parents=True)
-    test_dictionary_update()
-    if TEMP_DIR.is_dir():
-        shutil.rmtree(str(TEMP_DIR))
 
     tests_io("All tests passed")

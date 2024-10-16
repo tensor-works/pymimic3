@@ -51,7 +51,7 @@ class ExtractionTracker():
     """
 
     #: dict: A dictionary tracking the number of events extracted from specific files.
-    count_subject_events: dict = {"OUTPUTEVENTS.csv": 0, "LABEVENTS.csv": 0, "CHARTEVENTS.csv": 0}
+    start_event_rows: dict = {"OUTPUTEVENTS.csv": 0, "LABEVENTS.csv": 0, "CHARTEVENTS.csv": 0}
     #: int: The total number of samples extracted as timeseries.
     count_total_samples: int = 0
     #: bool: Flag indicating if by-subject information has been extracted.
@@ -88,28 +88,25 @@ class ExtractionTracker():
         if self.num_samples is not None and num_samples is None:
             # If changed to None extraction is carried out for all samples
             self.reset(flags_only=True)
-
-        if num_samples is not None and self.count_total_samples < num_samples:
-            self.reset(flags_only=True)
             self.num_samples = num_samples
-        elif self.num_samples is not None and num_samples is None:
+        elif num_samples is not None and self.count_total_samples < num_samples:
             self.reset(flags_only=True)
             self.num_samples = num_samples
 
         if num_subjects is not None and len(self.subject_ids) < num_subjects:
-            self.reset(flags_only=True)
+            self.reset(flags_only=True, reset_start_rows=True)
             self.num_subjects = num_subjects
         # Continue processing if num subjects switche to None
         elif self.num_subjects is not None and num_subjects is None:
-            self.reset(flags_only=True)
+            self.reset(flags_only=True, reset_start_rows=True)
             self.num_subjects = num_subjects
 
         if subject_ids is not None:
             unprocessed_subjects = set(subject_ids) - set(self.subject_ids)
             if unprocessed_subjects:
-                self.reset(flags_only=True)
+                self.reset(flags_only=True, reset_start_rows=True)
 
-    def reset(self, flags_only: bool = False):
+    def reset(self, flags_only: bool = False, reset_start_rows: bool = False) -> None:
         """
         Resets the tracker state.
 
@@ -119,7 +116,7 @@ class ExtractionTracker():
             If True, only reset flags; otherwise, reset all counts and lists.
         """
         if not flags_only:
-            self.count_subject_events = {
+            self.start_event_rows = {
                 "OUTPUTEVENTS.csv": 0,
                 "LABEVENTS.csv": 0,
                 "CHARTEVENTS.csv": 0
@@ -128,6 +125,14 @@ class ExtractionTracker():
             self.num_samples = None
             self.num_subjects = None
             self.subject_ids = list()
+
+        if reset_start_rows:
+            self.start_event_rows = {
+                "OUTPUTEVENTS.csv": 0,
+                "LABEVENTS.csv": 0,
+                "CHARTEVENTS.csv": 0
+            }
+
         # The other dfs are light weight and computed for all subjects
         self.has_episodic_data = False
         self.has_timeseries = False

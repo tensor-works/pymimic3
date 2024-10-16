@@ -11,17 +11,6 @@ from functools import wraps
 
 NESTING_INDICATOR = "^"
 
-
-def atomic_operation(func):
-
-    @wraps(func)
-    def wrapper(self, *args, **kwargs):
-        with self._file_lock:
-            return func(self, *args, **kwargs)
-
-    return wrapper
-
-
 from oslo_concurrency import lockutils
 
 
@@ -91,7 +80,7 @@ class NestedSqliteDict(SqliteDict):
         if isinstance(value, dict):
             flat_items = list(self._flatten_dict(value, prefix=encoded_key))
             existing_keys = set(self.keys_with_prefix(encoded_key))
-            keys_to_delete = existing_keys - set(k for k, _ in flat_items) - {encoded_key}
+            keys_to_delete = existing_keys - set(k for k, _ in flat_items)  # - {encoded_key}
 
             if keys_to_delete:
                 self._batch_delete(keys_to_delete)
@@ -135,9 +124,9 @@ class NestedSqliteDict(SqliteDict):
 
     def __contains__(self, key):
         encoded_key = self._encode_key(key)
-        return self._key_exists(encoded_key)
+        return self.key_exists(encoded_key)
 
-    def _key_exists(self, key):
+    def key_exists(self, key):
         encoded_key = self._encode_key(key)
         if self._is_nested_key(encoded_key):
             prefix = encoded_key + "."
@@ -161,7 +150,8 @@ class NestedSqliteDict(SqliteDict):
 
     def _get_nested_dict(self, prefix):
         result = {}
-        for key in self.keys_with_prefix(prefix + NESTING_INDICATOR):
+        key_with_prefix = self.keys_with_prefix(prefix + NESTING_INDICATOR)
+        for key in key_with_prefix:
             parts = key[len(prefix) + 1:].split(NESTING_INDICATOR)
             current = result
             for part in parts[:-1]:
@@ -213,6 +203,26 @@ class NestedSqliteDict(SqliteDict):
             print(f'{key}: {value}')
         print("=== End Printing ===")
 
+    def update(self, attribute, update_dict):
+        base_key = self._encode_key(attribute)
+
+        def update_recursive(current_key, current_value):
+            if isinstance(current_value, dict):
+                for k, v in current_value.items():
+                    new_key = f"{current_key}{NESTING_INDICATOR}{self._encode_key(k)}"
+                    update_recursive(new_key, v)
+            else:
+                self[current_key] = current_value
+
+        update_recursive(base_key, update_dict)
+
+    def _nested_update(self, existing, update):
+        for k, v in update.items():
+            if isinstance(v, dict) and k in existing and isinstance(existing[k], dict):
+                self._nested_update(existing[k], v)
+            else:
+                existing[k] = v
+
 
 import operator
 
@@ -250,17 +260,12 @@ class ProxyValue():
         f'__r{op}__' for op in _OPS if op not in ('eq', 'ne', 'lt', 'le', 'gt', 'ge')
     ] + [f'__i{op}__' for op in _OPS if op not in ('eq', 'ne', 'lt', 'le', 'gt', 'ge')]
 
-    def __init__(self,
-                 name,
-                 value,
-                 get_callback,
-                 set_callback,
-                 file_lock=None,
-                 store_on_init=False):
+    def __init__(self, name, value, obj, file_lock=None, store_on_init=False):
         self._name = name
         self._value = value
-        self._get_callback = get_callback
-        self._set_callback = set_callback
+        self._obj = obj
+        self._get_callback = obj._get_callback
+        self._set_callback = obj._set_callback
         self._file_lock = file_lock
         self._is_intercepted_value = True
 
@@ -283,9 +288,12 @@ class ProxyValue():
 
         def method(self, other):
             # Get the current value using the get_callback
-            self_value = self._get_callback(self._name)
+            if False:
+                self_value = self._get_callback(self._name)
+            else:
+                self_value = self._value
 
-            if isinstance(other, ProxyValue):
+            if isinstance(other, ProxyValue) and False:
                 other = other._get_callback(other._name)
 
             result = cls._OPS[op](self_value, other)
@@ -298,7 +306,10 @@ class ProxyValue():
 
         def method(self, other):
             # Get the current value using the get_callback
-            self_value = self._get_callback(self._name)
+            if False:
+                self_value = self._get_callback(self._name)
+            else:
+                self_value = self._value
 
             result = cls._OPS[op](other, self_value)
 
@@ -312,9 +323,12 @@ class ProxyValue():
 
         def method(self, other):
             # Get the current value using the get_callback
-            self_value = self._get_callback(self._name)
+            if False:
+                self_value = self._get_callback(self._name)
+            else:
+                self_value = self._value
 
-            if isinstance(other, ProxyValue):
+            if isinstance(other, ProxyValue) and False:
                 other = other._get_callback(other._name)
 
             result = cls._OPS[op](self_value, other)
@@ -336,13 +350,12 @@ for op in ProxyValue._OPS:
 
 class ProxyStr(ProxyValue, str):
 
-    def __new__(cls, name, value, get_callback, set_callback, store_on_init=False, file_lock=None):
+    def __new__(cls, name, value, obj, store_on_init=False, file_lock=None):
         instance = super().__new__(cls, value)
         ProxyValue.__init__(instance,
                             name,
                             value,
-                            get_callback,
-                            set_callback,
+                            obj,
                             store_on_init=store_on_init,
                             file_lock=file_lock)
         return instance
@@ -356,13 +369,12 @@ class ProxyStr(ProxyValue, str):
 
 class ProxyFloat(ProxyValue, float):
 
-    def __new__(cls, name, value, get_callback, set_callback, store_on_init=False, file_lock=None):
+    def __new__(cls, name, value, obj, store_on_init=False, file_lock=None):
         instance = super().__new__(cls, value)
         ProxyValue.__init__(instance,
                             name,
                             value,
-                            get_callback,
-                            set_callback,
+                            obj,
                             store_on_init=store_on_init,
                             file_lock=file_lock)
         return instance
@@ -380,8 +392,7 @@ class ProxyInt(ProxyValue, int):
         cls,
         name,
         value,
-        get_callback,
-        set_callback,
+        obj,
         store_on_init=False,
         file_lock=None,
     ):
@@ -389,8 +400,7 @@ class ProxyInt(ProxyValue, int):
         ProxyValue.__init__(instance,
                             name,
                             value,
-                            get_callback,
-                            set_callback,
+                            obj,
                             store_on_init=store_on_init,
                             file_lock=file_lock)
         return instance
@@ -402,41 +412,26 @@ class ProxyInt(ProxyValue, int):
         return int(self._get_callback(self._name))
 
 
-def wrap_value(name,
-               value,
-               get_callback,
-               set_callback,
-               store_total=False,
-               store_on_init=False,
-               file_lock=None):
+def wrap_value(name, value, obj, store_total=False, store_on_init=False, file_lock=None):
     if isinstance(value, (ProxyDict, ProxyList, ProxyValue)):
         return value
     elif isinstance(value, dict):
         return ProxyDict(name,
                          value,
-                         get_callback=get_callback,
-                         set_callback=set_callback,
+                         obj,
                          store_total=store_total,
+                         store_on_init=store_on_init,
                          file_lock=file_lock)
     elif isinstance(value, list):
-        return ProxyList(name,
-                         value,
-                         get_callback=get_callback,
-                         set_callback=set_callback,
-                         file_lock=file_lock)
+        return ProxyList(name, value, obj, store_on_init=store_on_init, file_lock=file_lock)
     elif isinstance(value, bool):
         return value
     elif isinstance(value, int):
-        return ProxyInt(name, value, get_callback, set_callback, store_on_init, file_lock=file_lock)
+        return ProxyInt(name, value, obj, store_on_init, file_lock=file_lock)
     elif isinstance(value, float):
-        return ProxyFloat(name,
-                          value,
-                          get_callback,
-                          set_callback,
-                          store_on_init,
-                          file_lock=file_lock)
+        return ProxyFloat(name, value, obj, store_on_init, file_lock=file_lock)
     elif isinstance(value, str):
-        return ProxyStr(name, value, get_callback, set_callback, store_on_init, file_lock=file_lock)
+        return ProxyStr(name, value, obj, store_on_init, file_lock=file_lock)
     return value
 
 
@@ -464,90 +459,223 @@ class ProxyDict(dict):
     def __init__(self,
                  name,
                  value,
-                 get_callback=None,
-                 set_callback=None,
+                 obj,
                  store_total=False,
                  file_lock=None,
+                 load_on_init=True,
+                 store_on_init=True,
                  **kwargs):
         self._name = name
         self._value = value
         self._file_lock = file_lock
         self._store_total = store_total
-        self._get_callback = get_callback
-        self._set_callback = set_callback
+        self._obj = obj
+        self._get_callback = obj._get_callback
+        self._set_callback = obj._set_callback
         super().__init__()
-        self._set_self(value)
-        if self._store_total:
-            self["total"] = self._init_total(self._value)
+        self._set_self(value, store_on_init)
+        if self._store_total and store_on_init:
+            self["total"] = self._init_total(self)
+        return
 
     def _init_total(self, mapping: dict):
         total = 0
-        for key, value in mapping.items():
+        keys = list(mapping.keys())
+        for key in keys:
+            if isinstance(mapping, ProxyDict):
+                value = mapping.get(key, load=False)
+            else:
+                value = mapping[key]
+
             if isinstance(value, dict):
-                value["total"] = self._init_total(value)
-                total += value["total"]
+                if not isinstance(value, ProxyDict):
+                    value = ProxyDict(self._name_encode_key(key),
+                                      value,
+                                      self._obj,
+                                      self._store_total,
+                                      self._file_lock,
+                                      store_on_init=False)
+                cur_total = self._init_total(value)
+                value["total"] = cur_total
+                total += cur_total
+                mapping[key] = value
             elif key != "total":
                 total += value
         return total
 
-    def _encode_key(self, key):
-        if isinstance(key, int):
-            return f"{self._name}{NESTING_INDICATOR}__int__{key}"
-        return f"{self._name}{NESTING_INDICATOR}{key}"
+    def _update_from_db(self):
+        db_state = self._get_callback(self._name)
+        if not isinstance(db_state, dict):
+            raise ValueError(f"Database state for {self._name} is not a dictionary")
+        super().clear()
 
-    def _update_total(self, key, value):
-        if isinstance(value, dict):
-            value["total"] = self._init_total(value)
-        if key in self:
-            cur_val = self._get_callback(self._encode_key(key))
-            if isinstance(cur_val, dict):
-                cur_val = cur_val["total"]
+        for key, value in db_state.items():
             if isinstance(value, dict):
-                value = value["total"]
-            super().__setitem__("total", self["total"] + value - cur_val)
-        else:
-            if isinstance(value, dict):
-                value = value["total"]
-            super().__setitem__("total", self["total"] + value)
+                super().__setitem__(
+                    key,
+                    ProxyDict(self._name_encode_key(key),
+                              value,
+                              self._obj,
+                              self._store_total,
+                              self._file_lock,
+                              store_on_init=False))
+            else:
+                super().__setitem__(key, value)
+        return
+
+    def _name_encode_key(self, key):
+        return f"{self._name}{NESTING_INDICATOR}{self._int_encode_keys(key)}"
+
+    def _int_encode_keys(self, key):
+        if isinstance(key, int):
+            return f"__int__{key}"
+        return str(key)
 
     def __getitem__(self, key):
-        value = self._get_callback(self._encode_key(key))
-        return wrap_value(self._encode_key(key),
+        value = self._get_callback(self._name_encode_key(key))
+        return wrap_value(self._name_encode_key(key),
                           value,
-                          self._get_callback,
-                          self._set_callback,
+                          self._obj,
                           store_total=self._store_total,
+                          store_on_init=False,
                           file_lock=self._file_lock)
 
-    def __setitem__(self, key, value):
-        if self._store_total and key != "total":
-            self._update_total(key, value)
+    def get(self, key, default=None, load=True):
+        if key in self and not load:
+            value = super().__getitem__(key)
+            super().__setitem__(
+                key,
+                wrap_value(self._name_encode_key(key),
+                           value,
+                           self._obj,
+                           store_total=self._store_total,
+                           store_on_init=False,
+                           file_lock=self._file_lock))
+            return super().__getitem__(key)
+        if key in self:
+            return self[key]
+        return default
+
+    def set(self, key, value, store=True):
         super().__setitem__(key, value)
-        self._set_callback(self._encode_key(key), value)
+        if store:
+            self._set_callback(self._name_encode_key(key), value)
 
-    def __delitem__(self, key):
-        super().__delitem__(key)
-        self._set_callback(self._encode_key(key), "\\delete")
-
-    def _set_self(self, value):
-        self._set_callback(self._name, value)
+    def _set_self(self, value, store_on_init=True):
+        if store_on_init:
+            self._set_callback(self._name, value)
         for k, v in value.items():
             super().__setitem__(k, v)
 
     def update(self, other):
-        for k, v in other.items():
-            if isinstance(v, dict):
-                if k not in self or not isinstance(self[k], ProxyDict):
-                    self[k] = ProxyDict(
-                        self._encode_key(k),
-                        v,
-                        self._get_callback,
-                        self._set_callback,
-                        self._store_total,
-                    )
+        self._nested_update(self, other)
+        self._obj._update_dict(self._name, dict(self))
+        # self._update_totals(self._name, other)
+
+    def _nested_update(self, current, update):
+        for key, value in update.items():
+            print(f"Name: {self._name}")
+            if isinstance(value, dict):
+                if isinstance(current, ProxyDict):
+                    cur_val = current.get(key, {}, load=False)
+                    if self._store_total:
+                        cur_total = self._get_total_other(cur_val)
+                else:
+                    cur_val = current[key]
+                    if self._store_total:
+                        cur_total = self._get_total_other(cur_val)
+
+                if key not in current or not isinstance(cur_val, dict):
+                    super().__setitem__(
+                        key,
+                        ProxyDict(f"{self._name}{NESTING_INDICATOR}{self._int_encode_keys(key)}",
+                                  {}, self._obj, self._store_total, self._file_lock))
+                if self._store_total:
+                    self_total = self.get("total", 0, load=False)
+                self.get(key, load=False)._nested_update(cur_val, value)
+                if self._store_total:
+                    debug_total = super().__getitem__(key).get("total", load=False)
+                    self["total"] = debug_total - cur_total + self_total
             else:
-                self[k] = v
-        return
+                if self._store_total:
+                    cur_total = super().get(key, 0)
+                    self_total = self.get("total", 0, load=False)
+                super().__setitem__(key, value)
+                if self._store_total:
+                    self["total"] = value - cur_total + self_total
+        return self
+
+    def _get_total_other(self, other):
+        if isinstance(other, ProxyDict):
+            return other.get("total", 0, load=False)
+        elif isinstance(other, dict):
+            return other.get("total", 0)
+        else:
+            return other
+
+    def _get_total(self):
+        if "total" in self:
+            return self.get("total", load=False)
+        else:
+            return sum(val.get("total") if isinstance(val, dict) else val for val in self.values())
+
+    def _update_totals(self, path, value):
+        if not self._store_total:
+            return
+
+        update_locations = list()
+
+        def find_locations(values, current_path):
+            if isinstance(values, dict):
+                for key, val in values.items():
+                    if isinstance(val, dict):
+                        find_locations(
+                            val, f"{current_path}{NESTING_INDICATOR}{self._int_encode_keys(key)}")
+                    elif key != "total":
+                        update_locations.append(current_path)
+            else:
+                update_locations.append(current_path)
+
+        find_locations(value, path)
+
+        # Sort update_locations from deepest to shallowest
+        update_locations.sort(key=lambda x: (-len(x.split(NESTING_INDICATOR)), x), reverse=True)
+
+        for location in update_locations:
+            current = self
+            parts = location.split(NESTING_INDICATOR)
+            for part in parts[1:]:  # Skip the first part as it's the root
+                current = current[part]
+
+            if isinstance(current, dict):
+                old_total = current.get("total", 0)
+                new_total = sum(v for k, v in current.items() if k != "total")
+                delta = new_total - old_total
+                current["total"] = new_total
+                self._set_callback(f"{location}{NESTING_INDICATOR}total", new_total)
+
+                # Update parent totals incrementally
+                for i in range(len(parts) - 1, 0, -1):
+                    parent = self
+                    for part in parts[1:i]:
+                        parent = parent[part]
+                    if isinstance(parent, dict):
+                        parent["total"] = parent.get("total", 0) + delta
+                        self._set_callback(f"{NESTING_INDICATOR}".join(parts[:i] + ["total"]),
+                                           parent["total"])
+
+    def __setitem__(self, key, value):
+        super().__setitem__(key, value)
+        self._set_callback(self._name_encode_key(key), value)
+        if self._store_total and key != "total":
+            self._update_totals(self._name_encode_key(key), value)
+
+    def __delitem__(self, key):
+        value = super().__getitem__(key)
+        super().__delitem__(key)
+        self._set_callback(self._name_encode_key(key), "\\delete")
+        if self._store_total:
+            self._update_totals(self._name_encode_key(key), value)
 
     def __iadd__(self, other, *args, **kwargs):
         if set(other.keys()) - set(self.keys()):
@@ -555,7 +683,7 @@ class ProxyDict(dict):
                 f"Keys in the dictionary must match to __iadd__! stored_keys: {list(self.keys())}; added_keys: {list(other.keys())}"
             )
         for key, value in other.items():
-            self[key] += value
+            self[key] = value + self[key]
         return self
 
     def __repr__(self):
@@ -574,17 +702,12 @@ class ProxyList(list):
     Various list methods are overridden to provide interception functionality.
     """
 
-    def __init__(self,
-                 name,
-                 initial_value,
-                 get_callback=None,
-                 set_callback=None,
-                 file_lock=None,
-                 **kwargs):
+    def __init__(self, name, initial_value, obj, store_on_init=True, file_lock=None, **kwargs):
         self._name = name
         self._file_lock = file_lock
-        self._get_callback = get_callback
-        self._set_callback = set_callback
+        self._obj = obj
+        self._get_callback = obj._get_callback
+        self._set_callback = obj._set_callback
         super().__init__()
         self._update_from_db()
         if initial_value and not self:  # Only extend if the list is empty
@@ -599,11 +722,7 @@ class ProxyList(list):
     def __getitem__(self, index):
         self._get_callback(self._name)
         value = super().__getitem__(index)
-        return wrap_value(f"{self._name}[{index}]",
-                          value,
-                          self._get_callback,
-                          self._set_callback,
-                          file_lock=self._file_lock)
+        return wrap_value(f"{self._name}[{index}]", value, self._obj, file_lock=self._file_lock)
 
     def __setitem__(self, index, value):
         self._update_from_db()
@@ -675,31 +794,44 @@ class ProxyProperty:
         self._store_total = store_total
 
     def __get__(self, obj, objtype=None):
-        self._value = obj._get_callback(self._name)
-        if not isinstance(self._value, (ProxyList, ProxyValue, ProxyDict)):
+        if not isinstance(self._value, (ProxyList, ProxyValue, ProxyDict)) and obj is not None:
             self._value = wrap_value(self._name,
                                      self._value,
-                                     obj._get_callback,
-                                     obj._set_callback,
+                                     obj,
                                      store_total=self._store_total,
                                      file_lock=obj._file_lock)
+
+        # Update to newest version on get
+        if False:
+            if isinstance(self._value, ProxyValue):
+                self._value._value = self._value._get_callback(self._name)
+            elif isinstance(self._value, (ProxyList, ProxyDict)):
+                self._value._update_from_db()
+            else:
+                self._value = obj._get_callback(self._name)
         return self._value
 
     def __set__(self, obj, value):
-        if isinstance(value, ProxyDict):
-            value = dict(value)
-        elif isinstance(value, ProxyList):
-            value = list(value)
+        if isinstance(value, (ProxyDict, ProxyList)):
+            self._value = value
+            self._value._set_callback(self._name, value)
         elif isinstance(value, ProxyValue):
-            value = value._value
-        self._value = wrap_value(self._name,
-                                 value,
-                                 obj._get_callback,
-                                 obj._set_callback,
-                                 store_on_init=True,
-                                 file_lock=obj._file_lock)
-        if isinstance(self._value, bool):
-            obj._set_callback(self._name, self._value)
+            self._value = value
+            self._value._set_callback(self._name, value._value)
+        elif isinstance(value, bool):
+            self._value = value
+            obj._set_callback(self._name, value)
+        elif isinstance(value, (dict, list, str, float, int)) and obj is not None:
+            self._value = wrap_value(self._name,
+                                     value,
+                                     obj,
+                                     store_total=self._store_total,
+                                     store_on_init=True,
+                                     file_lock=obj._file_lock)
+        else:
+            self._value = value
+            if obj is not None:
+                obj._set_callback(self._name, value)
 
 
 import sqlitedict
@@ -819,17 +951,28 @@ def storable(cls):
         original_init(self, *args, **kwargs)
 
     def _get_callback(self, key):
-        # print("getting")
         with NestedSqliteDict(self._path) as db:
             ret = db[key]
             return ret
 
     def _set_callback(self, key, value):
-        # print("setting")
         with NestedSqliteDict(self._path) as db:
             if isinstance(value, ProxyValue):
                 value = value._value
             db[key] = value
+            db.commit()
+
+    def _update_dict(self, attribute, updates):
+        with NestedSqliteDict(self._path) as db:
+            db.update(attribute, updates)
+            db.commit()
+
+    def _set_callback_bulk(self, updates):
+        with NestedSqliteDict(self._path) as db:
+            for key, value in updates.items():
+                if isinstance(value, ProxyValue):
+                    value = value._value
+                db[key] = value
             db.commit()
 
     def _write(self, update_dict):
@@ -840,16 +983,24 @@ def storable(cls):
                 db[k] = value
             db.commit()
 
+    def _key_exists(self, key):
+        with NestedSqliteDict(self._path) as db:
+            return db.key_exists(key)
+
     def _read(self):
         with NestedSqliteDict(self._path) as db:
             ret = {}
-            for key in db.keys():
+            _progress_keys = self._progress_keys()
+            for key in _progress_keys:
                 ret[key] = db[key]
             return ret
 
     def _db_keys(self):
         with NestedSqliteDict(self._path) as db:
             return list(db.keys())
+
+    def _progress_keys(self):
+        return list(set([key.split("^")[0] for key in self._db_keys()]))
 
     def print_db(self):
         print("===== Printing =====")
@@ -869,6 +1020,8 @@ def storable(cls):
     cls._get_callback = _get_callback
     cls._read = _read
     cls._db_keys = _db_keys
+    cls._progress_keys = _progress_keys
+    cls._update_dict = _update_dict
     cls.print_db = print_db
 
     # Attribute wrapping logic
@@ -895,24 +1048,90 @@ def storable(cls):
     return cls
 
 
+# Example usage and testing
+def run_tests():
+    import os
+    # Setup
+    db_path = 'test_nested_sqlite.db'
+    if os.path.exists(db_path):
+        os.remove(db_path)
+
+    # Initialize the database
+    with NestedSqliteDict(db_path, autocommit=True) as db:
+        # Test 1: Basic nested structure
+        db['subjects'] = {"a": {"a": 1, "b": 2}, "b": {"a": 2, "b": 4}}
+        print("Initial state:")
+        db.print()
+
+        # Test 2: Update with new nested key
+        db.update("subjects", {"a": {"c": 3}})
+        print("\nAfter updating 'subjects.a.c':")
+        db.print()
+
+        # Test 3: Update existing nested key
+        db.update("subjects", {"b": {"b": 5}})
+        print("\nAfter updating 'subjects.b.b':")
+        db.print()
+
+        # Test 4: Add new top-level key
+        db.update("new_key", {"x": 10, "y": 20})
+        print("\nAfter adding 'new_key':")
+        db.print()
+
+        # Test 5: Update multiple levels at once
+        db.update("subjects", {"a": {"d": 4}, "c": {"e": 5}})
+        print("\nAfter multi-level update:")
+        db.print()
+
+        # Verify final state
+        assert db['subjects'] == {
+            "a": {
+                "a": 1,
+                "b": 2,
+                "c": 3,
+                "d": 4
+            },
+            "b": {
+                "a": 2,
+                "b": 5
+            },
+            "c": {
+                "e": 5
+            }
+        }, "Final state of 'subjects' is incorrect"
+
+        print("\nAll tests passed successfully!")
+
+
 # Usage example
 if __name__ == "__main__":
+    run_tests()
     # profile_storable()
     # run_performance_tests()
 
     @storable
     class TestClass:
-        a = 1
-        b = 2.2
-        c = True
-        _store_total = True
-        d = None
-        e = {'f': 3}
-        f = [4, 5]
+        # a = 1
+        # b = 2.2
+        # c = True
+        # _store_total = True
+        # d = None
+        e = {"a": 0, "b": 0}
+        # f = [4, 5]
 
     if Path("test.sqlite").is_file():
         Path("test.sqlite").unlink()
     test = TestClass('test.sqlite')
+    test.e += {"a": 1, "b": 2}
+    with NestedSqliteDict('test.sqlite') as db:
+        db.print()
+    print(test.e)
+
+    exit()
+    del test
+    test = TestClass('test.sqlite')
+    print(test.e)
+
     test.e[1] = 1
     print(f"f: {test.f}")
     # test.e = {"a": {"a": 1, "b": 2}, "b": {"a": 2, "b": 4}}
@@ -940,19 +1159,30 @@ if __name__ == "__main__":
         d = None
         e = {'a': 3}
         f = [4, 5]
+        subjects = {"a": 0, "b": 0}
 
     if Path("atest.sqlite").is_file():
         Path("atest.sqlite").unlink()
     a = TestClass('atest.sqlite')
-    print(a.e)
+    # print(a.e)
     a.e += {"a": 4}
     print(a.e)
     a.e.update({"a": {"b": 5}})
+    print(a.e)
     a.e.update({"a": {"c": 5}})
+    print(a.e)
     a.e.update({"b": {"o": 5}})
-
+    with NestedSqliteDict('atest.sqlite') as db:
+        db.print()
     print(a.e)
     del a
 
     a = TestClass('atest.sqlite')
     print(a.e)
+    a.f = None
+    with NestedSqliteDict('atest.sqlite') as db:
+        db.print()
+    print(a.f)
+
+    a.subjects = {"a": {"a": 1, "b": 2}, "b": {"a": 2, "b": 4}}
+    print(a.subjects)

@@ -173,6 +173,10 @@ class EventProducer(object):
             }
 
             # If sample limit defined
+            # DEBUG
+            # all = event_reader.get_all()
+            # all = all[all["SUBJECT_ID"].isin(self._subject_ids)]
+            # all = all[all.index >= event_frames["CHARTEVENTS.csv"].index[-1]]
             if self._num_samples is not None:
                 # If remaining samples until sample limit is reached is smaller than sum of remaining samples
                 if self._num_samples - self._total_length < sum(ts_lengths.values()):

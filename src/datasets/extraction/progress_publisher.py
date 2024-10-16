@@ -111,7 +111,7 @@ class ProgressPublisher(Process):
         msg = [f"Processed event rows: "]
         for csv_name in self._event_file_lengths.keys():
             with self._lock:
-                csv_event_count = self._tracker.count_subject_events[csv_name]
+                csv_event_count = self._tracker.start_event_rows[csv_name]
             total_event_count = self._event_file_lengths[csv_name]
             print_name = csv_name.strip('.csv') + ": "
             msg.append(
@@ -124,7 +124,7 @@ class ProgressPublisher(Process):
             frame_lengths, finished = self._in_q.get()
             # TODO! real crash resilience can only be achieved by updating in the event consumer
             with self._lock:
-                self._tracker.count_subject_events += frame_lengths
+                self._tracker.start_event_rows += frame_lengths
             # Track consumer finishes
             if finished:
                 done_count += 1
@@ -134,7 +134,7 @@ class ProgressPublisher(Process):
             msg = [f"Processed event rows: "]
             for csv_name in self._event_file_lengths.keys():
                 with self._lock:
-                    csv_event_count = self._tracker.count_subject_events[csv_name]
+                    csv_event_count = self._tracker.start_event_rows[csv_name]
                 total_event_count = self._event_file_lengths[csv_name]
                 print_name = csv_name.strip('.csv') + ": "
                 msg.append(

@@ -19,8 +19,19 @@ def compare_extracted_datasets(generated_data: Dict[str, Dict[str, Dict[str, pd.
     n_subject_events = 0
     n_episodic_data = 0
     n_stay_data = 0
+
+    file_types = [
+        'episodic_data',
+        'subject_events',
+        'subject_diagnoses',
+        'subject_icu_history',
+        'timeseries',
+    ]
     for subject_id, subject_data in generated_data.items():
-        for file_type, type_data in subject_data.items():
+        for file_type in file_types:
+            if file_type not in subject_data:
+                continue
+            type_data = subject_data[file_type]
             if file_type == "timeseries":
                 for stay_id, stay_data in type_data.items():
                     # Timeseries is structured

@@ -18,7 +18,9 @@ from datasets.readers import ExtractedSetReader, ProcessedSetReader
 def test_num_subjects_extraction(extracted_reader: ExtractedSetReader, extraction_style: str):
     # Test only extraction
     tests_io(f"Test case num subjects for extraction", level=0)
-
+    extract_and_compare(num_subjects=1,
+                        extraction_style=extraction_style,
+                        extracted_reader=extracted_reader)
     # Test on existing directory
     for num_subjects in [1, 10]:
         tests_io("-" * 100)
@@ -264,7 +266,9 @@ def extract_and_compare(num_subjects: int, extraction_style: str,
         storage_path=TEMP_DIR,
         extract=True)
     if extraction_style == "iterative":
+        # Get the frames
         reader: ExtractedSetReader = return_entity
+        reader.read_diagnoses()
         assert len(reader.subject_ids) == num_subjects
         subject_ids = reader.subject_ids
         generated_dataset = reader.read_subjects(reader.subject_ids, read_ids=True)
@@ -337,7 +341,7 @@ if __name__ == "__main__":
     extraction_reader = datasets.load_data(chunksize=75835,
                                            source_path=TEST_DATA_DEMO,
                                            storage_path=SEMITEMP_DIR)
-    for extraction_style in ["compact", "iterative"]:
+    for extraction_style in ["compact", "iterative"]:  #["iterative", "compact"]:
         if TEMP_DIR.is_dir():
             shutil.rmtree(str(TEMP_DIR))
         test_num_subjects_extraction(extraction_reader, extraction_style)
