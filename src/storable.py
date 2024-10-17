@@ -2,14 +2,21 @@
 Attempted thread safety but didn't work out too well. Use an external lock. 
 Designed to work multiple processes.
 """
+import pymongo
+from pymongo import MongoClient
+from bson.json_util import dumps
+import json
 import operator
 from copy import deepcopy
 from pathlib import Path
 from sqlitedict import SqliteDict
 from typing import Any, Dict, Tuple, List
 from functools import wraps
+from contextlib import nullcontext
 
-NESTING_INDICATOR = "^"
+NESTING_INDICATOR = "."
+PREFIX_KEY = "_prefix_"
+READ = False
 
 from oslo_concurrency import lockutils
 
@@ -29,157 +36,39 @@ def atomic_operation(func):
 
 import ast
 
+from pymongo import MongoClient
+import json
 
-class NestedSqliteDict(SqliteDict):
-    """
-    A subclass of SqliteDict that supports nested dictionary operations.
 
-    This class provides methods for working with nested dictionaries in a SQLite database,
-    including flattening and reconstructing nested structures.
+class NestedMongoDict:
 
-    Methods
-    -------
-    __setitem__(key: str, value: Any)
-        Set an item in the nested dictionary structure.
-    __getitem__(key: str) -> Any
-        Get an item from the nested dictionary structure.
-    __delitem__(key: str)
-        Delete an item from the nested dictionary structure.
-    __contains__(key: str) -> bool
-        Check if a key exists in the nested dictionary structure.
-    keys_with_prefix(prefix: str) -> List[str]
-        Get all keys with a given prefix.
-    print()
-        Print the contents of the database.
-    
-    Examples
-    --------
-    >>> db = NestedSqliteDict('example.sqlite', autocommit=True)
-    >>> db['user.profile.name'] = 'John Doe'
-    >>> db['user.profile.age'] = 30
-    >>> db['user.settings.theme'] = 'dark'
-    >>> print(db['user.profile'])
-    {'name': 'John Doe', 'age': 30}
-    >>> print(db['user'])
-    {'profile': {'name': 'John Doe', 'age': 30}, 'settings': {'theme': 'dark'}}
-    >>> 'user.profile.name' in db
-    True
-    >>> db.keys_with_prefix('user.profile')
-    ['user.profile.name', 'user.profile.age']
-    >>> del db['user.settings.theme']
-    >>> db.print()
-    >>> db.close()
-    """
+    def __init__(self,
+                 db_name,
+                 collection_name='default_collection',
+                 host='localhost',
+                 port=27017,
+                 autocommit=True):
+        self.client = MongoClient(host, port)
+        self.db = self.client[str(db_name).replace("/", "_")]
+        self.collection = self.db[collection_name]
+        self.autocommit = autocommit
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __enter__(self):
+        return self
 
-    def __setitem__(self, key, value):
-        encoded_key = self._encode_key(key)
-        value = self._encode_value(value)
-        if isinstance(value, dict):
-            flat_items = list(self._flatten_dict(value, prefix=encoded_key))
-            existing_keys = set(self.keys_with_prefix(encoded_key))
-            keys_to_delete = existing_keys - set(k for k, _ in flat_items)  # - {encoded_key}
-
-            if keys_to_delete:
-                self._batch_delete(keys_to_delete)
-
-            if flat_items:
-                self._batch_update(flat_items)
-            elif not value:
-                super().__setitem__(encoded_key, dict(value))
-        else:
-            keys_to_delete = set(self.keys_with_prefix(encoded_key)) - {encoded_key}
-            if keys_to_delete:
-                self._batch_delete(keys_to_delete)
-            super().__setitem__(encoded_key, value)
-
-    def _encode_value(self, value):
-        if isinstance(value, ProxyValue):
-            return self._encode_value(value._value)
-        elif isinstance(value, dict):
-            return {self._encode_key(k): self._encode_value(v) for k, v in value.items()}
-        elif isinstance(value, list):
-            return [self._encode_value(v) for v in value]
-        return value
-
-    def __getitem__(self, key):
-        encoded_key = self._encode_key(key)
-        if self._is_nested_key(encoded_key):
-            return self._get_nested_dict(encoded_key)
-        try:
-            return super().__getitem__(encoded_key)
-        except KeyError as e:
-            self.print()
-            raise KeyError(f"Key {key} not found in the database {list(self.keys())}.")
-
-    def __delitem__(self, key):
-        encoded_key = self._encode_key(key)
-        if self._is_nested_key(encoded_key):
-            keys_to_delete = self.keys_with_prefix(encoded_key + ".")
-            self._batch_delete(keys_to_delete)
-        else:
-            super().__delitem__(encoded_key)
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.client.close()
 
     def __contains__(self, key):
         encoded_key = self._encode_key(key)
-        return self.key_exists(encoded_key)
+        return self.collection.count_documents({'_id': encoded_key}) > 0
 
-    def key_exists(self, key):
+    def __getitem__(self, key):
         encoded_key = self._encode_key(key)
-        if self._is_nested_key(encoded_key):
-            prefix = encoded_key + "."
-            return bool(self.keys_with_prefix(prefix))
-        return super().__contains__(encoded_key)
-
-    def _flatten_dict(self, d, prefix=''):
-        items = []
-        for k, v in d.items():
-            encoded_k = self._encode_key(k)
-            new_key = f"{prefix}{NESTING_INDICATOR}{encoded_k}" if prefix else encoded_k
-            if isinstance(v, dict):
-                items.extend(self._flatten_dict(v, new_key))
-            else:
-                items.append((new_key, v))
-        return items
-
-    def _is_nested_key(self, key):
-        prefix = key + NESTING_INDICATOR
-        return bool(self.keys_with_prefix(prefix))
-
-    def _get_nested_dict(self, prefix):
-        result = {}
-        key_with_prefix = self.keys_with_prefix(prefix + NESTING_INDICATOR)
-        for key in key_with_prefix:
-            parts = key[len(prefix) + 1:].split(NESTING_INDICATOR)
-            current = result
-            for part in parts[:-1]:
-                decoded_part = self._decode_key(part)
-                current = current.setdefault(decoded_part, {})
-            decoded_last_part = self._decode_key(parts[-1])
-            current[decoded_last_part] = super().__getitem__(key)
-        return result
-
-    def keys_with_prefix(self, prefix):
-        encoded_prefix = self._encode_key(prefix)
-        query = f'SELECT key FROM "{self.tablename}" WHERE key LIKE ?'
-        keys = [
-            self.decode_key(key[0])
-            for key in self.conn.select(query, (f"{self.encode_key(encoded_prefix)}%",))
-        ]
-        return keys
-
-    def _batch_delete(self, keys):
-        encoded_keys = [self._encode_key(key) for key in keys]
-        query = f'DELETE FROM "{self.tablename}" WHERE key IN ({",".join("?" for _ in encoded_keys)})'
-        self.conn.execute(query, tuple(map(self.encode_key, encoded_keys)))
-
-    def _batch_update(self, items):
-        encoded_items = [(self._encode_key(k), v) for k, v in items]
-        query = f'INSERT OR REPLACE INTO "{self.tablename}" (key, value) VALUES (?, ?)'
-        self.conn.executemany(query,
-                              [(self.encode_key(k), self.encode(v)) for k, v in encoded_items])
+        result = self.collection.find_one({'_id': encoded_key})
+        if result:
+            return self._decode_value(result['value'])
+        raise KeyError(key)
 
     def _encode_key(self, key):
         if isinstance(key, int):
@@ -191,37 +80,126 @@ class NestedSqliteDict(SqliteDict):
             return int(key[7:])
         return key
 
-    def keys(self):
-        return [self._decode_key(key) for key in super().keys()]
+    def _encode_value(self, value):
+        if isinstance(value, dict):
+            return {self._encode_key(k): self._encode_value(v) for k, v in value.items()}
+        elif isinstance(value, list):
+            return [self._encode_value(item) for item in value]
+        return value
 
-    def items(self):
-        return [(self._decode_key(k), v) for k, v in super().items()]
+    def _decode_value(self, value):
+        if isinstance(value, dict):
+            return {self._decode_key(k): self._decode_value(v) for k, v in value.items()}
+        elif isinstance(value, list):
+            return [self._decode_value(item) for item in value]
+        return value
+
+    def __setitem__(self, key, value):
+        encoded_key = self._encode_key(key)
+        encoded_value = self._encode_value(value)
+        self.collection.update_one({'_id': encoded_key}, {'$set': {
+            'value': encoded_value
+        }},
+                                   upsert=True)
+
+    def update(self, key, value):
+        encoded_key = self._encode_key(key)
+        if encoded_key not in self:
+            self[key] = {}
+
+        def update_nested(existing, new_data):
+            for k, v in new_data.items():
+                if isinstance(v, dict) and k in existing and isinstance(existing[k], dict):
+                    update_nested(existing[k], v)
+                else:
+                    existing[k] = v
+
+        existing_data = self[key]
+        update_nested(existing_data, value)
+        self[key] = existing_data
 
     def print(self):
-        print("=== Printing ===")
-        for key, value in self.items():
-            print(f'{key}: {value}')
-        print("=== End Printing ===")
+        for doc in self.collection.find():
+            decoded_key = self._decode_key(doc['_id'])
+            print(f"{decoded_key}: {json.dumps(doc['value'], indent=2)}")
 
-    def update(self, attribute, update_dict):
-        base_key = self._encode_key(attribute)
+    def clear(self):
+        self.collection.delete_many({})
 
-        def update_recursive(current_key, current_value):
-            if isinstance(current_value, dict):
-                for k, v in current_value.items():
-                    new_key = f"{current_key}{NESTING_INDICATOR}{self._encode_key(k)}"
-                    update_recursive(new_key, v)
+    def set_nested(self, key_path, value):
+        keys = key_path.split('.')
+        top_level_key = self._encode_key(keys[0])
+
+        if len(keys) == 1:
+            self[self._decode_key(top_level_key)] = value
+            return
+
+        # Encode the value before storing
+        encoded_value = self._encode_value(value)
+
+        # Construct the update query
+        update_query = {}
+        current_level = update_query
+        for key in keys[1:-1]:
+            current_level['value'] = current_level['value'] = {}
+            current_level = current_level['value']
+            current_level[self._encode_key(key)] = {}
+            current_level = current_level[self._encode_key(key)]
+        current_level['value'] = {self._encode_key(keys[-1]): encoded_value}
+
+        # Perform the update
+        result = self.collection.update_one({'_id': top_level_key}, {'$set': update_query},
+                                            upsert=True)
+
+        if result.matched_count == 0 and not result.upserted_id:
+            raise KeyError(f"Failed to set nested key '{key_path}'")
+
+    def get_nested(self, key_path):
+        keys = key_path.split('.')
+        top_level_key = self._encode_key(keys[0])
+
+        if len(keys) == 1:
+            return self[self._decode_key(top_level_key)]
+
+        field_path = 'value.' + '.'.join(keys[1:])
+        result = self.collection.find_one({'_id': top_level_key}, {field_path: 1})
+
+        if not result:
+            raise KeyError(f"Key '{self._decode_key(top_level_key)}' not found in the database")
+
+        value = result
+        for key in keys[1:]:
+            if isinstance(value, dict) and 'value' in value:
+                value = value['value']
+            if isinstance(value, dict) and key in value:
+                value = value[key]
             else:
-                self[current_key] = current_value
+                raise KeyError(f"Nested key '{key}' not found in the path '{key_path}'")
 
-        update_recursive(base_key, update_dict)
+        return value
 
-    def _nested_update(self, existing, update):
-        for k, v in update.items():
-            if isinstance(v, dict) and k in existing and isinstance(existing[k], dict):
-                self._nested_update(existing[k], v)
-            else:
-                existing[k] = v
+    def items(self):
+        for doc in self.collection.find():
+            decoded_key = self._decode_key(doc['_id'])
+            yield (decoded_key, doc['value'])
+
+    def to_dict(self):
+        """
+        Read the entire NestedMongoDict into a Python dictionary.
+        """
+        result = {}
+        for doc in self.collection.find():
+            key = self._decode_key(doc['_id'])
+            value = self._decode_value(doc['value'])
+            result[key] = value
+        return result
+
+    def print_all(self):
+        """
+        Print all key-value pairs in the NestedMongoDict.
+        """
+        for key, value in self.to_dict().items():
+            print(f"{key}: {json.dumps(value, indent=2)}")
 
 
 import operator
@@ -288,12 +266,12 @@ class ProxyValue():
 
         def method(self, other):
             # Get the current value using the get_callback
-            if False:
+            if READ:
                 self_value = self._get_callback(self._name)
             else:
                 self_value = self._value
 
-            if isinstance(other, ProxyValue) and False:
+            if isinstance(other, ProxyValue) and READ:
                 other = other._get_callback(other._name)
 
             result = cls._OPS[op](self_value, other)
@@ -306,7 +284,7 @@ class ProxyValue():
 
         def method(self, other):
             # Get the current value using the get_callback
-            if False:
+            if READ:
                 self_value = self._get_callback(self._name)
             else:
                 self_value = self._value
@@ -323,12 +301,12 @@ class ProxyValue():
 
         def method(self, other):
             # Get the current value using the get_callback
-            if False:
+            if READ:
                 self_value = self._get_callback(self._name)
             else:
                 self_value = self._value
 
-            if isinstance(other, ProxyValue) and False:
+            if isinstance(other, ProxyValue) and READ:
                 other = other._get_callback(other._name)
 
             result = cls._OPS[op](self_value, other)
@@ -464,6 +442,7 @@ class ProxyDict(dict):
                  file_lock=None,
                  load_on_init=True,
                  store_on_init=True,
+                 db=None,
                  **kwargs):
         self._name = name
         self._value = value
@@ -473,35 +452,43 @@ class ProxyDict(dict):
         self._get_callback = obj._get_callback
         self._set_callback = obj._set_callback
         super().__init__()
-        self._set_self(value, store_on_init)
+        self._set_self(value, store_on_init, db)
         if self._store_total and store_on_init:
-            self["total"] = self._init_total(self)
+            self.set("total", self._init_total(self, db), db=db)
         return
 
-    def _init_total(self, mapping: dict):
-        total = 0
-        keys = list(mapping.keys())
-        for key in keys:
-            if isinstance(mapping, ProxyDict):
-                value = mapping.get(key, load=False)
-            else:
-                value = mapping[key]
+    def _init_total(self, mapping: dict, db=None):
 
-            if isinstance(value, dict):
-                if not isinstance(value, ProxyDict):
-                    value = ProxyDict(self._name_encode_key(key),
-                                      value,
-                                      self._obj,
-                                      self._store_total,
-                                      self._file_lock,
-                                      store_on_init=False)
-                cur_total = self._init_total(value)
-                value["total"] = cur_total
-                total += cur_total
-                mapping[key] = value
-            elif key != "total":
-                total += value
-        return total
+        def inner(db):
+            total = 0
+            keys = list(mapping.keys())
+            for key in keys:
+                if isinstance(mapping, ProxyDict):
+                    value = mapping.get(key, load=False)
+                else:
+                    value = mapping[key]
+
+                if isinstance(value, dict):
+                    if not isinstance(value, ProxyDict):
+                        value = ProxyDict(self._name_encode_key(key),
+                                          value,
+                                          self._obj,
+                                          self._store_total,
+                                          self._file_lock,
+                                          store_on_init=False,
+                                          db=db)
+                    cur_total = self._init_total(value)
+                    value.set("total", cur_total, db=db)
+                    total += cur_total
+                    mapping[key] = value
+                elif key != "total":
+                    total += value
+            return total
+
+        if db is None:
+            with NestedMongoDict(self._obj._path) as db:
+                return inner(db)
+        return inner(db)
 
     def _update_from_db(self):
         db_state = self._get_callback(self._name)
@@ -531,8 +518,16 @@ class ProxyDict(dict):
             return f"__int__{key}"
         return str(key)
 
+    def _int_decode_key(self, key):
+        if key.startswith("__int__"):
+            return int(key[7:])
+        return key
+
     def __getitem__(self, key):
-        value = self._get_callback(self._name_encode_key(key))
+        if READ:
+            value = self._get_callback(self._name_encode_key(key))
+        else:
+            value = super().__getitem__(self._int_decode_key(key))
         return wrap_value(self._name_encode_key(key),
                           value,
                           self._obj,
@@ -556,53 +551,55 @@ class ProxyDict(dict):
             return self[key]
         return default
 
-    def set(self, key, value, store=True):
+    def set(self, key, value, store=True, db=None):
         super().__setitem__(key, value)
         if store:
-            self._set_callback(self._name_encode_key(key), value)
+            self._set_callback(self._name_encode_key(key), value, db)
 
-    def _set_self(self, value, store_on_init=True):
+    def _set_self(self, value, store_on_init=True, db=None):
         if store_on_init:
-            self._set_callback(self._name, value)
+            self._set_callback(self._name, value, db=db)
         for k, v in value.items():
             super().__setitem__(k, v)
 
     def update(self, other):
-        self._nested_update(self, other)
-        self._obj._update_dict(self._name, dict(self))
-        # self._update_totals(self._name, other)
+        with NestedMongoDict(self._obj._path) as db:
+            self._nested_update(self, other, db)
+            self._obj._update_dict(self._name, dict(self), db)
+            self._update_totals(self._name, other, db)
 
-    def _nested_update(self, current, update):
+    def _nested_update(self, current, update, db=None):
         for key, value in update.items():
-            print(f"Name: {self._name}")
             if isinstance(value, dict):
                 if isinstance(current, ProxyDict):
                     cur_val = current.get(key, {}, load=False)
-                    if self._store_total:
-                        cur_total = self._get_total_other(cur_val)
                 else:
                     cur_val = current[key]
-                    if self._store_total:
-                        cur_total = self._get_total_other(cur_val)
+                if self._store_total:
+                    cur_total = self._get_total_other(cur_val)
 
                 if key not in current or not isinstance(cur_val, dict):
                     super().__setitem__(
                         key,
                         ProxyDict(f"{self._name}{NESTING_INDICATOR}{self._int_encode_keys(key)}",
-                                  {}, self._obj, self._store_total, self._file_lock))
+                                  {},
+                                  self._obj,
+                                  self._store_total,
+                                  self._file_lock,
+                                  db=db))
                 if self._store_total:
                     self_total = self.get("total", 0, load=False)
-                self.get(key, load=False)._nested_update(cur_val, value)
+                self.get(key, load=False)._nested_update(cur_val, value, db=db)
                 if self._store_total:
                     debug_total = super().__getitem__(key).get("total", load=False)
-                    self["total"] = debug_total - cur_total + self_total
+                    self.set("total", debug_total - cur_total + self_total, db=db)
             else:
                 if self._store_total:
                     cur_total = super().get(key, 0)
                     self_total = self.get("total", 0, load=False)
                 super().__setitem__(key, value)
                 if self._store_total:
-                    self["total"] = value - cur_total + self_total
+                    self.set("total", value - cur_total + self_total, db=db)
         return self
 
     def _get_total_other(self, other):
@@ -613,13 +610,16 @@ class ProxyDict(dict):
         else:
             return other
 
-    def _get_total(self):
-        if "total" in self:
-            return self.get("total", load=False)
+    def _get_total(self, current=None):
+        if current == None:
+            current = self
+        if "total" in current:
+            return current.get("total", load=False)
         else:
-            return sum(val.get("total") if isinstance(val, dict) else val for val in self.values())
+            return sum(
+                val.get("total") if isinstance(val, dict) else val for val in current.values())
 
-    def _update_totals(self, path, value):
+    def _update_totals(self, path, value, db=None):
         if not self._store_total:
             return
 
@@ -639,6 +639,7 @@ class ProxyDict(dict):
         find_locations(value, path)
 
         # Sort update_locations from deepest to shallowest
+        update_locations = list(set(update_locations))
         update_locations.sort(key=lambda x: (-len(x.split(NESTING_INDICATOR)), x), reverse=True)
 
         for location in update_locations:
@@ -649,10 +650,10 @@ class ProxyDict(dict):
 
             if isinstance(current, dict):
                 old_total = current.get("total", 0)
-                new_total = sum(v for k, v in current.items() if k != "total")
+                new_total = self._get_total(current)
                 delta = new_total - old_total
-                current["total"] = new_total
-                self._set_callback(f"{location}{NESTING_INDICATOR}total", new_total)
+                current.set("total", new_total, db=db)
+                # self._set_callback(f"{location}{NESTING_INDICATOR}total", new_total)
 
                 # Update parent totals incrementally
                 for i in range(len(parts) - 1, 0, -1):
@@ -660,9 +661,9 @@ class ProxyDict(dict):
                     for part in parts[1:i]:
                         parent = parent[part]
                     if isinstance(parent, dict):
-                        parent["total"] = parent.get("total", 0) + delta
-                        self._set_callback(f"{NESTING_INDICATOR}".join(parts[:i] + ["total"]),
-                                           parent["total"])
+                        parent.set("total", parent.get("total", 0) + delta, db=db)
+                        # self._set_callback(f"{NESTING_INDICATOR}".join(parts[:i] + ["total"]),
+                        #                    parent["total"])
 
     def __setitem__(self, key, value):
         super().__setitem__(key, value)
@@ -709,7 +710,7 @@ class ProxyList(list):
         self._get_callback = obj._get_callback
         self._set_callback = obj._set_callback
         super().__init__()
-        self._update_from_db()
+        # self._update_from_db()
         if initial_value and not self:  # Only extend if the list is empty
             self.extend(initial_value)
 
@@ -720,12 +721,14 @@ class ProxyList(list):
             super().extend(current_value)
 
     def __getitem__(self, index):
-        self._get_callback(self._name)
+        if READ:
+            self._get_callback(self._name)
         value = super().__getitem__(index)
         return wrap_value(f"{self._name}[{index}]", value, self._obj, file_lock=self._file_lock)
 
     def __setitem__(self, index, value):
-        self._update_from_db()
+        if READ:
+            self._update_from_db()
         super().__setitem__(index, value)
         self._set_callback(self._name, list(self))
 
@@ -734,38 +737,45 @@ class ProxyList(list):
         self._set_callback(self._name, list(self))
 
     def append(self, value):
-        self._update_from_db()
+        if READ:
+            self._update_from_db()
         super().append(value)
         self._set_callback(self._name, list(self))
 
     def extend(self, iterable):
-        self._update_from_db()
+        if READ:
+            self._update_from_db()
         super().extend(iterable)
         self._set_callback(self._name, list(self))
 
     def insert(self, index, value):
-        self._update_from_db()
+        if READ:
+            self._update_from_db()
         super().insert(index, value)
         self._set_callback(self._name, list(self))
 
     def pop(self, index=-1):
-        self._update_from_db()
+        if READ:
+            self._update_from_db()
         value = super().pop(index)
         self._set_callback(self._name, list(self))
         return value
 
     def remove(self, value):
-        self._update_from_db()
+        if READ:
+            self._update_from_db()
         super().remove(value)
         self._set_callback(self._name, list(self))
 
     def sort(self, *args, **kwargs):
-        self._update_from_db()
+        if READ:
+            self._update_from_db()
         super().sort(*args, **kwargs)
         self._set_callback(self._name, list(self))
 
     def reverse(self):
-        self._update_from_db()
+        if READ:
+            self._update_from_db()
         super().reverse()
         self._set_callback(self._name, list(self))
 
@@ -802,7 +812,7 @@ class ProxyProperty:
                                      file_lock=obj._file_lock)
 
         # Update to newest version on get
-        if False:
+        if READ:
             if isinstance(self._value, ProxyValue):
                 self._value._value = self._value._get_callback(self._name)
             elif isinstance(self._value, (ProxyList, ProxyDict)):
@@ -941,62 +951,78 @@ def storable(cls):
         self._file_lock = None
 
         # Load or initialize progress
-        if Path(self._path.parent, f"{self._path.name}").is_file():
-            self._progress = self._read()
-            self._wrap_attributes()
+        if self.db_exists(self._path):
+            if not self._path.exists():
+                self.delete_db(self._path)
+                self._wrap_attributes()
+                self._write(self._progress)
+                with open(self._path, 'w') as file:
+                    file.write("")
+            else:
+                self._progress = self._read()
+                self._wrap_attributes()
         else:
             self._wrap_attributes()
             self._write(self._progress)
+            with open(self._path, 'w') as file:
+                file.write("")
 
         original_init(self, *args, **kwargs)
 
-    def _get_callback(self, key):
-        with NestedSqliteDict(self._path) as db:
-            ret = db[key]
-            return ret
+    def _get_callback(self, key, db=None):
+        if db is None:
+            with NestedMongoDict(self._path) as db:
+                ret = db.get_nested(key)
+                return ret
+        else:
+            return db.get_nested(key)
 
-    def _set_callback(self, key, value):
-        with NestedSqliteDict(self._path) as db:
-            if isinstance(value, ProxyValue):
-                value = value._value
-            db[key] = value
-            db.commit()
-
-    def _update_dict(self, attribute, updates):
-        with NestedSqliteDict(self._path) as db:
-            db.update(attribute, updates)
-            db.commit()
-
-    def _set_callback_bulk(self, updates):
-        with NestedSqliteDict(self._path) as db:
-            for key, value in updates.items():
+    def _set_callback(self, key, value, db=None):
+        if db is None:
+            with NestedMongoDict(self._path) as db:
                 if isinstance(value, ProxyValue):
                     value = value._value
-                db[key] = value
-            db.commit()
+                db.set_nested(key, value)
+                #db[key] = value
+        else:
+            if isinstance(value, ProxyValue):
+                value = value._value
+            #db[key] = value
+            db.set_nested(key, value)
 
-    def _write(self, update_dict):
-        with NestedSqliteDict(self._path) as db:
+    def _update_dict(self, attribute, updates, db=None):
+        if db is None:
+            with NestedMongoDict(self._path) as db:
+                db.update(attribute, updates)
+        else:
+            db.update(attribute, updates)
+
+    def _write(self, update_dict, db=None):
+        if db is None:
+            with NestedMongoDict(self._path) as db:
+                for k, value in update_dict.items():
+                    if isinstance(value, ProxyValue):
+                        value = value._value
+                    db[k] = value
+        else:
             for k, value in update_dict.items():
                 if isinstance(value, ProxyValue):
                     value = value._value
                 db[k] = value
-            db.commit()
 
-    def _key_exists(self, key):
-        with NestedSqliteDict(self._path) as db:
-            return db.key_exists(key)
+    def _read(self, db=None):
+        if db is None:
+            with NestedMongoDict(self._path) as db:
+                ret = db.to_dict()
+                return ret
+        else:
+            return db.to_dict()
 
-    def _read(self):
-        with NestedSqliteDict(self._path) as db:
-            ret = {}
-            _progress_keys = self._progress_keys()
-            for key in _progress_keys:
-                ret[key] = db[key]
-            return ret
-
-    def _db_keys(self):
-        with NestedSqliteDict(self._path) as db:
+    def _db_keys(self, db=None):
+        if db is None:
+            with NestedMongoDict(self._path) as db:
+                return list(db.keys())
+        else:
             return list(db.keys())
 
     def _progress_keys(self):
@@ -1004,10 +1030,34 @@ def storable(cls):
 
     def print_db(self):
         print("===== Printing =====")
-        with NestedSqliteDict(self._path) as db:
+        with NestedMongoDict(self._path) as db:
             for key, value in db.items():
                 print(f'{key}: {value}')
         print("===== End Printing =====")
+
+    def db_exists(self, db_name, host='localhost', port=27017):
+        db_name = str(self._path).replace("/", "_")
+        client = MongoClient(host, port)
+        try:
+            # Get the list of all database names
+            db_list = client.list_database_names()
+
+            # Check if the database name is in the list
+            return db_name in db_list
+        finally:
+            # Always close the client connection
+            client.close()
+
+    def delete_db(self, db_name, host='localhost', port=27017):
+        # Delete the specified database
+        db_name = str(self._path).replace("/", "_")
+        client = MongoClient(host, port)
+        try:
+            if db_name in client.list_database_names():
+                client.drop_database(db_name)
+        finally:
+            # Always close the client connection
+            client.close()
 
     def __setstate__(self, state):
         self.__dict__.update(state)
@@ -1023,6 +1073,8 @@ def storable(cls):
     cls._progress_keys = _progress_keys
     cls._update_dict = _update_dict
     cls.print_db = print_db
+    cls.db_exists = db_exists
+    cls.delete_db = delete_db
 
     # Attribute wrapping logic
     def _wrap_attributes(self):
@@ -1052,12 +1104,12 @@ def storable(cls):
 def run_tests():
     import os
     # Setup
-    db_path = 'test_nested_sqlite.db'
+    db_path = 'test_nested_sqlite'
     if os.path.exists(db_path):
         os.remove(db_path)
 
     # Initialize the database
-    with NestedSqliteDict(db_path, autocommit=True) as db:
+    with NestedMongoDict(db_path, autocommit=True) as db:
         # Test 1: Basic nested structure
         db['subjects'] = {"a": {"a": 1, "b": 2}, "b": {"a": 2, "b": 4}}
         print("Initial state:")
@@ -1084,6 +1136,7 @@ def run_tests():
         db.print()
 
         # Verify final state
+        print(db["subjects"])
         assert db['subjects'] == {
             "a": {
                 "a": 1,
@@ -1102,34 +1155,36 @@ def run_tests():
 
         print("\nAll tests passed successfully!")
 
+        db["subjects"] = {"a": {"a": 1, "b": 2}, "b": {"a": 2, "b": 4}}
+        db.update("subjects", {"a": {"c": {"d": {"e": 3}}}})
+        print(db["subjects"])
+
 
 # Usage example
 if __name__ == "__main__":
-    run_tests()
+    # run_tests()
     # profile_storable()
     # run_performance_tests()
 
     @storable
     class TestClass:
-        # a = 1
-        # b = 2.2
-        # c = True
-        # _store_total = True
-        # d = None
+        a = 1
+        b = 2.2
+        c = True
+        _store_total = True
+        d = None
         e = {"a": 0, "b": 0}
-        # f = [4, 5]
+        f = [4, 5]
+        g = {}
 
-    if Path("test.sqlite").is_file():
-        Path("test.sqlite").unlink()
-    test = TestClass('test.sqlite')
-    test.e += {"a": 1, "b": 2}
-    with NestedSqliteDict('test.sqlite') as db:
-        db.print()
+    if Path("test").is_file():
+        Path("test").unlink()
+    test = TestClass('test')
     print(test.e)
 
-    exit()
     del test
-    test = TestClass('test.sqlite')
+    test = TestClass('test')
+    test.g.update({"c": 1})
     print(test.e)
 
     test.e[1] = 1
@@ -1155,15 +1210,15 @@ if __name__ == "__main__":
         a = 1
         b = 2.2
         c = True
-        _store_total = True
+        # _store_total = True
         d = None
         e = {'a': 3}
         f = [4, 5]
         subjects = {"a": 0, "b": 0}
 
-    if Path("atest.sqlite").is_file():
-        Path("atest.sqlite").unlink()
-    a = TestClass('atest.sqlite')
+    if Path("atest").is_file():
+        Path("atest").unlink()
+    a = TestClass('atest')
     # print(a.e)
     a.e += {"a": 4}
     print(a.e)
@@ -1172,15 +1227,16 @@ if __name__ == "__main__":
     a.e.update({"a": {"c": 5}})
     print(a.e)
     a.e.update({"b": {"o": 5}})
-    with NestedSqliteDict('atest.sqlite') as db:
+    print(f"After updates")
+    with NestedMongoDict('atest') as db:
         db.print()
     print(a.e)
     del a
 
-    a = TestClass('atest.sqlite')
+    a = TestClass('atest')
     print(a.e)
     a.f = None
-    with NestedSqliteDict('atest.sqlite') as db:
+    with NestedMongoDict('atest') as db:
         db.print()
     print(a.f)
 
