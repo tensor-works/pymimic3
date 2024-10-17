@@ -341,9 +341,9 @@ def test_read_subjects():
 
     # Test the subject ids option
     data_with_subject_ids = reader.read_subjects(read_ids=True,
-                                                 subject_ids=["10006", "10011", "10036", "10088"])
+                                                 subject_ids=["10102", "10011", "10036", "10088"])
     assert len(data_with_subject_ids) == 4
-    assert list(data_with_subject_ids.keys()) == [10006, 10011, 10036, 10088]
+    assert list(data_with_subject_ids.keys()) == [10102, 10011, 10036, 10088]
     for subject_data in data_with_subject_ids.values():
         validate_subject_data(subject_data, file_type_keys=True, read_ids=True)
     tests_io("Correct subjects when specified")

@@ -7,6 +7,23 @@ from typing import List, Dict, Any
 init()
 
 
+def nullyaspin(text):
+
+    class NullYaspin:
+
+        def __init__(self, text):
+            print(text)
+            self.text = ""
+
+        def ok(self, text):
+            print(text + self.text)
+
+        def write(self, text):
+            pass
+
+    return NullYaspin(text)
+
+
 class TestNode:
     """
     A node in the test tree representing either a test or a test container.

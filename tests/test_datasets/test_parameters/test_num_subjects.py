@@ -18,7 +18,9 @@ from datasets.readers import ExtractedSetReader, ProcessedSetReader
 def test_num_subjects_extraction(extracted_reader: ExtractedSetReader, extraction_style: str):
     # Test only extraction
     tests_io(f"Test case num subjects for extraction", level=0)
-
+    extract_and_compare(num_subjects=1,
+                        extraction_style=extraction_style,
+                        extracted_reader=extracted_reader)
     # Test on existing directory
     for num_subjects in [1, 10]:
         tests_io("-" * 100)
@@ -31,7 +33,7 @@ def test_num_subjects_extraction(extracted_reader: ExtractedSetReader, extractio
 
     # Test on empty directory
     extracted_dir = Path(TEMP_DIR, "extracted")
-    for num_subjects in [10, 16]:
+    for num_subjects in [5, 11]:
         # Remove existing dir
         if extracted_dir.is_dir():
             shutil.rmtree(str(extracted_dir))
@@ -79,7 +81,7 @@ def test_num_subjects_preprocessing_only(task_name: str, extraction_style: str):
 
     # Test on empty directory
     processed_dir = Path(TEMP_DIR, "processed")
-    for num_subjects in [10, 16]:
+    for num_subjects in [5, 11]:
         if processed_dir.is_dir():
             shutil.rmtree(str(processed_dir))
         tests_io("-" * 100)
@@ -136,7 +138,7 @@ def test_num_subjects_engineer_only(task_name: str, extraction_style: str):
 
     # Test on empty directory
     engineered_dir = Path(TEMP_DIR, "engineered")
-    for num_subjects in [10, 16]:
+    for num_subjects in [5, 11]:
         if engineered_dir.is_dir():
             shutil.rmtree(engineered_dir)
         tests_io("-" * 100)
@@ -180,7 +182,7 @@ def test_num_subjects_process(task_name: str, extraction_style: str):
     tests_io(f"-> Succeeded in testing on existing directory.")
 
     # Test on empty directory
-    for num_subjects in [10, 16]:
+    for num_subjects in [5, 11]:
         if TEMP_DIR.is_dir():
             shutil.rmtree(str(Path(TEMP_DIR)))
         tests_io("-" * 100)
@@ -233,7 +235,7 @@ def test_num_subjects_engineer(task_name: str, extraction_style: str):
     tests_io(f"-> Succeeded in testing on existing directory.")
 
     # Test on empty directory
-    for num_subjects in [10, 16]:
+    for num_subjects in [5, 11]:
         if TEMP_DIR.is_dir():
             shutil.rmtree(TEMP_DIR)
         tests_io("-" * 100)
@@ -264,7 +266,9 @@ def extract_and_compare(num_subjects: int, extraction_style: str,
         storage_path=TEMP_DIR,
         extract=True)
     if extraction_style == "iterative":
+        # Get the frames
         reader: ExtractedSetReader = return_entity
+        reader.read_diagnoses()
         assert len(reader.subject_ids) == num_subjects
         subject_ids = reader.subject_ids
         generated_dataset = reader.read_subjects(reader.subject_ids, read_ids=True)
@@ -337,11 +341,11 @@ if __name__ == "__main__":
     extraction_reader = datasets.load_data(chunksize=75835,
                                            source_path=TEST_DATA_DEMO,
                                            storage_path=SEMITEMP_DIR)
-    for extraction_style in ["compact", "iterative"]:
+    for extraction_style in ["compact", "iterative"]:  #["iterative", "compact"]:
         if TEMP_DIR.is_dir():
             shutil.rmtree(str(TEMP_DIR))
         test_num_subjects_extraction(extraction_reader, extraction_style)
-        for task in [["IHM"]]:
+        for task in ["IHM"]:
             if not Path(SEMITEMP_DIR, "processed", task).is_dir():
                 reader = datasets.load_data(chunksize=75835,
                                             source_path=TEST_DATA_DEMO,

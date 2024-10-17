@@ -26,10 +26,12 @@ dependencies:
   - gdown
   - pip:
       - junit2html
+      - sqlitedict
       - lightning-utilities==0.11.2
       - pillow==10.2.0
       - polars==0.20.26
       - river==0.21.1
       - torcheval==0.0.7
       - torchmetrics==1.4.0.post0
+      - tensorflow-addons 
 

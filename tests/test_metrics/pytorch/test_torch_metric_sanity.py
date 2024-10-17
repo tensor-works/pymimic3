@@ -28,7 +28,7 @@ y_pred_mc = torch.tensor([0, 1, 0, 0, 2, 2, 0, 2, 0, 2], dtype=torch.int)
 # Multilabel classification labels (one-hot encoded)
 
 # The error is
-y_true_ml = torch.Tensor(
+y_true_ml = torch.tensor(
     [
         [1, 0, 0],  # Only class 0
         [0, 1, 0],  # Only class 1
@@ -44,7 +44,7 @@ y_true_ml = torch.Tensor(
     dtype=torch.int)
 
 # Predicted probabilities for multilabel classification
-y_pred_ml = torch.Tensor(
+y_pred_ml = torch.tensor(
     [
         [0.8, 0.1, 0.1],  # Only class 0 
         [0.2, 0.7, 0.1],  # Only class 1 
@@ -64,7 +64,7 @@ y_true_flat_ml = y_true_ml.numpy().flatten()
 y_pred_flat_ml = y_pred_ml.numpy().flatten()
 
 
-@pytest.mark.parametrize("bining_falvour", ["log", "custom"])
+@pytest.mark.parametrize("bining_flavour", ["log", "custom"])
 def test_bined_mae(bining_flavour: str):
     tests_io(f"Test Case: Bined MAE for bining flavour {bining_flavour}", level=0)
 

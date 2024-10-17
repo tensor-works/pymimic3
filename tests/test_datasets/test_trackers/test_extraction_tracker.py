@@ -6,7 +6,7 @@ from utils.IO import *
 from tests.tsettings import *
 
 TRACKER_STATE = {
-    "count_subject_events": {
+    "start_event_rows": {
         "OUTPUTEVENTS.csv": 0,
         "LABEVENTS.csv": 0,
         "CHARTEVENTS.csv": 0
@@ -35,7 +35,6 @@ def test_extraction_tracker_basics():
 
     # Test correct initialization
     for attribute, value in TRACKER_STATE.items():
-        assert attribute in tracker._progress
         assert getattr(tracker, attribute) == value
 
     tests_io("Succeeded testing initialization.")
@@ -43,27 +42,20 @@ def test_extraction_tracker_basics():
     for attribute, value in TRACKER_STATE.items():
         # These states influence the state of the tracker from within the ExtractionTracker __init__
         # and are therefore not part of basic funcitonalities
-        if attribute not in ["count_subject_events", "subject_ids", "num_samples", "num_subjects"]:
+        if attribute not in ["start_event_rows", "subject_ids", "num_samples", "num_subjects"]:
             setattr(tracker, attribute,
                     True if isinstance(getattr(tracker, attribute), bool) else 10)
 
-    tracker.count_subject_events = {
-        "OUTPUTEVENTS.csv": 10,
-        "LABEVENTS.csv": 10,
-        "CHARTEVENTS.csv": 10
-    }
+    tracker.start_event_rows = {"OUTPUTEVENTS.csv": 10, "LABEVENTS.csv": 10, "CHARTEVENTS.csv": 10}
 
     # Test correct assignment
     for attribute, value in TRACKER_STATE.items():
-        assert attribute in tracker._progress
-        if attribute not in ["count_subject_events", "subject_ids", "num_samples", "num_subjects"]:
+        if attribute not in ["start_event_rows", "subject_ids", "num_samples", "num_subjects"]:
             assert getattr(
                 tracker,
                 attribute) == (True if isinstance(getattr(tracker, attribute), bool) else 10)
-            assert tracker._progress[attribute] == (True if isinstance(
-                getattr(tracker, attribute), bool) else 10)
 
-    assert tracker.count_subject_events == {
+    assert tracker.start_event_rows == {
         "OUTPUTEVENTS.csv": 10,
         "LABEVENTS.csv": 10,
         "CHARTEVENTS.csv": 10
@@ -74,15 +66,12 @@ def test_extraction_tracker_basics():
     del tracker
     tracker = ExtractionTracker(storage_path=Path(TEMP_DIR, "progress"), num_samples=None)
     for attribute, value in TRACKER_STATE.items():
-        assert attribute in tracker._progress
-        if attribute not in ["count_subject_events", "subject_ids", "num_samples", "num_subjects"]:
+        if attribute not in ["start_event_rows", "subject_ids", "num_samples", "num_subjects"]:
             assert getattr(
                 tracker,
                 attribute) == (True if isinstance(getattr(tracker, attribute), bool) else 10)
-            assert tracker._progress[attribute] == (True if isinstance(
-                getattr(tracker, attribute), bool) else 10)
 
-    assert tracker.count_subject_events == {
+    assert tracker.start_event_rows == {
         "OUTPUTEVENTS.csv": 10,
         "LABEVENTS.csv": 10,
         "CHARTEVENTS.csv": 10
@@ -91,24 +80,18 @@ def test_extraction_tracker_basics():
 
     # Test correct __iadd__ implementation
     for attribute, value in TRACKER_STATE.items():
-        assert attribute in tracker._progress
         if isinstance(getattr(tracker, attribute), (int, float)):
             setattr(tracker, attribute,
                     getattr(tracker, attribute) +
                     10)  #This is how iadd is perfomed for simple properties
 
-    tracker.count_subject_events += {
-        "OUTPUTEVENTS.csv": 10,
-        "LABEVENTS.csv": 10,
-        "CHARTEVENTS.csv": 10
-    }
+    tracker.start_event_rows += {"OUTPUTEVENTS.csv": 10, "LABEVENTS.csv": 10, "CHARTEVENTS.csv": 10}
 
     for attribute, value in TRACKER_STATE.items():
         if isinstance(attribute, (int, float)):
             assert getattr(tracker, attribute) == 20
-            assert tracker._progress[attribute] == 20
 
-    assert tracker.count_subject_events == {
+    assert tracker.start_event_rows == {
         "OUTPUTEVENTS.csv": 20,
         "LABEVENTS.csv": 20,
         "CHARTEVENTS.csv": 20
@@ -118,11 +101,10 @@ def test_extraction_tracker_basics():
     tracker = ExtractionTracker(storage_path=Path(TEMP_DIR, "progress"), num_samples=None)
 
     for attribute, value in TRACKER_STATE.items():
-        assert attribute in tracker._progress
         if isinstance(attribute, (int, float)):
             assert getattr(tracker, attribute) == 20
 
-    assert tracker.count_subject_events == {
+    assert tracker.start_event_rows == {
         "OUTPUTEVENTS.csv": 20,
         "LABEVENTS.csv": 20,
         "CHARTEVENTS.csv": 20
@@ -137,7 +119,6 @@ def test_num_samples_option():
 
     assert tracker.num_samples == 10
     for attribute, value in TRACKER_STATE.items():
-        assert attribute in tracker._progress
         if attribute != "num_samples":
             assert getattr(tracker, attribute) == value
 
@@ -181,7 +162,6 @@ def test_num_samples_option():
     tracker = ExtractionTracker(storage_path=Path(TEMP_DIR, "progress"), num_samples=None)
     # Check init
     for attribute, value in TRACKER_STATE.items():
-        assert attribute in tracker._progress
         if attribute not in EVENT_BOOLS + ["num_samples", "count_total_samples"]:
             assert getattr(tracker, attribute) == value
 
@@ -201,7 +181,6 @@ def test_num_subjects_option():
     # Check init
     assert tracker.num_subjects == 10
     for attribute, value in TRACKER_STATE.items():
-        assert attribute in tracker._progress
         if attribute != "num_subjects":
             assert getattr(tracker, attribute) == value
 
@@ -242,7 +221,6 @@ def test_num_subjects_option():
     tracker = ExtractionTracker(storage_path=Path(TEMP_DIR, "progress"), num_subjects=None)
     # Check init
     for attribute, value in TRACKER_STATE.items():
-        assert attribute in tracker._progress
         if attribute not in EVENT_BOOLS + ["num_samples", "subject_ids"]:
             assert getattr(tracker, attribute) == value
 
@@ -266,7 +244,6 @@ def test_subject_ids_option():
                                 subject_ids=list(range(10)))
     # Check init
     for attribute, value in TRACKER_STATE.items():
-        assert attribute in tracker._progress
         if attribute != "subject_ids":
             assert getattr(tracker, attribute) == value
 
@@ -293,7 +270,6 @@ def test_subject_ids_option():
                                 subject_ids=list(range(15)))
     # Check init
     for attribute, value in TRACKER_STATE.items():
-        assert attribute in tracker._progress
         if attribute not in EVENT_BOOLS + ["num_samples", "count_total_samples", "subject_ids"]:
             assert getattr(tracker, attribute) == value
     # Assert subject ids unchanged
@@ -306,13 +282,17 @@ def test_subject_ids_option():
     tracker.subject_ids.extend(list(range(10, 15)))
     tracker.count_total_samples += 5
     assert tracker.subject_ids == list(range(15))
+    assert tracker.start_event_rows == {
+        "OUTPUTEVENTS.csv": 0,
+        "LABEVENTS.csv": 0,
+        "CHARTEVENTS.csv": 0
+    }
 
     # Test setting subject_ids to None
     del tracker
     tracker = ExtractionTracker(storage_path=Path(TEMP_DIR, "progress"), subject_ids=None)
     # Check init
     for attribute, value in TRACKER_STATE.items():
-        assert attribute in tracker._progress
         if attribute not in EVENT_BOOLS + ["num_samples", "count_total_samples", "subject_ids"]:
             assert getattr(tracker, attribute) == value
     # Assert subject ids unchanged
@@ -322,6 +302,12 @@ def test_subject_ids_option():
     # Assert not done
     for attribute in EVENT_BOOLS:
         assert getattr(tracker, attribute) == False
+
+    assert tracker.start_event_rows == {
+        "OUTPUTEVENTS.csv": 0,
+        "LABEVENTS.csv": 0,
+        "CHARTEVENTS.csv": 0
+    }
 
 
 if __name__ == "__main__":

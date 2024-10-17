@@ -1254,22 +1254,24 @@ class EventReader():
             # Readers from which to get chunk
             # Pandas is leaky when get chunk is not carried out to the EOF so we
             # have to manage the file handle ourselves
+            self._start_event_rows = dict(self._tracker.start_event_rows)
             self._csv_reader = dict()
             self._csv_handle = dict()
+            # print(f"\n\n\n\n\n\n\n\n\n\n{self._tracker.start_event_rows}")
             for csv_name, kwargs in self._event_csv_kwargs.items():
                 file_handle = Path(dataset_folder, csv_name).open("rb")
                 self._csv_reader[csv_name] = pd.read_csv(file_handle,
                                                          iterator=True,
+                                                         skiprows=range(
+                                                             1, self._start_event_rows[csv_name]),
                                                          na_values=[''],
                                                          keep_default_na=False,
                                                          chunksize=chunksize,
                                                          low_memory=False,
                                                          **kwargs)
                 self._csv_handle[csv_name] = file_handle
-            if subject_ids is None:
-                # If subject ids is specified we need to start from the begining again
-                # Since the new subjects might be in the first chunks
-                self._init_reader()
+        else:
+            self._start_event_rows = dict(zip(self._event_csv_kwargs.keys(), [0, 0, 0]))
 
         self._convert_datetime = ["INTIME", "CHARTTIME", "OUTTIME"]
         resource_folder = Path(dataset_folder, "resources")
@@ -1289,26 +1291,6 @@ class EventReader():
             True if all chunks have been read, False otherwise.
         """
         return self._done
-
-    def _init_reader(self):
-        """
-        Initialize the reader by skipping rows according to the tracker if it exists.
-        """
-        info_io(f"Starting reader initialization.", verbose=self._verbose)
-        header = "Initializing reader and starting at row:\n"
-        msg = list()
-        for csv in self._event_csv_kwargs:
-            try:
-                with self._lock:
-                    n_chunks = self._tracker.count_subject_events[csv] // self._chunksize
-                    skip_rows = self._tracker.count_subject_events[csv] % self._chunksize
-                [len(self._csv_reader[csv].get_chunk()) for _ in range(n_chunks)]  # skipping chunks
-                self.event_csv_skip_rows[csv] = skip_rows  # rows to skip in first chunk
-                with self._lock:
-                    msg.append(f"{csv}: {self._tracker.count_subject_events[csv]}")
-            except:
-                self._csv_handle[csv].close()
-        info_io(header + " - ".join(msg), verbose=self._verbose)
 
     def get_chunk(self) -> tuple:
         """
@@ -1331,10 +1313,10 @@ class EventReader():
                 ):
                     last_occurences = max(self._last_occurrence[csv_name].values())
                     self._last_occurrence[csv_name] = last_occurences
-                    debug_io(f"Last occurence for {csv_name}: {last_occurences}")
                     self._lo_thread_done[csv_name] = True
 
             events_df = self._csv_reader[csv_name].get_chunk()
+            events_df.index += self._start_event_rows[csv_name]
 
             # If start index exceeds last occurence of any subject, stop reader
             if self._lo_thread_done[csv_name] and events_df.index[0] >= self._last_occurrence[
@@ -1353,7 +1335,7 @@ class EventReader():
                 events_df = events_df[events_df["SUBJECT_ID"].isin(self._subject_ids)]
 
             if not 'ICUSTAY_ID' in events_df:
-                events_df['ICUSTAY_ID'] = pd.NA
+                events_df = events_df.assign(ICUSTAY_ID=pd.NA)
                 events_df['ICUSTAY_ID'] = events_df['ICUSTAY_ID'].astype(
                     self._event_csv_kwargs[csv_name]["dtype"]["ICUSTAY_ID"])
 
@@ -1412,17 +1394,18 @@ class EventReader():
         event_csv = ["CHARTEVENTS.csv", "LABEVENTS.csv", "OUTPUTEVENTS.csv"]
         event_frames = list()
 
-        for csv in event_csv:
-            events_df = pd.read_csv(Path(self.dataset_folder, csv),
+        for csv_name in event_csv:
+            events_df = pd.read_csv(Path(self.dataset_folder, csv_name),
                                     low_memory=False,
                                     na_values=[''],
                                     keep_default_na=False,
-                                    **self._event_csv_kwargs[csv])
+                                    **self._event_csv_kwargs[csv_name])
             events_df = upper_case_column_names(events_df)
 
             if not 'ICUSTAY_ID' in events_df:
-                events_df['ICUSTAY_ID'] = np.nan
-                events_df['ICUSTAY_ID'] = events_df['ICUSTAY_ID'].astype(pd.Int32Dtype())
+                events_df = events_df.assign(ICUSTAY_ID=pd.NA)
+                events_df['ICUSTAY_ID'] = events_df['ICUSTAY_ID'].astype(
+                    self._event_csv_kwargs[csv_name]["dtype"]["ICUSTAY_ID"])
 
             # Drop specified columns and NAN rows, merge onto varmap for variable definitions
             drop_cols = set(events_df.columns) - set(self._csv_settings["columns"])

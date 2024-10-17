@@ -5,7 +5,6 @@ import runpy
 import pandas as pd
 from pathlib import Path
 from colorama import Fore, Style
-from yaspin import yaspin
 
 
 def run_script(module_name, input_dir, output_dir):

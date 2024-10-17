@@ -72,14 +72,14 @@ docker run $DOCKER_VOLUME_MOUNTS \
 # Printing and handling the exit status
 echo -e "${BLUE}---------- Exit status: $test_status--------------------------------${RESET}"
 if [ $test_status -ne 0 ]; then
-    echo "${BLUE}The command failed.${RESET}"
+    echo -e "${BLUE}The command failed.${RESET}"
     exit $test_status
 elif [ ! -f "$BASH_RESULTS/$OUTPUT_FILENAME.txt" ]; then
-    echo "${RED}Log artifact not created. Expected location:\n \
+    echo -e "${RED}Log artifact not created. Expected location:\n \
         $BASH_RESULTS/$OUTPUT_FILENAME.txt${RESET}"
     exit $(( $test_status == 0 ? 1 : $test_status ))
 elif [ ! -f "$PYTEST_RESULTS/$OUTPUT_FILENAME.xml" ]; then
-    echo "${RED}Pytest artifact not created. Expected location:\n \
+    echo -e "${RED}Pytest artifact not created. Expected location:\n \
         $BASH_RESULTS/$OUTPUT_FILENAME.txt${RESET}"
     exit $(( $test_status == 0 ? 1 : $test_status ))
 fi

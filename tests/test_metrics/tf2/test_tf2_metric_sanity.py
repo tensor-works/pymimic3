@@ -80,7 +80,7 @@ y_true_flat_ml = y_true_ml.numpy().flatten()
 y_pred_flat_ml = y_pred_ml.numpy().flatten()
 
 
-@pytest.mark.parametrize("bining_falvour", ["log", "custom"])
+@pytest.mark.parametrize("bining_flavour", ["log", "custom"])
 def test_bined_mae(bining_flavour: str):
     tests_io(f"Test Case: Bined MAE for binning flavour '{bining_flavour}'", level=0)
 

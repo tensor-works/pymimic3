@@ -5,10 +5,10 @@ from settings import *
 # ================= everything else =================
 import shutil
 import pytest
-import os
 import datasets
 import ray
-from pathlib import Path
+import os
+from tests.tsettings import *
 from typing import Dict
 from utils.IO import *
 from datasets.readers import ExtractedSetReader, ProcessedSetReader

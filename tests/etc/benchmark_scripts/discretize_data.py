@@ -5,6 +5,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from colorama import Fore, Style
 from yaspin import yaspin
+from tests.pytest_utils.reporting import nullyaspin
 
 load_dotenv()
 
@@ -70,7 +71,8 @@ if __name__ == "__main__":
 
         print(f"{Fore.BLUE}Discretizing data for: {task} {Style.RESET_ALL}")
 
-        with yaspin(color="green", text=f"") as sp:
+        with nullyaspin(f"") if os.getenv('GITHUB_ACTIONS') else \
+             yaspin(color="green", text=f"") as sp:
             try:
                 for impute_strategy in impute_strategies:
                     for start_time in start_times:
