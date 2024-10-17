@@ -43,15 +43,19 @@ import json
 class NestedMongoDict:
 
     def __init__(self,
-                 db_name,
+                 _db_name,
                  collection_name='default_collection',
                  host='localhost',
                  port=27017,
-                 autocommit=True):
+                 autocommit=True,
+                 reinit=False):
         self.client = MongoClient(host, port)
-        self.db = self.client[str(db_name).replace("/", "_")]
+        self._db_name = str(_db_name).replace("/", "_")
+        self.db = self.client[self._db_name]
         self.collection = self.db[collection_name]
         self.autocommit = autocommit
+        if reinit:
+            self.delete()
 
     def __enter__(self):
         return self
@@ -118,6 +122,16 @@ class NestedMongoDict:
         update_nested(existing_data, value)
         self[key] = existing_data
 
+    def delete(self):
+        """
+        Delete the entire database if it exists.
+        """
+        if self._db_name in self.client.list_database_names():
+            self.client.drop_database(self._db_name)
+            print(f"Database '{self._db_name}' has been deleted.")
+        else:
+            print(f"Database '{self._db_name}' does not exist.")
+
     def print(self):
         for doc in self.collection.find():
             decoded_key = self._decode_key(doc['_id'])
@@ -126,6 +140,45 @@ class NestedMongoDict:
     def clear(self):
         self.collection.delete_many({})
 
+    def set_nested(self, key_path, value):
+        if not key_path:
+            raise ValueError("Key path cannot be empty")
+
+        keys = key_path.split('.')
+        top_level_key = self._encode_key(keys[0])
+
+        if len(keys) == 1:
+            self[self._decode_key(top_level_key)] = value
+            return
+
+        # Retrieve existing document or create a new one
+        doc = self.collection.find_one({'_id': top_level_key}) or {
+            '_id': top_level_key,
+            'value': {}
+        }
+
+        # Navigate through the nested structure
+        current = doc['value']
+        for i, key in enumerate(keys[1:-1]):
+            if key not in current or not isinstance(current[key], dict):
+                current[key] = {}
+            current = current[key]
+
+        # Set the value at the final level
+        if isinstance(current, dict):
+            current[keys[-1]] = self._encode_value(value)
+        else:
+            # If the current value is not a dict, we need to replace it entirely
+            parent = doc['value']
+            for key in keys[1:-2]:
+                parent = parent[key]
+            parent[keys[-2]] = {keys[-1]: self._encode_value(value)}
+
+        # Update the document in the database
+        self.collection.update_one({'_id': top_level_key}, {'$set': doc}, upsert=True)
+
+
+    '''
     def set_nested(self, key_path, value):
         keys = key_path.split('.')
         top_level_key = self._encode_key(keys[0])
@@ -153,6 +206,7 @@ class NestedMongoDict:
 
         if result.matched_count == 0 and not result.upserted_id:
             raise KeyError(f"Failed to set nested key '{key_path}'")
+    '''
 
     def get_nested(self, key_path):
         keys = key_path.split('.')
@@ -453,9 +507,8 @@ class ProxyDict(dict):
         self._set_callback = obj._set_callback
         super().__init__()
         self._set_self(value, store_on_init, db)
-        if self._store_total and store_on_init:
+        if self._store_total and (store_on_init or "total" not in self):
             self.set("total", self._init_total(self, db), db=db)
-        return
 
     def _init_total(self, mapping: dict, db=None):
 
@@ -1035,26 +1088,26 @@ def storable(cls):
                 print(f'{key}: {value}')
         print("===== End Printing =====")
 
-    def db_exists(self, db_name, host='localhost', port=27017):
-        db_name = str(self._path).replace("/", "_")
+    def db_exists(self, _db_name, host='localhost', port=27017):
+        _db_name = str(self._path).replace("/", "_")
         client = MongoClient(host, port)
         try:
             # Get the list of all database names
             db_list = client.list_database_names()
 
             # Check if the database name is in the list
-            return db_name in db_list
+            return _db_name in db_list
         finally:
             # Always close the client connection
             client.close()
 
-    def delete_db(self, db_name, host='localhost', port=27017):
+    def delete_db(self, _db_name, host='localhost', port=27017):
         # Delete the specified database
-        db_name = str(self._path).replace("/", "_")
+        _db_name = str(self._path).replace("/", "_")
         client = MongoClient(host, port)
         try:
-            if db_name in client.list_database_names():
-                client.drop_database(db_name)
+            if _db_name in client.list_database_names():
+                client.drop_database(_db_name)
         finally:
             # Always close the client connection
             client.close()
@@ -1180,7 +1233,11 @@ if __name__ == "__main__":
     if Path("test").is_file():
         Path("test").unlink()
     test = TestClass('test')
+
+    test.e = {"a": 1, "b": 2}
+    test.print_db()
     print(test.e)
+    exit()
 
     del test
     test = TestClass('test')

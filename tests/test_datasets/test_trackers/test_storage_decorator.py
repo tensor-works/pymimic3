@@ -5,8 +5,7 @@ import shutil
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from utils.IO import *
-# from storable import storable
-from trash1 import storable
+from storable import storable
 
 
 @storable
@@ -188,6 +187,23 @@ def test_total_count_int_keys():
         "total": 9
     }
     tests_io("Succeeded dictionary assignment total count.")
+
+    del test_instance
+    test_instance = CountTestClass(Path(TEMP_DIR, "progress"))
+    assert test_instance.subjects == {
+        1: {
+            1: 1,
+            2: 2,
+            "total": 3
+        },
+        2: {
+            1: 2,
+            2: 4,
+            "total": 6
+        },
+        "total": 9
+    }
+    tests_io("Succeeded dictionary assignment total count persitance.")
     test_instance.subjects.update({1: {3: 3}})
     assert test_instance.subjects == {
         1: {
@@ -204,6 +220,24 @@ def test_total_count_int_keys():
         "total": 12
     }
     tests_io("Succeeded dictionary nested update total count.")
+
+    del test_instance
+    test_instance = CountTestClass(Path(TEMP_DIR, "progress"))
+    assert test_instance.subjects == {
+        1: {
+            1: 1,
+            2: 2,
+            3: 3,
+            "total": 6
+        },
+        2: {
+            1: 2,
+            2: 4,
+            "total": 6
+        },
+        "total": 12
+    }
+    tests_io("Succeeded dictionary nested update total count persistance.")
 
     test_instance.subjects = {1: 0, 2: 0}
     assert test_instance.subjects == {1: 0, 2: 0, "total": 0}
@@ -654,6 +688,9 @@ if __name__ == "__main__":
     # test_concurrent_access()
     if TEMP_DIR.is_dir():
         shutil.rmtree(str(TEMP_DIR))
+    test_total_count_int_keys()
+    if TEMP_DIR.is_dir():
+        shutil.rmtree(str(TEMP_DIR))
     test_storable_basics()
     if TEMP_DIR.is_dir():
         shutil.rmtree(str(TEMP_DIR))
@@ -661,9 +698,6 @@ if __name__ == "__main__":
     test_dictionary_update()
     if TEMP_DIR.is_dir():
         shutil.rmtree(str(TEMP_DIR))
-    if TEMP_DIR.is_dir():
-        shutil.rmtree(str(TEMP_DIR))
-    test_total_count_int_keys()
     if TEMP_DIR.is_dir():
         shutil.rmtree(str(TEMP_DIR))
     test_list_basic()
