@@ -46,16 +46,26 @@ def test_num_subjects_extraction(extracted_reader: ExtractedSetReader, extractio
 
     tests_io(f"-> Succeeded in testing on empty directory.")
     tests_io("-" * 100)
+    # Test reducing subject count
+    with pytest.raises(AssertionError, match=r"AssertionError.*"):
+        extract_and_compare(num_subjects=100,
+                            extraction_style=extraction_style,
+                            extracted_reader=extracted_reader)
+    tests_io(f"-> Succeeded in testing with excessive num_subjects.")
+
+    tests_io("-" * 100)
     tests_io(f"-> Testing extract-only with 1 subjects on existing directory.")
     # Test reducing subject count
     extract_and_compare(num_subjects=1,
                         extraction_style=extraction_style,
                         extracted_reader=extracted_reader)
     tests_io(f"-> Succeeded in reducing number of subjects.")
+    tests_io("-" * 100)
+    tests_io(f"-> Testing with excessive num subjects.")
 
 
 @pytest.mark.parametrize("extraction_style", ["iterative", "compact"])
-@pytest.mark.parametrize("task_name", ["IHM"])
+@pytest.mark.parametrize("task_name", ["PHENO"])
 def test_num_subjects_preprocessing_only(task_name: str, extraction_style: str):
     if task_name == "MULTI":
         return
@@ -94,6 +104,14 @@ def test_num_subjects_preprocessing_only(task_name: str, extraction_style: str):
 
     tests_io(f"-> Succeeded in testing on empty directory.")
     tests_io("-" * 100)
+    # Test reducing subject count
+    with pytest.raises(AssertionError, match=r"AssertionError.*"):
+        process_and_compare(num_subjects=100,
+                            task_name=task_name,
+                            extraction_style=extraction_style,
+                            test_data_dir=test_data_dir)
+    tests_io(f"-> Succeeded in testing with excessive num_subjects.")
+    tests_io("-" * 100)
     tests_io(f"-> Testing preprocessing-only with 1 subjects on empty directory.")
     # Test reducing subject count
     process_and_compare(num_subjects=1,
@@ -104,7 +122,7 @@ def test_num_subjects_preprocessing_only(task_name: str, extraction_style: str):
 
 
 @pytest.mark.parametrize("extraction_style", ["iterative", "compact"])
-@pytest.mark.parametrize("task_name", ["IHM"])
+@pytest.mark.parametrize("task_name", ["PHENO"])
 def test_num_subjects_engineer_only(task_name: str, extraction_style: str):
     if task_name == "MULTI":
         return
@@ -150,6 +168,14 @@ def test_num_subjects_engineer_only(task_name: str, extraction_style: str):
 
     tests_io(f"-> Succeeded in testing on empty directory.")
     tests_io("-" * 100)
+    # Test reducing subject count
+    with pytest.raises(AssertionError, match=r"AssertionError.*"):
+        engineer_and_compare(num_subjects=100,
+                             task_name=task_name,
+                             extraction_style=extraction_style,
+                             test_df=test_df)
+    tests_io(f"-> Succeeded in testing with excessive num_subjects.")
+    tests_io("-" * 100)
     tests_io(f"-> Testing engineer-only with 1 subjects on empty directory.")
     # Test reducing subject count
     engineer_and_compare(num_subjects=1,
@@ -160,7 +186,7 @@ def test_num_subjects_engineer_only(task_name: str, extraction_style: str):
 
 
 @pytest.mark.parametrize("extraction_style", ["iterative", "compact"])
-@pytest.mark.parametrize("task_name", ["IHM"])
+@pytest.mark.parametrize("task_name", ["PHENO"])
 def test_num_subjects_process(task_name: str, extraction_style: str):
     if task_name == "MULTI":
         return
@@ -195,6 +221,14 @@ def test_num_subjects_process(task_name: str, extraction_style: str):
 
     tests_io(f"-> Succeeded in testing on empty directory.")
     tests_io("-" * 100)
+    # Test reducing subject count
+    with pytest.raises(AssertionError, match=r"AssertionError.*"):
+        process_and_compare(num_subjects=100,
+                            task_name=task_name,
+                            extraction_style=extraction_style,
+                            test_data_dir=test_data_dir)
+    tests_io(f"-> Succeeded in testing with excessive num_subjects.")
+    tests_io("-" * 100)
     tests_io(f"-> Testing preprocessing 1 subjects on empty director from scratch.")
     # Test reducing subject count
     process_and_compare(num_subjects=1,
@@ -205,7 +239,7 @@ def test_num_subjects_process(task_name: str, extraction_style: str):
 
 
 @pytest.mark.parametrize("extraction_style", ["iterative", "compact"])
-@pytest.mark.parametrize("task_name", ["IHM"])
+@pytest.mark.parametrize("task_name", ["PHENO"])
 def test_num_subjects_engineer(task_name: str, extraction_style: str):
     if task_name == "MULTI":
         return
@@ -248,6 +282,14 @@ def test_num_subjects_engineer(task_name: str, extraction_style: str):
 
     tests_io(f"-> Succeeded in testing on empty directory.")
     tests_io("-" * 100)
+    # Test reducing subject count
+    with pytest.raises(AssertionError, match=r"AssertionError.*"):
+        engineer_and_compare(num_subjects=100,
+                             task_name=task_name,
+                             extraction_style=extraction_style,
+                             test_df=test_df)
+    tests_io(f"-> Succeeded in testing with excessive num_subjects.")
+    tests_io("-" * 100)
     tests_io(f"-> Testing preprocessing 1 subjects on empty directory from scratch.")
     # Test reducing subject count
     engineer_and_compare(num_subjects=1,
@@ -269,7 +311,9 @@ def extract_and_compare(num_subjects: int, extraction_style: str,
         # Get the frames
         reader: ExtractedSetReader = return_entity
         reader.read_diagnoses()
-        assert len(reader.subject_ids) == num_subjects
+        assert len(
+            reader.subject_ids
+        ) == num_subjects, f"Expected {num_subjects} subjects, got {len(reader.subject_ids)}"
         subject_ids = reader.subject_ids
         generated_dataset = reader.read_subjects(reader.subject_ids, read_ids=True)
     else:
@@ -341,11 +385,11 @@ if __name__ == "__main__":
     extraction_reader = datasets.load_data(chunksize=75835,
                                            source_path=TEST_DATA_DEMO,
                                            storage_path=SEMITEMP_DIR)
-    for extraction_style in ["compact", "iterative"]:  #["iterative", "compact"]:
+    for extraction_style in ["iterative", "compact"]:  # ["compact", "iterative"]:
         if TEMP_DIR.is_dir():
             shutil.rmtree(str(TEMP_DIR))
         test_num_subjects_extraction(extraction_reader, extraction_style)
-        for task in ["IHM"]:
+        for task in ["PHENO"]:
             if not Path(SEMITEMP_DIR, "processed", task).is_dir():
                 reader = datasets.load_data(chunksize=75835,
                                             source_path=TEST_DATA_DEMO,

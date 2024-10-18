@@ -83,7 +83,7 @@ def test_subject_ids_extraction(extracted_reader: ExtractedSetReader, subject_id
 
 
 @pytest.mark.parametrize("extraction_style", ["iterative", "compact"])
-@pytest.mark.parametrize("task_name", ["IHM"])
+@pytest.mark.parametrize("task_name", ["PHENO"])
 def test_subject_ids_preprocessing_only(task_name: str, subject_ids: list, extraction_style: str):
     if task_name == "MULTI":
         return
@@ -150,7 +150,7 @@ def test_subject_ids_preprocessing_only(task_name: str, subject_ids: list, extra
 
 
 @pytest.mark.parametrize("extraction_style", ["iterative", "compact"])
-@pytest.mark.parametrize("task_name", ["IHM"])
+@pytest.mark.parametrize("task_name", ["PHENO"])
 def test_subject_ids_engineer_only(task_name: str, subject_ids: list, extraction_style: str):
     if task_name == "MULTI":
         return
@@ -228,7 +228,7 @@ def test_subject_ids_engineer_only(task_name: str, subject_ids: list, extraction
 
 
 @pytest.mark.parametrize("extraction_style", ["iterative", "compact"])
-@pytest.mark.parametrize("task_name", ["IHM"])
+@pytest.mark.parametrize("task_name", ["PHENO"])
 def test_subject_ids_preprocessing(task_name: str, subject_ids: list, extraction_style: str):
     if task_name == "MULTI":
         return
@@ -295,7 +295,7 @@ def test_subject_ids_preprocessing(task_name: str, subject_ids: list, extraction
 
 
 @pytest.mark.parametrize("extraction_style", ["iterative", "compact"])
-@pytest.mark.parametrize("task_name", ["IHM"])
+@pytest.mark.parametrize("task_name", ["PHENO"])
 def test_subject_ids_engineer(task_name: str, subject_ids: list, extraction_style: str):
     if task_name == "MULTI":
         return
@@ -503,7 +503,7 @@ if __name__ == "__main__":
         if TEMP_DIR.is_dir():
             shutil.rmtree(str(TEMP_DIR))
         test_subject_ids_extraction(extraction_reader, subjects, extraction_style)
-        for task in ["IHM"]:
+        for task in ["PHENO"]:
             if not Path(SEMITEMP_DIR, "processed", task).is_dir():
                 reader = datasets.load_data(chunksize=75835,
                                             source_path=TEST_DATA_DEMO,

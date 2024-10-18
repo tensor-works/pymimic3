@@ -125,6 +125,107 @@ def test_dictionary_iadd():
     tests_io("Succeeded testing restoration of numerical dictionary iadd.")
 
 
+def test_subjects_dictionary_operations():
+    tests_io("Starting test_subjects_dictionary_operations", level=0)
+
+    # Initialize TestClass
+    test_instance = TestClass(Path(TEMP_DIR, "progress"))
+
+    # Test initial state
+    assert test_instance.subjects == {"a": 0, "b": 0}
+
+    # Test setting and getting with string keys
+    test_instance.subjects["c"] = 1
+    assert test_instance.subjects["c"] == 1
+
+    # Test updating existing keys
+    test_instance.subjects["a"] = 10
+    assert test_instance.subjects["a"] == 10
+
+    # Test setting and getting with integer keys
+    test_instance.subjects[1] = 100
+    assert test_instance.subjects[1] == 100
+
+    # Test nested dictionary with string keys
+    test_instance.subjects["nested"] = {"x": 1, "y": 2}
+    assert test_instance.subjects["nested"]["x"] == 1
+    assert test_instance.subjects["nested"]["y"] == 2
+
+    # Test nested dictionary with integer keys
+    test_instance.subjects[2] = {3: 30, 4: 40}
+    assert test_instance.subjects[2][3] == 30
+    assert test_instance.subjects[2][4] == 40
+
+    # Test updating nested dictionary
+    test_instance.subjects["nested"]["z"] = 3
+    assert test_instance.subjects["nested"]["z"] == 3
+
+    test_instance.subjects[2][5] = 50
+    assert test_instance.subjects[2][5] == 50
+
+    # Test deleting keys
+    del test_instance.subjects["b"]
+    assert "b" not in test_instance.subjects
+
+    del test_instance.subjects[1]
+    assert 1 not in test_instance.subjects
+
+    test_instance.print_db()
+    # Test clearing the dictionary
+    test_instance.subjects.clear()
+    test_instance.print_db()
+
+    assert len(test_instance.subjects) == 0
+
+    # Test persistence
+    del test_instance
+
+    # Recreate instance and check persistence
+    test_instance = TestClass(Path(TEMP_DIR, "progress"))
+    assert len(test_instance.subjects) == 0
+
+    # Repopulate and test again
+    test_instance.subjects = {"new": 1, 2: {"nested": "value"}}
+    del test_instance
+
+    test_instance = TestClass(Path(TEMP_DIR, "progress"))
+    assert test_instance.subjects == {"new": 1, 2: {"nested": "value"}}
+
+    # Test large nested structure
+    large_nested = {
+        "level1": {
+            "level2_1": {
+                "level3_1": [1, 2, 3],
+                "level3_2": {
+                    "a": 1,
+                    "b": 2
+                }
+            },
+            "level2_2": [4, 5, 6]
+        },
+        1: {
+            2: {
+                3: [7, 8, 9],
+                "mixed": {
+                    "x": 10,
+                    "y": 11
+                }
+            }
+        }
+    }
+    test_instance.subjects = large_nested
+    test_instance.print_db()
+    del test_instance
+
+    test_instance = TestClass(Path(TEMP_DIR, "progress"))
+    assert test_instance.subjects == large_nested
+    assert test_instance.subjects["level1"]["level2_1"]["level3_1"] == [1, 2, 3]
+    assert test_instance.subjects[1][2][3] == [7, 8, 9]
+    assert test_instance.subjects[1][2]["mixed"]["y"] == 11
+
+    tests_io("All tests in test_subjects_dictionary_operations passed successfully")
+
+
 def test_dictionary_update():
     tests_io("Test case dictionary update.", level=0)
     test_instance = TestClass(Path(TEMP_DIR, "progress"))
@@ -166,6 +267,49 @@ def test_dictionary_update():
         }
     }
     tests_io("Succeeded testing restoration of dictionary update.")
+
+    del test_instance
+    if Path(TEMP_DIR, "progress").exists():
+        shutil.rmtree(str(TEMP_DIR))
+    test_instance = TestClass(Path(TEMP_DIR, "progress"))
+    test_instance.names = {1: {1: 1, 2: 1}, 2: {1: 2, 2: 2}}
+    test_instance.names.update({1: {3: 1, 4: 1}, 3: {1: 1, 2: 1}})
+    assert test_instance.names == {
+        1: {
+            1: 1,
+            2: 1,
+            3: 1,
+            4: 1
+        },
+        2: {
+            1: 2,
+            2: 2
+        },
+        3: {
+            1: 1,
+            2: 1
+        },
+    }
+    tests_io("Succeeded testing dictionary update with integer keys.")
+    del test_instance
+    test_instance = TestClass(Path(TEMP_DIR, "progress"))
+    assert test_instance.names == {
+        1: {
+            1: 1,
+            2: 1,
+            3: 1,
+            4: 1
+        },
+        2: {
+            1: 2,
+            2: 2
+        },
+        3: {
+            1: 1,
+            2: 1
+        },
+    }
+    tests_io("Succeeded testing restoration of dictionary update with integer keys.")
 
 
 def test_total_count_int_keys():
@@ -627,7 +771,7 @@ def update_instance(instance, iterations, thread_id):
     instance.finished = True
 
 
-@pytest.mark.xfail("Test case would succeed for thread safe storable only", strict=False)
+@pytest.mark.skip(reason="Test case would succeed for thread safe storable only")
 def test_concurrent_access():
     test_instance = CountTestClass(Path(TEMP_DIR, "progress"))
 
@@ -658,7 +802,7 @@ def test_concurrent_access():
     assert test_instance.finished
 
 
-@pytest.mark.xfail("Test case would succeed for thread safe storable only", strict=False)
+@pytest.mark.skip(reason="Test case would succeed for thread safe storable only")
 def test_persistence(test_instance):
     print(f"Persistence test starting. Original instance state: {test_instance.__dict__}")
     # Verify persistence by creating a new instance
@@ -688,10 +832,13 @@ if __name__ == "__main__":
     # test_concurrent_access()
     if TEMP_DIR.is_dir():
         shutil.rmtree(str(TEMP_DIR))
+    test_subjects_dictionary_operations()
+    if TEMP_DIR.is_dir():
+        shutil.rmtree(str(TEMP_DIR))
     test_total_count_int_keys()
     if TEMP_DIR.is_dir():
         shutil.rmtree(str(TEMP_DIR))
-    test_storable_basics()
+    # test_storable_basics()
     if TEMP_DIR.is_dir():
         shutil.rmtree(str(TEMP_DIR))
     TEMP_DIR.mkdir(exist_ok=True, parents=True)

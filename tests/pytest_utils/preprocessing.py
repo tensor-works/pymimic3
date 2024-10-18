@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 from utils.IO import *
-from storable import NestedSqliteDict
+from storable import MongoDict
 from tests.pytest_utils.general import assert_dataframe_equals
 from datasets.readers import ProcessedSetReader
 from tests.tsettings import *
@@ -121,7 +121,7 @@ def assert_subject_data_equals(subject_id: int,
             assert np.allclose(y_true["y_true"].values, np.squeeze(y.values))
 
         # Testing the preprocessing tracker at the same time
-        with NestedSqliteDict(str(root_path / "progress")) as db:
+        with MongoDict(str(root_path / "progress")) as db:
             assert int(subject_id) in db["subjects"], \
                 f"Subject {subject_id} not found in the database, {db['subjects']}"
             assert int(stay_id) in db["subjects"][int(subject_id)],\
