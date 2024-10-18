@@ -477,6 +477,11 @@ class AbstractProcessor(ABC):
         n_processed_subjects = len(processed_subjects)
         if num_subjects is not None:
             num_subjects = max(num_subjects - n_processed_subjects, 0)
+            if num_subjects > len(remaining_subject_ids):
+                warn_io(
+                    f"Number of requested subjects ({num_subjects + n_processed_subjects}) exceeds available subjects ({len(all_subjects)})"
+                )
+                num_subjects = len(remaining_subject_ids)
             selected_subjects_ids = random.sample(remaining_subject_ids, k=num_subjects)
             remaining_subject_ids = list(set(remaining_subject_ids) - set(selected_subjects_ids))
             random.shuffle(remaining_subject_ids)

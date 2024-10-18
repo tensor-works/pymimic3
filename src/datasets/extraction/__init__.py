@@ -969,15 +969,15 @@ def get_subjects_by_number(task: str, num_subjects: int, existing_subjects: List
     """
     # Determined how many are missing
     num_subjects = max(0, num_subjects - len(existing_subjects))
+    remaining_subject_ids = list(set(all_subjects) - set(existing_subjects))
     # Chose from uprocessed subjects
     if num_subjects > len(all_subjects):
         warn_io(
             f"Number of requested subjects ({num_subjects + len(existing_subjects)}) exceeds available subjects ({len(all_subjects)})"
         )
-    remaining_subjects = list(set(all_subjects) - set(existing_subjects))
+        num_subjects = len(remaining_subject_ids)
     # if tracker is None we grab all possible subjects for return to the next processing step
-    num_subjects = min(num_subjects, len(remaining_subjects))
-    subject_ids = random.sample(remaining_subjects, k=num_subjects)
+    subject_ids = random.sample(remaining_subject_ids, k=num_subjects)
     assert len(subject_ids) == num_subjects
     return subject_ids
 

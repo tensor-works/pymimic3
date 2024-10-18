@@ -475,7 +475,7 @@ jobs:
           "$DOCKER_VOLUME_MOUNTS" \
           "$BRANCH_NAME" \
           "$CONTAINER_PYTEST_RESULTS" \
-          "tests/test_datasets/test_readers/test_extraction.py" \
+          "tests/test_datasets/test_extraction.py" \
           "$BASH_RESULTS" \
           "$PYTEST_RESULTS" \
           "test-extraction"
@@ -512,7 +512,7 @@ jobs:
           "$DOCKER_VOLUME_MOUNTS" \
           "$BRANCH_NAME" \
           "$CONTAINER_PYTEST_RESULTS" \
-          "tests/test_datasets/test_readers/test_preprocessors.py" \
+          "tests/test_datasets/test_preprocessors.py" \
           "$BASH_RESULTS" \
           "$PYTEST_RESULTS" \
           "test-preprocessors"
@@ -549,7 +549,7 @@ jobs:
           "$DOCKER_VOLUME_MOUNTS" \
           "$BRANCH_NAME" \
           "$CONTAINER_PYTEST_RESULTS" \
-          "tests/test_datasets/test_readers/test_feature_engine.py" \
+          "tests/test_datasets/test_feature_engine.py" \
           "$BASH_RESULTS" \
           "$PYTEST_RESULTS" \
           "test-feature-engineering"
@@ -586,7 +586,7 @@ jobs:
           "$DOCKER_VOLUME_MOUNTS" \
           "$BRANCH_NAME" \
           "$CONTAINER_PYTEST_RESULTS" \
-          "tests/test_datasets/test_readers/test_discretizer.py" \
+          "tests/test_datasets/test_discretizer.py" \
           "$BASH_RESULTS" \
           "$PYTEST_RESULTS" \
           "test-discretizer"
@@ -623,7 +623,7 @@ jobs:
           "$DOCKER_VOLUME_MOUNTS" \
           "$BRANCH_NAME" \
           "$CONTAINER_PYTEST_RESULTS" \
-          "tests/test_datasets/test_readers/test_options" \
+          "tests/test_datasets/test_parameters" \
           "$BASH_RESULTS" \
           "$PYTEST_RESULTS" \
           "test-parameters"

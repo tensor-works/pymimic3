@@ -47,7 +47,7 @@ def test_num_subjects_extraction(extracted_reader: ExtractedSetReader, extractio
     tests_io(f"-> Succeeded in testing on empty directory.")
     tests_io("-" * 100)
     # Test reducing subject count
-    with pytest.raises(AssertionError, match=r"AssertionError.*"):
+    with pytest.raises(AssertionError):
         extract_and_compare(num_subjects=100,
                             extraction_style=extraction_style,
                             extracted_reader=extracted_reader)
@@ -105,7 +105,7 @@ def test_num_subjects_preprocessing_only(task_name: str, extraction_style: str):
     tests_io(f"-> Succeeded in testing on empty directory.")
     tests_io("-" * 100)
     # Test reducing subject count
-    with pytest.raises(AssertionError, match=r"AssertionError.*"):
+    with pytest.raises(AssertionError):
         process_and_compare(num_subjects=100,
                             task_name=task_name,
                             extraction_style=extraction_style,
@@ -169,7 +169,7 @@ def test_num_subjects_engineer_only(task_name: str, extraction_style: str):
     tests_io(f"-> Succeeded in testing on empty directory.")
     tests_io("-" * 100)
     # Test reducing subject count
-    with pytest.raises(AssertionError, match=r"AssertionError.*"):
+    with pytest.raises(AssertionError):
         engineer_and_compare(num_subjects=100,
                              task_name=task_name,
                              extraction_style=extraction_style,
@@ -222,7 +222,7 @@ def test_num_subjects_process(task_name: str, extraction_style: str):
     tests_io(f"-> Succeeded in testing on empty directory.")
     tests_io("-" * 100)
     # Test reducing subject count
-    with pytest.raises(AssertionError, match=r"AssertionError.*"):
+    with pytest.raises(AssertionError):
         process_and_compare(num_subjects=100,
                             task_name=task_name,
                             extraction_style=extraction_style,
@@ -283,7 +283,7 @@ def test_num_subjects_engineer(task_name: str, extraction_style: str):
     tests_io(f"-> Succeeded in testing on empty directory.")
     tests_io("-" * 100)
     # Test reducing subject count
-    with pytest.raises(AssertionError, match=r"AssertionError.*"):
+    with pytest.raises(AssertionError):
         engineer_and_compare(num_subjects=100,
                              task_name=task_name,
                              extraction_style=extraction_style,
