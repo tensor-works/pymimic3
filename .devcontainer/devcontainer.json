@@ -11,9 +11,6 @@
 		"all"
 	],
 	"features": {
-		"ghcr.io/devcontainers/features/anaconda:1": {
-			"version": "latest"
-		},
 		"ghcr.io/devcontainers/features/common-utils:2": {
 			"installZsh": true,
 			"installOhMyZsh": true,
@@ -75,7 +72,6 @@
 	"customizations": {
 		"vscode": {
 			"extensions": [
-<<<<<<< HEAD
 				"ms-python.python",
 				"aaron-bond.better-comments",
 				"mikestead.dotenv",
@@ -95,10 +91,8 @@
 				"ms-python.debugpy",
 				"mechatroner.rainbow-csv",
 				"eeyore.yapf",
-				"github.vscode-github-actions"
-=======
+				"github.vscode-github-actions",
 				"GitHub.copilot"
->>>>>>> New database cannot be atomic
 			]
 		}
 	}

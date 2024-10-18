@@ -40,6 +40,15 @@ RUN find /opt/conda/ -follow -type f -name '*.a' -delete && \
     rm -rf /root/.cache/pip 
 
 USER root
+
+# Install MongoDB
+RUN apt-get update && apt-get install -y gnupg wget && \
+    wget -qO - https://www.mongodb.org/static/pgp/server-5.0.asc | apt-key add - && \
+    echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/5.0 multiverse" | tee /etc/apt/sources.list.d/mongodb-org-5.0.list && \
+    apt-get update && apt-get install -y mongodb-org && \
+    mkdir -p /data/db && \
+    echo 'mongod --fork --logpath /var/log/mongod.log --bind_ip_all' >> /root/.bashrc
+
 RUN echo "source activate base" >> ~/.bashrc && \
     echo "make -C etc/" >> ~/.bashrc && \
     echo "source etc/config_env.sh" >> ~/.bashrc

@@ -26,7 +26,8 @@ dependencies:
   - gdown
   - pip:
       - junit2html
-      - sqlitedict
+      - pymongo
+      - oslo_concurrency
       - lightning-utilities==0.11.2
       - pillow==10.2.0
       - polars==0.20.26
