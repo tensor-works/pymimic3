@@ -58,6 +58,10 @@ jobs:
         shell: bash
         id: get_volumes
         run: |
+          if [ -z "$DOCKER_CACHE_DIR" ]; then
+            echo "Error: DOCKER_CACHE_DIR environment variable is not set."
+            exit 1
+          fi
           TERM=xterm-color
           DOCKER_VOLUME_MOUNTS="\
            -v $DOCKER_CACHE_DIR/.github-action-cache/control-dataset:/workdir/tests/data/control-dataset\

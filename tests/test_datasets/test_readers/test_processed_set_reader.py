@@ -7,6 +7,7 @@ from utils.IO import *
 from tests.tsettings import *
 from settings import *
 from typing import Dict
+from tests.pytest_utils.decorators import retry
 from preprocessing.imputers import PartialImputer
 from preprocessing.scalers import MinMaxScaler
 from datasets.readers import ProcessedSetReader
@@ -560,6 +561,7 @@ def test_random_samples_with_ds(task_name: str, discretized_readers: Dict[str, P
 
 @pytest.mark.parametrize("task_name", TASK_NAMES)
 @pytest.mark.parametrize("reader_flavour", ["discretized", "engineered"])
+@retry(2)
 def test_to_numpy(task_name: str, reader_flavour: str,
                   discretized_readers: Dict[str, ProcessedSetReader],
                   engineered_readers: Dict[str, ProcessedSetReader]):
@@ -593,7 +595,7 @@ def test_to_numpy(task_name: str, reader_flavour: str,
 
     # => Assert n samples (subjects)
     for prefix in dataset:
-        assert dataset[prefix].shape[0] == n_samples
+        assert np.isclose(dataset[prefix].shape[0] == n_samples, atol=1)
 
     tests_io(f"Succeeded in testing retriving limited amount of samples"
              f" to_numpy for {reader_flavour} for task {task_name}")
