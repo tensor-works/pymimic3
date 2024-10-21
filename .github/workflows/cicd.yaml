@@ -155,11 +155,16 @@ jobs:
       - name: Check if local registry is running
         id: check_registry
         run: |
-          if docker info --format '{{json .Registries}}' | grep -q 'localhost:5000'; then
+          echo "Checking if local registry is running at localhost:5000..."
+
+          if curl -s -f -m 5 http://localhost:5000/v2/_catalog > /dev/null 2>&1; then
             echo "local_registry=true" >> $GITHUB_OUTPUT
+            echo "Local registry is running."
           else
             echo "local_registry=false" >> $GITHUB_OUTPUT
+            echo "Local registry is not running or not accessible."
           fi
+
 
       # => 7. Build and push Docker image: self-hosted (part 1) 
       - name: Build and export Docker image on self-hosted
@@ -223,7 +228,6 @@ jobs:
             
             # Load from tar
             docker load -i $DOCKER_IMAGE_TAR
-            
           fi
           # Push to Docker Hub
           docker push tensorpod/pymimic3:latest

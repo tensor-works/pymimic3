@@ -51,6 +51,13 @@ RUN find /opt/conda/ -follow -type f -name '*.a' -delete && \
     find /opt/conda/ -follow -type f -name '*.js.map' -delete && \
     rm -rf /root/.cache/pip 
 
+# Docker GPG keys
+RUN curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+RUN echo \
+    "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu \
+    $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+RUN apt-get update -y && apt-get install -y docker-ce-cli
+
 # Install MongoDB
 RUN apt-get update && apt-get install -y gnupg wget && \
     wget -qO - https://www.mongodb.org/static/pgp/server-5.0.asc | apt-key add - && \
@@ -60,7 +67,10 @@ RUN apt-get update && apt-get install -y gnupg wget && \
     echo 'mongod --fork --logpath /var/log/mongod.log --bind_ip_all' >> /root/.bashrc
 
 RUN echo "source activate base" >> ~/.bashrc && \
-    echo "make -C etc/" >> ~/.bashrc && \
+    echo "make" >> ~/.bashrc && \
     echo "source etc/config_env.sh" >> ~/.bashrc
+
+# Set Docker host for TCP connection
+ENV DOCKER_HOST=tcp://host.docker.internal:2375
 
 CMD ["/bin/bash"]
