@@ -156,13 +156,25 @@ jobs:
         id: check_registry
         run: |
           echo "Checking if local registry is running at localhost:5000..."
+          check_registry() {
+              local url=$1
+              if curl -s -f -m 5 "http://${url}/v2/_catalog" > /dev/null 2>&1; then
+                  return 0
+              else
+                  return 1
+              fi
+          }
 
-          if curl -s -f -m 5 http://localhost:5000/v2/_catalog > /dev/null 2>&1; then
-            echo "local_registry=true" >> $GITHUB_OUTPUT
-            echo "Local registry is running."
+          if check_registry "localhost:5000"; then
+              echo "local_registry=true" >> $GITHUB_OUTPUT
+              echo "Local registry is running on localhost:5000."
+          elif check_registry "registry:5000"; then
+              echo "local_registry=true" >> $GITHUB_OUTPUT
+              echo "Local registry is running on registry:5000 (Docker network)."
           else
-            echo "local_registry=false" >> $GITHUB_OUTPUT
-            echo "Local registry is not running or not accessible."
+              echo "local_registry=false" >> $GITHUB_OUTPUT
+              echo "Error: No local registry is running or accessible." >&2
+              exit 1
           fi
 
 
