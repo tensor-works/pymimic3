@@ -111,7 +111,8 @@ jobs:
           echo $DOCKER_CACHE_DIR
           echo $DOCKER_CACHE_DIR/.buildx-image-cache/tensorpod/pymimic3/
           echo "::endgroup::"
-
+          
+          docker tag tensorpod/pymimic3:latest registry:5000/pymimic3:latest
           docker push registry:5000/pymimic3:latest
           exit 1
 
