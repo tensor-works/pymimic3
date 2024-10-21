@@ -3,18 +3,26 @@ FROM tensorpod/torch-and-tf2-on-cuda:pt2.3-cu118-tf2.14.0-py3.9-no-ta-tv
 
 LABEL maintainer="Amadou Wolfgang Cisse <amadou.6e@googlemail.com>"
 
-ENV IS_DOCKER=1
-ENV LANG=C.UTF-8 LC_ALL=C.UTF-8
-ENV PATH=/opt/conda/bin:$PATH
-ENV NVIDIA_VISIBLE_DEVICES all
-ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
+ENV IS_DOCKER=1 \
+    LANG=C.UTF-8 \
+    LC_ALL=C.UTF-8 \
+    PATH=/opt/conda/bin:$PATH \
+    NVIDIA_VISIBLE_DEVICES=all \
+    NVIDIA_DRIVER_CAPABILITIES=compute,utility
 
-# Install minimal dependencies
+# Install minimal dependencies and MongoDB
 RUN --mount=type=cache,target=/var/cache/apt \
+    --mount=type=cache,target=/var/lib/apt \
     apt-get update -q && \
-    apt-get install -y make sudo && \
+    apt-get install -y make sudo gnupg wget && \
+    wget -qO - https://www.mongodb.org/static/pgp/server-5.0.asc | apt-key add - && \
+    echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/5.0 multiverse" | tee /etc/apt/sources.list.d/mongodb-org-5.0.list && \
+    apt-get update && \
+    apt-get install -y mongodb-org && \
     apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+    rm -rf /var/lib/apt/lists/* && \
+    mkdir -p /data/db && \
+    echo 'mongod --fork --logpath /var/log/mongod.log --bind_ip_all' >> /root/.bashrc
 
 # Set up the working directory
 WORKDIR /workdir
@@ -38,17 +46,6 @@ RUN rm -rf .github && \
 RUN find /opt/conda/ -follow -type f -name '*.a' -delete && \
     find /opt/conda/ -follow -type f -name '*.js.map' -delete && \
     rm -rf /root/.cache/pip 
-
-USER root
-
-# Install MongoDB
-RUN --mount=type=cache,target=/var/cache/apt \
-    apt-get update && apt-get install -y gnupg wget && \
-    wget -qO - https://www.mongodb.org/static/pgp/server-5.0.asc | apt-key add - && \
-    echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/5.0 multiverse" | tee /etc/apt/sources.list.d/mongodb-org-5.0.list && \
-    apt-get update && apt-get install -y mongodb-org && \
-    mkdir -p /data/db && \
-    echo 'mongod --fork --logpath /var/log/mongod.log --bind_ip_all' >> /root/.bashrc
 
 RUN echo "source activate base" >> ~/.bashrc && \
     echo "make -C etc/" >> ~/.bashrc && \

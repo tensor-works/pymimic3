@@ -595,7 +595,7 @@ def test_to_numpy(task_name: str, reader_flavour: str,
 
     # => Assert n samples (subjects)
     for prefix in dataset:
-        assert np.isclose(dataset[prefix].shape[0] == n_samples, atol=1)
+        assert np.isclose(dataset[prefix].shape[0], n_samples, atol=1)
 
     tests_io(f"Succeeded in testing retriving limited amount of samples"
              f" to_numpy for {reader_flavour} for task {task_name}")
