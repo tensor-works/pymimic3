@@ -180,21 +180,36 @@ jobs:
           fi
 
       # => 7. Build and push Docker image: self-hosted (part 1) 
-      - name: Build and export Docker image on self-hosted
+      # - name: Build and export Docker image on self-hosted
+      #   uses: docker/build-push-action@v6
+      #   with:
+      #     context: .
+      #     file: .devcontainer/Dockerfile.ci
+      #     load: true
+      #     push: false
+      #     tags: |
+      #       tensorpod/pymimic3:latest
+      #       tensorpod/pymimic3:${{ env.BRANCH_NAME }}
+      #       ${{ steps.check_registry.outputs.local_registry == 'true' && 'localhost:5000/pymimic3:latest' || '' }}
+      #       ${{ steps.check_registry.outputs.local_registry == 'true' && format('localhost:5000/pymimic3:{0}', env.BRANCH_NAME) || '' }}
+      #     cache-from: type=local,src=${{ env.DOCKER_CACHE_DIR }}/.buildx-cache
+      #     cache-to: type=local,dest=${{ env.DOCKER_CACHE_DIR }}/.buildx-cache-new,mode=max
+      #     outputs: type=docker,dest=${{ env.DOCKER_IMAGE_TAR }}
+      - name: Build and export Docker image
         uses: docker/build-push-action@v6
         with:
           context: .
           file: .devcontainer/Dockerfile.ci
-          load: true
-          push: false
+          load: ${{ steps.check_registry.outputs.local_registry != 'true' }}
+          push: ${{ steps.check_registry.outputs.local_registry == 'true' }}
           tags: |
             tensorpod/pymimic3:latest
             tensorpod/pymimic3:${{ env.BRANCH_NAME }}
-            ${{ steps.check_registry.outputs.local_registry == 'true' && 'localhost:5000/pymimic3:latest' || '' }}
+            ${{ steps.check_registry.outputs.local_registry == 'true' && format('localhost:5000/pymimic3:latest') || '' }}
             ${{ steps.check_registry.outputs.local_registry == 'true' && format('localhost:5000/pymimic3:{0}', env.BRANCH_NAME) || '' }}
           cache-from: type=local,src=${{ env.DOCKER_CACHE_DIR }}/.buildx-cache
           cache-to: type=local,dest=${{ env.DOCKER_CACHE_DIR }}/.buildx-cache-new,mode=max
-          outputs: type=docker,dest=${{ env.DOCKER_IMAGE_TAR }}
+          outputs: ${{ steps.check_registry.outputs.local_registry != 'true' && format('type=docker,dest={0}', env.DOCKER_IMAGE_TAR) || '' }}
 
       # => 7. Build and push Docker image: github hosted
       - name: Build and export Docker image on github-hosted
