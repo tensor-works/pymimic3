@@ -205,8 +205,6 @@ jobs:
           tags: |
             tensorpod/pymimic3:latest
             tensorpod/pymimic3:${{ env.BRANCH_NAME }}
-            ${{ steps.check_registry.outputs.local_registry == 'true' && format('localhost:5000/pymimic3:latest') || '' }}
-            ${{ steps.check_registry.outputs.local_registry == 'true' && format('localhost:5000/pymimic3:{0}', env.BRANCH_NAME) || '' }}
           cache-from: type=local,src=${{ env.DOCKER_CACHE_DIR }}/.buildx-cache
           cache-to: type=local,dest=${{ env.DOCKER_CACHE_DIR }}/.buildx-cache-new,mode=max
           outputs: ${{ steps.check_registry.outputs.local_registry != 'true' && format('type=docker,dest={0}', env.DOCKER_IMAGE_TAR) || '' }}
@@ -245,8 +243,8 @@ jobs:
             echo "Local registry is available. Pulling from local registry and pushing to both local and remote."
             
             # Pull from local registry
-            docker pull localhost:5000/pymimic3:latest
-            docker pull localhost:5000/pymimic3:$BRANCH_NAME
+            docker push localhost:5000/pymimic3:latest
+            docker push localhost:5000/pymimic3:$BRANCH_NAME
             
             # Tag for Docker Hub
             docker tag localhost:5000/pymimic3:latest tensorpod/pymimic3:latest
