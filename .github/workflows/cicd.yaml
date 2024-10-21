@@ -112,69 +112,6 @@ jobs:
           echo $DOCKER_CACHE_DIR/.buildx-image-cache/tensorpod/pymimic3/
           echo "::endgroup::"
 
-
-          IMAGE="tensorpod/pymimic3:latest"
-          DESTINATIONS=("registry:5000" "localhost:5000" "127.0.0.1:5000")
-          REPO_NAMES=("pymimic3" "tensorpod/pymimic3")
-
-          push_image() {
-              local dest=$1
-              local repo=$2
-              local tag_name="${dest}/${repo}:latest"
-              
-              echo "Attempting to push to ${tag_name}"
-              docker tag ${IMAGE} ${tag_name}
-              docker push ${tag_name}
-          }
-
-          echo "Starting registry push tests..."
-
-          successful_pushes=()
-          failed_pushes=()
-
-          for dest in "${DESTINATIONS[@]}"; do
-              for repo in "${REPO_NAMES[@]}"; do
-                  echo "--------------------"
-                  echo "Trying: ${dest}/${repo}"
-                  if try_push=$(push_image ${dest} ${repo} 2>&1); then
-                      echo "SUCCESS: Successfully pushed to ${dest}/${repo}"
-                      echo "Command used: docker push ${dest}/${repo}:latest"
-                      successful_pushes+=("${dest}/${repo}")
-                  else
-                      echo "FAILED: Could not push to ${dest}/${repo}"
-                      echo "Error message: ${try_push}"
-                      failed_pushes+=("${dest}/${repo}")
-                  fi
-              done
-          done
-
-          echo "--------------------"
-          echo "Push tests completed. Here's the summary:"
-
-          if [ ${#successful_pushes[@]} -gt 0 ]; then
-              echo "Successful pushes:"
-              for push in "${successful_pushes[@]}"; do
-                  echo "- ${push}"
-              done
-          else
-              echo "No successful pushes."
-          fi
-
-          if [ ${#failed_pushes[@]} -gt 0 ]; then
-              echo "Failed pushes:"
-              for push in "${failed_pushes[@]}"; do
-                  echo "- ${push}"
-              done
-          fi
-
-          if [ ${#successful_pushes[@]} -gt 0 ]; then
-              echo "Use one of the successful combinations in your workflow."
-              exit 0
-          else
-              echo "All push attempts failed. Please check your Docker and registry configuration."
-              exit 1
-          fi
-
       # => 5. Extract branch name (may fail on pull requests, untested)
       - name: Extract branch name
         shell: bash
@@ -253,8 +190,8 @@ jobs:
           tags: |
             tensorpod/pymimic3:latest
             tensorpod/pymimic3:${{ env.BRANCH_NAME }}
-            ${{ steps.check_registry.outputs.local_registry == 'true' && 'localhost:5000/tensorpod/pymimic3:latest' || '' }}
-            ${{ steps.check_registry.outputs.local_registry == 'true' && format('localhost:5000/tensorpod/pymimic3:{0}', env.BRANCH_NAME) || '' }}
+            ${{ steps.check_registry.outputs.local_registry == 'true' && 'localhost:5000/pymimic3:latest' || '' }}
+            ${{ steps.check_registry.outputs.local_registry == 'true' && format('localhost:5000/pymimic3:{0}', env.BRANCH_NAME) || '' }}
           cache-from: type=local,src=${{ env.DOCKER_CACHE_DIR }}/.buildx-cache
           cache-to: type=local,dest=${{ env.DOCKER_CACHE_DIR }}/.buildx-cache-new,mode=max
           outputs: type=docker,dest=${{ env.DOCKER_IMAGE_TAR }}
@@ -293,12 +230,12 @@ jobs:
             echo "Local registry is available. Pulling from local registry and pushing to both local and remote."
             
             # Pull from local registry
-            docker pull registry:5000/tensorpod/pymimic3:latest
-            docker pull registry:5000/tensorpod/pymimic3:$BRANCH_NAME
+            docker pull localhost:5000/pymimic3:latest
+            docker pull localhost:5000/pymimic3:$BRANCH_NAME
             
             # Tag for Docker Hub
-            docker tag registry:5000/tensorpod/pymimic3:latest tensorpod/pymimic3:latest
-            docker tag registry:5000/tensorpod/pymimic3:$BRANCH_NAME tensorpod/pymimic3:$BRANCH_NAME
+            docker tag localhost:5000/pymimic3:latest tensorpod/pymimic3:latest
+            docker tag localhost:5000/pymimic3:$BRANCH_NAME tensorpod/pymimic3:$BRANCH_NAME
           else
             echo "No local registry available. Loading from tar and pushing to Docker Hub."
             
@@ -375,7 +312,7 @@ jobs:
         run: |
           if [[ "$LOCAL_REGISTRY" == "true" ]]; then
             echo "Pulling image from local registry"
-            docker pull localhost:5000/tensorpod/pymimic3:$BRANCH_NAME
+            docker pull localhost:5000/pymimic3:$BRANCH_NAME
           else
             echo "Loading image from tar file"
             docker load -i $DOCKER_IMAGE_TAR
@@ -422,7 +359,7 @@ jobs:
         run: |
           if [[ "$LOCAL_REGISTRY" == "true" ]]; then
             echo "Pulling image from local registry"
-            docker pull localhost:5000/tensorpod/pymimic3:$BRANCH_NAME
+            docker pull localhost:5000/pymimic3:$BRANCH_NAME
           else
             echo "Loading image from tar file"
             docker load -i $DOCKER_IMAGE_TAR
@@ -483,7 +420,7 @@ jobs:
         run: |
           if [[ "$LOCAL_REGISTRY" == "true" ]]; then
             echo "Pulling image from local registry"
-            docker pull localhost:5000/tensorpod/pymimic3:$BRANCH_NAME
+            docker pull localhost:5000/pymimic3:$BRANCH_NAME
           else
             echo "Loading image from tar file"
             docker load -i $DOCKER_IMAGE_TAR
@@ -527,7 +464,7 @@ jobs:
         run: |
           if [[ "$LOCAL_REGISTRY" == "true" ]]; then
             echo "Pulling image from local registry"
-            docker pull localhost:5000/tensorpod/pymimic3:$BRANCH_NAME
+            docker pull localhost:5000/pymimic3:$BRANCH_NAME
           else
             echo "Loading image from tar file"
             docker load -i $DOCKER_IMAGE_TAR
@@ -571,7 +508,7 @@ jobs:
         run: |
           if [[ "$LOCAL_REGISTRY" == "true" ]]; then
             echo "Pulling image from local registry"
-            docker pull localhost:5000/tensorpod/pymimic3:$BRANCH_NAME
+            docker pull localhost:5000/pymimic3:$BRANCH_NAME
           else
             echo "Loading image from tar file"
             docker load -i $DOCKER_IMAGE_TAR
@@ -615,7 +552,7 @@ jobs:
         run: |
           if [[ "$LOCAL_REGISTRY" == "true" ]]; then
             echo "Pulling image from local registry"
-            docker pull localhost:5000/tensorpod/pymimic3:$BRANCH_NAME
+            docker pull localhost:5000/pymimic3:$BRANCH_NAME
           else
             echo "Loading image from tar file"
             docker load -i $DOCKER_IMAGE_TAR
@@ -659,7 +596,7 @@ jobs:
         run: |
           if [[ "$LOCAL_REGISTRY" == "true" ]]; then
             echo "Pulling image from local registry"
-            docker pull localhost:5000/tensorpod/pymimic3:$BRANCH_NAME
+            docker pull localhost:5000/pymimic3:$BRANCH_NAME
           else
             echo "Loading image from tar file"
             docker load -i $DOCKER_IMAGE_TAR
@@ -703,7 +640,7 @@ jobs:
         run: |
           if [[ "$LOCAL_REGISTRY" == "true" ]]; then
             echo "Pulling image from local registry"
-            docker pull localhost:5000/tensorpod/pymimic3:$BRANCH_NAME
+            docker pull localhost:5000/pymimic3:$BRANCH_NAME
           else
             echo "Loading image from tar file"
             docker load -i $DOCKER_IMAGE_TAR
@@ -747,7 +684,7 @@ jobs:
         run: |
           if [[ "$LOCAL_REGISTRY" == "true" ]]; then
             echo "Pulling image from local registry"
-            docker pull localhost:5000/tensorpod/pymimic3:$BRANCH_NAME
+            docker pull localhost:5000/pymimic3:$BRANCH_NAME
           else
             echo "Loading image from tar file"
             docker load -i $DOCKER_IMAGE_TAR
@@ -791,7 +728,7 @@ jobs:
         run: |
           if [[ "$LOCAL_REGISTRY" == "true" ]]; then
             echo "Pulling image from local registry"
-            docker pull localhost:5000/tensorpod/pymimic3:$BRANCH_NAME
+            docker pull localhost:5000/pymimic3:$BRANCH_NAME
           else
             echo "Loading image from tar file"
             docker load -i $DOCKER_IMAGE_TAR
@@ -836,7 +773,7 @@ jobs:
         run: |
           if [[ "$LOCAL_REGISTRY" == "true" ]]; then
             echo "Pulling image from local registry"
-            docker pull localhost:5000/tensorpod/pymimic3:$BRANCH_NAME
+            docker pull localhost:5000/pymimic3:$BRANCH_NAME
           else
             echo "Loading image from tar file"
             docker load -i $DOCKER_IMAGE_TAR
@@ -880,7 +817,7 @@ jobs:
         run: |
           if [[ "$LOCAL_REGISTRY" == "true" ]]; then
             echo "Pulling image from local registry"
-            docker pull localhost:5000/tensorpod/pymimic3:$BRANCH_NAME
+            docker pull localhost:5000/pymimic3:$BRANCH_NAME
           else
             echo "Loading image from tar file"
             docker load -i $DOCKER_IMAGE_TAR
@@ -924,7 +861,7 @@ jobs:
         run: |
           if [[ "$LOCAL_REGISTRY" == "true" ]]; then
             echo "Pulling image from local registry"
-            docker pull localhost:5000/tensorpod/pymimic3:$BRANCH_NAME
+            docker pull localhost:5000/pymimic3:$BRANCH_NAME
           else
             echo "Loading image from tar file"
             docker load -i $DOCKER_IMAGE_TAR
