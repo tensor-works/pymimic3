@@ -37,6 +37,7 @@ jobs:
       docker_volumes: ${{ steps.get_volumes.outputs.docker_volumes }}
       bash_results: ${{ steps.get_volumes.outputs.bash_results }}
       pytest_results: ${{ steps.get_volumes.outputs.pytest_results }}
+      local_registry: ${{ steps.check_registry.outputs.local_registry }}
     steps:
       # => 1. Pull code into runner env
       - name: Checkout code
@@ -151,16 +152,28 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-buildx-
 
+      - name: Check if local registry is running
+        id: check_registry
+        run: |
+          if nc -z localhost 5000; then
+            echo "local_registry=true" >> $GITHUB_OUTPUT
+          else
+            echo "local_registry=false" >> $GITHUB_OUTPUT
+          fi
+
       # => 7. Build and push Docker image: self-hosted (part 1) 
       - name: Build and export Docker image on self-hosted
         uses: docker/build-push-action@v6
         with:
           context: .
           file: .devcontainer/Dockerfile.ci
+          load: true
           push: false
           tags: |
             tensorpod/pymimic3:latest
             tensorpod/pymimic3:${{ env.BRANCH_NAME }}
+            ${{ steps.check_registry.outputs.local_registry == 'true' && 'localhost:5000/tensorpod/pymimic3:latest' || '' }}
+            ${{ steps.check_registry.outputs.local_registry == 'true' && format('localhost:5000/tensorpod/pymimic3:{0}', env.BRANCH_NAME) || '' }}
           cache-from: type=local,src=${{ env.DOCKER_CACHE_DIR }}/.buildx-cache
           cache-to: type=local,dest=${{ env.DOCKER_CACHE_DIR }}/.buildx-cache-new,mode=max
           outputs: type=docker,dest=${{ env.DOCKER_IMAGE_TAR }}
@@ -192,8 +205,27 @@ jobs:
       - name: Push Docker image
         if: github.event_name != 'pull_request' && runner.environment == 'self-hosted'
         run: |
-          docker load -i $DOCKER_IMAGE_TAR
-          docker login -u tensorpod -p  ${{ secrets.DOCKER_PASSWORD }}
+          # Login to Docker Hub
+          echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u tensorpod --password-stdin
+
+          if [[ "${{ steps.check_registry.outputs.local_registry }}" == "true" ]]; then
+            echo "Local registry is available. Pulling from local registry and pushing to both local and remote."
+            
+            # Pull from local registry
+            docker pull localhost:5000/tensorpod/pymimic3:latest
+            docker pull localhost:5000/tensorpod/pymimic3:$BRANCH_NAME
+            
+            # Tag for Docker Hub
+            docker tag localhost:5000/tensorpod/pymimic3:latest tensorpod/pymimic3:latest
+            docker tag localhost:5000/tensorpod/pymimic3:$BRANCH_NAME tensorpod/pymimic3:$BRANCH_NAME
+          else
+            echo "No local registry available. Loading from tar and pushing to Docker Hub."
+            
+            # Load from tar
+            docker load -i $DOCKER_IMAGE_TAR
+            
+          fi
+          # Push to Docker Hub
           docker push tensorpod/pymimic3:latest
           docker push tensorpod/pymimic3:$BRANCH_NAME
 
@@ -248,6 +280,7 @@ jobs:
       DOCKER_VOLUME_MOUNTS: ${{ needs.build-and-push.outputs.docker_volumes }}
       BASH_RESULTS: ${{ needs.build-and-push.outputs.bash_results }}
       PYTEST_RESULTS: ${{ needs.build-and-push.outputs.pytest_results }}
+      LOCAL_REGISTRY: ${{ needs.build-and-push.outputs.local_registry }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -257,11 +290,18 @@ jobs:
         run: |
           mkdir -p $DOCKER_CACHE_DIR/.github-action-cache/{pytest-results/${{ github.sha }},bash-results/${{ github.sha }}}
 
-      - name: Load cached image
+      - name: Load or image
         shell: bash
         run: |
-          docker load -i $DOCKER_IMAGE_TAR
-          echo docker iamge ls -a
+          if [[ "$LOCAL_REGISTRY" == "true" ]]; then
+            echo "Pulling image from local registry"
+            docker pull localhost:5000/tensorpod/pymimic3:$BRANCH_NAME
+          else
+            echo "Loading image from tar file"
+            docker load -i $DOCKER_IMAGE_TAR
+          fi
+          echo "Docker images:"
+          docker images
 
       - name: Create output dirs
         run: |
@@ -292,16 +332,23 @@ jobs:
       DOCKER_VOLUME_MOUNTS: ${{ needs.build-and-push.outputs.docker_volumes }}
       BASH_RESULTS: ${{ needs.build-and-push.outputs.bash_results }}
       PYTEST_RESULTS: ${{ needs.build-and-push.outputs.pytest_results }}
+      LOCAL_REGISTRY: ${{ needs.build-and-push.outputs.local_registry }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Load cached image
+      - name: Load or image
         shell: bash
         run: |
-          docker load -i $DOCKER_IMAGE_TAR
-          echo "Loaded cached image for testing: $BRANCH_NAME"
-          echo docker iamge ls -a
+          if [[ "$LOCAL_REGISTRY" == "true" ]]; then
+            echo "Pulling image from local registry"
+            docker pull localhost:5000/tensorpod/pymimic3:$BRANCH_NAME
+          else
+            echo "Loading image from tar file"
+            docker load -i $DOCKER_IMAGE_TAR
+          fi
+          echo "Docker images:"
+          docker images
 
       - name: Run fixture setup tests
         shell: bash
@@ -346,16 +393,23 @@ jobs:
       DOCKER_VOLUME_MOUNTS: ${{ needs.build-and-push.outputs.docker_volumes }}
       BASH_RESULTS: ${{ needs.build-and-push.outputs.bash_results }}
       PYTEST_RESULTS: ${{ needs.build-and-push.outputs.pytest_results }}
+      LOCAL_REGISTRY: ${{ needs.build-and-push.outputs.local_registry }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Load cached image
+      - name: Load or image
         shell: bash
         run: |
-          docker load -i $DOCKER_IMAGE_TAR
-          echo "Loaded cached image for testing: $BRANCH_NAME"
-          echo docker iamge ls -a
+          if [[ "$LOCAL_REGISTRY" == "true" ]]; then
+            echo "Pulling image from local registry"
+            docker pull localhost:5000/tensorpod/pymimic3:$BRANCH_NAME
+          else
+            echo "Loading image from tar file"
+            docker load -i $DOCKER_IMAGE_TAR
+          fi
+          echo "Docker images:"
+          docker images
 
       - name: Run reader tests
         shell: bash
@@ -383,16 +437,23 @@ jobs:
       DOCKER_VOLUME_MOUNTS: ${{ needs.build-and-push.outputs.docker_volumes }}
       BASH_RESULTS: ${{ needs.build-and-push.outputs.bash_results }}
       PYTEST_RESULTS: ${{ needs.build-and-push.outputs.pytest_results }}
+      LOCAL_REGISTRY: ${{ needs.build-and-push.outputs.local_registry }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Load cached image
+      - name: Load or image
         shell: bash
         run: |
-          docker load -i $DOCKER_IMAGE_TAR
-          echo "Loaded cached image for testing: $BRANCH_NAME"
-          echo docker iamge ls -a
+          if [[ "$LOCAL_REGISTRY" == "true" ]]; then
+            echo "Pulling image from local registry"
+            docker pull localhost:5000/tensorpod/pymimic3:$BRANCH_NAME
+          else
+            echo "Loading image from tar file"
+            docker load -i $DOCKER_IMAGE_TAR
+          fi
+          echo "Docker images:"
+          docker images
 
       - name: Run tracker tests
         shell: bash
@@ -420,16 +481,23 @@ jobs:
       DOCKER_VOLUME_MOUNTS: ${{ needs.build-and-push.outputs.docker_volumes }}
       BASH_RESULTS: ${{ needs.build-and-push.outputs.bash_results }}
       PYTEST_RESULTS: ${{ needs.build-and-push.outputs.pytest_results }}
+      LOCAL_REGISTRY: ${{ needs.build-and-push.outputs.local_registry }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Load cached image
+      - name: Load or image
         shell: bash
         run: |
-          docker load -i $DOCKER_IMAGE_TAR
-          echo "Loaded cached image for testing: $BRANCH_NAME"
-          echo docker iamge ls -a
+          if [[ "$LOCAL_REGISTRY" == "true" ]]; then
+            echo "Pulling image from local registry"
+            docker pull localhost:5000/tensorpod/pymimic3:$BRANCH_NAME
+          else
+            echo "Loading image from tar file"
+            docker load -i $DOCKER_IMAGE_TAR
+          fi
+          echo "Docker images:"
+          docker images
 
       - name: Run data split tests
         shell: bash
@@ -457,16 +525,23 @@ jobs:
       DOCKER_VOLUME_MOUNTS: ${{ needs.build-and-push.outputs.docker_volumes }}
       BASH_RESULTS: ${{ needs.build-and-push.outputs.bash_results }}
       PYTEST_RESULTS: ${{ needs.build-and-push.outputs.pytest_results }}
+      LOCAL_REGISTRY: ${{ needs.build-and-push.outputs.local_registry }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Load cached image
+      - name: Load or image
         shell: bash
         run: |
-          docker load -i $DOCKER_IMAGE_TAR
-          echo "Loaded cached image for testing: $BRANCH_NAME"
-          echo docker iamge ls -a
+          if [[ "$LOCAL_REGISTRY" == "true" ]]; then
+            echo "Pulling image from local registry"
+            docker pull localhost:5000/tensorpod/pymimic3:$BRANCH_NAME
+          else
+            echo "Loading image from tar file"
+            docker load -i $DOCKER_IMAGE_TAR
+          fi
+          echo "Docker images:"
+          docker images
 
       - name: Run extraction tests
         shell: bash
@@ -494,16 +569,23 @@ jobs:
       DOCKER_VOLUME_MOUNTS: ${{ needs.build-and-push.outputs.docker_volumes }}
       BASH_RESULTS: ${{ needs.build-and-push.outputs.bash_results }}
       PYTEST_RESULTS: ${{ needs.build-and-push.outputs.pytest_results }}
+      LOCAL_REGISTRY: ${{ needs.build-and-push.outputs.local_registry }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Load cached image
+      - name: Load or image
         shell: bash
         run: |
-          docker load -i $DOCKER_IMAGE_TAR
-          echo "Loaded cached image for testing: $BRANCH_NAME"
-          echo docker iamge ls -a
+          if [[ "$LOCAL_REGISTRY" == "true" ]]; then
+            echo "Pulling image from local registry"
+            docker pull localhost:5000/tensorpod/pymimic3:$BRANCH_NAME
+          else
+            echo "Loading image from tar file"
+            docker load -i $DOCKER_IMAGE_TAR
+          fi
+          echo "Docker images:"
+          docker images
 
       - name: Run preprocessor tests
         shell: bash
@@ -531,16 +613,23 @@ jobs:
       DOCKER_VOLUME_MOUNTS: ${{ needs.build-and-push.outputs.docker_volumes }}
       BASH_RESULTS: ${{ needs.build-and-push.outputs.bash_results }}
       PYTEST_RESULTS: ${{ needs.build-and-push.outputs.pytest_results }}
+      LOCAL_REGISTRY: ${{ needs.build-and-push.outputs.local_registry }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Load cached image
+      - name: Load or image
         shell: bash
         run: |
-          docker load -i $DOCKER_IMAGE_TAR
-          echo "Loaded cached image for testing: $BRANCH_NAME"
-          echo docker iamge ls -a
+          if [[ "$LOCAL_REGISTRY" == "true" ]]; then
+            echo "Pulling image from local registry"
+            docker pull localhost:5000/tensorpod/pymimic3:$BRANCH_NAME
+          else
+            echo "Loading image from tar file"
+            docker load -i $DOCKER_IMAGE_TAR
+          fi
+          echo "Docker images:"
+          docker images
 
       - name: Run feature engineering tests
         shell: bash
@@ -568,16 +657,23 @@ jobs:
       DOCKER_VOLUME_MOUNTS: ${{ needs.build-and-push.outputs.docker_volumes }}
       BASH_RESULTS: ${{ needs.build-and-push.outputs.bash_results }}
       PYTEST_RESULTS: ${{ needs.build-and-push.outputs.pytest_results }}
+      LOCAL_REGISTRY: ${{ needs.build-and-push.outputs.local_registry }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Load cached image
+      - name: Load or image
         shell: bash
         run: |
-          docker load -i $DOCKER_IMAGE_TAR
-          echo "Loaded cached image for testing: $BRANCH_NAME"
-          echo docker iamge ls -a
+          if [[ "$LOCAL_REGISTRY" == "true" ]]; then
+            echo "Pulling image from local registry"
+            docker pull localhost:5000/tensorpod/pymimic3:$BRANCH_NAME
+          else
+            echo "Loading image from tar file"
+            docker load -i $DOCKER_IMAGE_TAR
+          fi
+          echo "Docker images:"
+          docker images
 
       - name: Run discretizer tests
         shell: bash
@@ -605,16 +701,23 @@ jobs:
       DOCKER_VOLUME_MOUNTS: ${{ needs.build-and-push.outputs.docker_volumes }}
       BASH_RESULTS: ${{ needs.build-and-push.outputs.bash_results }}
       PYTEST_RESULTS: ${{ needs.build-and-push.outputs.pytest_results }}
+      LOCAL_REGISTRY: ${{ needs.build-and-push.outputs.local_registry }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Load cached image
+      - name: Load or image
         shell: bash
         run: |
-          docker load -i $DOCKER_IMAGE_TAR
-          echo "Loaded cached image for testing: $BRANCH_NAME"
-          echo docker iamge ls -a
+          if [[ "$LOCAL_REGISTRY" == "true" ]]; then
+            echo "Pulling image from local registry"
+            docker pull localhost:5000/tensorpod/pymimic3:$BRANCH_NAME
+          else
+            echo "Loading image from tar file"
+            docker load -i $DOCKER_IMAGE_TAR
+          fi
+          echo "Docker images:"
+          docker images
 
       - name: Run parameter tests
         shell: bash
@@ -643,16 +746,23 @@ jobs:
       DOCKER_VOLUME_MOUNTS: ${{ needs.build-and-push.outputs.docker_volumes }}
       BASH_RESULTS: ${{ needs.build-and-push.outputs.bash_results }}
       PYTEST_RESULTS: ${{ needs.build-and-push.outputs.pytest_results }}
+      LOCAL_REGISTRY: ${{ needs.build-and-push.outputs.local_registry }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Load cached image
+      - name: Load or image
         shell: bash
         run: |
-          docker load -i $DOCKER_IMAGE_TAR
-          echo "Loaded cached image for testing: $BRANCH_NAME"
-          echo docker iamge ls -a
+          if [[ "$LOCAL_REGISTRY" == "true" ]]; then
+            echo "Pulling image from local registry"
+            docker pull localhost:5000/tensorpod/pymimic3:$BRANCH_NAME
+          else
+            echo "Loading image from tar file"
+            docker load -i $DOCKER_IMAGE_TAR
+          fi
+          echo "Docker images:"
+          docker images
 
       - name: Run preprocessing tests
         shell: bash
@@ -680,16 +790,23 @@ jobs:
       DOCKER_VOLUME_MOUNTS: ${{ needs.build-and-push.outputs.docker_volumes }}
       BASH_RESULTS: ${{ needs.build-and-push.outputs.bash_results }}
       PYTEST_RESULTS: ${{ needs.build-and-push.outputs.pytest_results }}
+      LOCAL_REGISTRY: ${{ needs.build-and-push.outputs.local_registry }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Load cached image
+      - name: Load or image
         shell: bash
         run: |
-          docker load -i $DOCKER_IMAGE_TAR
-          echo "Loaded cached image for testing: $BRANCH_NAME"
-          echo docker iamge ls -a
+          if [[ "$LOCAL_REGISTRY" == "true" ]]; then
+            echo "Pulling image from local registry"
+            docker pull localhost:5000/tensorpod/pymimic3:$BRANCH_NAME
+          else
+            echo "Loading image from tar file"
+            docker load -i $DOCKER_IMAGE_TAR
+          fi
+          echo "Docker images:"
+          docker images
 
       - name: Run metrics tests
         shell: bash
@@ -717,16 +834,23 @@ jobs:
       DOCKER_VOLUME_MOUNTS: ${{ needs.build-and-push.outputs.docker_volumes }}
       BASH_RESULTS: ${{ needs.build-and-push.outputs.bash_results }}
       PYTEST_RESULTS: ${{ needs.build-and-push.outputs.pytest_results }}
+      LOCAL_REGISTRY: ${{ needs.build-and-push.outputs.local_registry }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Load cached image
+      - name: Load or image
         shell: bash
         run: |
-          docker load -i $DOCKER_IMAGE_TAR
-          echo "Loaded cached image for testing: $BRANCH_NAME"
-          echo docker iamge ls -a
+          if [[ "$LOCAL_REGISTRY" == "true" ]]; then
+            echo "Pulling image from local registry"
+            docker pull localhost:5000/tensorpod/pymimic3:$BRANCH_NAME
+          else
+            echo "Loading image from tar file"
+            docker load -i $DOCKER_IMAGE_TAR
+          fi
+          echo "Docker images:"
+          docker images
 
       - name: Run model tests
         shell: bash
