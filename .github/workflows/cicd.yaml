@@ -137,7 +137,7 @@ jobs:
         if: runner.environment == 'self-hosted'
         uses: maxnowack/local-cache@v2
         with: 
-          path: $DOCKER_CACHE_DIR/.buildx-cache
+          path: ${{ env.DOCKER_CACHE_DIR }}/.buildx-cache
           key: ${{ runner.os }}-buildx-${{ github.sha }}
           restore-keys: |
             ${{ runner.os }}-buildx-   
