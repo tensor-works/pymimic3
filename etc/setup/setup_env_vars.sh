@@ -17,16 +17,21 @@ export MODEL=$WORKINGDIR/models
 export TESTS=$WORKINGDIR/tests
 export EXAMPLES=$WORKINGDIR/examples
 
-# Creates redundancy in python path when sourced out of integreated shell but makes sure works for external shell aswell
-if [[ "$OSTYPE" == "linux-gnu"* ]] || [[ "$OSTYPE" == "darwin"* ]]; then
-    if [[ "$WORKINGDIR/src" != "$PYTHONPATH" ]]; then
-        export PYTHONPATH=$PYTHONPATH:$WORKINGDIR/src
+update_pythonpath() {
+    local dir="$1"
+    if [[ ":$PYTHONPATH:" != *":$dir:"* ]]; then
+        export PYTHONPATH="$PYTHONPATH:$dir"
     fi
+}
+
+if [[ "$OSTYPE" == "linux-gnu"* ]] || [[ "$OSTYPE" == "darwin"* ]]; then
+    update_pythonpath "$WORKINGDIR/src"
+    update_pythonpath "$WORKINGDIR"
 elif [[ "$OSTYPE" == "cygwin" ]] || [[ "$OSTYPE" == "msys" ]]; then
-    if [[ "$WORKINGDIR/src" != "$PYTHONPATH" ]]; then
-        export PYTHONPATH=$PYTHONPATH:$WORKINGDIR\\src
-    fi  
+    update_pythonpath "${WORKINGDIR//\//\\}/src"
+    update_pythonpath "${WORKINGDIR//\//\\}"
 fi
+
 echo -e "\033[34m[2/4]\033[0m Setting PYTHONPATH=${PYTHONPATH}"
 
 # Create the .env file
