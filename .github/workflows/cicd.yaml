@@ -111,9 +111,7 @@ jobs:
           echo $DOCKER_CACHE_DIR
           echo $DOCKER_CACHE_DIR/.buildx-image-cache/tensorpod/pymimic3/
           echo "::endgroup::"
-          
-          docker tag tensorpod/pymimic3:latest registry:5000/pymimic3:latest
-          docker push registry:5000/pymimic3:latest
+
 
           IMAGE="tensorpod/pymimic3:latest"
           DESTINATIONS=("registry:5000" "localhost:5000" "127.0.0.1:5000")
@@ -131,31 +129,51 @@ jobs:
 
           echo "Starting registry push tests..."
 
+          successful_pushes=()
+          failed_pushes=()
+
           for dest in "${DESTINATIONS[@]}"; do
               for repo in "${REPO_NAMES[@]}"; do
                   echo "--------------------"
                   echo "Trying: ${dest}/${repo}"
-                  try_push=$(push_image ${dest} ${repo} 2>&1)
-                  if [ $? -eq 0 ]; then
+                  if try_push=$(push_image ${dest} ${repo} 2>&1); then
                       echo "SUCCESS: Successfully pushed to ${dest}/${repo}"
                       echo "Command used: docker push ${dest}/${repo}:latest"
-                      exit 0
+                      successful_pushes+=("${dest}/${repo}")
                   else
                       echo "FAILED: Could not push to ${dest}/${repo}"
                       echo "Error message: ${try_push}"
+                      failed_pushes+=("${dest}/${repo}")
                   fi
               done
           done
 
           echo "--------------------"
-          echo "All push attempts failed."
-          echo "Here's a summary of what was tried:"
-          for dest in "${DESTINATIONS[@]}"; do
-              for repo in "${REPO_NAMES[@]}"; do
-                  echo "- docker push ${dest}/${repo}:latest"
+          echo "Push tests completed. Here's the summary:"
+
+          if [ ${#successful_pushes[@]} -gt 0 ]; then
+              echo "Successful pushes:"
+              for push in "${successful_pushes[@]}"; do
+                  echo "- ${push}"
               done
-          done
-          exit 1
+          else
+              echo "No successful pushes."
+          fi
+
+          if [ ${#failed_pushes[@]} -gt 0 ]; then
+              echo "Failed pushes:"
+              for push in "${failed_pushes[@]}"; do
+                  echo "- ${push}"
+              done
+          fi
+
+          if [ ${#successful_pushes[@]} -gt 0 ]; then
+              echo "Use one of the successful combinations in your workflow."
+              exit 0
+          else
+              echo "All push attempts failed. Please check your Docker and registry configuration."
+              exit 1
+          fi
 
       # => 5. Extract branch name (may fail on pull requests, untested)
       - name: Extract branch name
