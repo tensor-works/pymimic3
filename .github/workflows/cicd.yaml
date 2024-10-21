@@ -112,6 +112,9 @@ jobs:
           echo $DOCKER_CACHE_DIR/.buildx-image-cache/tensorpod/pymimic3/
           echo "::endgroup::"
 
+          docker push registry:5000/pymimic3:latest
+          exit 1
+
       # => 5. Extract branch name (may fail on pull requests, untested)
       - name: Extract branch name
         shell: bash
