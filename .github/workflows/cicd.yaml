@@ -114,6 +114,47 @@ jobs:
           
           docker tag tensorpod/pymimic3:latest registry:5000/pymimic3:latest
           docker push registry:5000/pymimic3:latest
+
+          IMAGE="tensorpod/pymimic3:latest"
+          DESTINATIONS=("registry:5000" "localhost:5000" "127.0.0.1:5000")
+          REPO_NAMES=("pymimic3" "tensorpod/pymimic3")
+
+          push_image() {
+              local dest=$1
+              local repo=$2
+              local tag_name="${dest}/${repo}:latest"
+              
+              echo "Attempting to push to ${tag_name}"
+              docker tag ${IMAGE} ${tag_name}
+              docker push ${tag_name}
+          }
+
+          echo "Starting registry push tests..."
+
+          for dest in "${DESTINATIONS[@]}"; do
+              for repo in "${REPO_NAMES[@]}"; do
+                  echo "--------------------"
+                  echo "Trying: ${dest}/${repo}"
+                  try_push=$(push_image ${dest} ${repo} 2>&1)
+                  if [ $? -eq 0 ]; then
+                      echo "SUCCESS: Successfully pushed to ${dest}/${repo}"
+                      echo "Command used: docker push ${dest}/${repo}:latest"
+                      exit 0
+                  else
+                      echo "FAILED: Could not push to ${dest}/${repo}"
+                      echo "Error message: ${try_push}"
+                  fi
+              done
+          done
+
+          echo "--------------------"
+          echo "All push attempts failed."
+          echo "Here's a summary of what was tried:"
+          for dest in "${DESTINATIONS[@]}"; do
+              for repo in "${REPO_NAMES[@]}"; do
+                  echo "- docker push ${dest}/${repo}:latest"
+              done
+          done
           exit 1
 
       # => 5. Extract branch name (may fail on pull requests, untested)
