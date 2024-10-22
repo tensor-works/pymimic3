@@ -205,6 +205,7 @@ jobs:
           context: .
           file: .devcontainer/Dockerfile.test
           # ci
+          platforms: linux/amd64
           load: ${{ steps.check_registry.outputs.local_registry != 'true' }}
           push: ${{ steps.check_registry.outputs.local_registry == 'true' }}
           tags: |
