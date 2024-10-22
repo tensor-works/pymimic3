@@ -1,8 +1,0 @@
-temp/*               
-# Temporary files (delete on every test)
-mimic3benchmarks/
-# Orig MIMIC-III benchmarks repo
-phisionet.org/   
-# Dowload location for MIMIC-III demo
-mimiciii-demo/
-# MIMIC-III demo dataset

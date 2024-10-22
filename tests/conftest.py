@@ -33,7 +33,7 @@ def pytest_configure(config) -> None:
                            source_path=TEST_DATA_DEMO,
                            storage_path=SEMITEMP_DIR,
                            preprocess=True,
-                           verbose=False,
+                           verbose=True,
                            task=task_name)
         tests_io(f"Done loading preprocessing data for task {task_name}")
 

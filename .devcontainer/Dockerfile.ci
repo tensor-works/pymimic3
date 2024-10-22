@@ -21,8 +21,8 @@ RUN --mount=type=cache,target=/var/cache/apt \
     apt-get install -y mongodb-org && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* && \
-    mkdir -p /data/db && \
-    echo 'mongod --fork --logpath /var/log/mongod.log --bind_ip_all' >> /root/.bashrc
+    mkdir -p /workdir/tests/data/semitemp && \
+    echo 'mongod --dbpath /workdir/tests/data/semitemp --fork --logpath /var/log/mongod.log --bind_ip_all' >> /root/.bashrc
 
 # Set up the working directory
 WORKDIR /workdir
