@@ -180,7 +180,6 @@ jobs:
           else
               echo "local_registry=false" >> $GITHUB_OUTPUT
               echo "Error: No local registry is running or accessible." >&2
-              exit 1
           fi
 
       # => 7. Build and push Docker image: self-hosted (part 1) 
@@ -198,7 +197,6 @@ jobs:
         with:
           context: .
           file: .devcontainer/Dockerfile.ci
-          # ci
           load: ${{ steps.check_registry.outputs.local_registry != 'true' }}
           push: ${{ steps.check_registry.outputs.local_registry == 'true' }}
           tags: |
@@ -241,19 +239,9 @@ jobs:
 
           if [[ "${{ steps.check_registry.outputs.local_registry }}" == "true" ]]; then
             echo "Local registry is available. Pulling from local registry for subsequent jobs."
-            # Tag for Docker Hub
-            # docker tag tensorpod/pymimic3:latest localhost:5000/pymimic3:latest 
-            # docker tag tensorpod/pymimic3:$BRANCH_NAME localhost:5000/pymimic3:$BRANCH_NAME 
-
-            # Pull from local registry
-            # docker push localhost:5000/pymimic3:latest
-            # docker push localhost:5000/pymimic3:$BRANCH_NAME
           else
             echo "No local registry available. Loading from tar and pushing to Docker Hub."
-            
-            # Load from tar
-            docker load -i $DOCKER_IMAGE_TAR
-            
+                        
             # Push to Docker Hub
             docker push tensorpod/pymimic3:latest
             docker push tensorpod/pymimic3:$BRANCH_NAME
@@ -320,7 +308,7 @@ jobs:
         run: |
           mkdir -p $DOCKER_CACHE_DIR/.github-action-cache/{pytest-results/${{ github.sha }},bash-results/${{ github.sha }}}
 
-      - name: Load or image
+      - name: Load image
         shell: bash
         run: |
           if [[ "$LOCAL_REGISTRY" == "true" ]]; then
@@ -367,7 +355,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Load or image
+      - name: Load image
         shell: bash
         run: |
           if [[ "$LOCAL_REGISTRY" == "true" ]]; then
@@ -428,7 +416,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Load or image
+      - name: Load image
         shell: bash
         run: |
           if [[ "$LOCAL_REGISTRY" == "true" ]]; then
@@ -472,7 +460,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Load or image
+      - name: Load image
         shell: bash
         run: |
           if [[ "$LOCAL_REGISTRY" == "true" ]]; then
@@ -516,7 +504,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Load or image
+      - name: Load image
         shell: bash
         run: |
           if [[ "$LOCAL_REGISTRY" == "true" ]]; then
@@ -560,7 +548,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Load or image
+      - name: Load image
         shell: bash
         run: |
           if [[ "$LOCAL_REGISTRY" == "true" ]]; then
@@ -604,7 +592,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Load or image
+      - name: Load image
         shell: bash
         run: |
           if [[ "$LOCAL_REGISTRY" == "true" ]]; then
@@ -648,7 +636,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Load or image
+      - name: Load image
         shell: bash
         run: |
           if [[ "$LOCAL_REGISTRY" == "true" ]]; then
@@ -692,7 +680,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Load or image
+      - name: Load image
         shell: bash
         run: |
           if [[ "$LOCAL_REGISTRY" == "true" ]]; then
@@ -736,7 +724,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Load or image
+      - name: Load image
         shell: bash
         run: |
           if [[ "$LOCAL_REGISTRY" == "true" ]]; then
@@ -781,7 +769,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Load or image
+      - name: Load image
         shell: bash
         run: |
           if [[ "$LOCAL_REGISTRY" == "true" ]]; then
@@ -825,7 +813,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Load or image
+      - name: Load image
         shell: bash
         run: |
           if [[ "$LOCAL_REGISTRY" == "true" ]]; then
@@ -869,7 +857,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Load or image
+      - name: Load image
         shell: bash
         run: |
           if [[ "$LOCAL_REGISTRY" == "true" ]]; then
