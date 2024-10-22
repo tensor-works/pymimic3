@@ -338,7 +338,7 @@ jobs:
           .github/scripts/run_container.sh \
           "$DOCKER_VOLUME_MOUNTS" \
           "$BRANCH_NAME" \
-          "cd etc && make testing=true" \
+          "make testing=true" \
           "$BASH_RESULTS" \
           "setup-control-dataset"
 
