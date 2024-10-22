@@ -247,14 +247,14 @@ jobs:
           echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u tensorpod --password-stdin
 
           if [[ "${{ steps.check_registry.outputs.local_registry }}" == "true" ]]; then
-            echo "Local registry is available. Pulling from local registry and pushing to both local and remote."
+            echo "Local registry is available. Pulling from local registry for subsequent jobs."
             # Tag for Docker Hub
-            docker tag tensorpod/pymimic3:latest localhost:5000/pymimic3:latest 
-            docker tag tensorpod/pymimic3:$BRANCH_NAME localhost:5000/pymimic3:$BRANCH_NAME 
+            # docker tag tensorpod/pymimic3:latest localhost:5000/pymimic3:latest 
+            # docker tag tensorpod/pymimic3:$BRANCH_NAME localhost:5000/pymimic3:$BRANCH_NAME 
 
             # Pull from local registry
-            docker push localhost:5000/pymimic3:latest
-            docker push localhost:5000/pymimic3:$BRANCH_NAME
+            # docker push localhost:5000/pymimic3:latest
+            # docker push localhost:5000/pymimic3:$BRANCH_NAME
           else
             echo "No local registry available. Loading from tar and pushing to Docker Hub."
             
