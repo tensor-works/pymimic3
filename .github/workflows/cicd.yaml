@@ -201,15 +201,14 @@ jobs:
           context: .
           file: .devcontainer/Dockerfile.test
           # ci
-          # ${{ steps.check_registry.outputs.local_registry == 'true' && 'localhost:5000/pymimic3:latest' || '' }}
-          # ${{ steps.check_registry.outputs.local_registry == 'true' && format('localhost:5000/pymimic3:{0}', env.BRANCH_NAME) || '' }}
+
           load: ${{ steps.check_registry.outputs.local_registry != 'true' }}
           push: ${{ steps.check_registry.outputs.local_registry == 'true' }}
           tags: |
             tensorpod/pymimic3:latest
             tensorpod/pymimic3:${{ env.BRANCH_NAME }}
-            ${{ steps.check_registry.outputs.local_registry == 'true' && 'registry:5000/pymimic3:latest' || '' }}
-            ${{ steps.check_registry.outputs.local_registry == 'true' && format('registry:5000/pymimic3:{0}', env.BRANCH_NAME) || '' }}
+            ${{ steps.check_registry.outputs.local_registry == 'true' && 'http://localhost:5000/pymimic3:latest' || '' }}
+            ${{ steps.check_registry.outputs.local_registry == 'true' && format('http://localhost:5000/pymimic3:{0}', env.BRANCH_NAME) || '' }}
           cache-from: type=local,src=${{ env.DOCKER_CACHE_DIR }}/.buildx-cache
           cache-to: type=local,dest=${{ env.DOCKER_CACHE_DIR }}/.buildx-cache-new,mode=max
           outputs: ${{ steps.check_registry.outputs.local_registry != 'true' && format('type=docker,dest={0}', env.DOCKER_IMAGE_TAR) || '' }}
