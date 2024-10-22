@@ -89,6 +89,12 @@ jobs:
           echo "bash_results=$BASH_RESULTS" >> $GITHUB_OUTPUT
           echo "pytest_results=$PYTEST_RESULTS" >> $GITHUB_OUTPUT
 
+          docker tag tensorpod/pymimic3:latest registry.2:5000/pymimic3:latest
+          docker push registry.2:5000/pymimic3:latest
+
+          docker tag tensorpod/pymimic3:latest registry:5000/pymimic3:latest
+          docker push registry:5000/pymimic3:latest
+
       # => 4. Create cache directory if runing locally
       - name: Set up Docker cache/output directory on self-hosted
         if: runner.environment == 'self-hosted'
