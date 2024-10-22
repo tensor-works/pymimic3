@@ -1,4 +1,5 @@
 import re
+import os
 import json
 import numpy as np
 from pymongo import MongoClient
@@ -11,10 +12,13 @@ class MongoDict:
     def __init__(self,
                  _db_name,
                  collection_name='default_collection',
-                 host='localhost',
-                 port=27017,
+                 host=os.getenv('MONGODB_HOST'),
+                 port=None,
                  autocommit=True,
                  reinit=False):
+        if host is None:
+            host = 'localhost'
+            port = 27017
         self.client = MongoClient(host, port)
         self._db_name = self._sanitize_db_name(_db_name)
         self.db = self.client[self._db_name]

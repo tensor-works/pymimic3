@@ -1,18 +1,3 @@
-# Step 1: Build stage to create the archive with git
-FROM ubuntu:20.04 AS build
-
-# Install git
-RUN apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/*
-
-# Set up workdir
-WORKDIR /src
-
-# Copy the Git repo into the build stage
-COPY . .
-
-# Create a tarball of the tracked files
-RUN git archive --format=tar HEAD > /tmp/workdir-archive.tar
-
 # Use a smaller CUDA runtime image instead of the devel version
 FROM tensorpod/torch-and-tf2-on-cuda:pt2.3-cu118-tf2.14.0-py3.9-no-ta-tv
 
@@ -69,6 +54,8 @@ RUN apt-get update && apt-get install -y gnupg wget && \
 RUN echo "source activate base" >> ~/.bashrc && \
     echo "make" >> ~/.bashrc && \
     echo "source etc/config_env.sh" >> ~/.bashrc
+
+COPY . .
 
 # Set Docker host for TCP connection
 ENV DOCKER_HOST=tcp://host.docker.internal:2375
