@@ -905,7 +905,11 @@ jobs:
           "$BASH_RESULTS" \
           "$PYTEST_RESULTS" \
           "test-models"
-
+  Cleanup:
+    if: always()
+    runs-on: self-hosted
+    needs: [test-models]
+    steps:
       - name: Cleanup semitemp directory
         if: always()
         shell: bash
