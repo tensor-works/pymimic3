@@ -2,6 +2,7 @@ import re
 import os
 import json
 import numpy as np
+from pathlib import Path
 from pymongo import MongoClient
 from typing import Any, Dict, Tuple, List
 from functools import wraps
@@ -21,6 +22,42 @@ class MongoDict:
             port = 27017
         self.client = MongoClient(host, port)
         self._db_name = self._sanitize_db_name(_db_name)
+
+        if not self._db_name in self.client.list_database_names():
+            # Try to copy from original database if progress file exists
+            if Path(_db_name).exists() and _db_name:
+                with open(_db_name, 'r') as f:
+                    _copied_from = f.readline().strip()
+                if _copied_from in self.client.list_database_names():
+                    source_db = self.client[_copied_from]
+                    temp_db = self.client[self._db_name]
+
+                    # Copy all collections and their contents
+                    for coll_name in source_db.list_collection_names():
+                        source_coll = source_db[coll_name]
+                        target_coll = temp_db[coll_name]
+                        docs = list(source_coll.find({}))
+                        if docs:
+                            target_coll.insert_many(docs)
+
+            # If copying failed or no progress file, try JSON fallback
+            json_path = Path(f"{_db_name}.json")
+            if not self._db_name in self.client.list_database_names() and json_path.exists():
+                try:
+                    with open(json_path, 'r') as f:
+                        data = json.load(f)
+
+                    temp_db = self.client[self._db_name]
+                    # Transform the JSON structure into MongoDB documents
+                    documents = []
+                    for key, value in data.items():
+                        documents.append({'_id': key, 'value': value})
+
+                    if documents:
+                        temp_db[collection_name].insert_many(documents)
+                except (json.JSONDecodeError, Exception) as e:
+                    print(f"Error loading JSON data: {e}")
+
         self.db = self.client[self._db_name]
         self.collection = self.db[collection_name]
         self.autocommit = autocommit
@@ -102,6 +139,22 @@ class MongoDict:
         existing_data = self[key]
         update_nested(existing_data, value)
         self[key] = existing_data
+
+    def copy(self, destination: 'MongoDict'):
+        """
+        Copy all data from this MongoDict to another MongoDict instance.
+        
+        Args:
+            destination (MongoDict): The destination MongoDict instance to copy data to.
+        """
+        # First clear the destination
+        destination.clear()
+
+        # Copy all documents from source to destination
+        for doc in self.collection.find():
+            key = self._decode_key(doc['_id'])
+            value = self._decode_value(doc['value'])
+            destination[key] = value
 
     def delete(self):
         """

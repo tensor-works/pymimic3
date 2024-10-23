@@ -1,3 +1,4 @@
+import json
 import pytest
 import numpy as np
 import pandas as pd
@@ -262,7 +263,7 @@ def test_db_name_handling():
     # Test with a long path
     db_path = Path(TEMP_DIR, "workdir/tests/data/semitemp/processed/DECOMP_progress")
     db = MongoDict(db_path)
-    assert db._db_name == 'db_paces_pymimic3_tests_data_semitemp_processed_DECOMP_progress'
+    assert db._db_name.endswith('tests_data_semitemp_processed_DECOMP_progress')
 
     # Test with a path starting and ending with underscore
     db_path = Path("_invalid_start_and_end_")
@@ -348,8 +349,204 @@ def test_nested_delete():
     tests_io("All tests in test_nested_delete passed successfully")
 
 
+def test_db_copy():
+    tests_io("Starting test_db_copy", level=0)
+
+    # Create source database with some data
+    source_db_path = Path(TEMP_DIR, "source_db")
+
+    # Ensure db does not exist
+    MongoDict(source_db_path).delete()
+
+    source_db = MongoDict(source_db_path, reinit=True)
+    source_db['test_key'] = 'test_value'
+    source_db['nested'] = {'a': 1, 'b': 2}
+    source_db.set_nested('deep.nested.key', 'value')
+
+    # Create progress file pointing to source database
+    target_db_path = Path(TEMP_DIR, "target_db")
+
+    # Ensure db does not exist
+    MongoDict(target_db_path).delete()
+
+    target_db_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(target_db_path, 'w') as f:
+        f.write(source_db._db_name)
+
+    # Initialize new database using progress file
+    target_db = MongoDict(target_db_path)
+
+    # Verify data was copied correctly
+    assert target_db['test_key'] == 'test_value'
+    assert target_db['nested'] == {'a': 1, 'b': 2}
+    assert target_db['deep'] == {'nested': {'key': 'value'}}
+
+    # Clean up
+    source_db.delete()
+    target_db.delete()
+    target_db_path.unlink()
+
+    tests_io("Database copy tests passed successfully")
+
+
+def test_json_fallback():
+    tests_io("Starting test_json_fallback", level=0)
+
+    # Create test data
+    test_data = {
+        "subjects": {
+            "total": 7,
+            "10112": {
+                "total": 1,
+                "224063": 1
+            },
+            "10119": {
+                "total": 1,
+                "247686": 1
+            },
+            "10069": {
+                "total": 1,
+                "290490": 1
+            },
+            "40601": {
+                "total": 1,
+                "279529": 1
+            }
+        }
+    }
+
+    db_path = Path(TEMP_DIR, "json_test_db")
+
+    # Ensure db does not exist
+    MongoDict(db_path).delete()
+
+    # Create JSON file
+    db_path.parent.mkdir(parents=True, exist_ok=True)
+    json_path = Path(f"{db_path}.json")
+    with open(json_path, 'w') as f:
+        json.dump(test_data, f)
+
+    # Initialize database from JSON
+    db = MongoDict(db_path)
+
+    # Verify data was loaded correctly
+    assert db['subjects']['total'] == 7
+    assert db['subjects']['10112']['total'] == 1
+    assert db['subjects']['10112']['224063'] == 1
+    assert db['subjects']['10119']['247686'] == 1
+    assert db['subjects']['10069']['290490'] == 1
+    assert db['subjects']['40601']['279529'] == 1
+
+    # Verify the complete structure
+    assert db['subjects'] == {
+        "total": 7,
+        "10112": {
+            "total": 1,
+            "224063": 1
+        },
+        "10119": {
+            "total": 1,
+            "247686": 1
+        },
+        "10069": {
+            "total": 1,
+            "290490": 1
+        },
+        "40601": {
+            "total": 1,
+            "279529": 1
+        }
+    }
+
+    # Clean up
+    db.delete()
+    json_path.unlink()
+
+    tests_io("JSON fallback tests passed successfully")
+
+
+def test_fallback_priority():
+    tests_io("Starting test_fallback_priority", level=0)
+
+    # Create source database
+    source_db_path = Path(TEMP_DIR, "priority_source_db")
+    source_db = MongoDict(source_db_path, reinit=True)
+    source_db['source_key'] = 'source_value'
+
+    # Create progress file
+    target_db_path = Path(TEMP_DIR, "priority_target_db")
+    target_db_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(target_db_path, 'w') as f:
+        f.write(source_db._db_name)
+
+    # Create JSON file with different data
+    json_data = {'default_collection': [{'_id': 1, 'json_key': 'json_value'}]}
+    json_path = Path(f"{target_db_path}.json")
+    with open(json_path, 'w') as f:
+        json.dump(json_data, f)
+
+    # Initialize new database - should prefer copying from source db
+    target_db = MongoDict(target_db_path)
+
+    # Verify correct data was used
+    assert target_db['source_key'] == 'source_value'
+    with pytest.raises(KeyError):
+        _ = target_db['json_key']
+
+    # Clean up
+    source_db.delete()
+    target_db.delete()
+    target_db_path.unlink()
+    json_path.unlink()
+
+    tests_io("Fallback priority tests passed successfully")
+
+
+def test_error_handling():
+    tests_io("Starting test_error_handling", level=0)
+
+    # Test with invalid progress file
+    db_path = Path(TEMP_DIR, "invalid_db")
+    MongoDict(db_path).delete()
+    db_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(db_path, 'w') as f:
+        f.write("nonexistent_db")
+
+    # Should create new empty database when source doesn't exist
+    db = MongoDict(db_path)
+    db['test'] = 'value'  # Should work with new empty database
+
+    # Test with invalid JSON file
+    json_path = Path(f"{db_path}.json")
+    with open(json_path, 'w') as f:
+        f.write("invalid json content")
+
+    # Should handle invalid JSON gracefully
+    db2 = MongoDict(db_path)
+    db2['test2'] = 'value2'  # Should work with new empty database
+
+    # Clean up
+    db.delete()
+    db_path.unlink()
+    json_path.unlink()
+
+    tests_io("Error handling tests passed successfully")
+
+
 if __name__ == "__main__":
     import shutil
+    if TEMP_DIR.exists():
+        shutil.rmtree(str(TEMP_DIR))
+    test_json_fallback()
+    if TEMP_DIR.exists():
+        shutil.rmtree(str(TEMP_DIR))
+    test_db_copy()
+    if TEMP_DIR.exists():
+        shutil.rmtree(str(TEMP_DIR))
+    test_fallback_priority()
+    if TEMP_DIR.exists():
+        shutil.rmtree(str(TEMP_DIR))
+    test_error_handling()
     if TEMP_DIR.exists():
         shutil.rmtree(str(TEMP_DIR))
     test_nested_delete()

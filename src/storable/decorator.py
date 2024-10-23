@@ -118,7 +118,7 @@ def storable(cls):
                 self._wrap_attributes()
                 self._write(self._progress)
                 with open(self._path, 'w') as file:
-                    file.write("")
+                    file.write(str(self._path))
             else:
                 self._progress = self._read()
                 self._wrap_attributes()
@@ -126,7 +126,7 @@ def storable(cls):
             self._wrap_attributes()
             self._write(self._progress)
             with open(self._path, 'w') as file:
-                file.write("")
+                file.write(str(self._path))
 
         original_init(self, *args, **kwargs)
 
