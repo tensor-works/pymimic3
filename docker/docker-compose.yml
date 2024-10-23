@@ -5,7 +5,7 @@ services:
       dockerfile: ./docker/Dockerfile
     command: sleep infinity
     environment:
-      - MONGODB_HOST=mongodb://mongodb:27018
+      - MONGODB_HOST=mongodb:27017
       - DOCKER_BUILDKIT=1
     deploy:
       resources:

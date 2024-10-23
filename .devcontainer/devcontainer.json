@@ -3,11 +3,13 @@
 {
 	"name": "Anaconda (Python 3)",
 	"dockerComposeFile": [
-		"../docker/docker-compose.yml"  // Separate dev compose file
+		"../docker/docker-compose.yml"
 	],
-	"service": "app",  // This will be our development service
+	"service": "app",
 	"workspaceFolder": "/workdir",
-	"features": {
+  	"overrideCommand": true,
+  	"remoteUser": "root",
+  	"features": {
 		"ghcr.io/devcontainers/features/common-utils:2": {
 			"installZsh": true,
 			"installOhMyZsh": true,
@@ -93,5 +95,5 @@
 			]
 		}
 	},
-	"forwardPorts": [27017]
+	"forwardPorts": [27018]
 }
