@@ -8,6 +8,7 @@ import pytest
 import datasets
 import ray
 import os
+from pathlib import Path
 from tests.tsettings import *
 from typing import Dict
 from utils.IO import *
@@ -25,9 +26,15 @@ def pytest_configure(config) -> None:
     os.environ["DEBUG"] = "0"
 
     if SEMITEMP_DIR.is_dir() and not config.getoption("--no-cleanup"):
-        shutil.rmtree(str(SEMITEMP_DIR))
+        for item in SEMITEMP_DIR.iterdir():
+            if item.name != '.gitignore':
+                if item.is_file():
+                    item.unlink()
+                elif item.is_dir():
+                    shutil.rmtree(str(item))
 
     for task_name in TASK_NAMES:
+        print(Path.cwd())
         tests_io(f"Loading preproceesing data for task {task_name}...", end="\r")
         datasets.load_data(chunksize=75835,
                            source_path=TEST_DATA_DEMO,
@@ -152,4 +159,9 @@ def discretizer_listfiles() -> None:
 def pytest_unconfigure(config) -> None:
     os.environ["DEBUG"] = "0"
     if SEMITEMP_DIR.is_dir() and not config.getoption("--no-cleanup"):
-        shutil.rmtree(str(SEMITEMP_DIR))
+        for item in SEMITEMP_DIR.iterdir():
+            if item.name != '.gitignore':
+                if item.is_file():
+                    item.unlink()
+                elif item.is_dir():
+                    shutil.rmtree(str(item))

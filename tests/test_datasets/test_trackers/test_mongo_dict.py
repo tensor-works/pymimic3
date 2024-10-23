@@ -260,7 +260,7 @@ def test_db_name_handling():
     tests_io("Starting test_db_sanitization_and_collection_handling", level=0)
 
     # Test with a long path
-    db_path = Path(TEMP_DIR, "workspaces/pymimic3/tests/data/semitemp/processed/DECOMP_progress")
+    db_path = Path(TEMP_DIR, "workdir/tests/data/semitemp/processed/DECOMP_progress")
     db = MongoDict(db_path)
     assert db._db_name == 'db_paces_pymimic3_tests_data_semitemp_processed_DECOMP_progress'
 
