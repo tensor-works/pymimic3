@@ -17,6 +17,8 @@ env:
 
 jobs:
   build-and-push:
+    concurrency:
+      group: build
     # |-> 1. pull code
     # |-> 2. set up docker buildx 
     # |-> 3. login to docker hub
@@ -290,6 +292,8 @@ jobs:
 # Pytest run test
 
   setup-control-dataset:
+    concurrency:
+      group: setup-control-dataset
     runs-on: self-hosted
     needs: build-and-push
     env: 
