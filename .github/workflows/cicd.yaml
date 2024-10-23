@@ -73,7 +73,7 @@ jobs:
           DOCKER_VOLUME_MOUNTS="\
            -v $DOCKER_CACHE_DIR/.github-action-cache/control-dataset:/workdir/tests/data/control-dataset\
            -v $DOCKER_CACHE_DIR/.github-action-cache/mimiciii-demo:/workdir/tests/data/mimiciii-demo\
-           -v $DOCKER_CACHE_DIR/.github-action-cache/semitemp:/workdir/tests/data/semitemp\
+           -v $DOCKER_CACHE_DIR/.github-action-cache/${{ runner.name }}/semitemp:/workdir/tests/data/semitemp\
            -v $DOCKER_CACHE_DIR/.github-action-cache/bash-results:/workdir/tests/data/bash-results\
            -v $DOCKER_CACHE_DIR/.github-action-cache/pytest-results:/workdir/tests/data/pytest-results"
          
@@ -377,6 +377,8 @@ jobs:
       - name: Run fixture setup tests
         shell: bash
         run: |
+          # Create the semitemp directory
+          mkdir -p $DOCKER_CACHE_DIR/.github-action-cache/${{ runner.name }}/semitemp
           # Enable color output
           export TERM=xterm-color
           export TERM=xterm-256color
@@ -908,7 +910,7 @@ jobs:
         if: always()
         shell: bash
         run: |
-          rm -rf $DOCKER_CACHE_DIR/.github-action-cache/semitemp 2>&1 \
+          rm -rf $DOCKER_CACHE_DIR/.github-action-cache/${{ runner.name }}/semitemp 2>&1 \
           | tee $BASH_RESULTS/cleanup-semitemp.txt
 
           echo "Exit status: $?"
