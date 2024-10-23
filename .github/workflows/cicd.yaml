@@ -534,7 +534,7 @@ jobs:
           "$DOCKER_VOLUME_MOUNTS" \
           "$BRANCH_NAME" \
           "$CONTAINER_PYTEST_RESULTS" \
-          "tests/test_datasets/test_readers/test_data_split.py" \
+          "tests/test_datasets/test_data_split.py" \
           "$BASH_RESULTS" \
           "$PYTEST_RESULTS" \
           "test-data-split"
@@ -624,7 +624,7 @@ jobs:
           "$DOCKER_VOLUME_MOUNTS" \
           "$BRANCH_NAME" \
           "$CONTAINER_PYTEST_RESULTS" \
-          "tests/test_datasets/test_preprocessors.py" \
+          "tests/test_datasets/test_preprocessor.py" \
           "$BASH_RESULTS" \
           "$PYTEST_RESULTS" \
           "test-preprocessors"
