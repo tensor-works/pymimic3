@@ -10,12 +10,12 @@ echo "In etc/setup/setup_config_file.sh"
 echo -e "\033[34m[1/6]\033[0m Detected OS type: $OSTYPE"
 if [[ "$OSTYPE" == "linux-gnu"* ]] || [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "cygwin" ]]; then
     SCRIPT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")"
+    envFile="$ETC/dependencies/linux-gnu.yml"
 elif [[ "$OSTYPE" == "darwin"* ]]; then
     SCRIPT="$( cd "$( dirname "$0" )" && pwd )"
+    envFile="$ETC/dependencies/win64.yml"
 fi
 
-
-envFile="$WORKINGDIR/.devcontainer/linux-gnu.yml"
 
 eval "$(conda shell.bash hook)"
 if conda env list | grep -q "pymimic3"; then

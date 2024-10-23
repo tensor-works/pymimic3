@@ -1,0 +1,38 @@
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - cachetools=5.5.0=pyhd8ed1ab_0
+  - debugpy=1.8.6=py39hf88036b_0
+  - decorator=5.1.1=pyhd8ed1ab_0
+  - hdf5=1.14.3=nompi_hdf9ad27_105
+  - matplotlib=3.9.2=py39hf3d152e_1
+  - multipledispatch=0.6.0=pyhd8ed1ab_1
+  - multiprocess=0.70.16=py39h8cd3c5a_1
+  - mysql=9.0.1=h27aab58_0
+  - pandas=2.2.3=py39h3b40f6f_1
+  - pathos=0.3.2=pyhd8ed1ab_1
+  - psutil=6.0.0=py39h8cd3c5a_1
+  - pytables=3.9.2=py39hd89fbf8_3
+  - pytest=8.3.3=pyhd8ed1ab_0
+  - python-dotenv=1.0.1=pyhd8ed1ab_0
+  - pyyaml=6.0.2=py39h8cd3c5a_1
+  - ray-core=2.36.1=py39h2f6ba2e_0
+  - ray-default=2.36.1=py39h7a4ae58_0
+  - scikit-learn=1.5.2=py39h4b7350c_1
+  - scipy=1.13.1=py39haf93ffa_0
+  - sqlite=3.46.1=h9eae976_0
+  - yaspin
+  - gdown
+  - pip:
+      - junit2html
+      - pymongo
+      - oslo_concurrency
+      - lightning-utilities==0.11.2
+      - pillow==10.2.0
+      - polars==0.20.26
+      - river==0.21.1
+      - torcheval==0.0.7
+      - torchmetrics==1.4.0.post0
+      - tensorflow-addons 
+

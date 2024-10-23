@@ -13,7 +13,7 @@ $EXAMPLES = Join-Path $WORKINGDIR "examples"
 
 
 # Creating the conda environment
-$envFile = Join-Path -Path $WORKINGDIR -ChildPath ".devcontainer/environment.yml"
+$envFile = Join-Path -Path $WORKINGDIR -ChildPath "./docker/environment.yml"
 
 $envs = & conda env list
 if (-Not($envs -match "mimic3")) {

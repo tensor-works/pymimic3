@@ -20,5 +20,6 @@
   },
   "terminal.integrated.env.windows": {
     "PYTHONPATH": "${env:PYTHONPATH}:${workspaceFolder}\\src"
-  }
+  },
+  "makefile.configureOnOpen": false
 }

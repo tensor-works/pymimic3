@@ -1,0 +1,55 @@
+# Use a smaller CUDA runtime image instead of the devel version
+FROM tensorpod/torch-and-tf2-on-cuda:pt2.3-cu118-tf2.14.0-py3.9-no-ta-tv
+
+LABEL maintainer="Amadou Wolfgang Cisse <amadou.6e@googlemail.com>"
+
+ENV IS_DOCKER=1 \
+    LANG=C.UTF-8 \
+    LC_ALL=C.UTF-8 \
+    PATH=/opt/conda/bin:$PATH \
+    NVIDIA_VISIBLE_DEVICES=all \
+    NVIDIA_DRIVER_CAPABILITIES=compute,utility
+
+# Install minimal dependencies and MongoDB
+RUN --mount=type=cache,target=/var/cache/apt \
+    --mount=type=cache,target=/var/lib/apt \
+    apt-get update -q && \
+    apt-get install -y make sudo gnupg wget && \
+    wget -qO - https://www.mongodb.org/static/pgp/server-5.0.asc | apt-key add - && \
+    echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/5.0 multiverse" | tee /etc/apt/sources.list.d/mongodb-org-5.0.list && \
+    apt-get update && \
+    apt-get install -y mongodb-org && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* && \
+    mkdir -p /workdir/tests/data/semitemp 
+# && \
+# echo 'mongod --dbpath /workdir/data/db --fork --logpath /var/log/mongod.log --bind_ip_all' >> /root/.bashrc
+
+# Set up the working directory
+WORKDIR /workdir
+
+# Copy only the conda environment file first to leverage caching
+COPY ./docker/dependencies/linux-gnu-image.yml ./docker/dependencies/linux-gnu-image.yml
+
+# Update conda environment
+RUN --mount=type=cache,target=/opt/conda/pkgs \
+    conda env update -n base -f ./docker/dependencies/linux-gnu-image.yml && \
+    conda clean -afy
+
+# Copy the rest of the files
+COPY . .
+
+# Extract the tar archive into the workdir and set permissions
+RUN rm -rf .github && \
+    chmod -R +x /workdir
+
+# Clean up any unnecessary conda and pip files
+RUN find /opt/conda/ -follow -type f -name '*.a' -delete && \
+    find /opt/conda/ -follow -type f -name '*.js.map' -delete && \
+    rm -rf /root/.cache/pip 
+
+RUN echo "source activate base" >> ~/.bashrc && \
+    echo "make" >> ~/.bashrc && \
+    echo "source etc/config_env.sh" >> ~/.bashrc
+
+CMD [ "/bin/bash" ]
