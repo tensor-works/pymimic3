@@ -79,7 +79,7 @@ test_status=$?
 echo "::group::Pytest summary command"
 echo -e "${BLUE}docker run $DOCKER_VOLUME_MOUNTS \    
     $NETWORK_FLAG \
-    -e MONGODB_NAME="$DB_NAME" \
+    -e MONGODB_NAME="$GITHUB_SHA" \
     tensorpod/pymimic3:$BRANCH_NAME \
     bash -ic \"python -m tests.pytest_utils.reporting $CONTAINER_PYTEST_RESULTS/$OUTPUT_FILENAME.xml \
     2>&1\" | tee -a $BASH_RESULTS/$OUTPUT_FILENAME.txt${RESET}\n"
@@ -88,7 +88,7 @@ echo "::endgroup::"
 # Run the reporting tool inside a Docker container
 docker run $DOCKER_VOLUME_MOUNTS \
     $NETWORK_FLAG \
-    -e MONGODB_NAME="$DB_NAME" \
+    -e MONGODB_NAME="$GITHUB_SHA" \
     tensorpod/pymimic3:$BRANCH_NAME \
     bash -ic "python -m tests.pytest_utils.reporting $CONTAINER_PYTEST_RESULTS/$OUTPUT_FILENAME.xml \
     2>&1" | tee -a $BASH_RESULTS/$OUTPUT_FILENAME.txt
