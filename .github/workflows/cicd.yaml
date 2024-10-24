@@ -204,7 +204,7 @@ jobs:
       - name: Build and push to local registry
         if: |
           steps.check_registry.outputs.local_registry == 'true' && 
-          runner.environment == 'true'
+          runner.environment == 'self-hosted'
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -223,7 +223,7 @@ jobs:
       - name: Build and export to tar
         if: |
           steps.check_registry.outputs.local_registry != 'true' && 
-          runner.environment == 'true'
+          runner.environment == 'self-hosted'
         uses: docker/build-push-action@v6
         with:
           context: .
