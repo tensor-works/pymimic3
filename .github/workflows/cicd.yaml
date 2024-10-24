@@ -173,7 +173,7 @@ jobs:
       - name: Cache Docker layers on self-hosted
         if: |
           runner.environment == 'self-hosted' &&
-          steps.check_registry.outputs.local_registry == 'true'
+          steps.check_registry.outputs.local_registry == 'false'
         uses: maxnowack/local-cache@v2
         with: 
           path: ${{ env.DOCKER_CACHE_DIR }}/${{ runner.name }}/.buildx-cache
@@ -277,7 +277,7 @@ jobs:
 
       # => 9. Move the cache with -new suffix to original cache
       - name: Move cache
-        if: ${{ steps.check_registry.outputs.local_registry == 'true' }}
+        if: ${{ steps.check_registry.outputs.local_registry == 'false' }}
         run: |
           if [ "${{ runner.environment }}" = "self-hosted" ]; then
             rm -rf $DOCKER_CACHE_DIR/${{ runner.name }}/.buildx-cache
