@@ -57,5 +57,3 @@ elif [ ! -f "$BASH_RESULTS/$OUTPUT_FILENAME.txt" ]; then
     exit $(( $test_status == 0 ? 1 : $test_status ))
 fi
 echo ""
-
-cleanup_old_databases

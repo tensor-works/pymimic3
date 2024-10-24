@@ -948,3 +948,4 @@ jobs:
             echo "The command failed."
             exit 1
           fi
+          # TODO!!!!! add cleanup old mongodb data

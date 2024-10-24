@@ -27,6 +27,8 @@ class MongoDict:
 
         # Sanitize collection name using the old db name sanitization logic
         self._collection_name = self._sanitize_collection_name(collection_name)
+        if not Path(collection_name).exists():
+            reinit = True
 
         # Create/get the fixed database
         self.db = self.client[self._db_name]
