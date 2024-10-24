@@ -17,8 +17,6 @@ env:
 
 jobs:
   build-and-push:
-    # concurrency:
-    #   group: build
     # |-> 1. pull code
     # |-> 2. set up docker buildx 
     # |-> 3. login to docker hub
@@ -114,9 +112,9 @@ jobs:
           mkdir -p $DOCKER_CACHE_DIR/.buildx-cache
           mkdir -p $DOCKER_CACHE_DIR/.buildx-image-cache/tensorpod/pymimic3/
 
-          echo "Copying docker cache from $DOCKER_CACHE_DIR/.buildx-cache to $DOCKER_CACHE_DIR/${{ runner.name }}/buildx-cache"
-          mkdir -p $DOCKER_CACHE_DIR/${{ runner.name }}/buildx-cache"
-          cp -r $DOCKER_CACHE_DIR/.buildx-cache $DOCKER_CACHE_DIR/${{ runner.name }}/buildx-cache
+          echo "Copying docker cache from $DOCKER_CACHE_DIR/.buildx-cache to $DOCKER_CACHE_DIR/${{ runner.name }}/.buildx-cache"
+          mkdir -p "$DOCKER_CACHE_DIR/${{ runner.name }}/.buildx-cache"
+          cp -r "$DOCKER_CACHE_DIR/.buildx-cache" "$DOCKER_CACHE_DIR/${{ runner.name }}/.buildx-cache"
 
           echo "::group::DOCKER_CACHE_DIR"
           echo $DOCKER_CACHE_DIR
