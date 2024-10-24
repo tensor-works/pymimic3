@@ -111,7 +111,12 @@ jobs:
           echo "DOCKER_CACHE_DIR=$DOCKER_CACHE_DIR" >> $GITHUB_ENV
           
           mkdir -p $DOCKER_CACHE_DIR
+          mkdir -p $DOCKER_CACHE_DIR/.buildx-cache
           mkdir -p $DOCKER_CACHE_DIR/.buildx-image-cache/tensorpod/pymimic3/
+
+          echo "Copying docker cache from $DOCKER_CACHE_DIR/.buildx-cache to $DOCKER_CACHE_DIR/${{ runner.name }}/buildx-cache"
+          mkdir -p $DOCKER_CACHE_DIR/${{ runner.name }}/buildx-cache"
+          cp -r $DOCKER_CACHE_DIR/.buildx-cache $DOCKER_CACHE_DIR/${{ runner.name }}/buildx-cache
 
           echo "::group::DOCKER_CACHE_DIR"
           echo $DOCKER_CACHE_DIR
@@ -143,7 +148,7 @@ jobs:
         if: runner.environment == 'self-hosted'
         uses: maxnowack/local-cache@v2
         with: 
-          path: ${{ env.DOCKER_CACHE_DIR }}/.buildx-cache
+          path: ${{ env.DOCKER_CACHE_DIR }}/${{ runner.name }}/.buildx-cache
           key: ${{ runner.os }}-buildx-${{ github.sha }}
           restore-keys: |
             ${{ runner.os }}-buildx-   
@@ -253,8 +258,8 @@ jobs:
       - name: Move cache
         run: |
           if [ "${{ runner.environment }}" = "self-hosted" ]; then
-            rm -rf $DOCKER_CACHE_DIR/.buildx-cache
-            mv $DOCKER_CACHE_DIR/.buildx-cache-new $DOCKER_CACHE_DIR/.buildx-cache
+            rm -rf $DOCKER_CACHE_DIR/${{ runner.name }}/.buildx-cache
+            mv $DOCKER_CACHE_DIR/${{ runner.name }}/.buildx-cache-new $DOCKER_CACHE_DIR/.buildx-cache
           elif [ "${{ runner.environment }}" = "github-hosted" ]; then
             rm -rf tmp/.buildx-cache
             mv tmp/.buildx-cache-new tmp/.buildx-cache
