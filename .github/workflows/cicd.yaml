@@ -216,8 +216,8 @@ jobs:
             localhost:5000/pymimic3:latest
             localhost:5000/pymimic3:${{ env.BRANCH_NAME }}
           cache-from: |
-            type=registry,ref=tensorpod/pymimic3:latest
-            type=registry,ref=tensorpod/pymimic3:${{ env.BRANCH_NAME }}
+            type=registry,ref=localhost:5000/pymimic3:latest
+            type=registry,ref=localhost:5000/pymimic3:${{ env.BRANCH_NAME }}
           cache-to: type=inline
 
       - name: Build and export to tar
