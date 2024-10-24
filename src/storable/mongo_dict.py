@@ -27,12 +27,11 @@ class MongoDict:
 
         # Sanitize collection name using the old db name sanitization logic
         self._collection_name = self._sanitize_collection_name(collection_name)
-        if not Path(collection_name).exists():
-            reinit = True
 
         # Create/get the fixed database
         self.db = self.client[self._db_name]
 
+        # TODO! consider putting this logic in the storable
         # Try restoral logic at collection level
         if not self._collection_name in self.db.list_collection_names():
             # Try to copy from original collection if progress file exists
