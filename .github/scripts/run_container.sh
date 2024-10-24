@@ -24,8 +24,7 @@ echo -e "${BLUE}- Command: \n  ${LIGHT_BLUE}$COMMAND"
 echo -e "${BLUE}- Bash results: \n  ${LIGHT_BLUE}$BASH_RESULTS"
 echo -e "${BLUE}- Output filename: \n  ${LIGHT_BLUE}$OUTPUT_FILENAME${RESET}"
 echo -e "${BLUE}----------- Artifacts and logs ------------------------------"
-echo -e "${BLUE}Log artifact located at:\n  ${LIGHT_BLUE} \
-    $BASH_RESULTS/$OUTPUT_FILENAME.txt${RESET}"
+echo -e "${BLUE}Log artifact located at:\n  ${LIGHT_BLUE}$BASH_RESULTS/$OUTPUT_FILENAME.txt${RESET}"
 
 set -o pipefail
 
