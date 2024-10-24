@@ -204,7 +204,7 @@ def storable(cls):
         print("===== End Printing =====")
 
     def db_exists(self, _db_name, host=os.getenv("MONGODB_HOST"), port=None):
-        _db_name = MongoDict._sanitize_db_name(_db_name)
+        _db_name = MongoDict._sanitize_collection_name(_db_name)
         client = MongoClient(host, port)
         try:
             # Get the list of all database names
@@ -215,7 +215,7 @@ def storable(cls):
 
     def delete_db(self, _db_name, host=os.getenv("MONGODB_HOST"), port=None):
         # Delete the specified database
-        _db_name = MongoDict._sanitize_db_name(_db_name)
+        _db_name = MongoDict._sanitize_collection_name(_db_name)
         client = MongoClient(host, port)
         try:
             if _db_name in client.list_database_names():

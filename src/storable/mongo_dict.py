@@ -11,9 +11,9 @@ from functools import wraps
 class MongoDict:
 
     def __init__(self,
-                 _db_name,
-                 collection_name='default_collection',
-                 host=os.getenv('MONGODB_HOST'),
+                 collection_name,
+                 db_name=os.getenv('MONGODB_NAME', "workspace"),
+                 host=os.getenv('MONGODB_HOST', None),
                  port=None,
                  autocommit=True,
                  reinit=False):
@@ -21,45 +21,47 @@ class MongoDict:
             host = 'localhost'
             port = 27017
         self.client = MongoClient(host, port)
-        self._db_name = self._sanitize_db_name(_db_name)
 
-        if not self._db_name in self.client.list_database_names():
-            # Try to copy from original database if progress file exists
-            if Path(_db_name).exists() and _db_name:
-                with open(_db_name, 'r') as f:
+        # Use fixed database name
+        self._db_name = db_name
+
+        # Sanitize collection name using the old db name sanitization logic
+        self._collection_name = self._sanitize_collection_name(collection_name)
+
+        # Create/get the fixed database
+        self.db = self.client[self._db_name]
+
+        # Try restoral logic at collection level
+        if not self._collection_name in self.db.list_collection_names():
+            # Try to copy from original collection if progress file exists
+            if Path(collection_name).exists() and collection_name:
+                with open(collection_name, 'r') as f:
                     _copied_from = f.readline().strip()
-                if _copied_from in self.client.list_database_names():
-                    source_db = self.client[_copied_from]
-                    temp_db = self.client[self._db_name]
 
-                    # Copy all collections and their contents
-                    for coll_name in source_db.list_collection_names():
-                        source_coll = source_db[coll_name]
-                        target_coll = temp_db[coll_name]
-                        docs = list(source_coll.find({}))
-                        if docs:
-                            target_coll.insert_many(docs)
+                if _copied_from in self.db.list_collection_names():
+                    source_coll = self.db[_copied_from]
+                    docs = list(source_coll.find({}))
+                    if docs:
+                        self.db[self._collection_name].insert_many(docs)
 
             # If copying failed or no progress file, try JSON fallback
-            json_path = Path(f"{_db_name}.json")
-            if not self._db_name in self.client.list_database_names() and json_path.exists():
+            json_path = Path(f"{collection_name}.json")
+            if self._collection_name not in self.db.list_collection_names() and json_path.exists():
                 try:
                     with open(json_path, 'r') as f:
                         data = json.load(f)
 
-                    temp_db = self.client[self._db_name]
                     # Transform the JSON structure into MongoDB documents
                     documents = []
                     for key, value in data.items():
                         documents.append({'_id': key, 'value': value})
 
                     if documents:
-                        temp_db[collection_name].insert_many(documents)
+                        self.db[self._collection_name].insert_many(documents)
                 except (json.JSONDecodeError, Exception) as e:
                     print(f"Error loading JSON data: {e}")
 
-        self.db = self.client[self._db_name]
-        self.collection = self.db[collection_name]
+        self.collection = self.db[self._collection_name]
         self.autocommit = autocommit
         if reinit:
             self.delete()
@@ -87,9 +89,9 @@ class MongoDict:
         return str(key)
 
     @staticmethod
-    def _sanitize_db_name(name):
+    def _sanitize_collection_name(name):
         sanitized = re.sub(r'[/\\. "$*<>:|?]', '_', str(name)).strip("_")
-        sanitized = 'db_' + sanitized[-60:]
+        sanitized = 'coll_' + sanitized[-60:]
         # Truncate to 63 bytes (MongoDB's limit)
         return sanitized
 
@@ -158,13 +160,13 @@ class MongoDict:
 
     def delete(self):
         """
-        Delete the entire database if it exists.
+        Delete the collection instead of the entire database
         """
-        if self._db_name in self.client.list_database_names():
-            self.client.drop_database(self._db_name)
-            print(f"Database '{self._db_name}' has been deleted.")
+        if self._collection_name in self.db.list_collection_names():
+            self.db.drop_collection(self._collection_name)
+            print(f"Collection '{self._collection_name}' has been deleted.")
         else:
-            print(f"Database '{self._db_name}' does not exist.")
+            print(f"Collection '{self._collection_name}' does not exist.")
 
     def print(self):
         for doc in self.collection.find():

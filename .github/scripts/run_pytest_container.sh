@@ -1,5 +1,7 @@
 #!/bin/bash
 
+./function.sh
+
 # Assign parameters to variables for clarity and better control
 DOCKER_VOLUME_MOUNTS="${1}"
 BRANCH_NAME="${2}"
@@ -25,6 +27,10 @@ else
     echo -e "${BLUE}Warning: runner network not found, container will use default network${RESET}"
 fi
 
+# One db per action pipeline
+GITHUB_SHA=$(get_sha "$BASH_RESULTS")
+DB_NAME=$(generate_db_name "$BRANCH_NAME" "$GITHUB_SHA")
+
 # For echoing
 FORMATTED_MOUNTS=$(echo "$DOCKER_VOLUME_MOUNTS" | sed "s/ -v /\n  \\${LIGHTBLUE} /g")
 
@@ -49,6 +55,7 @@ echo "::group::Pytest container command"
 echo -e "${BLUE}Running command:${REST}\n \
 docker run $FORMATTED_MOUNTS\n \
 $NETWORK_FLAG \
+-e MONGODB_NAME="$DB_NAME" \
 tensorpod/pymimic3:$BRANCH_NAME\n \
 bash -ic \"pytest --no-cleanup --junitxml=$CONTAINER_PYTEST_RESULTS/$OUTPUT_FILENAME.xml\n \
 -v $PYTEST_MODULE_PATH 2>&1\n \
@@ -59,6 +66,7 @@ echo "::endgroup::"
 # Running the pytest command inside a Docker container
 docker run $DOCKER_VOLUME_MOUNTS \
     $NETWORK_FLAG \
+    -e MONGODB_NAME="$DB_NAME" \
     tensorpod/pymimic3:$BRANCH_NAME \
     bash -ic "pytest --no-cleanup --junitxml=$CONTAINER_PYTEST_RESULTS/$OUTPUT_FILENAME.xml \
     -v $PYTEST_MODULE_PATH \
@@ -71,6 +79,7 @@ test_status=$?
 echo "::group::Pytest summary command"
 echo -e "${BLUE}docker run $DOCKER_VOLUME_MOUNTS \    
     $NETWORK_FLAG \
+    -e MONGODB_NAME="$DB_NAME" \
     tensorpod/pymimic3:$BRANCH_NAME \
     bash -ic \"python -m tests.pytest_utils.reporting $CONTAINER_PYTEST_RESULTS/$OUTPUT_FILENAME.xml \
     2>&1\" | tee -a $BASH_RESULTS/$OUTPUT_FILENAME.txt${RESET}\n"
@@ -79,6 +88,7 @@ echo "::endgroup::"
 # Run the reporting tool inside a Docker container
 docker run $DOCKER_VOLUME_MOUNTS \
     $NETWORK_FLAG \
+    -e MONGODB_NAME="$DB_NAME" \
     tensorpod/pymimic3:$BRANCH_NAME \
     bash -ic "python -m tests.pytest_utils.reporting $CONTAINER_PYTEST_RESULTS/$OUTPUT_FILENAME.xml \
     2>&1" | tee -a $BASH_RESULTS/$OUTPUT_FILENAME.txt

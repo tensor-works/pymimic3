@@ -68,9 +68,9 @@ def test_init_and_delete():
     # Insert some data to ensure the database is created
     db['test_key'] = 'test_value'
 
-    assert db._db_name in db.client.list_database_names()
+    assert db._collection_name in db.db.list_collection_names()
     db.delete()
-    assert db._db_name not in db.client.list_database_names()
+    assert db._collection_name not in db.db.list_collection_names()
 
     # Test reinit parameter
     db = MongoDict(db_path, reinit=True)
@@ -208,7 +208,7 @@ def test_method_integration():
 
         # Test delete
         db.delete()
-        assert db._db_name not in db.client.list_database_names()
+        assert db._collection_name not in db.db._list_collection_names()
 
     # Test if the context manager properly closed the connection
     with pytest.raises(Exception):
@@ -263,50 +263,50 @@ def test_db_name_handling():
     # Test with a long path
     db_path = Path(TEMP_DIR, "workdir/tests/data/semitemp/processed/DECOMP_progress")
     db = MongoDict(db_path)
-    assert db._db_name.endswith('tests_data_semitemp_processed_DECOMP_progress')
+    assert db._collection_name.endswith('tests_data_semitemp_processed_DECOMP_progress')
 
     # Test with a path starting and ending with underscore
     db_path = Path("_invalid_start_and_end_")
-    db = MongoDict(db_path, collection_name="system.collection")
-    assert db._db_name == "db_invalid_start_and_end"
+    db = MongoDict(db_path)
+    assert db._collection_name == "coll_invalid_start_and_end"
     db.delete()
 
     # Test with a very long name
     long_name = "a" * 100
     db = MongoDict(long_name)
-    assert db._db_name == "db_" + "a" * 60
-    assert len(db._db_name) == 63
+    assert db._collection_name == "coll_" + "a" * 60
+    assert len(db._collection_name) == 65
     db.delete()
 
     # Test with all invalid characters
     db_path = Path(TEMP_DIR, "/\\. \"$*<>:|?")
     db = MongoDict(db_path)
-    assert db._db_name == "db_"
+    assert db._collection_name == "coll_"
     db.delete()
 
     # Test actual database creation
     db_path = Path(TEMP_DIR, "test_db_creation")
-    db = MongoDict(db_path, collection_name="test_collection", reinit=True)
+    db = MongoDict(db_path, reinit=True)
     db['test_key'] = 'test_value'
-    assert db._db_name in db.client.list_database_names()
+    assert db._collection_name in db.db.list_collection_names()
     db.delete()
 
     tests_io("Tested db name sanitation successfully")
 
     # Test with empty string
     db = MongoDict("")
-    assert db._db_name == "db_"
+    assert db._collection_name == "coll_"
     db.delete()
 
     # Test with only invalid characters
     db = MongoDict("/\\. \"$*<>:|?")
-    assert db._db_name == "db_"
+    assert db._collection_name == "coll_"
     db.delete()
 
     # Test with a name that's exactly 63 characters after sanitization
     db = MongoDict("a" * 60 + "/\\. \"$*<>:|?")
-    assert db._db_name == "db_" + "a" * 60
-    assert len(db._db_name) == 63
+    assert db._collection_name == "coll_" + "a" * 60
+    assert len(db._collection_name) == 65
     db.delete()
 
     tests_io("All tests in test_edge_cases passed successfully")
@@ -349,44 +349,99 @@ def test_nested_delete():
     tests_io("All tests in test_nested_delete passed successfully")
 
 
-def test_db_copy():
-    tests_io("Starting test_db_copy", level=0)
+def test_collection_copy():
+    tests_io("Starting test_collection_copy", level=0)
 
-    # Create source database with some data
+    # Create source database with multiple collections
     source_db_path = Path(TEMP_DIR, "source_db")
 
     # Ensure db does not exist
     MongoDict(source_db_path).delete()
 
-    source_db = MongoDict(source_db_path, reinit=True)
-    source_db['test_key'] = 'test_value'
-    source_db['nested'] = {'a': 1, 'b': 2}
-    source_db.set_nested('deep.nested.key', 'value')
+    # Create source collections with different data
+    source_collection1 = MongoDict(Path(source_db_path, "collection1"), reinit=True)
+    source_collection1['test_key'] = 'test_value'
+    source_collection1['nested'] = {'a': 1, 'b': 2}
+    source_collection1.set_nested('deep.nested.key', 'value')
 
-    # Create progress file pointing to source database
+    source_collection2 = MongoDict(Path(source_db_path, "collection2"), reinit=True)
+    source_collection2['different_key'] = 'different_value'
+
+    # Create target database
     target_db_path = Path(TEMP_DIR, "target_db")
 
-    # Ensure db does not exist
+    # Ensure target db does not exist
     MongoDict(target_db_path).delete()
 
     target_db_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(target_db_path, 'w') as f:
-        f.write(source_db._db_name)
 
-    # Initialize new database using progress file
-    target_db = MongoDict(target_db_path)
+    # Test collection copy scenarios
 
-    # Verify data was copied correctly
-    assert target_db['test_key'] == 'test_value'
-    assert target_db['nested'] == {'a': 1, 'b': 2}
-    assert target_db['deep'] == {'nested': {'key': 'value'}}
+    # Scenario 1: Copy to same collection name
+    target_path = Path(target_db_path, "collection1")
+    target_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(target_path, 'w') as f:
+        f.write(source_collection1._collection_name)
+    target_collection1 = MongoDict(target_path)
+    assert target_collection1['test_key'] == 'test_value'
+    assert target_collection1['nested'] == {'a': 1, 'b': 2}
+    assert target_collection1['deep'] == {'nested': {'key': 'value'}}
+
+    # Scenario 2: Copy to different collection name
+    target_collection_new = MongoDict(Path(target_db_path, "new_collection"))
+    source_collection1.copy(target_collection_new)
+
+    assert target_collection_new['test_key'] == 'test_value'
+    assert target_collection_new['nested'] == {'a': 1, 'b': 2}
+    assert target_collection_new['deep'] == {'nested': {'key': 'value'}}
+
+    # Scenario 3: Copy between different databases
+    another_db_path = Path(TEMP_DIR, "another_db")
+    another_collection = MongoDict(Path(another_db_path, "collection1"))
+    source_collection1.copy(another_collection)
+
+    assert another_collection['test_key'] == 'test_value'
+    assert another_collection['nested'] == {'a': 1, 'b': 2}
+    assert another_collection['deep'] == {'nested': {'key': 'value'}}
+
+    # Scenario 4: Verify collections remain isolated
+    target_collection2 = MongoDict(Path(target_db_path, "collection2"))
+    source_collection2.copy(target_collection2)
+
+    assert target_collection2['different_key'] == 'different_value'
+    with pytest.raises(KeyError):
+        _ = target_collection2['test_key']
+    with pytest.raises(KeyError):
+        _ = target_collection1['different_key']
+
+    # Scenario 5: Test copying empty collection
+    empty_source = MongoDict(Path(source_db_path, "empty_collection"))
+    empty_target = MongoDict(Path(target_db_path, "empty_target"))
+    empty_source.copy(empty_target)
+
+    assert len(list(empty_target.collection.find())) == 0
+
+    # Scenario 6: Test overwriting existing collection
+    existing_target = MongoDict(Path(target_db_path, "existing"))
+    existing_target['old_key'] = 'old_value'
+
+    source_collection1.copy(existing_target)
+    assert existing_target['test_key'] == 'test_value'  # Should have source data
+    with pytest.raises(KeyError):
+        _ = existing_target['old_key']  # Old data should be gone
 
     # Clean up
-    source_db.delete()
-    target_db.delete()
-    target_db_path.unlink()
+    source_collection1.delete()
+    source_collection2.delete()
+    target_collection1.delete()
+    target_collection2.delete()
+    target_collection_new.delete()
+    another_collection.delete()
+    empty_source.delete()
+    empty_target.delete()
+    existing_target.delete()
 
-    tests_io("Database copy tests passed successfully")
+    tests_io("Collection copy tests passed successfully")
 
 
 def test_json_fallback():
@@ -418,7 +473,8 @@ def test_json_fallback():
     db_path = Path(TEMP_DIR, "json_test_db")
 
     # Ensure db does not exist
-    MongoDict(db_path).delete()
+    db = MongoDict(db_path)
+    db.delete()
 
     # Create JSON file
     db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -426,7 +482,7 @@ def test_json_fallback():
     with open(json_path, 'w') as f:
         json.dump(test_data, f)
 
-    # Initialize database from JSON
+    # Initialize database from JSON with specific collection
     db = MongoDict(db_path)
 
     # Verify data was loaded correctly
@@ -468,9 +524,9 @@ def test_json_fallback():
 def test_fallback_priority():
     tests_io("Starting test_fallback_priority", level=0)
 
-    # Create source database
-    source_db_path = Path(TEMP_DIR, "priority_source_db")
-    source_db = MongoDict(source_db_path, reinit=True)
+    # Create source with specific collection
+    source_collection = "source_collection"
+    source_db = MongoDict(collection_name=source_collection, reinit=True)
     source_db['source_key'] = 'source_value'
 
     # Create progress file
@@ -479,25 +535,28 @@ def test_fallback_priority():
     with open(target_db_path, 'w') as f:
         f.write(source_db._db_name)
 
-    # Create JSON file with different data
-    json_data = {'default_collection': [{'_id': 1, 'json_key': 'json_value'}]}
+    # Create JSON file with different data and collection
+    json_data = {'json_key': 'json_value'}
     json_path = Path(f"{target_db_path}.json")
     with open(json_path, 'w') as f:
         json.dump(json_data, f)
 
-    # Initialize new database - should prefer copying from source db
-    target_db = MongoDict(target_db_path)
+    # Initialize with same collection name - should prefer copying from source
+    target_db = MongoDict(collection_name=source_collection)
 
-    # Verify correct data was used
+    # Verify correct collection was used
     assert target_db['source_key'] == 'source_value'
     with pytest.raises(KeyError):
         _ = target_db['json_key']
 
+    # Test with different collection name - should create new collection
+    different_collection = "different_collection"
+    different_db = MongoDict(collection_name=different_collection)
+
     # Clean up
     source_db.delete()
     target_db.delete()
-    target_db_path.unlink()
-    json_path.unlink()
+    different_db.delete()
 
     tests_io("Fallback priority tests passed successfully")
 
@@ -505,48 +564,83 @@ def test_fallback_priority():
 def test_error_handling():
     tests_io("Starting test_error_handling", level=0)
 
-    # Test with invalid progress file
-    db_path = Path(TEMP_DIR, "invalid_db")
-    MongoDict(db_path).delete()
-    db_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(db_path, 'w') as f:
+    # Test with invalid progress file and specific collection
+    collection_name = "error_collection"
+
+    MongoDict(collection_name=collection_name).delete()
+    Path(TEMP_DIR).mkdir(parents=True, exist_ok=True)
+    invalid_path = Path(TEMP_DIR, "invalid_db")
+    with open(invalid_path, 'w') as f:
         f.write("nonexistent_db")
 
-    # Should create new empty database when source doesn't exist
-    db = MongoDict(db_path)
-    db['test'] = 'value'  # Should work with new empty database
+    # Should create new empty collection when source doesn't exist
+    db = MongoDict(collection_name=collection_name)
+    db['test'] = 'value'  # Should work with new empty collection
 
     # Test with invalid JSON file
-    json_path = Path(f"{db_path}.json")
+    json_path = Path(TEMP_DIR, "invalid_db.json")
     with open(json_path, 'w') as f:
         f.write("invalid json content")
 
-    # Should handle invalid JSON gracefully
-    db2 = MongoDict(db_path)
-    db2['test2'] = 'value2'  # Should work with new empty database
+    # Should handle invalid JSON gracefully and create new collection
+    new_collection = "new_collection"
+    db2 = MongoDict(collection_name=new_collection)
+    db2['test2'] = 'value2'  # Should work with new empty collection
+
+    # Test collection name validation
+    with pytest.raises(ValueError):
+        MongoDict(collection_name="")  # Empty collection name
 
     # Clean up
     db.delete()
-    db_path.unlink()
-    json_path.unlink()
+    db2.delete()
 
     tests_io("Error handling tests passed successfully")
+
+
+def test_multiple_collections():
+    tests_io("Starting test_multiple_collections", level=0)
+
+    # Create multiple collections
+    collection1 = MongoDict(collection_name="collection1")
+    collection2 = MongoDict(collection_name="collection2")
+
+    # Test data isolation between collections
+    collection1['key'] = 'value1'
+    collection2['key'] = 'value2'
+
+    assert collection1['key'] == 'value1'
+    assert collection2['key'] == 'value2'
+    assert collection1.collection.name != collection2.collection.name
+
+    # Test copying between collections
+    collection3 = MongoDict(collection_name="collection3")
+    collection1.copy(collection3)
+
+    assert collection3['key'] == 'value1'
+
+    # Clean up
+    collection1.delete()
+    collection2.delete()
+    collection3.delete()
+
+    tests_io("Multiple collections tests passed successfully")
 
 
 if __name__ == "__main__":
     import shutil
     if TEMP_DIR.exists():
         shutil.rmtree(str(TEMP_DIR))
+    test_init_and_delete()
+    if TEMP_DIR.exists():
+        shutil.rmtree(str(TEMP_DIR))
     test_json_fallback()
     if TEMP_DIR.exists():
         shutil.rmtree(str(TEMP_DIR))
-    test_db_copy()
+    test_collection_copy()
     if TEMP_DIR.exists():
         shutil.rmtree(str(TEMP_DIR))
     test_fallback_priority()
-    if TEMP_DIR.exists():
-        shutil.rmtree(str(TEMP_DIR))
-    test_error_handling()
     if TEMP_DIR.exists():
         shutil.rmtree(str(TEMP_DIR))
     test_nested_delete()
@@ -556,9 +650,6 @@ if __name__ == "__main__":
     if TEMP_DIR.exists():
         shutil.rmtree(str(TEMP_DIR))
     test_set_nested()
-    if TEMP_DIR.exists():
-        shutil.rmtree(str(TEMP_DIR))
-    test_init_and_delete()
     if TEMP_DIR.exists():
         shutil.rmtree(str(TEMP_DIR))
     test_contains_and_getitem()
@@ -580,5 +671,8 @@ if __name__ == "__main__":
     if TEMP_DIR.exists():
         shutil.rmtree(str(TEMP_DIR))
     test_numpy_pandas_types()
+    if TEMP_DIR.exists():
+        shutil.rmtree(str(TEMP_DIR))
+    test_error_handling()
     if TEMP_DIR.exists():
         shutil.rmtree(str(TEMP_DIR))
