@@ -55,5 +55,5 @@ function cleanup_old_databases() {
 }
 
 function get_sha() {
-    basename "$(dirname "$1")"
+    echo $(basename "$1")
 }
