@@ -1,6 +1,6 @@
 #!/bin/bash
 
-./function.sh
+source ./function.sh
 
 # Assign parameters to variables for clarity and better control
 DOCKER_VOLUME_MOUNTS="${1}"
@@ -36,19 +36,19 @@ FORMATTED_MOUNTS=$(echo "$DOCKER_VOLUME_MOUNTS" | sed "s/ -v /\n  \\${LIGHTBLUE}
 
 echo -e ""
 echo -e "${BLUE}=========== .github/scripts/run_pytest_container.sh ================"
-echo -e "${BLUE}- Docker volume: \n${LIGHT_BLUE}$FORMATTED_MOUNTS"
-echo -e "${BLUE}- Branch name: \n${LIGHT_BLUE}$BRANCH_NAME"
-echo -e "${BLUE}- Container pytest results: \n${LIGHT_BLUE}$CONTAINER_PYTEST_RESULTS"
-echo -e "${BLUE}- Pytest module path: \n${LIGHT_BLUE}$PYTEST_MODULE_PATH"
-echo -e "${BLUE}- Bash results: \n${LIGHT_BLUE}$BASH_RESULTS"
-echo -e "${BLUE}- Pytest results: \n${LIGHT_BLUE}$PYTEST_RESULTS"
-echo -e "${BLUE}- Output filename: \n${LIGHT_BLUE}$OUTPUT_FILENAME${RESET}"
-echo -e "${BLUE}- Action SHA: \n${LIGHT_BLUE}$GITHUB_SHA${RESET}"
-echo -e "${BLUE}- Action DB_NAME: \n${LIGHT_BLUE}$DB_NAME${RESET}"
+echo -e "${BLUE}- Docker volume: ${LIGHT_BLUE}$FORMATTED_MOUNTS"
+echo -e "${BLUE}- Branch name: \n  ${LIGHT_BLUE}$BRANCH_NAME"
+echo -e "${BLUE}- Container pytest results: \n  ${LIGHT_BLUE}$CONTAINER_PYTEST_RESULTS"
+echo -e "${BLUE}- Pytest module path: \n  ${LIGHT_BLUE}$PYTEST_MODULE_PATH"
+echo -e "${BLUE}- Bash results: \n  ${LIGHT_BLUE}$BASH_RESULTS"
+echo -e "${BLUE}- Pytest results: \n  ${LIGHT_BLUE}$PYTEST_RESULTS"
+echo -e "${BLUE}- Output filename: \n  ${LIGHT_BLUE}$OUTPUT_FILENAME${RESET}"
+echo -e "${BLUE}- Action SHA: \n  ${LIGHT_BLUE}$GITHUB_SHA${RESET}"
+echo -e "${BLUE}- Action DB_NAME: \n  ${LIGHT_BLUE}$DB_NAME${RESET}"
 echo -e "${BLUE}----------- Artifacts and logs -------------------------------------"
-echo -e "${BLUE}Log artifact located at:\n${LIGHT_BLUE}$BASH_RESULTS/$OUTPUT_FILENAME.txt${RESET}"
-echo -e "${BLUE}Pytest junit artfact created at:\n${LIGHT_BLUE}$PYTEST_RESULTS/$OUTPUT_FILENAME.xml${RESET}"
-echo -e "${BLUE}Pytest html artfact created at:\n${LIGHT_BLUE}$PYTEST_RESULTS/$OUTPUT_FILENAME.html${RESET}"
+echo -e "${BLUE}Log artifact located at:\n  ${LIGHT_BLUE}$BASH_RESULTS/$OUTPUT_FILENAME.txt${RESET}"
+echo -e "${BLUE}Pytest junit artfact created at:\n  ${LIGHT_BLUE}$PYTEST_RESULTS/$OUTPUT_FILENAME.xml${RESET}"
+echo -e "${BLUE}Pytest html artfact created at:\n  ${LIGHT_BLUE}$PYTEST_RESULTS/$OUTPUT_FILENAME.html${RESET}"
 
 
 set -o pipefail

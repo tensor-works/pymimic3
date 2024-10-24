@@ -18,13 +18,13 @@ FORMATTED_MOUNTS=$(echo "$DOCKER_VOLUME_MOUNTS" | sed "s/ -v /\n  \\${LIGHTBLUE}
 
 echo -e ""
 echo -e "${BLUE}=========== .github/scripts/run_container.sh ================"
-echo -e "${BLUE}- Docker volume: \n${LIGHT_BLUE}$FORMATTED_MOUNTS"
-echo -e "${BLUE}- Branch name: \n${LIGHT_BLUE}$BRANCH_NAME"
-echo -e "${BLUE}- Command: \n${LIGHT_BLUE}$COMMAND"
-echo -e "${BLUE}- Bash results: \n${LIGHT_BLUE}$BASH_RESULTS"
-echo -e "${BLUE}- Output filename: \n${LIGHT_BLUE}$OUTPUT_FILENAME${RESET}"
+echo -e "${BLUE}- Docker volume:  ${LIGHT_BLUE}$FORMATTED_MOUNTS"
+echo -e "${BLUE}- Branch name: \n  ${LIGHT_BLUE}$BRANCH_NAME"
+echo -e "${BLUE}- Command: \n  ${LIGHT_BLUE}$COMMAND"
+echo -e "${BLUE}- Bash results: \n  ${LIGHT_BLUE}$BASH_RESULTS"
+echo -e "${BLUE}- Output filename: \n  ${LIGHT_BLUE}$OUTPUT_FILENAME${RESET}"
 echo -e "${BLUE}----------- Artifacts and logs ------------------------------"
-echo -e "${BLUE}Log artifact located at:${LIGHT_BLUE} \
+echo -e "${BLUE}Log artifact located at:\n  ${LIGHT_BLUE} \
     $BASH_RESULTS/$OUTPUT_FILENAME.txt${RESET}"
 
 set -o pipefail
