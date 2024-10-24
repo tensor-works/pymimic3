@@ -58,4 +58,4 @@ elif [ ! -f "$BASH_RESULTS/$OUTPUT_FILENAME.txt" ]; then
 fi
 echo ""
 
-cleanup_old_databases()
+cleanup_old_databases
