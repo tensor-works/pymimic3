@@ -204,7 +204,7 @@ jobs:
       - name: Build and push to local registry
         if: |
           steps.check_registry.outputs.local_registry == 'true' && 
-          runner.labels['self-hosted'] == 'true'
+          runner.environment == 'true'
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -223,7 +223,7 @@ jobs:
       - name: Build and export to tar
         if: |
           steps.check_registry.outputs.local_registry != 'true' && 
-          runner.labels['self-hosted'] == 'true'
+          runner.environment == 'true'
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -277,7 +277,7 @@ jobs:
 
       # => 9. Move the cache with -new suffix to original cache
       - name: Move cache
-        if: steps.check_registry.outputs.local_registry == 'true'
+        if: ${{ steps.check_registry.outputs.local_registry == 'true' }}
         run: |
           if [ "${{ runner.environment }}" = "self-hosted" ]; then
             rm -rf $DOCKER_CACHE_DIR/${{ runner.name }}/.buildx-cache
