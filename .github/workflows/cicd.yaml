@@ -93,6 +93,32 @@ jobs:
           echo "bash_results=$BASH_RESULTS" >> $GITHUB_OUTPUT
           echo "pytest_results=$PYTEST_RESULTS" >> $GITHUB_OUTPUT
 
+      - name: Check if local registry is running
+        id: check_registry
+        run: |
+          echo "Checking if local registry is running at localhost:5000..."
+          check_registry() {
+              local url=$1
+              if curl -s -f -m 5 "http://${url}/v2/_catalog" > /dev/null 2>&1; then
+                  return 0
+              else
+                  return 1
+              fi
+          }
+
+          if check_registry "localhost:5000"; then
+              echo "local_registry=true" >> $GITHUB_OUTPUT
+              echo "Local registry is running on localhost:5000."
+              echo "registry_host=localhost:5000" >> $GITHUB_OUTPUT
+          elif check_registry "registry:5000"; then
+              echo "local_registry=true" >> $GITHUB_OUTPUT
+              echo "registry_host=registry:5000" >> $GITHUB_OUTPUT
+              echo "Local registry is running on registry:5000 (Docker network)."
+          else
+              echo "local_registry=false" >> $GITHUB_OUTPUT
+              echo "Error: No local registry is running or accessible." >&2
+          fi
+
       # => 4. Create cache directory if runing locally
       - name: Set up Docker cache/output directory on self-hosted
         if: runner.environment == 'self-hosted'
@@ -112,9 +138,11 @@ jobs:
           mkdir -p $DOCKER_CACHE_DIR/.buildx-cache
           mkdir -p $DOCKER_CACHE_DIR/.buildx-image-cache/tensorpod/pymimic3/
 
-          echo "Copying docker cache from $DOCKER_CACHE_DIR/.buildx-cache to $DOCKER_CACHE_DIR/${{ runner.name }}/.buildx-cache"
-          mkdir -p "$DOCKER_CACHE_DIR/${{ runner.name }}/.buildx-cache"
-          cp -r "$DOCKER_CACHE_DIR/.buildx-cache" "$DOCKER_CACHE_DIR/${{ runner.name }}/"
+          if [[ steps.check_registry.outputs.local_registry == 'false' ]]; then
+            echo "Copying docker cache from $DOCKER_CACHE_DIR/.buildx-cache to $DOCKER_CACHE_DIR/${{ runner.name }}/.buildx-cache"
+            mkdir -p "$DOCKER_CACHE_DIR/${{ runner.name }}/.buildx-cache"
+            cp -r "$DOCKER_CACHE_DIR/.buildx-cache" "$DOCKER_CACHE_DIR/${{ runner.name }}/"
+          fi
 
           echo "::group::DOCKER_CACHE_DIR"
           echo $DOCKER_CACHE_DIR
@@ -143,7 +171,9 @@ jobs:
       
       # => 6. Setup cache on runner machine: self-hosted
       - name: Cache Docker layers on self-hosted
-        if: runner.environment == 'self-hosted'
+        if: |
+          runner.environment == 'self-hosted' &&
+          steps.check_registry.outputs.local_registry == 'true'
         uses: maxnowack/local-cache@v2
         with: 
           path: ${{ env.DOCKER_CACHE_DIR }}/${{ runner.name }}/.buildx-cache
@@ -160,32 +190,6 @@ jobs:
           key: ${{ runner.os }}-buildx-${{ github.sha }}
           restore-keys: |
             ${{ runner.os }}-buildx-
-
-      - name: Check if local registry is running
-        id: check_registry
-        run: |
-          echo "Checking if local registry is running at localhost:5000..."
-          check_registry() {
-              local url=$1
-              if curl -s -f -m 5 "http://${url}/v2/_catalog" > /dev/null 2>&1; then
-                  return 0
-              else
-                  return 1
-              fi
-          }
-
-          if check_registry "localhost:5000"; then
-              echo "local_registry=true" >> $GITHUB_OUTPUT
-              echo "Local registry is running on localhost:5000."
-              echo "registry_host=localhost:5000" >> $GITHUB_OUTPUT
-          elif check_registry "registry:5000"; then
-              echo "local_registry=true" >> $GITHUB_OUTPUT
-              echo "registry_host=registry:5000" >> $GITHUB_OUTPUT
-              echo "Local registry is running on registry:5000 (Docker network)."
-          else
-              echo "local_registry=false" >> $GITHUB_OUTPUT
-              echo "Error: No local registry is running or accessible." >&2
-          fi
 
       # => 7. Build and push Docker image: self-hosted (part 1) 
       #       - local registry reachable:
@@ -273,6 +277,7 @@ jobs:
 
       # => 9. Move the cache with -new suffix to original cache
       - name: Move cache
+        if: steps.check_registry.outputs.local_registry == 'true'
         run: |
           if [ "${{ runner.environment }}" = "self-hosted" ]; then
             rm -rf $DOCKER_CACHE_DIR/${{ runner.name }}/.buildx-cache
@@ -936,7 +941,8 @@ jobs:
         if: always()
         shell: bash
         run: |
-          rm -rf $DOCKER_CACHE_DIR/.github-action-cache/${{ runner.name }}/semitemp 2>&1 \
+          rm -rf $DOCKER_CACHE_DIR/.github-action-cache/${{ runner.name }}/semitemp && \
+          rm -rf $DOCKER_CACHE_DIR/${{ runner.name }}/.buildx-cache 2>&1 \
           | tee $BASH_RESULTS/cleanup-semitemp.txt
 
           echo "Exit status: $?"
