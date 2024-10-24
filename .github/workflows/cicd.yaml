@@ -17,8 +17,8 @@ env:
 
 jobs:
   build-and-push:
-    concurrency:
-      group: build
+    # concurrency:
+    #   group: build
     # |-> 1. pull code
     # |-> 2. set up docker buildx 
     # |-> 3. login to docker hub
