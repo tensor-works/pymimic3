@@ -1,4 +1,4 @@
-# TODO! outdated
+# TODO! deprecated
 name: pymimic3
 channels:
   - conda-forge

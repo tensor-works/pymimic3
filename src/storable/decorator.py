@@ -1,3 +1,4 @@
+import os
 from pymongo import MongoClient
 from typing import Any, Dict, Tuple, List
 from functools import wraps
@@ -117,7 +118,7 @@ def storable(cls):
                 self._wrap_attributes()
                 self._write(self._progress)
                 with open(self._path, 'w') as file:
-                    file.write("")
+                    file.write(str(self._path))
             else:
                 self._progress = self._read()
                 self._wrap_attributes()
@@ -125,7 +126,7 @@ def storable(cls):
             self._wrap_attributes()
             self._write(self._progress)
             with open(self._path, 'w') as file:
-                file.write("")
+                file.write(str(self._path))
 
         original_init(self, *args, **kwargs)
 
@@ -202,7 +203,7 @@ def storable(cls):
                 print(f'{key}: {value}')
         print("===== End Printing =====")
 
-    def db_exists(self, _db_name, host='localhost', port=27017):
+    def db_exists(self, _db_name, host=os.getenv("MONGODB_HOST"), port=None):
         _db_name = MongoDict._sanitize_db_name(_db_name)
         client = MongoClient(host, port)
         try:
@@ -212,7 +213,7 @@ def storable(cls):
         finally:
             client.close()
 
-    def delete_db(self, _db_name, host='localhost', port=27017):
+    def delete_db(self, _db_name, host=os.getenv("MONGODB_HOST"), port=None):
         # Delete the specified database
         _db_name = MongoDict._sanitize_db_name(_db_name)
         client = MongoClient(host, port)

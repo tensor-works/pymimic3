@@ -8,6 +8,7 @@ import pytest
 import datasets
 import ray
 import os
+from pathlib import Path
 from tests.tsettings import *
 from typing import Dict
 from utils.IO import *
@@ -25,35 +26,23 @@ def pytest_configure(config) -> None:
     os.environ["DEBUG"] = "0"
 
     if SEMITEMP_DIR.is_dir() and not config.getoption("--no-cleanup"):
-        shutil.rmtree(str(SEMITEMP_DIR))
+        for item in SEMITEMP_DIR.iterdir():
+            if item.name != '.gitignore':
+                if item.is_file():
+                    item.unlink()
+                elif item.is_dir():
+                    shutil.rmtree(str(item))
 
     for task_name in TASK_NAMES:
+        print(Path.cwd())
         tests_io(f"Loading preproceesing data for task {task_name}...", end="\r")
         datasets.load_data(chunksize=75835,
                            source_path=TEST_DATA_DEMO,
                            storage_path=SEMITEMP_DIR,
                            preprocess=True,
-                           verbose=True,
+                           verbose=False,
                            task=task_name)
         tests_io(f"Done loading preprocessing data for task {task_name}")
-
-    test_file = config.getoption("file_or_dir")
-
-    # Junit
-    # if test_file:
-    #     # Extract the base name of the first test file for simplicity
-    #     base_name = str(Path(test_file[0])\
-    #         .relative_to("tests"))\
-    #         .strip(".py")\
-    #         .replace("/", ".")\
-    #         .replace("\\", ".")
-    #
-    #     result_dir = Path(os.getenv("TESTS"), "data", "pytest-results")
-    #     result_dir.mkdir(parents=True, exist_ok=True)
-    #     junit_path = Path(result_dir, f"{base_name}_junit.xml")
-    #
-    #     # Set the JUnit report name based on the test file name
-    #     config.option.xmlpath = junit_path
 
 
 @pytest.fixture(scope="function", autouse=True)
@@ -152,4 +141,9 @@ def discretizer_listfiles() -> None:
 def pytest_unconfigure(config) -> None:
     os.environ["DEBUG"] = "0"
     if SEMITEMP_DIR.is_dir() and not config.getoption("--no-cleanup"):
-        shutil.rmtree(str(SEMITEMP_DIR))
+        for item in SEMITEMP_DIR.iterdir():
+            if item.name != '.gitignore':
+                if item.is_file():
+                    item.unlink()
+                elif item.is_dir():
+                    shutil.rmtree(str(item))

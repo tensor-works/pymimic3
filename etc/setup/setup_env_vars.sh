@@ -32,6 +32,25 @@ elif [[ "$OSTYPE" == "cygwin" ]] || [[ "$OSTYPE" == "msys" ]]; then
     update_pythonpath "${WORKINGDIR//\//\\}"
 fi
 
+# Check MongoDB connectivity and set host
+echo -e "\033[34m[2/5]\033[0m Checking MongoDB connectivity"
+if [ -z "$MONGODB_HOST" ]; then
+    # Try mongodb:27017 first (Docker setup)
+    if mongosh "mongodb://mongodb:27017" --eval "db.adminCommand('ping')" >/dev/null 2>&1; then
+        MONGODB_HOST="mongodb://mongodb:27017"
+        echo -e "\033[34m[2/5]\033[0m MongoDB found at mongodb:27017"
+    # Then try localhost
+    elif mongosh "mongodb://localhost:27017" --eval "db.adminCommand('ping')" >/dev/null 2>&1; then
+        MONGODB_HOST="mongodb://localhost:27017"
+        echo -e "\033[34m[2/5]\033[0m MongoDB found at localhost:27017"
+    else
+        echo -e "\033[34m[2/5]\033[0m Warning: MongoDB not found at standard locations. Defaulting to localhost:27017"
+        MONGODB_HOST="mongodb://localhost:27017"
+    fi
+else
+    echo -e "\033[34m[2/5]\033[0m Using existing MONGODB_HOST: $MONGODB_HOST"
+fi
+
 echo -e "\033[34m[2/4]\033[0m Setting PYTHONPATH=${PYTHONPATH}"
 
 # Create the .env file
@@ -50,5 +69,6 @@ python -m dotenv -q never -f  ${WORKINGDIR}/.env set MODEL ${MODEL}   > /dev/nul
 python -m dotenv -q never -f  ${WORKINGDIR}/.env set PYTHONPATH ${PYTHONPATH}   > /dev/null 2>&1
 python -m dotenv -q never -f  ${WORKINGDIR}/.env set TESTS ${TESTS}  > /dev/null 2>&1
 python -m dotenv -q never -f  ${WORKINGDIR}/.env set EXAMPLES ${EXAMPLES}  > /dev/null 2>&1
+python -m dotenv -q never -f  ${WORKINGDIR}/.env set MONGODB_HOST ${MONGODB_HOST}  > /dev/null 2>&1
 
 chmod 777 ${WORKINGDIR}/.env

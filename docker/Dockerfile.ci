@@ -21,18 +21,19 @@ RUN --mount=type=cache,target=/var/cache/apt \
     apt-get install -y mongodb-org && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* && \
-    mkdir -p /workdir/tests/data/semitemp && \
-    echo 'mongod --dbpath /workdir/tests/data/semitemp --fork --logpath /var/log/mongod.log --bind_ip_all' >> /root/.bashrc
+    mkdir -p /workdir/tests/data/semitemp 
+# && \
+# echo 'mongod --dbpath /workdir/data/db --fork --logpath /var/log/mongod.log --bind_ip_all' >> /root/.bashrc
 
 # Set up the working directory
 WORKDIR /workdir
 
 # Copy only the conda environment file first to leverage caching
-COPY .devcontainer/linux-gnu-ci.yml .devcontainer/linux-gnu-ci.yml
+COPY ./docker/dependencies/linux-gnu-image.yml ./docker/dependencies/linux-gnu-image.yml
 
 # Update conda environment
 RUN --mount=type=cache,target=/opt/conda/pkgs \
-    conda env update -n base -f .devcontainer/linux-gnu-ci.yml && \
+    conda env update -n base -f ./docker/dependencies/linux-gnu-image.yml && \
     conda clean -afy
 
 # Copy the rest of the files

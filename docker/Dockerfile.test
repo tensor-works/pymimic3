@@ -1,0 +1,2 @@
+# Minimal docker for quick pipeline debugs
+FROM alpine:3.14

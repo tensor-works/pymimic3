@@ -1,0 +1,40 @@
+services:
+  app:
+    build: 
+      context: ..
+      dockerfile: ./docker/Dockerfile
+    command: sleep infinity
+    environment:
+      - MONGODB_HOST=mongodb:27017
+      - DOCKER_BUILDKIT=1
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    volumes:
+      - ..:/workdir:cached
+    depends_on:
+      - mongodb
+    networks:
+      - mynetwork
+
+  mongodb:
+    image: mongo:latest
+    ports:
+      - "27018:27017"
+    restart: unless-stopped
+    volumes:
+      - ../data/db:/data/db
+    networks:
+      - mynetwork
+
+volumes:
+  mongodb_data:
+    driver: local
+
+networks:
+  mynetwork:
+    driver: bridge

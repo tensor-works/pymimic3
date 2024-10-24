@@ -15,6 +15,16 @@ LIGHT_BLUE='\033[94m'
 GREEN='\033[32;1m'
 RESET='\033[0m'
 
+# Check if network exists and set network flag accordingly
+NETWORK_FLAG=""
+RUNNER_NETWORK=$(docker network ls --format '{{.Name}}' | grep '.*runner_network$' | head -n 1)
+if [ ! -z "$RUNNER_NETWORK" ]; then
+    NETWORK_FLAG="--network $RUNNER_NETWORK"
+    echo -e "${BLUE}Found runner network: ${LIGHT_BLUE}$RUNNER_NETWORK${RESET}"
+else
+    echo -e "${BLUE}Warning: runner network not found, container will use default network${RESET}"
+fi
+
 # For echoing
 FORMATTED_MOUNTS=$(echo "$DOCKER_VOLUME_MOUNTS" | sed "s/ -v /\n  \\${LIGHTBLUE} /g")
 
@@ -38,6 +48,7 @@ set -o pipefail
 echo "::group::Pytest container command"
 echo -e "${BLUE}Running command:${REST}\n \
 docker run $FORMATTED_MOUNTS\n \
+$NETWORK_FLAG \
 tensorpod/pymimic3:$BRANCH_NAME\n \
 bash -ic \"pytest --no-cleanup --junitxml=$CONTAINER_PYTEST_RESULTS/$OUTPUT_FILENAME.xml\n \
 -v $PYTEST_MODULE_PATH 2>&1\n \
@@ -47,6 +58,7 @@ echo "::endgroup::"
 
 # Running the pytest command inside a Docker container
 docker run $DOCKER_VOLUME_MOUNTS \
+    $NETWORK_FLAG \
     tensorpod/pymimic3:$BRANCH_NAME \
     bash -ic "pytest --no-cleanup --junitxml=$CONTAINER_PYTEST_RESULTS/$OUTPUT_FILENAME.xml \
     -v $PYTEST_MODULE_PATH \
@@ -57,7 +69,8 @@ docker run $DOCKER_VOLUME_MOUNTS \
 test_status=$?
 
 echo "::group::Pytest summary command"
-echo -e "${BLUE}docker run $DOCKER_VOLUME_MOUNTS \
+echo -e "${BLUE}docker run $DOCKER_VOLUME_MOUNTS \    
+    $NETWORK_FLAG \
     tensorpod/pymimic3:$BRANCH_NAME \
     bash -ic \"python -m tests.pytest_utils.reporting $CONTAINER_PYTEST_RESULTS/$OUTPUT_FILENAME.xml \
     2>&1\" | tee -a $BASH_RESULTS/$OUTPUT_FILENAME.txt${RESET}\n"
@@ -65,6 +78,7 @@ echo "::endgroup::"
 
 # Run the reporting tool inside a Docker container
 docker run $DOCKER_VOLUME_MOUNTS \
+    $NETWORK_FLAG \
     tensorpod/pymimic3:$BRANCH_NAME \
     bash -ic "python -m tests.pytest_utils.reporting $CONTAINER_PYTEST_RESULTS/$OUTPUT_FILENAME.xml \
     2>&1" | tee -a $BASH_RESULTS/$OUTPUT_FILENAME.txt

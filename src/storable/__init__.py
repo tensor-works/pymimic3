@@ -1,3 +1,4 @@
+import os
 import time
 import atexit
 import subprocess
@@ -7,12 +8,15 @@ from storable.decorator import storable
 from storable.settings import *
 
 __all__ = ["storable", "MongoDict"]
+DB_SERVER = os.getenv('MONGODB_HOST')
+if not DB_SERVER:
+    DB_SERVER = 'localhost:27017'
 
 
 def _is_mongodb_running():
     try:
         # Attempt to connect to MongoDB
-        with MongoClient(serverSelectionTimeoutMS=1000) as temp_client:
+        with MongoClient(host=DB_SERVER, serverSelectionTimeoutMS=1000) as temp_client:
             # If this succeeds, MongoDB is running
             temp_client.server_info()
         return True
@@ -25,7 +29,7 @@ def _start_mongodb():
 
     if _is_mongodb_running():
         print("MongoDB is already running.")
-        CLIENT = MongoClient('mongodb://localhost:27017')
+        CLIENT = MongoClient(host=DB_SERVER)
         return
 
     try:
@@ -36,7 +40,7 @@ def _start_mongodb():
         time.sleep(2)  # Give MongoDB time to start
 
         # Connect to MongoDB
-        CLIENT = MongoClient('mongodb://localhost:27017')
+        CLIENT = MongoClient(host=DB_SERVER)
         CLIENT.server_info()  # Will raise an exception if connection fails
         IS_MONGODB_OWNER = True
         print("MongoDB started and connected successfully.")
