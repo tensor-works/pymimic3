@@ -29,7 +29,6 @@ fi
 
 # One db per action pipeline
 GITHUB_SHA=$(get_sha "$BASH_RESULTS")
-DB_NAME=$(generate_db_name "$BRANCH_NAME" "$GITHUB_SHA")
 
 # For echoing
 FORMATTED_MOUNTS=$(echo "$DOCKER_VOLUME_MOUNTS" | sed "s/ -v /\n  \\${LIGHTBLUE} /g")
@@ -44,7 +43,6 @@ echo -e "${BLUE}- Bash results: \n  ${LIGHT_BLUE}$BASH_RESULTS"
 echo -e "${BLUE}- Pytest results: \n  ${LIGHT_BLUE}$PYTEST_RESULTS"
 echo -e "${BLUE}- Output filename: \n  ${LIGHT_BLUE}$OUTPUT_FILENAME${RESET}"
 echo -e "${BLUE}- Action SHA: \n  ${LIGHT_BLUE}$GITHUB_SHA${RESET}"
-echo -e "${BLUE}- Action DB_NAME: \n  ${LIGHT_BLUE}$DB_NAME${RESET}"
 echo -e "${BLUE}----------- Artifacts and logs -------------------------------------"
 echo -e "${BLUE}Log artifact located at:\n  ${LIGHT_BLUE}$BASH_RESULTS/$OUTPUT_FILENAME.txt${RESET}"
 echo -e "${BLUE}Pytest junit artfact created at:\n  ${LIGHT_BLUE}$PYTEST_RESULTS/$OUTPUT_FILENAME.xml${RESET}"
@@ -57,7 +55,7 @@ echo -e "::group::${BLUE}Pytest container command${REST}"
 echo -e "${BLUE}Running command:${REST}\n \
 docker run $FORMATTED_MOUNTS\n \
 $NETWORK_FLAG \
--e MONGODB_NAME="$DB_NAME" \
+-e MONGODB_NAME="$GITHUB_SHA" \
 tensorpod/pymimic3:$BRANCH_NAME\n \
 bash -ic \"pytest --no-cleanup --junitxml=$CONTAINER_PYTEST_RESULTS/$OUTPUT_FILENAME.xml\n \
 -v $PYTEST_MODULE_PATH 2>&1\n \
