@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source ./function.sh
+source ./functions.sh
 
 # Assign parameters to variables for clarity and better control
 DOCKER_VOLUME_MOUNTS="${1}"
