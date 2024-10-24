@@ -31,22 +31,27 @@ function setup_mongodb_connection() {
 }
 
 function cleanup_old_databases() {
-  local keep_days=7
-  local current_time=$(date +%s)
-  local cutoff_time=$((current_time - (keep_days * 24 * 60 * 60)))
-  
-  # Get list of databases and remove old ones
-  local dbs=$(mongosh --host "$MONGODB_HOST" --quiet --eval "db.adminCommand('listDatabases').databases.forEach(db => print(db.name))")
-  
-  for db in $dbs; do
-    if [[ "$db" =~ ^db_.*_[0-9a-f]{40}_.*$ ]]; then
-      local db_time=$(echo "$db" | cut -d'_' -f3)
-      if [[ $db_time -lt $cutoff_time ]]; then
-        echo "Dropping old database: $db"
-        mongosh --host "$MONGODB_HOST" --eval "db.getSiblingDB('$db').dropDatabase()"
-      fi
-    fi
-  done
+    local keep_days=7
+    local current_time=$(date +%s)
+    local cutoff_time=$((current_time - (keep_days * 24 * 60 * 60)))
+
+    # Get list of databases and remove old ones
+    local dbs=$(mongosh --host "$MONGODB_HOST" --quiet --eval "db.adminCommand('listDatabases').databases.forEach(db => print(db.name))")
+
+    for db in $dbs; do
+        # Skip databases containing 'workspace'
+        if [[ "$db" == *"workspace"* ]]; then
+            continue
+        fi
+
+        if [[ "$db" =~ ^db_.*_[0-9a-f]{40}_.*$ ]]; then
+            local db_time=$(echo "$db" | cut -d'_' -f3)
+            if [[ $db_time -lt $cutoff_time ]]; then
+                echo "Dropping old database: $db"
+                mongosh --host "$MONGODB_HOST" --eval "db.getSiblingDB('$db').dropDatabase()"
+            fi
+        fi
+    done
 }
 
 function get_sha() {

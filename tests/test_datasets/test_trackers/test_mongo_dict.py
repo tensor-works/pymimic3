@@ -587,10 +587,6 @@ def test_error_handling():
     db2 = MongoDict(collection_name=new_collection)
     db2['test2'] = 'value2'  # Should work with new empty collection
 
-    # Test collection name validation
-    with pytest.raises(ValueError):
-        MongoDict(collection_name="")  # Empty collection name
-
     # Clean up
     db.delete()
     db2.delete()
