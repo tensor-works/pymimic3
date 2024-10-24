@@ -66,7 +66,7 @@ echo "::endgroup::"
 # Running the pytest command inside a Docker container
 docker run $DOCKER_VOLUME_MOUNTS \
     $NETWORK_FLAG \
-    -e MONGODB_NAME="$DB_NAME" \
+    -e MONGODB_NAME="$GITHUB_SHA" \
     tensorpod/pymimic3:$BRANCH_NAME \
     bash -ic "pytest --no-cleanup --junitxml=$CONTAINER_PYTEST_RESULTS/$OUTPUT_FILENAME.xml \
     -v $PYTEST_MODULE_PATH \
