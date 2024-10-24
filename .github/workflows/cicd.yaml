@@ -114,7 +114,7 @@ jobs:
 
           echo "Copying docker cache from $DOCKER_CACHE_DIR/.buildx-cache to $DOCKER_CACHE_DIR/${{ runner.name }}/.buildx-cache"
           mkdir -p "$DOCKER_CACHE_DIR/${{ runner.name }}/.buildx-cache"
-          cp -r "$DOCKER_CACHE_DIR/.buildx-cache" "$DOCKER_CACHE_DIR/${{ runner.name }}/.buildx-cache"
+          cp -r "$DOCKER_CACHE_DIR/.buildx-cache" "$DOCKER_CACHE_DIR/${{ runner.name }}/"
 
           echo "::group::DOCKER_CACHE_DIR"
           echo $DOCKER_CACHE_DIR
@@ -197,21 +197,40 @@ jobs:
       #           - build and export image locally
       #           - don't push to local registry
       #           - push to docker hub in subsequent step
-      - name: Build and export Docker image
+      - name: Build and push to local registry
+        if: |
+          steps.check_registry.outputs.local_registry == 'true' && 
+          runner.labels['self-hosted'] == 'true'
         uses: docker/build-push-action@v6
         with:
           context: .
           file: ./docker/Dockerfile.ci
-          load: ${{ steps.check_registry.outputs.local_registry != 'true' }}
-          push: ${{ steps.check_registry.outputs.local_registry == 'true' }}
+          push: true
           tags: |
             tensorpod/pymimic3:latest
             tensorpod/pymimic3:${{ env.BRANCH_NAME }}
-            ${{ steps.check_registry.outputs.local_registry == 'true' && 'localhost:5000/pymimic3:latest' || '' }}
-            ${{ steps.check_registry.outputs.local_registry == 'true' && format('localhost:5000/pymimic3:{0}', env.BRANCH_NAME) || '' }}
+            localhost:5000/pymimic3:latest
+            localhost:5000/pymimic3:${{ env.BRANCH_NAME }}
+          cache-from: |
+            type=registry,ref=tensorpod/pymimic3:latest
+            type=registry,ref=tensorpod/pymimic3:${{ env.BRANCH_NAME }}
+          cache-to: type=inline
+
+      - name: Build and export to tar
+        if: |
+          steps.check_registry.outputs.local_registry != 'true' && 
+          runner.labels['self-hosted'] == 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./docker/Dockerfile.ci
+          load: true
+          tags: |
+            tensorpod/pymimic3:latest
+            tensorpod/pymimic3:${{ env.BRANCH_NAME }}
           cache-from: type=local,src=${{ env.DOCKER_CACHE_DIR }}/.buildx-cache
           cache-to: type=local,dest=${{ env.DOCKER_CACHE_DIR }}/.buildx-cache-new,mode=max
-          outputs: ${{ steps.check_registry.outputs.local_registry != 'true' && format('type=docker,dest={0}', env.DOCKER_IMAGE_TAR) || '' }}
+          outputs: type=docker,dest=${{ env.DOCKER_IMAGE_TAR }}
 
       # => 7. Build and push Docker image: github hosted
       - name: Build and export Docker image on github-hosted
