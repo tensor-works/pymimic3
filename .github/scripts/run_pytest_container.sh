@@ -34,7 +34,7 @@ GITHUB_SHA=$(get_sha "$BASH_RESULTS")
 FORMATTED_MOUNTS=$(echo "$DOCKER_VOLUME_MOUNTS" | sed "s/ -v /\n  \\${LIGHTBLUE} /g")
 
 echo -e ""
-echo -e "${BLUE}=========== .github/scripts/run_pytest_container.sh ================"
+echo -e "::group::${BLUE}=========== .github/scripts/run_pytest_container.sh ================"
 echo -e "${BLUE}- Docker volume: ${LIGHT_BLUE}$FORMATTED_MOUNTS"
 echo -e "${BLUE}- Branch name: \n  ${LIGHT_BLUE}$BRANCH_NAME"
 echo -e "${BLUE}- Container pytest results: \n  ${LIGHT_BLUE}$CONTAINER_PYTEST_RESULTS"
@@ -43,15 +43,18 @@ echo -e "${BLUE}- Bash results: \n  ${LIGHT_BLUE}$BASH_RESULTS"
 echo -e "${BLUE}- Pytest results: \n  ${LIGHT_BLUE}$PYTEST_RESULTS"
 echo -e "${BLUE}- Output filename: \n  ${LIGHT_BLUE}$OUTPUT_FILENAME${RESET}"
 echo -e "${BLUE}- Action SHA: \n  ${LIGHT_BLUE}$GITHUB_SHA${RESET}"
-echo -e "${BLUE}----------- Artifacts and logs -------------------------------------"
+echo "::endgroup::"
+echo -e "::group::${BLUE}----------- Artifacts and logs -------------------------------------"
 echo -e "${BLUE}Log artifact located at:\n  ${LIGHT_BLUE}$BASH_RESULTS/$OUTPUT_FILENAME.txt${RESET}"
 echo -e "${BLUE}Pytest junit artfact created at:\n  ${LIGHT_BLUE}$PYTEST_RESULTS/$OUTPUT_FILENAME.xml${RESET}"
 echo -e "${BLUE}Pytest html artfact created at:\n  ${LIGHT_BLUE}$PYTEST_RESULTS/$OUTPUT_FILENAME.html${RESET}"
+echo "::endgroup::"
+
 
 
 set -o pipefail
 
-echo -e "::group::${BLUE}Pytest container command${REST}"
+echo -e "::group::${BLUE}----------- Pytest container command --------------------------------${REST}"
 echo -e "${BLUE}Running command:${REST}\n \
 docker run $FORMATTED_MOUNTS\n \
 $NETWORK_FLAG \

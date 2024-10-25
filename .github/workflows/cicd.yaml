@@ -273,6 +273,12 @@ jobs:
             docker push tensorpod/pymimic3:$BRANCH_NAME
           fi
 
+      - name: Docker cleanup
+        run: |
+          docker images | grep "<none>" | awk '{print $3}' | xargs docker rmi -f
+          docker volumes prune -f
+          docker builder prune -f
+
       # => 9. Move the cache with -new suffix to original cache
       - name: Move cache
         if: ${{ steps.check_registry.outputs.local_registry == 'false' }}
