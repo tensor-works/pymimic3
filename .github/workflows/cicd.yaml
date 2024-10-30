@@ -17,6 +17,7 @@ env:
 
 jobs:
   build-and-push:
+    needs: deploy
     # |-> 1. pull code
     # |-> 2. set up docker buildx 
     # |-> 3. login to docker hub
@@ -300,7 +301,7 @@ jobs:
       #     severity-cutoff: high
 
   deploy:
-    needs: build-and-push
+    # needs: build-and-push
     # env:
     #   BRANCH_NAME: ${{ needs.build-and-push.outputs.branch_name }}
     #   DOCKER_IMAGE_TAR: ${{ needs.build-and-push.outputs.docker_image_tar }}
@@ -333,11 +334,12 @@ jobs:
           export TERM=xterm-256color
 
           # Run command in docker
+          echo "Pulling image from local registry"
           docker pull localhost:5000/pymimic3:latest
-          docker tag  localhost:5000/pymimic3:latest tensorpod/pymimic3:latest
-
-          docker run tensorpod/pymimic3:$feature_atomic_storable \
-              bash -ic "cd docs && make html"
+          echo "Tagging image"
+          docker tag localhost:5000/pymimic3:latest tensorpod/pymimic3:latest
+          echo "Running sphinx build"
+          docker run tensorpod/pymimic3:$latest bash -ic "cd docs && make html"
         working-directory: .
 
       - name: Setup Pages
