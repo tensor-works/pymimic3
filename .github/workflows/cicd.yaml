@@ -301,10 +301,17 @@ jobs:
 
   deploy:
     needs: build-and-push
+    # env:
+    #   BRANCH_NAME: ${{ needs.build-and-push.outputs.branch_name }}
+    #   DOCKER_IMAGE_TAR: ${{ needs.build-and-push.outputs.docker_image_tar }}
+    #   DOCKER_VOLUME_MOUNTS: ${{ needs.build-and-push.outputs.docker_volumes }}
+    #   BASH_RESULTS: ${{ needs.build-and-push.outputs.bash_results }}
+    #   PYTEST_RESULTS: ${{ needs.build-and-push.outputs.pytest_results }}
+    #   LOCAL_REGISTRY: ${{ needs.build-and-push.outputs.local_registry }}
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -327,6 +334,7 @@ jobs:
 
           # Run command in docker
           docker pull localhost:5000/pymimic3:latest
+          docker tag  localhost:5000/pymimic3:latest tensorpod/pymimic3:latest
 
           docker run tensorpod/pymimic3:$feature_atomic_storable \
               bash -ic "cd docs && make html"
@@ -375,8 +383,7 @@ jobs:
     concurrency:
       group: setup-control-dataset
     runs-on: self-hosted
-    needs: deploy
-      #build-and-push
+    needs: build-and-push
     env: 
       BRANCH_NAME: ${{ needs.build-and-push.outputs.branch_name }}
       DOCKER_IMAGE_TAR: ${{ needs.build-and-push.outputs.docker_image_tar }}
