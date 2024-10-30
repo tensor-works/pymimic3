@@ -339,7 +339,7 @@ jobs:
           echo "Tagging image"
           docker tag localhost:5000/pymimic3:latest tensorpod/pymimic3:latest
           echo "Running sphinx build"
-          docker run tensorpod/pymimic3:$latest bash -ic "cd docs && make html"
+          docker run --rm tensorpod/pymimic3:latest bash -ic "cd docs && make html"
         working-directory: .
 
       - name: Setup Pages
