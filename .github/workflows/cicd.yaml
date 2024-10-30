@@ -322,7 +322,7 @@ jobs:
           export TERM=xterm-color
           export TERM=xterm-256color
           VOLUME_DIR="${{ runner.workspace }}/docs/build"
-          VOLUMES="-v ${basedir $BASH_RESULTS}/docs/build:/workdir/docs/build"
+          VOLUMES="-v ${VOLUME_DIR}:/workdir/docs/build"
 
           # Run command in docker
           echo "Pulling image from local registry"
