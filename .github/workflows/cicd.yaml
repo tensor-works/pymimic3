@@ -17,6 +17,7 @@ env:
 
 jobs:
   build-and-push:
+    needs: deploy
     # |-> 1. pull code
     # |-> 2. set up docker buildx 
     # |-> 3. login to docker hub
@@ -300,7 +301,6 @@ jobs:
       #     severity-cutoff: high
 
   deploy:
-    needs: build-and-push
     env:
       BRANCH_NAME: ${{ needs.build-and-push.outputs.branch_name }}
       DOCKER_IMAGE_TAR: ${{ needs.build-and-push.outputs.docker_image_tar }}
@@ -329,7 +329,7 @@ jobs:
           echo "Tagging image"
           docker tag localhost:5000/pymimic3:latest tensorpod/pymimic3:latest
           echo "Running sphinx build"
-          docker run -v "${VOLUME_DIR}:/workdir" --rm tensorpod/pymimic3:latest bash -ic "pip install sphinx sphinx-rtd-theme && cd docs && make html"
+          docker run -v "${VOLUME_DIR}:/workdir/docs/build" --rm tensorpod/pymimic3:latest bash -ic "pip install sphinx sphinx-rtd-theme && cd docs && make html"
         working-directory: .
 
       - name: Setup Pages
@@ -338,7 +338,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: '${{ runner.workspace }}/docs/build/html'
+          path: '${{ runner.workspace }}/html'
 
       - name: Deploy to GitHub Pages
         id: deployment
