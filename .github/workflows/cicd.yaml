@@ -331,7 +331,10 @@ jobs:
           echo "Running sphinx build"
           docker run -v "${VOLUME_DIR}:/workdir/docs/build" --rm tensorpod/pymimic3:latest bash -ic "pip install sphinx sphinx-rtd-theme && cd docs && make html"
           echo "Whats inside"
-          ls ${{ runner.workspace }}
+          ls ${{ runner.workspace }}/
+          ls ${{ runner.workspace }}/docs/
+          ls ${{ runner.workspace }}/docs/build
+          ls ${{ runner.workspace }}/docs/build/html
         working-directory: .
 
       - name: Setup Pages
