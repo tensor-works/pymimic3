@@ -37,7 +37,15 @@ jobs:
 
       - name: Build documentation
         run: |
-          make html
+          # Enable color output
+          export TERM=xterm-color
+          export TERM=xterm-256color
+
+          # Run command in docker
+          docker pull localhost:5000/pymimic3:feature_atomic_storable
+
+          docker run tensorpod/pymimic3:$feature_atomic_storable \
+              bash -ic "cd docs && make html"
         working-directory: .
 
       - name: Setup Pages
