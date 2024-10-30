@@ -275,7 +275,7 @@ jobs:
 
       - name: Docker cleanup
         run: |
-          docker images | grep "<none>" | awk '{print $3}' | xargs docker rmi -f
+          docker image prune -f
           docker volumes prune -f
           docker builder prune -f
 
@@ -375,7 +375,8 @@ jobs:
     concurrency:
       group: setup-control-dataset
     runs-on: self-hosted
-    needs: build-and-push
+    needs: deploy
+      #build-and-push
     env: 
       BRANCH_NAME: ${{ needs.build-and-push.outputs.branch_name }}
       DOCKER_IMAGE_TAR: ${{ needs.build-and-push.outputs.docker_image_tar }}
