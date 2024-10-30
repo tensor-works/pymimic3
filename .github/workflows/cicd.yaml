@@ -277,7 +277,7 @@ jobs:
         run: |
           docker image prune -f
           docker volumes prune -f
-          docker builder prune -f
+          docker builder prune
 
       # => 9. Move the cache with -new suffix to original cache
       - name: Move cache
