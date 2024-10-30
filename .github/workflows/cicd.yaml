@@ -276,7 +276,7 @@ jobs:
       - name: Docker cleanup
         run: |
           docker image prune -f
-          docker volumes prune -f
+          docker volume prune -f
           docker builder prune
 
       # => 9. Move the cache with -new suffix to original cache
