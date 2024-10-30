@@ -12,9 +12,9 @@ pytest
 tensorflow 
 torch
 tables
-sphinx
-sphinx_rtd_theme
 seaborn
+sphinx 
+sphinx-rtd-theme
 absl-py==2.1.0
 astunparse==1.6.3
 cachetools==5.3.3
