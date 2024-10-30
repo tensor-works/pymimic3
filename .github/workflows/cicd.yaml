@@ -42,7 +42,7 @@ jobs:
           export TERM=xterm-256color
 
           # Run command in docker
-          docker pull localhost:5000/pymimic3:feature_atomic_storable
+          docker pull localhost:5000/pymimic3:latest
 
           docker run tensorpod/pymimic3:$feature_atomic_storable \
               bash -ic "cd docs && make html"
