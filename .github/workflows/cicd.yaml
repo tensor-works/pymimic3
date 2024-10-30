@@ -330,6 +330,8 @@ jobs:
           docker tag localhost:5000/pymimic3:latest tensorpod/pymimic3:latest
           echo "Running sphinx build"
           docker run -v "${VOLUME_DIR}:/workdir/docs/build" --rm tensorpod/pymimic3:latest bash -ic "pip install sphinx sphinx-rtd-theme && cd docs && make html"
+          echo "Whats inside"
+          ls ${{ runner.workspace }}
         working-directory: .
 
       - name: Setup Pages
