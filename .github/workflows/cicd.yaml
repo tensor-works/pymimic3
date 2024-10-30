@@ -329,7 +329,7 @@ jobs:
           echo "Tagging image"
           docker tag localhost:5000/pymimic3:latest tensorpod/pymimic3:latest
           echo "Running sphinx build"
-          docker run -v "${{ runner.workspace }}:/workdir/docs/" --rm tensorpod/pymimic3:latest bash -ic "pip install sphinx sphinx-rtd-theme && cd docs && ls && cat Makefile && make html"
+          docker run -v "${{ runner.workspace }}:/workdir/docs/" --rm localhost:5000/pymimic3:latest bash -ic "pip install sphinx sphinx-rtd-theme && cd /workdir/docs && ls && cat Makefile && make html"
           echo "Whats inside"
           ls ${{ runner.workspace }}/
           ls ${{ runner.workspace }}/pymimic3/
