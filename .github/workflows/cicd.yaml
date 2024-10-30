@@ -17,7 +17,6 @@ env:
 
 jobs:
   build-and-push:
-    needs: deploy
     # |-> 1. pull code
     # |-> 2. set up docker buildx 
     # |-> 3. login to docker hub
@@ -205,7 +204,7 @@ jobs:
       - name: Build and push to local registry
         if: |
           steps.check_registry.outputs.local_registry == 'true' && 
-          runner.environment == 'self-hosted'
+          runner.environment == 'self-hosted' && false
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -301,14 +300,14 @@ jobs:
       #     severity-cutoff: high
 
   deploy:
-    # needs: build-and-push
-    # env:
-    #   BRANCH_NAME: ${{ needs.build-and-push.outputs.branch_name }}
-    #   DOCKER_IMAGE_TAR: ${{ needs.build-and-push.outputs.docker_image_tar }}
-    #   DOCKER_VOLUME_MOUNTS: ${{ needs.build-and-push.outputs.docker_volumes }}
-    #   BASH_RESULTS: ${{ needs.build-and-push.outputs.bash_results }}
-    #   PYTEST_RESULTS: ${{ needs.build-and-push.outputs.pytest_results }}
-    #   LOCAL_REGISTRY: ${{ needs.build-and-push.outputs.local_registry }}
+    needs: build-and-push
+    env:
+      BRANCH_NAME: ${{ needs.build-and-push.outputs.branch_name }}
+      DOCKER_IMAGE_TAR: ${{ needs.build-and-push.outputs.docker_image_tar }}
+      DOCKER_VOLUME_MOUNTS: ${{ needs.build-and-push.outputs.docker_volumes }}
+      BASH_RESULTS: ${{ needs.build-and-push.outputs.bash_results }}
+      PYTEST_RESULTS: ${{ needs.build-and-push.outputs.pytest_results }}
+      LOCAL_REGISTRY: ${{ needs.build-and-push.outputs.local_registry }}
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -317,16 +316,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.x'
-
       - name: Build documentation
         run: |
           # Enable color output
           export TERM=xterm-color
           export TERM=xterm-256color
+          VOLUME_DIR="${{ runner.workspace }}/docs/build"
+          VOLUMES="-v ${basedir $BASH_RESULTS}/docs/build:/workdir/docs/build"
 
           # Run command in docker
           echo "Pulling image from local registry"
@@ -334,7 +330,7 @@ jobs:
           echo "Tagging image"
           docker tag localhost:5000/pymimic3:latest tensorpod/pymimic3:latest
           echo "Running sphinx build"
-          docker run --rm tensorpod/pymimic3:latest bash -ic "pip install sphinx sphinx-rtd-theme && cd docs && make html"
+          docker run $VOLUMES --rm tensorpod/pymimic3:latest bash -ic "pip install sphinx sphinx-rtd-theme && cd docs && make html"
         working-directory: .
 
       - name: Setup Pages
@@ -343,7 +339,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: 'docs/build/html'
+          path: '${{ runner.workspace }}/docs/build/html'
 
       - name: Deploy to GitHub Pages
         id: deployment
